@@ -13,33 +13,76 @@ export class GitService {
     this.baseStoragePath = path.resolve(env.STORAGE_PATH, 'git');
   }
 
-  // Garante que o diretório base de repositórios exista
+  // Garante que o diretório base de repositórios temporários exista
   private async ensureStorageDir() {
     await fs.mkdir(this.baseStoragePath, { recursive: true });
   }
 
-  // Obtém o caminho do repositório bare de um projeto
+  // Obtém o caminho ou URL do repositório
   getRepoPath(projectId: string): string {
+    if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
+      const repoName = `${env.GITHUB_REPO_PREFIX}${projectId}`;
+      const owner = env.GITHUB_ORG || 'user';
+      return `https://github.com/${owner}/${repoName}.git`;
+    }
     return path.join(this.baseStoragePath, `${projectId}.git`);
   }
 
-  // Inicializa um novo repositório Git Bare e cria a primeira versão com o template main.tex
+  // Inicializa um novo repositório (no GitHub via API ou Bare local como fallback)
   async initBareRepository(projectId: string, projectTitle: string): Promise<string> {
     await this.ensureStorageDir();
-    const bareRepoPath = this.getRepoPath(projectId);
 
-    // Se já existir, lança erro
-    try {
-      await fs.stat(bareRepoPath);
-      throw new Error('REPOSITORY_ALREADY_EXISTS');
-    } catch (err: any) {
-      if (err.message === 'REPOSITORY_ALREADY_EXISTS') throw err;
-      // OK - diretório não existe
+    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+    let remoteUrl: string;
+    let repoName = `${env.GITHUB_REPO_PREFIX}${projectId}`;
+
+    if (isGitHubMode) {
+      // 1. Criar repositório remoto no GitHub via REST API
+      const apiUrl = env.GITHUB_ORG
+        ? `https://api.github.com/orgs/${env.GITHUB_ORG}/repos`
+        : `https://api.github.com/user/repos`;
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'SCI-LaTeX-Backend',
+          },
+          body: JSON.stringify({
+            name: repoName,
+            private: true,
+            description: `Paper: ${projectTitle}`,
+            auto_init: false,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = (await response.json()) as any;
+          throw new Error(`GITHUB_API_ERROR: ${errorData.message || response.statusText}`);
+        }
+
+        const repoData = (await response.json()) as any;
+        const owner = repoData.owner?.login || env.GITHUB_ORG || 'user';
+        remoteUrl = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
+      } catch (error: any) {
+        console.error('❌ Error creating GitHub repository:', error.message);
+        throw error;
+      }
+    } else {
+      // Fallback Local (Servidor Bare para desenvolvimento offline e testes)
+      const bareRepoPath = path.join(this.baseStoragePath, `${projectId}.git`);
+      try {
+        await fs.stat(bareRepoPath);
+        throw new Error('REPOSITORY_ALREADY_EXISTS');
+      } catch (err: any) {
+        if (err.message === 'REPOSITORY_ALREADY_EXISTS') throw err;
+      }
+      await fs.mkdir(bareRepoPath, { recursive: true });
+      await execAsync(`git init --bare --initial-branch=main`, { cwd: bareRepoPath });
+      remoteUrl = bareRepoPath;
     }
-
-    // 1. Criar repositório bare
-    await fs.mkdir(bareRepoPath, { recursive: true });
-    await execAsync(`git init --bare --initial-branch=main`, { cwd: bareRepoPath });
 
     // 2. Criar repositório temporário para efetuar o commit inicial do main.tex
     const tempDir = path.join(this.baseStoragePath, `temp-${projectId}-${Date.now()}`);
@@ -85,15 +128,17 @@ Resuma os achados do trabalho.
       await execAsync(`git add main.tex`, { cwd: tempDir });
       await execAsync(`git commit -m "Initial commit: LaTeX paper template main.tex"`, { cwd: tempDir });
 
-      // Push para o repositório bare
-      await execAsync(`git remote add origin "${bareRepoPath}"`, { cwd: tempDir });
+      // Push para o repositório remoto (GitHub ou Bare local)
+      await execAsync(`git remote add origin "${remoteUrl}"`, { cwd: tempDir });
       await execAsync(`git push origin main`, { cwd: tempDir });
     } finally {
       // Limpa o diretório temporário
       await fs.rm(tempDir, { recursive: true, force: true });
     }
 
-    return bareRepoPath;
+    return isGitHubMode
+      ? `https://github.com/${env.GITHUB_ORG || 'user'}/${repoName}`
+      : path.join(this.baseStoragePath, `${projectId}.git`);
   }
 
   // Realiza o commit silencioso de uma alteração em um arquivo do projeto
@@ -105,13 +150,23 @@ Resuma os achados do trabalho.
     commitMessage: string;
     authorName: string;
     authorEmail: string;
+    repoUrl?: string;
   }): Promise<string> {
-    const bareRepoPath = this.getRepoPath(data.projectId);
+    await this.ensureStorageDir();
+    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+    
+    let repoLocation = data.repoUrl || this.getRepoPath(data.projectId);
+    if (isGitHubMode && !repoLocation.includes('x-access-token')) {
+      const repoName = `${env.GITHUB_REPO_PREFIX}${data.projectId}`;
+      const owner = env.GITHUB_ORG || 'user';
+      repoLocation = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
+    }
+
     const tempDir = path.join(this.baseStoragePath, `temp-commit-${data.projectId}-${Date.now()}`);
 
     try {
-      // Clona a branch do repositório bare
-      await execAsync(`git clone --branch ${data.branchName} "${bareRepoPath}" "${tempDir}"`, {
+      // Clona a branch do repositório
+      await execAsync(`git clone --branch ${data.branchName} "${repoLocation}" "${tempDir}"`, {
         cwd: this.baseStoragePath,
       });
 
