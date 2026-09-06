@@ -8,7 +8,7 @@ async function start() {
       port: env.PORT,
       host: env.HOST,
     });
-    console.log(`🚀 Server running on http://${env.HOST}:${env.PORT}`);
+    console.log(`🚀 Server running on http://${env.HOST}:${env.PORT} (Docker Live-Reload Active)`);
   } catch (err) {
     console.error('❌ Error starting server:', err);
     process.exit(1);

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sci_latex_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sci_latex_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sci_latex_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sci_latex_backend
+    restart: always
+    ports:
+      - "3333:3333"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=public
+      JWT_SECRET: super-secret-jwt-key-change-in-production
+      GIT_SERVICE_TOKEN: system-git-service-token-secret
+      PORT: 3333
+      HOST: 0.0.0.0
+      NODE_ENV: development
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
+
+volumes:
+  postgres_data:

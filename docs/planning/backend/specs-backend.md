@@ -93,11 +93,11 @@ src/
 ## 5. Backlog de Tarefas do Backend (Divisão de Tarefas)
 
 ### 🧱 Sprint 1: Fundação, Autenticação & Stream SSE
-- [ ] Configurar projeto Fastify + TypeScript + ESLint.
-- [ ] Configurar conexão Prisma ORM e PostgreSQL.
-- [ ] Implementar migrations do Prisma com o schema oficial (`User`, `Team`, `AcademicPeriod`, `Project`, etc.).
-- [ ] Implementar módulo `auth` (Login JWT, Refresh Token em Cookie `httpOnly`, Middleware de Auth).
-- [ ] Implementar módulo `events` (Stream Server-Sent Events - SSE para notificações em tempo real).
+- [X] Configurar projeto Fastify + TypeScript + ESLint.
+- [X] Configurar conexão Prisma ORM e PostgreSQL (Docker Compose + Bind Mount).
+- [X] Implementar migrations do Prisma com o schema oficial (`User`, `Team`, `AcademicPeriod`, `Project`, etc.) e script de seed.
+- [X] Implementar módulo `auth` (Login JWT, Refresh Token em Cookie `httpOnly`, Middleware de Auth).
+- [X] Implementar módulo `events` (Stream Server-Sent Events - SSE para notificações em tempo real).
 
 ### 📁 Sprint 2: Provisionamento Git & Módulo de Projetos
 - [ ] Implementar serviço de criação de repositórios Git bare locais via `GIT_SERVICE_TOKEN`.
