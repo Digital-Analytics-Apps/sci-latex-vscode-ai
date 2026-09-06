@@ -12,8 +12,8 @@ export const api = axios.create({
 // Interceptor de Requisição: Adiciona o cabeçalho Authorization se o token existir
 api.interceptors.request.use(
   (config) => {
-    const token = store.getState().auth.token;
-    if (token) {
+    const token = store.getState().auth.token || localStorage.getItem("token");
+    if (token && token !== "undefined" && token !== "null") {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

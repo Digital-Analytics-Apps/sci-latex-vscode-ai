@@ -52,7 +52,8 @@ export const LoginPage: React.FC = () => {
 
     try {
       const response = await api.post("/auth/login", data);
-      const { token, user } = response.data;
+      const token = response.data.accessToken || response.data.token;
+      const user = response.data.user;
       dispatch(setCredentials({ token, user }));
       navigate("/");
     } catch (err: any) {

@@ -22,8 +22,8 @@ import {
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import type { RootState } from "../../store";
+import { CreateProjectModal } from "../workspace/CreateProjectModal";
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
