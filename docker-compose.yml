@@ -48,6 +48,7 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       JWT_SECRET: super-secret-jwt-key-change-in-production
       GIT_SERVICE_TOKEN: system-git-service-token-secret
+      CODE_SERVER_URL: http://localhost:8080
       PORT: 3333
       HOST: 0.0.0.0
       NODE_ENV: development
@@ -61,6 +62,18 @@ services:
       rabbitmq:
         condition: service_healthy
     command: npm run dev
+
+  code-server:
+    image: codercom/code-server:latest
+    container_name: sci_latex_codeserver
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      PASSWORD: "sci-latex-code-server-secret"
+    volumes:
+      - ./storage:/home/coder/storage
+    command: --auth none --disable-telemetry /home/coder/storage
 
   frontend:
     build:
@@ -77,6 +90,7 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+      - code-server
     command: npm run dev -- --host 0.0.0.0
 
 volumes:

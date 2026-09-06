@@ -12,6 +12,7 @@ const envSchema = z.object({
   GITHUB_ORG: z.string().optional(),
   GITHUB_REPO_PREFIX: z.string().default('sci-paper-'),
   STORAGE_PATH: z.string().default('./storage'),
+  CODE_SERVER_URL: z.string().default('http://localhost:8080'),
   PORT: z.coerce.number().default(3333),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
