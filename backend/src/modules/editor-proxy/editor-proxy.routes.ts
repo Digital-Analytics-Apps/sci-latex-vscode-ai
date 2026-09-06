@@ -39,11 +39,16 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      // Garante que o diretório de trabalho do projeto exista em ./storage/projects/:projectId
+      // Garante que o diretório de trabalho do projeto exista e tenha permissão total de escrita (chmod 777 para o container code-server)
       const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
-      await fs.mkdir(projectDir, { recursive: true });
+      await fs.mkdir(projectDir, { recursive: true, mode: 0o777 });
+      try {
+        await fs.chmod(projectDir, 0o777);
+      } catch {
+        // Ignora erro se chmod não puder ser alterado
+      }
 
-      // Garante que o arquivo main.tex inicial exista
+      // Garante que o arquivo main.tex inicial exista com permissão de escrita
       const mainTexPath = path.join(projectDir, 'main.tex');
       try {
         await fs.access(mainTexPath);
@@ -79,6 +84,11 @@ Resuma os achados do trabalho.
 \\end{document}
 `;
         await fs.writeFile(mainTexPath, initialContent, 'utf-8');
+      }
+      try {
+        await fs.chmod(mainTexPath, 0o777);
+      } catch {
+        // Ignora erro se chmod não puder ser alterado
       }
 
       // Verifica se o serviço do code-server está ativo na porta 8080
