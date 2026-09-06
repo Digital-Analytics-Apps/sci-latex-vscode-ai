@@ -1,7 +1,10 @@
+import 'dotenv/config';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { env } from '../config/env';
 
-// Instância única do Prisma Client para reuso na aplicação
-export const prisma = new PrismaClient({
-  log: env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
-});
+const connectionString = env.DATABASE_URL;
+const adapter = new PrismaPg({ connectionString });
+
+// Instância única do Prisma Client utilizando o driver adapter PrismaPg do Prisma 7
+export const prisma = new PrismaClient({ adapter });
