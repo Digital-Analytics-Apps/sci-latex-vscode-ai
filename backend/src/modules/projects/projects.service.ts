@@ -68,7 +68,7 @@ export class ProjectsService {
 
     try {
       const gitRepoPath = await this.gitService.initBareRepository(project.id, project.name);
-      
+
       const updatedProject = await this.projectsRepository.update(project.id, {
         ...data,
       });
@@ -106,10 +106,14 @@ export class ProjectsService {
 
     // Verifica se há alteração em datas de conferência ou prazos
     const targetDateChanged = data.targetConferenceDate
-      ? !existing.targetConferenceDate || new Date(data.targetConferenceDate).getTime() !== new Date(existing.targetConferenceDate).getTime()
+      ? !existing.targetConferenceDate ||
+        new Date(data.targetConferenceDate).getTime() !==
+          new Date(existing.targetConferenceDate).getTime()
       : false;
     const backupDateChanged = data.backupConferenceDate
-      ? !existing.backupConferenceDate || new Date(data.backupConferenceDate).getTime() !== new Date(existing.backupConferenceDate).getTime()
+      ? !existing.backupConferenceDate ||
+        new Date(data.backupConferenceDate).getTime() !==
+          new Date(existing.backupConferenceDate).getTime()
       : false;
 
     const isChangingDates = targetDateChanged || backupDateChanged;

@@ -28,7 +28,8 @@ export async function authRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Auth'],
         summary: 'Autenticar usuário (Login)',
-        description: 'Realiza login com e-mail e senha, retornando o accessToken e definindo cookie refreshToken.',
+        description:
+          'Realiza login com e-mail e senha, retornando o accessToken e definindo cookie refreshToken.',
         body: z.object({
           email: z.string().email(),
           password: z.string(),
@@ -44,7 +45,8 @@ export async function authRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Auth'],
         summary: 'Renovar Access Token (Refresh)',
-        description: 'Emite um novo accessToken utilizando o refreshToken gravado no cookie httpOnly.',
+        description:
+          'Emite um novo accessToken utilizando o refreshToken gravado no cookie httpOnly.',
       },
     },
     AuthController.refresh

@@ -20,7 +20,8 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['PullRequests'],
         summary: 'Abrir novo Pull Request para revisão de seção',
-        description: 'Envia a alteração da seção do artigo para revisão do Revisor e parecer do NIT.',
+        description:
+          'Envia a alteração da seção do artigo para revisão do Revisor e parecer do NIT.',
         security: [{ bearerAuth: [] }],
         body: z.object({
           title: z.string().min(3),
@@ -58,7 +59,8 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['PullRequests'],
         summary: 'Obter detalhes de um Pull Request',
-        description: 'Retorna os metadados do PR, histórico de comentários por linha e status do NIT.',
+        description:
+          'Retorna os metadados do PR, histórico de comentários por linha e status do NIT.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -75,7 +77,8 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['PullRequests'],
         summary: 'Avaliar Pull Request (Aprovar ou Solicitar Ajustes)',
-        description: 'Permite ao Revisor aprovar a seção ou solicitar ajustes adicionando comentários linha por linha.',
+        description:
+          'Permite ao Revisor aprovar a seção ou solicitar ajustes adicionando comentários linha por linha.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -98,7 +101,8 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['PullRequests'],
         summary: 'Registrar parecer do NIT (Núcleo de Inovação Tecnológica)',
-        description: 'Permite ao Coordenador, Gerente ou Admin aprovar ou rejeitar o parecer do NIT sobre a seção.',
+        description:
+          'Permite ao Coordenador, Gerente ou Admin aprovar ou rejeitar o parecer do NIT sobre a seção.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -119,7 +123,8 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['PullRequests'],
         summary: 'Executar Merge do PR para a branch principal (main)',
-        description: 'Realiza o merge da seção aprovada. Trava estrita: exige aprovação do Revisor E aprovação do NIT.',
+        description:
+          'Realiza o merge da seção aprovada. Trava estrita: exige aprovação do Revisor E aprovação do NIT.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),

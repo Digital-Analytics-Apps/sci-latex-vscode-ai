@@ -71,9 +71,7 @@ describe('PullRequestsService', () => {
   });
 
   it('should block merge if NIT is not approved', async () => {
-    await expect(prService.mergePR('pr-pending-nit', 'user-1')).rejects.toThrow(
-      'NIT_NOT_APPROVED'
-    );
+    await expect(prService.mergePR('pr-pending-nit', 'user-1')).rejects.toThrow('NIT_NOT_APPROVED');
   });
 
   it('should allow merge when both Reviewer and NIT are approved', async () => {

@@ -34,7 +34,7 @@ export class GitService {
 
     const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
     let remoteUrl: string;
-    let repoName = `${env.GITHUB_REPO_PREFIX}${projectId}`;
+    const repoName = `${env.GITHUB_REPO_PREFIX}${projectId}`;
 
     if (isGitHubMode) {
       // 1. Criar repositório remoto no GitHub via REST API
@@ -96,7 +96,7 @@ export class GitService {
 \\usepackage[utf8]{inputenc}
 \\usepackage{graphicx}
 
-\\title{${projectTitle.replace(/[\{\}\\]/g, '')}}
+\\title{${projectTitle.replace(/[{}]/g, '')}}
 \\author{SCI-LaTeX Author}
 \\date{\\today}
 
@@ -126,7 +126,9 @@ Resuma os achados do trabalho.
       await execAsync(`git config user.email "system@sci-latex.org"`, { cwd: tempDir });
 
       await execAsync(`git add main.tex`, { cwd: tempDir });
-      await execAsync(`git commit -m "Initial commit: LaTeX paper template main.tex"`, { cwd: tempDir });
+      await execAsync(`git commit -m "Initial commit: LaTeX paper template main.tex"`, {
+        cwd: tempDir,
+      });
 
       // Push para o repositório remoto (GitHub ou Bare local)
       await execAsync(`git remote add origin "${remoteUrl}"`, { cwd: tempDir });
@@ -154,7 +156,7 @@ Resuma os achados do trabalho.
   }): Promise<string> {
     await this.ensureStorageDir();
     const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
-    
+
     let repoLocation = data.repoUrl || this.getRepoPath(data.projectId);
     if (isGitHubMode && !repoLocation.includes('x-access-token')) {
       const repoName = `${env.GITHUB_REPO_PREFIX}${data.projectId}`;
@@ -174,8 +176,12 @@ Resuma os achados do trabalho.
       await fs.mkdir(path.dirname(fullFilePath), { recursive: true });
       await fs.writeFile(fullFilePath, data.content, 'utf-8');
 
-      await execAsync(`git config user.name "${data.authorName.replace(/"/g, '')}"`, { cwd: tempDir });
-      await execAsync(`git config user.email "${data.authorEmail.replace(/"/g, '')}"`, { cwd: tempDir });
+      await execAsync(`git config user.name "${data.authorName.replace(/"/g, '')}"`, {
+        cwd: tempDir,
+      });
+      await execAsync(`git config user.email "${data.authorEmail.replace(/"/g, '')}"`, {
+        cwd: tempDir,
+      });
 
       await execAsync(`git add "${data.filePath}"`, { cwd: tempDir });
       await execAsync(`git commit -m "${data.commitMessage.replace(/"/g, '')}"`, { cwd: tempDir });

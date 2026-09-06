@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AuthService } from '../auth.service';
 import { IUsersRepository, CreateUserData } from '../../../repositories/users.repository';
-import { ISessionsRepository, CreateSessionData, SessionWithUser } from '../../../repositories/sessions.repository';
+import {
+  ISessionsRepository,
+  CreateSessionData,
+  SessionWithUser,
+} from '../../../repositories/sessions.repository';
 import { User, Session, Role } from '@prisma/client';
 
 // Mock InMemoryUsersRepository para testes unitários isolados (sem banco de dados)

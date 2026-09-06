@@ -16,9 +16,7 @@ class EventsManagerService {
 
   // Remove cliente desconectado
   removeClient(userId: string, reply: FastifyReply) {
-    this.clients = this.clients.filter(
-      (c) => !(c.userId === userId && c.reply === reply)
-    );
+    this.clients = this.clients.filter((c) => !(c.userId === userId && c.reply === reply));
   }
 
   // Envia um evento em tempo real para um usuário específico

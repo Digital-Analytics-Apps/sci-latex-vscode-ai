@@ -117,14 +117,16 @@ export class PullRequestsController {
         return reply.status(400).send({
           statusCode: 400,
           error: 'Bad Request',
-          message: 'O Pull Request não pode ser mesclado pois ainda não foi aprovado pelo Revisor designado.',
+          message:
+            'O Pull Request não pode ser mesclado pois ainda não foi aprovado pelo Revisor designado.',
         });
       }
       if (err.message === 'NIT_NOT_APPROVED') {
         return reply.status(400).send({
           statusCode: 400,
           error: 'Bad Request',
-          message: 'O Pull Request não pode ser mesclado pois pendente de aprovação do NIT (Núcleo de Inovação Tecnológica).',
+          message:
+            'O Pull Request não pode ser mesclado pois pendente de aprovação do NIT (Núcleo de Inovação Tecnológica).',
         });
       }
       throw err;

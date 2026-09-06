@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ProjectsService } from '../projects.service';
-import { IProjectsRepository, ProjectFilterOptions, CreateProjectData, UpdateProjectData } from '../../../repositories/projects.repository';
+import {
+  IProjectsRepository,
+  ProjectFilterOptions,
+  CreateProjectData,
+  UpdateProjectData,
+} from '../../../repositories/projects.repository';
 import { GitService } from '../../git/git.service';
 import { Project, Role, SubmissionStatus } from '@prisma/client';
 
@@ -29,9 +34,7 @@ class InMemoryProjectsRepository implements IProjectsRepository {
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
-      members: [
-        { userId: data.creatorId, role: Role.AUTHOR }
-      ],
+      members: [{ userId: data.creatorId, role: Role.AUTHOR }],
     };
     this.projects.push(project);
     return project;
@@ -45,7 +48,8 @@ class InMemoryProjectsRepository implements IProjectsRepository {
     return this.projects.filter((p) => {
       if (p.deletedAt) return false;
       if (filters?.teamId && p.teamId !== filters.teamId) return false;
-      if (filters?.academicPeriodId && p.academicPeriodId !== filters.academicPeriodId) return false;
+      if (filters?.academicPeriodId && p.academicPeriodId !== filters.academicPeriodId)
+        return false;
       return true;
     });
   }

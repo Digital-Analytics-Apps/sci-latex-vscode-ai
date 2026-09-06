@@ -20,17 +20,20 @@ export class LatexWorker {
 
           try {
             const content = JSON.parse(msg.content.toString()) as LatexCompilationMessage;
-            console.log(`📥 [LatexWorker] Received TeX compilation job for project: ${content.projectId}`);
+            console.log(
+              `📥 [LatexWorker] Received TeX compilation job for project: ${content.projectId}`
+            );
 
             const pdfDir = path.resolve(env.STORAGE_PATH, 'pdf', content.projectId);
             await fs.mkdir(pdfDir, { recursive: true });
 
-            const pdfFileName = content.type === 'COMPILE_PR_PDF'
-              ? `pr-${content.pullRequestId || 'latest'}.pdf`
-              : `master-consolidated.pdf`;
+            const pdfFileName =
+              content.type === 'COMPILE_PR_PDF'
+                ? `pr-${content.pullRequestId || 'latest'}.pdf`
+                : `master-consolidated.pdf`;
 
             const pdfFilePath = path.join(pdfDir, pdfFileName);
-            
+
             // Simula/gera o arquivo PDF compilado
             await fs.writeFile(
               pdfFilePath,
@@ -42,7 +45,8 @@ export class LatexWorker {
             await prisma.auditLog.create({
               data: {
                 userId: content.requesterId,
-                action: content.type === 'COMPILE_PR_PDF' ? 'PR_PDF_COMPILED' : 'MASTER_PDF_COMPILED',
+                action:
+                  content.type === 'COMPILE_PR_PDF' ? 'PR_PDF_COMPILED' : 'MASTER_PDF_COMPILED',
                 entityType: 'Project',
                 entityId: content.projectId,
                 details: { pdfFilePath, pdfFileName },

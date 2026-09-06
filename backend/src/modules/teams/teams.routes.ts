@@ -1,7 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
-import { requireManagerOrAdmin, requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
+import {
+  requireManagerOrAdmin,
+  requireCoordinatorOrAbove,
+} from '../../middlewares/rbac.middleware';
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { TeamsService } from './teams.service';
 import { TeamsController } from './teams.controller';
@@ -76,7 +79,8 @@ export async function teamsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Teams'],
         summary: 'Atualizar Equipe (Gerente ou Admin)',
-        description: 'Permite alterar o nome, descrição, coordenador ou gerente responsável da equipe.',
+        description:
+          'Permite alterar o nome, descrição, coordenador ou gerente responsável da equipe.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),

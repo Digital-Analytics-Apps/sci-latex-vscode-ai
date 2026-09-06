@@ -11,7 +11,8 @@ export async function eventsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Events'],
         summary: 'Stream SSE de Notificações em Tempo Real',
-        description: 'Conexão Server-Sent Events (SSE) para receber alertas de compilação PDF, atualizações de PRs e prazos em tempo real.',
+        description:
+          'Conexão Server-Sent Events (SSE) para receber alertas de compilação PDF, atualizações de PRs e prazos em tempo real.',
         security: [{ bearerAuth: [] }],
       },
     },

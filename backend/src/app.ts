@@ -38,11 +38,28 @@ export async function buildApp() {
         version: '1.0.0',
       },
       tags: [
-        { name: 'Auth', description: 'Autenticação e Gestão de Sessão (Register, Login, Refresh, Logout, Profile)' },
-        { name: 'Teams', description: 'Gestão de Equipes, Laboratórios de Pesquisa e Membros (Gerente e Coordenador)' },
-        { name: 'Projects', description: 'Gestão de Artigos Científicos, Repositórios e Congressos (Target/Backup)' },
-        { name: 'PullRequests', description: 'Fluxo de Revisão de PRs, Parecer do NIT e Trava de Merge' },
-        { name: 'Dashboard', description: 'Painel Consolidado de Gestão e Métricas para Gerente e Admin' },
+        {
+          name: 'Auth',
+          description:
+            'Autenticação e Gestão de Sessão (Register, Login, Refresh, Logout, Profile)',
+        },
+        {
+          name: 'Teams',
+          description:
+            'Gestão de Equipes, Laboratórios de Pesquisa e Membros (Gerente e Coordenador)',
+        },
+        {
+          name: 'Projects',
+          description: 'Gestão de Artigos Científicos, Repositórios e Congressos (Target/Backup)',
+        },
+        {
+          name: 'PullRequests',
+          description: 'Fluxo de Revisão de PRs, Parecer do NIT e Trava de Merge',
+        },
+        {
+          name: 'Dashboard',
+          description: 'Painel Consolidado de Gestão e Métricas para Gerente e Admin',
+        },
         { name: 'AcademicPeriods', description: 'Ciclos e Períodos Acadêmicos' },
         { name: 'Events', description: 'Notificações em Tempo Real via Server-Sent Events (SSE)' },
         { name: 'Health', description: 'Health Check e Status do Servidor' },
@@ -93,19 +110,23 @@ export async function buildApp() {
   await app.register(academicPeriodsRoutes, { prefix: '/api/v1/academic-periods' });
 
   // Rota de Health Check
-  app.get('/health', {
-    schema: {
-      tags: ['Health'],
-      summary: 'Verificação de Saúde do Servidor',
-      description: 'Retorna o status atual do serviço backend SCI-LaTeX.',
+  app.get(
+    '/health',
+    {
+      schema: {
+        tags: ['Health'],
+        summary: 'Verificação de Saúde do Servidor',
+        description: 'Retorna o status atual do serviço backend SCI-LaTeX.',
+      },
     },
-  }, async () => {
-    return {
-      status: 'ok',
-      service: 'sci-latex-backend',
-      timestamp: new Date().toISOString(),
-    };
-  });
+    async () => {
+      return {
+        status: 'ok',
+        service: 'sci-latex-backend',
+        timestamp: new Date().toISOString(),
+      };
+    }
+  );
 
   return app;
 }

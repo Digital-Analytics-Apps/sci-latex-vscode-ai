@@ -1,5 +1,9 @@
 import { Role } from '@prisma/client';
-import { PrismaTeamsRepository, CreateTeamData, UpdateTeamData } from '../../repositories/teams.repository';
+import {
+  PrismaTeamsRepository,
+  CreateTeamData,
+  UpdateTeamData,
+} from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';
 
 export class TeamsService {

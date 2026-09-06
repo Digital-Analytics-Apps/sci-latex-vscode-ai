@@ -26,9 +26,7 @@ describe('TeamsService', () => {
         }
         return null;
       },
-      findAll: async () => [
-        { id: 'team-123', name: 'Laboratório de IA' },
-      ],
+      findAll: async () => [{ id: 'team-123', name: 'Laboratório de IA' }],
       update: async (id: string, data: any) => ({
         id,
         name: data.name || 'Laboratório de IA',

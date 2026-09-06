@@ -80,7 +80,11 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async updateNITStatus(id: string, nitStatus: NITStatus, nitNotes?: string): Promise<PullRequestWithRelations> {
+  async updateNITStatus(
+    id: string,
+    nitStatus: NITStatus,
+    nitNotes?: string
+  ): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.update({
       where: { id },
       data: {

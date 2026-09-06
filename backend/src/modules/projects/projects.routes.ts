@@ -23,7 +23,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Projects'],
         summary: 'Criar novo projeto e repositório Git/GitHub',
-        description: 'Cria um novo artigo científico no banco de dados e provisiona o repositório remoto no GitHub com o template main.tex.',
+        description:
+          'Cria um novo artigo científico no banco de dados e provisiona o repositório remoto no GitHub com o template main.tex.',
         security: [{ bearerAuth: [] }],
         body: z.object({
           name: z.string().min(2),
@@ -47,7 +48,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Projects'],
         summary: 'Listar projetos de artigos científicos',
-        description: 'Retorna a lista de artigos aos quais o usuário autenticado tem acesso ou gerencia.',
+        description:
+          'Retorna a lista de artigos aos quais o usuário autenticado tem acesso ou gerencia.',
         security: [{ bearerAuth: [] }],
       },
     },
@@ -78,7 +80,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Projects'],
         summary: 'Atualizar metadados e congressos do projeto',
-        description: 'Permite atualizar o título, descrição, congressos alvo/backup ou status de submissão do artigo. Requer campo justification caso datas sejam alteradas.',
+        description:
+          'Permite atualizar o título, descrição, congressos alvo/backup ou status de submissão do artigo. Requer campo justification caso datas sejam alteradas.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -108,7 +111,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Projects'],
         summary: 'Deletar artigo científico (Coordenador, Gerente ou Admin)',
-        description: 'Exclui permanentemente um artigo científico do sistema. Requer papel de Coordenador, Gerente ou Admin.',
+        description:
+          'Exclui permanentemente um artigo científico do sistema. Requer papel de Coordenador, Gerente ou Admin.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -126,7 +130,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Projects'],
         summary: 'Adicionar ou associar Autor/Revisor ao artigo',
-        description: 'Permite ao Coordenador, Gerente ou Admin associar um usuário ao projeto com papel de AUTHOR ou REVIEWER.',
+        description:
+          'Permite ao Coordenador, Gerente ou Admin associar um usuário ao projeto com papel de AUTHOR ou REVIEWER.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -166,7 +171,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Projects'],
         summary: 'Obter Timeline Rastreável do Artigo',
-        description: 'Retorna o histórico cronológico de criações, alterações de prazos com justificativas, PRs e revisões.',
+        description:
+          'Retorna o histórico cronológico de criações, alterações de prazos com justificativas, PRs e revisões.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -182,8 +188,10 @@ export async function projectsRoutes(app: FastifyInstance) {
     {
       schema: {
         tags: ['Projects'],
-        summary: 'Atualizar status pós-submissão e decisão dos autores (DOI, Aceite, Rejeição, Backup)',
-        description: 'Permite registrar o aceite com DOI, pedido de ajustes, ou decisão dos autores após rejeição (redirecionar para congresso backup ou abrir versão v2).',
+        summary:
+          'Atualizar status pós-submissão e decisão dos autores (DOI, Aceite, Rejeição, Backup)',
+        description:
+          'Permite registrar o aceite com DOI, pedido de ajustes, ou decisão dos autores após rejeição (redirecionar para congresso backup ou abrir versão v2).',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),

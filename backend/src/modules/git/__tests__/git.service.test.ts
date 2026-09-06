@@ -18,7 +18,9 @@ describe('GitService', () => {
     try {
       const repoPath = path.join(storageGitDir, `${testProjectId}.git`);
       await fs.rm(repoPath, { recursive: true, force: true });
-    } catch (_) {}
+    } catch (_err) {
+      // Ignore cleanup error if directory does not exist
+    }
   });
 
   it('should initialize a local git repository in fallback mode during test environment', async () => {

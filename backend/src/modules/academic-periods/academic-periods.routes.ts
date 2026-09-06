@@ -15,7 +15,8 @@ export async function academicPeriodsRoutes(app: FastifyInstance) {
       schema: {
         tags: ['AcademicPeriods'],
         summary: 'Criar Ciclo/Período Acadêmico (Gerente ou Admin)',
-        description: 'Cadastra um novo ciclo acadêmico (ex: Ciclo 2026/2027) com data inicial e final.',
+        description:
+          'Cadastra um novo ciclo acadêmico (ex: Ciclo 2026/2027) com data inicial e final.',
         security: [{ bearerAuth: [] }],
         body: z.object({
           name: z.string().min(2),

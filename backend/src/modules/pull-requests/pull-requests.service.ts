@@ -1,5 +1,8 @@
 import { PRStatus, NITStatus } from '@prisma/client';
-import { PrismaPullRequestsRepository, CreatePRData } from '../../repositories/pull-requests.repository';
+import {
+  PrismaPullRequestsRepository,
+  CreatePRData,
+} from '../../repositories/pull-requests.repository';
 import { latexProducer } from '../../queue/producers/latex.producer';
 import { eventsManager } from '../events/events.manager';
 import { logAudit } from '../../utils/audit';

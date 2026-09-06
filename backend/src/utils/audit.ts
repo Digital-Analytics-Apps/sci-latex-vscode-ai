@@ -1,13 +1,7 @@
 import { prisma } from '../db/prisma';
 
 export type AuditEntityType =
-  | 'Project'
-  | 'Team'
-  | 'User'
-  | 'PullRequest'
-  | 'Section'
-  | 'AcademicPeriod'
-  | (string & {});
+  'Project' | 'Team' | 'User' | 'PullRequest' | 'Section' | 'AcademicPeriod' | (string & {});
 
 export type AuditAction =
   | 'PROJECT_CREATED'

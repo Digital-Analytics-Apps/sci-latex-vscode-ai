@@ -164,7 +164,8 @@ export class ProjectsController {
         return reply.status(400).send({
           statusCode: 400,
           error: 'Bad Request',
-          message: 'Este artigo já possui um revisor atribuído. É permitido apenas um revisor por artigo.',
+          message:
+            'Este artigo já possui um revisor atribuído. É permitido apenas um revisor por artigo.',
         });
       }
       throw err;

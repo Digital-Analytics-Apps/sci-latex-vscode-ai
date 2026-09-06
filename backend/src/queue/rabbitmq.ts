@@ -77,7 +77,9 @@ export class RabbitMQService {
     try {
       if (this.channel) await this.channel.close();
       if (this.connection) await this.connection.close();
-    } catch {}
+    } catch (_err) {
+      // Ignore disconnect error if connection is already closed
+    }
     this.channel = null;
     this.connection = null;
   }

@@ -19,7 +19,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Dashboard'],
         summary: 'Obter Dashboard Consolidado do Gerente (MANAGER)',
-        description: 'Retorna métricas de produção científica, status de submissões, DOI, equipes e alertas de prazos filtrados por ciclo acadêmico ou equipe.',
+        description:
+          'Retorna métricas de produção científica, status de submissões, DOI, equipes e alertas de prazos filtrados por ciclo acadêmico ou equipe.',
         security: [{ bearerAuth: [] }],
         querystring: z.object({
           academicPeriodId: z.string().uuid().optional(),
