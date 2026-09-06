@@ -38,7 +38,12 @@ graph TD
 1. **No VS Code do Autor (Interativo):** O container do `code-server` de cada usuário já possui o TeX Live e a extensão `LaTeX Workshop` instalada, gerando o PDF em tempo real na aba do editor enquanto ele escreve.
 2. **No Servidor Backend (Background Queue):** A compilação via fila `latex.compilation` é executada para:
    * Gerar o PDF oficial que é exibido no **PDF Viewer da tela do Revisor** (para que o Revisor avalie o PR sem precisar entrar na máquina/workspace do autor).
-   * Gerar o **PDF final consolidado do artigo completo** (mesclando todas as seções: Introdução, Metodologia, Resultados, etc.) para download e submissão ao congresso.
+### 2.2 Gestão de Classes e Templates LaTeX (`.cls` / `.sty`) & Evolução Futura
+
+* **Suporte Nativo a Editores Acadêmicos:** A plataforma suporta múltiplos templates de congressos e periódicos acadêmicos (IEEE via `IEEEtran.cls`, ACM via `acmart.cls`, SBC via `sbc-template.sty` e Springer LNCS via `llncs.cls`).
+* **Auto-provisionamento na Workspace:** Ao criar um artigo, a plataforma grava o arquivo de classe correspondente no próprio repositório do artigo (`./storage/projects/<projectId>/<template>.cls`), garantindo compilação autônoma instantânea no `code-server` e no worker de background.
+* **> [!NOTE] Nota de Evolução Futura (Backlog Arquitetural):**  
+  Em versões futuras, o sistema poderá expandir a gestão de templates para permitir que o usuário (ou Coordenador/Gerente) envie arquivos de classe customizados (`.cls`/`.sty` ou pacote `.zip`) para cadastro no catálogo dinâmico de templates da organização ou upload direto na workspace.
 
 ---
 
