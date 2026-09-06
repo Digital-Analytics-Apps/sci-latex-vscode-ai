@@ -14,6 +14,7 @@ import {
 import { env } from './config/env';
 import { authRoutes } from './modules/auth/auth.routes';
 import { eventsRoutes } from './modules/events/events.routes';
+import { projectsRoutes } from './modules/projects/projects.routes';
 
 export async function buildApp() {
   const app = fastify({
@@ -67,6 +68,7 @@ export async function buildApp() {
   // Registra rotas de módulos com prefixo /api/v1
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(eventsRoutes, { prefix: '/api/v1/events' });
+  await app.register(projectsRoutes, { prefix: '/api/v1/projects' });
 
   // Rota de Health Check
   app.get('/health', async () => {

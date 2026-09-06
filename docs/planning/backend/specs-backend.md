@@ -100,10 +100,10 @@ src/
 - [X] Implementar módulo `events` (Stream Server-Sent Events - SSE para notificações em tempo real).
 
 ### 📁 Sprint 2: Provisionamento Git & Módulo de Projetos
-- [ ] Implementar serviço de criação de repositórios Git bare locais via `GIT_SERVICE_TOKEN`.
-- [ ] Implementar rotas de CRUD de `projects` (Paper) e cadastro de congressos (Target/Backup).
-- [ ] Configurar RabbitMQ (Exchanges e Fila `git.operations`).
-- [ ] Implementar Worker de Git (Commit silencioso com `--author` e Merge).
+- [X] Implementar serviço de criação de repositórios Git bare locais via `GIT_SERVICE_TOKEN`.
+- [X] Implementar rotas de CRUD de `projects` (Paper) e cadastro de congressos (Target/Backup).
+- [X] Configurar RabbitMQ (Exchanges e Fila `git.operations`).
+- [X] Implementar Worker de Git (Commit silencioso com `--author` e Merge).
 
 ### 🔍 Sprint 3: Fluxo de Revisão, NIT e Compilação TeX
 - [ ] Configurar Fila `latex.compilation` e Worker Docker TeX Live para compilações de PR e PDF Master.
