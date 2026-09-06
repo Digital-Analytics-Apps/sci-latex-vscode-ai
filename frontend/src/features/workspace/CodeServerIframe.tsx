@@ -1,8 +1,6 @@
 import CodeIcon from "@mui/icons-material/Code";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../store";
 
 interface CodeServerIframeProps {
   projectId: string;
@@ -11,12 +9,11 @@ interface CodeServerIframeProps {
 export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   projectId,
 }) => {
-  const token = useSelector((state: RootState) => state.auth.token);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const baseUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
-  const iframeSrc = `${baseUrl}/editor-proxy/${projectId}?token=${encodeURIComponent(token || "")}`;
+  const iframeSrc = `${baseUrl}/editor-proxy/${projectId}`;
 
   return (
     <Box

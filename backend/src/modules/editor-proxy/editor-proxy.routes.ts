@@ -20,9 +20,6 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         params: z.object({
           projectId: z.string().uuid(),
         }),
-        querystring: z.object({
-          token: z.string().optional(),
-        }),
       },
     },
     async (request, reply) => {

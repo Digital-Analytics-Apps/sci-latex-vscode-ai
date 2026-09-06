@@ -58,13 +58,21 @@ export class AuthController {
         { expiresIn: '15m' }
       );
 
-      // Envia o Refresh Token no Cookie HTTP-Only
+      // Envia o Refresh Token e Access Token nos Cookies HTTP-Only
       reply.setCookie('refreshToken', refreshToken, {
         path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         expires: expiresAt,
+      });
+
+      reply.setCookie('accessToken', accessToken, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60, // 15 minutos
       });
 
       return reply.send({
@@ -106,6 +114,14 @@ export class AuthController {
         { expiresIn: '15m' }
       );
 
+      reply.setCookie('accessToken', accessToken, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60,
+      });
+
       return reply.send({
         accessToken,
         user,
@@ -127,6 +143,7 @@ export class AuthController {
     }
 
     reply.clearCookie('refreshToken', { path: '/' });
+    reply.clearCookie('accessToken', { path: '/' });
     return reply.send({ message: 'Logged out successfully' });
   }
 
