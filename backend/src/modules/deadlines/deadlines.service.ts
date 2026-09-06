@@ -1,4 +1,4 @@
-import { DeadlineStatus } from '@prisma/client';
+export type DeadlineStatus = 'ON_TIME' | 'WARNING_SOON' | 'OVERDUE';
 
 export class DeadlineService {
   calculateStatus(dueDate: Date | null | undefined): DeadlineStatus {
