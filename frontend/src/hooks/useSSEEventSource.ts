@@ -11,48 +11,70 @@ export function useSSEEventSource() {
   useEffect(() => {
     if (!token) return;
 
+    const controller = new AbortController();
     const baseUrl =
       import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
-    const sseUrl = `${baseUrl}/events/stream?token=${encodeURIComponent(token)}`;
 
-    const eventSource = new EventSource(sseUrl, { withCredentials: true });
-
-    eventSource.onopen = () => {
-      setIsConnected(true);
-    };
-
-    eventSource.onerror = () => {
-      setIsConnected(false);
-    };
-
-    eventSource.addEventListener("PDF_COMPILED", (_event: MessageEvent) => {
+    async function connectSSE() {
       try {
-        dispatch(
-          showNotification({
-            message: `PDF compilado com sucesso para o projeto!`,
-            severity: "success",
-          }),
-        );
-      } catch (err) {
-        console.error("Erro ao processar evento SSE PDF_COMPILED:", err);
-      }
-    });
+        const response = await fetch(`${baseUrl}/events/stream`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "text/event-stream",
+          },
+          signal: controller.signal,
+        });
 
-    eventSource.addEventListener("MERGE_UNLOCKED", (_event: MessageEvent) => {
-      try {
-        dispatch(
-          showNotification({
-            message: "Parecer do NIT aprovado! O botão de Merge foi liberado.",
-            severity: "success",
-          }),
-        );
-      } catch (err) {
-        console.error("Erro ao processar evento SSE MERGE_UNLOCKED:", err);
+        if (!response.ok || !response.body) {
+          setIsConnected(false);
+          return;
+        }
+
+        setIsConnected(true);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          for (const chunk of lines) {
+            if (!chunk.trim()) continue;
+
+            if (chunk.includes("PDF_COMPILED")) {
+              dispatch(
+                showNotification({
+                  message: "PDF compilado com sucesso para o projeto!",
+                  severity: "success",
+                }),
+              );
+            } else if (chunk.includes("MERGE_UNLOCKED")) {
+              dispatch(
+                showNotification({
+                  message:
+                    "Parecer do NIT aprovado! O botão de Merge foi liberado.",
+                  severity: "success",
+                }),
+              );
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setIsConnected(false);
+        }
       }
-    });
+    }
+
+    connectSSE();
 
     return () => {
-      eventSource.close();
+      controller.abort();
       setIsConnected(false);
     };
   }, [token, dispatch]);
