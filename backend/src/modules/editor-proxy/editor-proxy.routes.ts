@@ -37,12 +37,13 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      // Verifica se o serviço do code-server está ativo na porta 8080
+      // Verifica se o serviço do code-server está ativo na porta 8080 (usando 127.0.0.1 para evitar latência IPv6)
       let isCodeServerUp = false;
+      const checkUrl = codeServerUrl.replace('localhost', '127.0.0.1');
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 600);
-        const response = await fetch(codeServerUrl, { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 800);
+        const response = await fetch(checkUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
         if (response.ok || response.status < 500) {
           isCodeServerUp = true;
