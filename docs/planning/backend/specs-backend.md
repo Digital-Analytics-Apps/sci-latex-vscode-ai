@@ -77,6 +77,27 @@ src/
 * **Modelo Atual (Opção A):** Abstração via Conta de Serviço (`GITHUB_TOKEN`). As permissões de acesso ao artigo são 100% gerenciadas pelo banco de dados (`ProjectMember`) e autenticadas via JWT. Os commits são assinados em nome do autor real. Os usuários finais não precisam de conta no GitHub.
 * **Evolução Futura Registrada:** Ver documento [`adr-001-github-user-access.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/backend/adr-001-github-user-access.md) para detalhes das Opções B (Convite automático via API) e C (Modelo Híbrido).
 
+### 3.6 Matriz Oficial de Permissões (RBAC) & Regras de Prazos/Timeline
+
+#### 🔐 Matriz de Permissões de Cadastro e Ações (RBAC)
+| Ação / Recurso | ADMIN | MANAGER (Gerente) | COORDINATOR (Coordenador) | REVIEWER (Revisor) | AUTHOR (Autor) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Criar Artigo e associar Autores** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Deletar Artigo** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Remover Autor ou Revisor de Artigo** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Associar/Designar Revisor a Artigo** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **CRUD de Gerentes (`MANAGER`)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **CRUD de Coordenadores (`COORDINATOR`)**| ✅ | ✅ | ❌ | ❌ | ❌ |
+| **CRUD de Autores (`AUTHOR`)** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **CRUD de Revisores (`REVIEWER`)** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **CRUD de Equipes (`Team`)** | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+#### 📅 Regras de Prazos, Alterações e Timeline Rastreável
+1. **Definição Inicial de Etapas:** Ao criar o artigo, o Autor define as datas limite para cada etapa/seção do artigo. O cadastro das conferências (Target/Backup) pode ser informado ou atualizado posteriormente.
+2. **Obrigatoriedade de Justificativa:** Toda alteração de data (etapa, prazo de seção ou data de submissão) **exige obrigatoriamente uma justificativa legível (`justification`)**.
+3. **Imutabilidade da Data de Início:** A data de início do artigo (`createdAt` / `startDate`) é **estritamente imutável** e não pode ser modificada por nenhuma persona.
+4. **Timeline Rastreável:** Todo o histórico de prazos, alterações com justificativa, revisões de PR e status é gravado no histórico imutável (`AuditLog`), permitindo rastreio completo do processo do artigo.
+
 ---
 
 ## 4. Especificação dos Workers do RabbitMQ
