@@ -33,6 +33,12 @@ export async function buildApp() {
         description: 'Self-Hosted Scientific Article Platform Backend REST API & Events',
         version: '1.0.0',
       },
+      tags: [
+        { name: 'Auth', description: 'Autenticação e Gestão de Sessão (Register, Login, Refresh, Logout, Profile)' },
+        { name: 'Projects', description: 'Gestão de Artigos Científicos, Repositórios e Congressos (Target/Backup)' },
+        { name: 'Events', description: 'Notificações em Tempo Real via Server-Sent Events (SSE)' },
+        { name: 'Health', description: 'Health Check e Status do Servidor' },
+      ],
       components: {
         securitySchemes: {
           bearerAuth: {
@@ -48,6 +54,10 @@ export async function buildApp() {
 
   await app.register(swaggerUi, {
     routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true,
+    },
   });
 
   // Registra plugins do ecossistema Fastify
@@ -71,7 +81,13 @@ export async function buildApp() {
   await app.register(projectsRoutes, { prefix: '/api/v1/projects' });
 
   // Rota de Health Check
-  app.get('/health', async () => {
+  app.get('/health', {
+    schema: {
+      tags: ['Health'],
+      summary: 'Verificação de Saúde do Servidor',
+      description: 'Retorna o status atual do serviço backend SCI-LaTeX.',
+    },
+  }, async () => {
     return {
       status: 'ok',
       service: 'sci-latex-backend',
