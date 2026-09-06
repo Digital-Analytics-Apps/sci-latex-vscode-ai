@@ -67,7 +67,10 @@ services:
     command: npm run dev
 
   code-server:
-    image: codercom/code-server:latest
+    image: sci-latex-vscode-code-server:latest
+    build:
+      context: ./docker/code-server
+      dockerfile: Dockerfile
     container_name: sci_latex_codeserver
     restart: always
     ports:
@@ -76,7 +79,9 @@ services:
       PASSWORD: "sci-latex-code-server-secret"
     volumes:
       - ./storage:/home/coder/storage
-    command: --auth none --disable-telemetry /home/coder/storage
+      - ./docker/code-server/settings.json:/home/coder/.local/share/code-server/User/settings.json
+      - ./docker/code-server/settings.json:/home/coder/.config/code-server/User/settings.json
+    command: --auth none --disable-telemetry --disable-workspace-trust /home/coder/storage
 
   frontend:
     build:

@@ -96,7 +96,10 @@ Resuma os achados do trabalho.
       try {
         await fs.access(ieeeClsPath);
       } catch {
-        const sourceIeeePath = path.resolve(__dirname, '../../../../docker/code-server/IEEEtran.cls');
+        const sourceIeeePath = path.resolve(
+          __dirname,
+          '../../../../docker/code-server/IEEEtran.cls'
+        );
         try {
           await fs.copyFile(sourceIeeePath, ieeeClsPath);
           await fs.chmod(ieeeClsPath, 0o777);

@@ -275,6 +275,13 @@ export class ProjectsController {
       if (err.message === 'PROJECT_NOT_FOUND') {
         return reply.status(404).send({ message: 'Project not found' });
       }
+      if (err.message?.includes('GITHUB_COMMIT_ERROR')) {
+        return reply.status(502).send({
+          statusCode: 502,
+          error: 'Bad Gateway',
+          message: `Falha ao efetuar commit no GitHub: ${err.message}`,
+        });
+      }
       throw err;
     }
   }

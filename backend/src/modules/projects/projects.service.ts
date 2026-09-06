@@ -1,4 +1,7 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { Role } from '@prisma/client';
+import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
 import { ITeamsRepository } from '../../repositories/teams.repository';
@@ -269,7 +272,7 @@ export class ProjectsService {
     return updated;
   }
 
-  // Realiza o commit silencioso do progresso da seção via Service Token
+  // Realiza o commit silencioso do progresso da seção no GitHub via Service Token
   async commitSectionProgress(
     projectId: string,
     sectionId: string,
@@ -279,7 +282,43 @@ export class ProjectsService {
     const project = await this.projectsRepository.findById(projectId);
     if (!project) throw new Error('PROJECT_NOT_FOUND');
 
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const authorName = user?.name || 'SCI-LaTeX Author';
+    const authorEmail = user?.email || 'author@sci-latex.org';
+
+    // Identifica o arquivo e branch da seção (ou main.tex / main como padrão)
+    const section = (project as any).sections?.find((s: any) => s.id === sectionId);
+    const filePath = section?.filePath || 'main.tex';
+    const branchName = section?.branchName || 'main';
+
+    const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
+    const fullFilePath = path.join(projectDir, filePath);
+
+    let fileContent = '';
+    try {
+      fileContent = await fs.readFile(fullFilePath, 'utf-8');
+    } catch {
+      fileContent = `% Progress update for ${sectionId}\n`;
+    }
+
     const msg = commitMessage || `Progress update: section ${sectionId} edit`;
+
+    let commitHash = `commit-${Date.now().toString(36)}`;
+    try {
+      commitHash = await this.gitService.commitFile({
+        projectId,
+        branchName,
+        filePath,
+        content: fileContent,
+        commitMessage: msg,
+        authorName,
+        authorEmail,
+        repoUrl: project.gitRepoPath,
+      });
+    } catch (gitErr: any) {
+      console.error('❌ Error executing real Git commit to GitHub:', gitErr.message || gitErr);
+      throw new Error(`GITHUB_COMMIT_ERROR: ${gitErr.message || 'Falha ao efetuar commit no GitHub'}`);
+    }
 
     await logAudit({
       userId,
@@ -288,13 +327,16 @@ export class ProjectsService {
       entityId: projectId,
       details: {
         sectionId,
+        filePath,
+        branchName,
+        commitHash,
         commitMessage: msg,
       },
     });
 
     return {
-      message: 'Progresso salvo com sucesso via commit silencioso da Conta de Serviço!',
-      commitHash: `commit-${Date.now().toString(36)}`,
+      message: 'Progresso salvo e commit efetuado com sucesso no GitHub!',
+      commitHash,
       sectionId,
       projectId,
     };
