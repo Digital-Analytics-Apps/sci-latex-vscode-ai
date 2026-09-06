@@ -1,13 +1,15 @@
 import { PullRequest, PRStatus, NITStatus, ReviewComment, Prisma } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
+export const prInclude = {
+  author: { select: { id: true, name: true, email: true, role: true } },
+  reviewer: { select: { id: true, name: true, email: true, role: true } },
+  section: true,
+  project: true,
+} as const;
+
 export type PullRequestWithRelations = Prisma.PullRequestGetPayload<{
-  include: {
-    author: { select: { id: true; name: true; email: true; role: true } };
-    reviewer: { select: { id: true; name: true; email: true; role: true } };
-    section: true;
-    project?: true;
-  };
+  include: typeof prInclude;
 }>;
 
 export interface CreatePRData {
@@ -40,23 +42,15 @@ export class PrismaPullRequestsRepository {
         nitStatus: data.nitStatus || NITStatus.WAITING_NIT,
         status: PRStatus.UNDER_REVIEW,
       },
-      include: {
-        author: { select: { id: true, name: true, email: true, role: true } },
-        reviewer: { select: { id: true, name: true, email: true, role: true } },
-        section: true,
-        project: true,
-      },
+      include: prInclude,
     });
   }
 
-  async findById(id: string): Promise<PullRequestWithRelations | null> {
+  async findById(id: string): Promise<(PullRequestWithRelations & { comments: any[] }) | null> {
     return prisma.pullRequest.findUnique({
       where: { id },
       include: {
-        author: { select: { id: true, name: true, email: true, role: true } },
-        reviewer: { select: { id: true, name: true, email: true, role: true } },
-        section: true,
-        project: true,
+        ...prInclude,
         comments: {
           include: {
             user: { select: { id: true, name: true, email: true, role: true } },
@@ -70,11 +64,7 @@ export class PrismaPullRequestsRepository {
   async findAll(projectId?: string): Promise<PullRequestWithRelations[]> {
     return prisma.pullRequest.findMany({
       where: projectId ? { projectId } : undefined,
-      include: {
-        author: { select: { id: true, name: true, email: true, role: true } },
-        reviewer: { select: { id: true, name: true, email: true, role: true } },
-        section: true,
-      },
+      include: prInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -86,11 +76,7 @@ export class PrismaPullRequestsRepository {
         status,
         mergedAt: status === PRStatus.MERGED ? new Date() : undefined,
       },
-      include: {
-        author: { select: { id: true, name: true, email: true, role: true } },
-        reviewer: { select: { id: true, name: true, email: true, role: true } },
-        section: true,
-      },
+      include: prInclude,
     });
   }
 
@@ -101,11 +87,7 @@ export class PrismaPullRequestsRepository {
         nitStatus,
         nitNotes,
       },
-      include: {
-        author: { select: { id: true, name: true, email: true, role: true } },
-        reviewer: { select: { id: true, name: true, email: true, role: true } },
-        section: true,
-      },
+      include: prInclude,
     });
   }
 
