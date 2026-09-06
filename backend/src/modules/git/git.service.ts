@@ -154,9 +154,11 @@ Resuma os achados do trabalho.
         cwd: tempDir,
       });
 
-      // Push para o repositório remoto (GitHub ou Bare local)
+      // Push para o repositório remoto (GitHub ou Bare local): envia main e dev
       await execAsync(`git remote add origin "${remoteUrl}"`, { cwd: tempDir });
       await execAsync(`git push origin main`, { cwd: tempDir });
+      await execAsync(`git checkout -b dev`, { cwd: tempDir });
+      await execAsync(`git push origin dev`, { cwd: tempDir });
     } finally {
       // Limpa o diretório temporário
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -201,10 +203,24 @@ Resuma os achados do trabalho.
     const tempDir = path.join(this.baseStoragePath, `temp-commit-${data.projectId}-${Date.now()}`);
 
     try {
-      // Clona a branch do repositório
-      await execAsync(`git clone --branch ${data.branchName} "${repoLocation}" "${tempDir}"`, {
-        cwd: this.baseStoragePath,
-      });
+      // Tenta clonar a branch de trabalho da seção. Se ela ainda não existir no remoto, clona a dev e cria a nova branch
+      try {
+        await execAsync(`git clone --branch ${data.branchName} "${repoLocation}" "${tempDir}"`, {
+          cwd: this.baseStoragePath,
+        });
+      } catch {
+        // Fallback: Clona a branch dev (ou main se dev falhar) e cria a branch da seção localmente
+        try {
+          await execAsync(`git clone --branch dev "${repoLocation}" "${tempDir}"`, {
+            cwd: this.baseStoragePath,
+          });
+        } catch {
+          await execAsync(`git clone --branch main "${repoLocation}" "${tempDir}"`, {
+            cwd: this.baseStoragePath,
+          });
+        }
+        await execAsync(`git checkout -b ${data.branchName}`, { cwd: tempDir });
+      }
 
       const fullFilePath = path.join(tempDir, data.filePath);
       await fs.mkdir(path.dirname(fullFilePath), { recursive: true });
@@ -224,6 +240,118 @@ Resuma os achados do trabalho.
       // Retorna o hash do commit gerado
       const { stdout } = await execAsync(`git rev-parse HEAD`, { cwd: tempDir });
       return stdout.trim();
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  // Realiza a fusão (git merge) de uma branch de origem (ex: section/intro-a1b2c3d4) em uma branch alvo (ex: dev ou main)
+  async mergeBranch(data: {
+    projectId: string;
+    sourceBranch: string;
+    targetBranch: string;
+    authorName: string;
+    authorEmail: string;
+    commitMessage?: string;
+    repoUrl?: string;
+  }): Promise<string> {
+    await this.ensureStorageDir();
+    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+
+    let repoLocation = data.repoUrl || this.getRepoPath(data.projectId);
+    if (isGitHubMode && !repoLocation.includes('x-access-token')) {
+      if (repoLocation.startsWith('https://github.com/')) {
+        repoLocation = repoLocation.replace(
+          'https://github.com/',
+          `https://x-access-token:${env.GITHUB_TOKEN}@github.com/`
+        );
+        if (!repoLocation.endsWith('.git')) {
+          repoLocation += '.git';
+        }
+      } else {
+        const repoName = generateRepoName(data.projectId);
+        const owner = env.GITHUB_ORG || 'user';
+        repoLocation = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
+      }
+    }
+
+    const tempDir = path.join(this.baseStoragePath, `temp-merge-${data.projectId}-${Date.now()}`);
+
+    try {
+      // Clona a branch de destino (targetBranch)
+      await execAsync(`git clone --branch ${data.targetBranch} "${repoLocation}" "${tempDir}"`, {
+        cwd: this.baseStoragePath,
+      });
+
+      await execAsync(`git config user.name "${data.authorName.replace(/"/g, '')}"`, {
+        cwd: tempDir,
+      });
+      await execAsync(`git config user.email "${data.authorEmail.replace(/"/g, '')}"`, {
+        cwd: tempDir,
+      });
+
+      // Busca a branch de origem no remoto
+      await execAsync(`git fetch origin ${data.sourceBranch}`, { cwd: tempDir });
+
+      const msg = data.commitMessage || `Merge branch '${data.sourceBranch}' into ${data.targetBranch}`;
+      await execAsync(`git merge origin/${data.sourceBranch} -m "${msg.replace(/"/g, '')}"`, {
+        cwd: tempDir,
+      });
+
+      await execAsync(`git push origin ${data.targetBranch}`, { cwd: tempDir });
+
+      const { stdout } = await execAsync(`git rev-parse HEAD`, { cwd: tempDir });
+      return stdout.trim();
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  // Remove uma branch mesclada no repositório remoto com proteção estrita para 'main' e 'dev'
+  async deleteBranch(data: {
+    projectId: string;
+    branchName: string;
+    repoUrl?: string;
+  }): Promise<void> {
+    const protectedBranches = ['main', 'dev', 'master'];
+    const normalizedName = data.branchName.trim().toLowerCase();
+
+    if (protectedBranches.includes(normalizedName)) {
+      throw new Error(
+        `CANNOT_DELETE_PROTECTED_BRANCH: A branch "${data.branchName}" é protegida e não pode ser excluída.`
+      );
+    }
+
+    await this.ensureStorageDir();
+    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+
+    let repoLocation = data.repoUrl || this.getRepoPath(data.projectId);
+    if (isGitHubMode && !repoLocation.includes('x-access-token')) {
+      if (repoLocation.startsWith('https://github.com/')) {
+        repoLocation = repoLocation.replace(
+          'https://github.com/',
+          `https://x-access-token:${env.GITHUB_TOKEN}@github.com/`
+        );
+        if (!repoLocation.endsWith('.git')) {
+          repoLocation += '.git';
+        }
+      } else {
+        const repoName = generateRepoName(data.projectId);
+        const owner = env.GITHUB_ORG || 'user';
+        repoLocation = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
+      }
+    }
+
+    const tempDir = path.join(this.baseStoragePath, `temp-del-${data.projectId}-${Date.now()}`);
+
+    try {
+      await execAsync(`git clone --branch dev "${repoLocation}" "${tempDir}"`, {
+        cwd: this.baseStoragePath,
+      });
+
+      await execAsync(`git push origin --delete ${data.branchName}`, { cwd: tempDir });
+    } catch (err: any) {
+      console.warn(`⚠️ Warning deleting remote branch ${data.branchName}:`, err.message || err);
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }

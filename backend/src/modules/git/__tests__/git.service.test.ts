@@ -56,6 +56,16 @@ describe('GitService', () => {
     expect(commitHash.length).toBe(40); // 40-character SHA-1 hash
   });
 
+  it('should throw CANNOT_DELETE_PROTECTED_BRANCH when trying to delete main or dev branch', async () => {
+    await expect(
+      gitService.deleteBranch({ projectId: testProjectId, branchName: 'main' })
+    ).rejects.toThrow('CANNOT_DELETE_PROTECTED_BRANCH');
+
+    await expect(
+      gitService.deleteBranch({ projectId: testProjectId, branchName: 'dev' })
+    ).rejects.toThrow('CANNOT_DELETE_PROTECTED_BRANCH');
+  });
+
   it('should throw GITHUB_TOKEN_REQUIRED error in development mode when token is missing', async () => {
     const originalNodeEnv = env.NODE_ENV;
     const originalToken = env.GITHUB_TOKEN;

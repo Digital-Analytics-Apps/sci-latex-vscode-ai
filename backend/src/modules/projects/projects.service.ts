@@ -286,10 +286,10 @@ export class ProjectsService {
     const authorName = user?.name || 'SCI-LaTeX Author';
     const authorEmail = user?.email || 'author@sci-latex.org';
 
-    // Identifica o arquivo e branch da seção (ou main.tex / main como padrão)
+    // Identifica o arquivo e branch da seção (ou main.tex / dev como padrão)
     const section = (project as any).sections?.find((s: any) => s.id === sectionId);
     const filePath = section?.filePath || 'main.tex';
-    const branchName = section?.branchName || 'main';
+    const branchName = section?.branchName || (sectionId ? `section/${sectionId}-${projectId.slice(0, 8)}` : 'dev');
 
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     const fullFilePath = path.join(projectDir, filePath);

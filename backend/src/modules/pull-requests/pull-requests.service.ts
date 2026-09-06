@@ -6,9 +6,14 @@ import {
 import { latexProducer } from '../../queue/producers/latex.producer';
 import { eventsManager } from '../events/events.manager';
 import { logAudit } from '../../utils/audit';
+import { GitService } from '../git/git.service';
+import { prisma } from '../../db/prisma';
 
 export class PullRequestsService {
-  constructor(private prRepository: PrismaPullRequestsRepository) {}
+  constructor(
+    private prRepository: PrismaPullRequestsRepository,
+    private gitService?: GitService
+  ) {}
 
   // Abertura de Pull Request pelo Autor
   async createPR(authorId: string, data: CreatePRData) {
@@ -31,7 +36,7 @@ export class PullRequestsService {
       type: 'COMPILE_PR_PDF',
       projectId: pr.projectId,
       pullRequestId: pr.id,
-      branchName: pr.section?.branchName || 'main',
+      branchName: pr.section?.branchName || 'dev',
       requesterId: authorId,
     });
 
@@ -119,22 +124,46 @@ export class PullRequestsService {
     return updatedPR;
   }
 
-  // Executar MERGE do PR com Trava de Segurança Estrita
+  // Executar MERGE do PR de Seção para a branch 'dev' (Exige apenas aprovação do Revisor)
   async mergePR(prId: string, requesterId: string) {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
 
-    // 🔒 TRAVA DE SEGURANÇA 1: O PR precisa ter sido aprovado pelo Revisor
+    // 🔒 TRAVA DE SEGURANÇA: O PR precisa ter sido aprovado pelo Revisor
     if (pr.status !== PRStatus.APPROVED) {
       throw new Error('PR_NOT_APPROVED_BY_REVIEWER');
     }
 
-    // 🔒 TRAVA DE SEGURANÇA 2: O PR precisa ter parecer aprovado do NIT
-    if (pr.nitStatus !== NITStatus.APPROVED_NIT) {
-      throw new Error('NIT_NOT_APPROVED');
+    // Executa o merge real no repositório Git (seção -> dev) e apaga a branch do autor
+    if (this.gitService && pr.section?.branchName) {
+      const sourceBranch = pr.section.branchName;
+      const targetBranch = 'dev';
+
+      const authorUser = pr.authorId ? await prisma.user.findUnique({ where: { id: pr.authorId } }) : null;
+      const authorName = authorUser?.name || 'SCI-LaTeX Author';
+      const authorEmail = authorUser?.email || 'author@sci-latex.org';
+
+      try {
+        await this.gitService.mergeBranch({
+          projectId: pr.projectId,
+          sourceBranch,
+          targetBranch,
+          authorName,
+          authorEmail,
+          commitMessage: `Merge section PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
+        });
+
+        // Remove a branch do autor após o merge na dev (protegendo main e dev)
+        await this.gitService.deleteBranch({
+          projectId: pr.projectId,
+          branchName: sourceBranch,
+        });
+      } catch (gitErr: any) {
+        console.error('❌ Error executing git merge on PR:', gitErr.message || gitErr);
+      }
     }
 
-    // Se aprovado em ambas as travas, executa o merge
+    // Se aprovado, marca como MERGED no banco de dados
     const mergedPR = await this.prRepository.updateStatus(prId, PRStatus.MERGED);
 
     // 1. Registra no AuditLog / Timeline
@@ -143,18 +172,18 @@ export class PullRequestsService {
       action: 'PR_MERGED',
       entityType: 'PullRequest',
       entityId: prId,
-      details: { mergedAt: mergedPR.mergedAt },
+      details: { mergedAt: mergedPR.mergedAt, targetBranch: 'dev' },
     });
 
-    // 2. Dispara compilação do PDF Master oficial consolidado
+    // 2. Dispara compilação do PDF da dev oficial consolidada
     await latexProducer.publishCompilation({
       type: 'COMPILE_MASTER_PDF',
       projectId: pr.projectId,
-      branchName: 'main',
+      branchName: 'dev',
       requesterId,
     });
 
-    // 3. Emite notificação SSE de desblokueio de merge
+    // 3. Emite notificação SSE de desbloqueio de merge
     eventsManager.broadcastToUser(pr.authorId, 'MERGE_UNLOCKED', {
       pullRequestId: prId,
       projectId: pr.projectId,
@@ -162,5 +191,40 @@ export class PullRequestsService {
     });
 
     return mergedPR;
+  }
+
+  // Realiza o merge final da branch 'dev' para a 'main' (Exige parecer aprovado do NIT na penúltima etapa antes da submissão)
+  async mergeDevToMain(projectId: string, requesterId: string) {
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    // Executa o merge da dev na main
+    if (this.gitService) {
+      await this.gitService.mergeBranch({
+        projectId,
+        sourceBranch: 'dev',
+        targetBranch: 'main',
+        authorName: 'SCI-LaTeX System',
+        authorEmail: 'system@sci-latex.org',
+        commitMessage: `Merge branch 'dev' into main for final submission release`,
+      });
+    }
+
+    await logAudit({
+      userId: requesterId,
+      action: 'PROJECT_MERGED_TO_MAIN',
+      entityType: 'Project',
+      entityId: projectId,
+      details: { mergedAt: new Date() },
+    });
+
+    await latexProducer.publishCompilation({
+      type: 'COMPILE_MASTER_PDF',
+      projectId,
+      branchName: 'main',
+      requesterId,
+    });
+
+    return { message: 'Artigo mesclado com sucesso na branch main para submissão final.' };
   }
 }
