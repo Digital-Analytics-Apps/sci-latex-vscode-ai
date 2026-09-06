@@ -66,6 +66,26 @@ graph TD
     WorkerGit -->|5. Commit com author='User Email'| GitHub
 ```
 
+### 3.2 Estratégia de Branches Git (main, dev e feature/section) e Proteções
+
+Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo, a plataforma segue uma convenção estrita de branches:
+
+1. **`main` (Production / Camera-Ready)**:
+   - Contém a versão oficial consolidada do artigo pronto para submissão.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Apenas recebe merges após aprovação final do artigo.
+   - **Proteção Total**: Nunca pode ser excluída.
+
+2. **`dev` (Development / Integration)**:
+   - É a branch base de integração constante do projeto e o **target padrão de todos os Pull Requests**.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Apenas recebe merges dos PRs de seções aprovados pelo Revisor e pelo NIT.
+   - **Proteção Total**: Nunca pode ser excluída.
+
+3. **Branch da Seção do Autor (`feature/<slug>-<shortHash>` ou `section/<slug>-<shortHash>`)**:
+   - Branch de trabalho individual atribuída à seção e ao autor.
+   - **Identificador Único (Short Hash)**: Cada branch possui um sufixo hash único de 8 caracteres (ex: `section/introduction-a1b2c3d4` ou `feature/sec-1-5550a24e`) para evitar colisões entre colaboradores ou tentativas paralelas.
+   - O autor executa os commits do "Salvar Progresso" nesta branch.
+   - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado (Revisor + NIT) e o merge ser executado na `dev`, a branch da seção é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
+
 ---
 
 ## 4. Stack Tecnológica Oficial
