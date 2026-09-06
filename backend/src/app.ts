@@ -15,6 +15,7 @@ import { env } from './config/env';
 import { authRoutes } from './modules/auth/auth.routes';
 import { eventsRoutes } from './modules/events/events.routes';
 import { projectsRoutes } from './modules/projects/projects.routes';
+import { pullRequestsRoutes } from './modules/pull-requests/pull-requests.routes';
 
 export async function buildApp() {
   const app = fastify({
@@ -36,6 +37,7 @@ export async function buildApp() {
       tags: [
         { name: 'Auth', description: 'Autenticação e Gestão de Sessão (Register, Login, Refresh, Logout, Profile)' },
         { name: 'Projects', description: 'Gestão de Artigos Científicos, Repositórios e Congressos (Target/Backup)' },
+        { name: 'PullRequests', description: 'Fluxo de Revisão de PRs, Parecer do NIT e Trava de Merge' },
         { name: 'Events', description: 'Notificações em Tempo Real via Server-Sent Events (SSE)' },
         { name: 'Health', description: 'Health Check e Status do Servidor' },
       ],
@@ -79,6 +81,7 @@ export async function buildApp() {
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(eventsRoutes, { prefix: '/api/v1/events' });
   await app.register(projectsRoutes, { prefix: '/api/v1/projects' });
+  await app.register(pullRequestsRoutes, { prefix: '/api/v1/pull-requests' });
 
   // Rota de Health Check
   app.get('/health', {

@@ -131,10 +131,10 @@ src/
 - [X] Implementar Worker de Git (Commit silencioso no GitHub/remote com `--author` e Merge).
 
 ### 🔍 Sprint 3: Fluxo de Revisão, NIT e Compilação TeX
-- [ ] Configurar Fila `latex.compilation` e Worker Docker TeX Live para compilações de PR e PDF Master.
-- [ ] Implementar módulo `pull-requests` (Abertura de PR, Aprovação do Revisor).
-- [ ] Implementar rota de registro manual do **NIT** (`WAITING_NIT`, `APPROVED_NIT`).
-- [ ] Implementar trava de segurança para rota `POST /pull-requests/:id/merge` (exige Revisor Aprovado + NIT Aprovado).
+- [X] Configurar Fila `latex.compilation` e Worker Docker TeX Live para compilações de PR e PDF Master.
+- [X] Implementar módulo `pull-requests` (Abertura de PR, Aprovação do Revisor).
+- [X] Implementar rota de registro manual do **NIT** (`WAITING_NIT`, `APPROVED_NIT`).
+- [X] Implementar trava de segurança para rota `POST /pull-requests/:id/merge` (exige Revisor Aprovado + NIT Aprovado).
 
 ### 📊 Sprint 4: Pós-Submissão, Gestão de Prazos & Auditoria
 - [ ] Implementar rotas pós-submissão (Aceito + DOI, Pedido de Ajustes no mesmo congresso, Rejeitado + Decisão v2).

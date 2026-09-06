@@ -59,6 +59,10 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 
   async addMember(projectId: string, userId: string, role: Role): Promise<void> {}
+  async removeMember(projectId: string, userId: string): Promise<void> {}
+  async delete(id: string): Promise<void> {
+    this.projects = this.projects.filter((p) => p.id !== id);
+  }
 }
 
 class MockGitService extends GitService {
@@ -113,7 +117,7 @@ describe('ProjectsService', () => {
       teamId: 'team-1',
     });
 
-    const updated = await projectsService.updateProject(created.id, {
+    const updated = await projectsService.updateProject(created.id, 'user-1', {
       name: 'Projeto Atualizado',
       backupConferenceName: 'WIC 2026',
     });
@@ -124,7 +128,7 @@ describe('ProjectsService', () => {
 
   it('should throw error when updating a non-existing project', async () => {
     await expect(
-      projectsService.updateProject('non-existing-id', { name: 'Novo Nome' })
+      projectsService.updateProject('non-existing-id', 'user-1', { name: 'Novo Nome' })
     ).rejects.toThrow('PROJECT_NOT_FOUND');
   });
 });

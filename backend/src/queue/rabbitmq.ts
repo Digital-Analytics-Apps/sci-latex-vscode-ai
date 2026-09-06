@@ -1,9 +1,12 @@
-import amqp, { Connection, Channel } from 'amqplib';
+import amqp from 'amqplib';
+import type { Connection, Channel } from 'amqplib';
 import { env } from '../config/env';
 
 export const EXCHANGE_NAME = 'sci_latex_exchange';
 export const QUEUE_GIT_OPERATIONS = 'git.operations';
 export const ROUTING_KEY_GIT = 'git.*';
+export const QUEUE_LATEX_COMPILATION = 'latex.compilation';
+export const ROUTING_KEY_LATEX = 'latex.*';
 
 export class RabbitMQService {
   private connection: Connection | null = null;
@@ -32,6 +35,10 @@ export class RabbitMQService {
       // Configura a fila git.operations
       await this.channel.assertQueue(QUEUE_GIT_OPERATIONS, { durable: true });
       await this.channel.bindQueue(QUEUE_GIT_OPERATIONS, EXCHANGE_NAME, ROUTING_KEY_GIT);
+
+      // Configura a fila latex.compilation
+      await this.channel.assertQueue(QUEUE_LATEX_COMPILATION, { durable: true });
+      await this.channel.bindQueue(QUEUE_LATEX_COMPILATION, EXCHANGE_NAME, ROUTING_KEY_LATEX);
 
       console.log('✅ RabbitMQ connected successfully and queues asserted.');
       this.isConnecting = false;

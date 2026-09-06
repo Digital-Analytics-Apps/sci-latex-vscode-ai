@@ -31,6 +31,10 @@ class EventsManagerService {
       });
   }
 
+  broadcastToUser(userId: string, eventName: string, data: any) {
+    this.sendToUser(userId, eventName, data);
+  }
+
   // Envia evento global para todos os clientes conectados
   broadcast(eventName: string, data: any) {
     const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;

@@ -38,6 +38,8 @@ export interface IProjectsRepository {
   findAll(filters?: ProjectFilterOptions): Promise<Project[]>;
   update(id: string, data: UpdateProjectData): Promise<Project>;
   addMember(projectId: string, userId: string, role: Role): Promise<void>;
+  removeMember(projectId: string, userId: string): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 export class PrismaProjectsRepository implements IProjectsRepository {
@@ -191,6 +193,21 @@ export class PrismaProjectsRepository implements IProjectsRepository {
         userId,
         role,
       },
+    });
+  }
+
+  async removeMember(projectId: string, userId: string): Promise<void> {
+    await prisma.projectMember.deleteMany({
+      where: {
+        projectId,
+        userId,
+      },
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await prisma.project.delete({
+      where: { id },
     });
   }
 }

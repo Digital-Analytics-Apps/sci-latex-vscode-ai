@@ -1,5 +1,8 @@
+import { Role } from '@prisma/client';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
 import { GitService } from '../git/git.service';
+import { prisma } from '../../db/prisma';
+import { logAudit } from '../../utils/audit';
 
 export interface CreateProjectDTO {
   name: string;
@@ -22,6 +25,7 @@ export interface UpdateProjectDTO {
   doi?: string;
   publicationUrl?: string;
   datasetUrl?: string;
+  justification?: string;
 }
 
 export class ProjectsService {
@@ -30,9 +34,8 @@ export class ProjectsService {
     private gitService: GitService
   ) {}
 
-  // Criar um novo projeto/artigo e provisionar seu repositório Git Bare
+  // Criar um novo projeto/artigo e provisionar seu repositório Git/GitHub
   async createProject(userId: string, data: CreateProjectDTO) {
-    // 1. Criar registro temporário do projeto para obter o ID único
     const tempPath = `storage/git/pending`;
     const project = await this.projectsRepository.create({
       ...data,
@@ -40,11 +43,22 @@ export class ProjectsService {
       creatorId: userId,
     });
 
-    // 2. Provisionar repositório Git bare no disco
+    // Registrar evento de criação no AuditLog para a Timeline
+    await logAudit({
+      userId,
+      action: 'PROJECT_CREATED',
+      entityType: 'Project',
+      entityId: project.id,
+      details: {
+        name: project.name,
+        teamId: project.teamId,
+        targetConferenceName: project.targetConferenceName,
+      },
+    });
+
     try {
       const gitRepoPath = await this.gitService.initBareRepository(project.id, project.name);
       
-      // 3. Atualizar o caminho do repositório no projeto
       const updatedProject = await this.projectsRepository.update(project.id, {
         ...data,
       });
@@ -73,13 +87,123 @@ export class ProjectsService {
     return project;
   }
 
-  // Atualizar informações do projeto (conferências alvo/backup, metadados)
-  async updateProject(projectId: string, data: UpdateProjectDTO) {
+  // Atualizar informações do projeto (com trava de justificativa para alteração de datas)
+  async updateProject(projectId: string, userId: string, data: UpdateProjectDTO) {
     const existing = await this.projectsRepository.findById(projectId);
     if (!existing) {
       throw new Error('PROJECT_NOT_FOUND');
     }
 
-    return this.projectsRepository.update(projectId, data);
+    // Verifica se há alteração em datas de conferência ou prazos
+    const targetDateChanged = data.targetConferenceDate
+      ? !existing.targetConferenceDate || new Date(data.targetConferenceDate).getTime() !== new Date(existing.targetConferenceDate).getTime()
+      : false;
+    const backupDateChanged = data.backupConferenceDate
+      ? !existing.backupConferenceDate || new Date(data.backupConferenceDate).getTime() !== new Date(existing.backupConferenceDate).getTime()
+      : false;
+
+    const isChangingDates = targetDateChanged || backupDateChanged;
+
+    if (isChangingDates && (!data.justification || data.justification.trim() === '')) {
+      throw new Error('JUSTIFICATION_REQUIRED_FOR_DATE_CHANGE');
+    }
+
+    const { justification, ...updateData } = data;
+    const updated = await this.projectsRepository.update(projectId, updateData);
+
+    // Registra evento na Timeline / AuditLog
+    await logAudit({
+      userId,
+      action: isChangingDates ? 'PROJECT_DATES_UPDATED' : 'PROJECT_UPDATED',
+      entityType: 'Project',
+      entityId: projectId,
+      details: {
+        justification: data.justification || 'Atualização de metadados do artigo',
+        changedFields: Object.keys(data),
+      },
+    });
+
+    return updated;
+  }
+
+  // Adicionar membro ao projeto (Autor ou Revisor)
+  async addMember(projectId: string, userId: string, role: Role, requesterId: string) {
+    const project = await this.projectsRepository.findById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    await this.projectsRepository.addMember(projectId, userId, role);
+
+    await logAudit({
+      userId: requesterId,
+      action: 'MEMBER_ADDED',
+      entityType: 'Project',
+      entityId: projectId,
+      details: { addedUserId: userId, role },
+    });
+  }
+
+  // Remover membro do projeto
+  async removeMember(projectId: string, userId: string, requesterId: string) {
+    const project = await this.projectsRepository.findById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    await this.projectsRepository.removeMember(projectId, userId);
+
+    await logAudit({
+      userId: requesterId,
+      action: 'MEMBER_REMOVED',
+      entityType: 'Project',
+      entityId: projectId,
+      details: { removedUserId: userId },
+    });
+  }
+
+  // Excluir projeto (Apenas Coordenador, Gerente ou Admin)
+  async deleteProject(projectId: string, requesterId: string) {
+    const project = await this.projectsRepository.findById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    await this.projectsRepository.delete(projectId);
+
+    await logAudit({
+      userId: requesterId,
+      action: 'PROJECT_DELETED',
+      entityType: 'Project',
+      entityId: projectId,
+      details: { projectName: project.name },
+    });
+  }
+
+  // Obter Timeline do projeto com histórico de eventos e justificativas
+  async getTimeline(projectId: string) {
+    const project = await this.projectsRepository.findById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    const logs = await prisma.auditLog.findMany({
+      where: {
+        entityId: projectId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return logs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      timestamp: log.createdAt,
+      author: log.user ? { name: log.user.name, email: log.user.email, role: log.user.role } : null,
+      details: log.details,
+    }));
   }
 }

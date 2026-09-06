@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
+import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
 import { GitService } from '../git/git.service';
 import { ProjectsService } from './projects.service';
@@ -70,14 +71,14 @@ export async function projectsRoutes(app: FastifyInstance) {
     (req, reply) => controller.getById(req, reply)
   );
 
-  // PATCH /api/v1/projects/:id - Atualizar metadados e congressos do projeto
+  // PATCH /api/v1/projects/:id - Atualizar metadados e congressos do projeto (Exige justificativa em datas)
   app.patch(
     '/:id',
     {
       schema: {
         tags: ['Projects'],
         summary: 'Atualizar metadados e congressos do projeto',
-        description: 'Permite atualizar o título, descrição, congressos alvo/backup ou status de submissão do artigo.',
+        description: 'Permite atualizar o título, descrição, congressos alvo/backup ou status de submissão do artigo. Requer campo justification caso datas sejam alteradas.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string().uuid(),
@@ -92,9 +93,86 @@ export async function projectsRoutes(app: FastifyInstance) {
           doi: z.string().optional(),
           publicationUrl: z.string().optional(),
           datasetUrl: z.string().optional(),
+          justification: z.string().optional(),
         }),
       },
     },
     (req, reply) => controller.update(req, reply)
+  );
+
+  // DELETE /api/v1/projects/:id - Deletar um projeto (Apenas Coordenador, Gerente ou Admin)
+  app.delete(
+    '/:id',
+    {
+      onRequest: [requireCoordinatorOrAbove],
+      schema: {
+        tags: ['Projects'],
+        summary: 'Deletar artigo científico (Coordenador, Gerente ou Admin)',
+        description: 'Exclui permanentemente um artigo científico do sistema. Requer papel de Coordenador, Gerente ou Admin.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string().uuid(),
+        }),
+      },
+    },
+    (req, reply) => controller.delete(req, reply)
+  );
+
+  // POST /api/v1/projects/:id/members - Adicionar/Associar membro (Autor ou Revisor)
+  app.post(
+    '/:id/members',
+    {
+      onRequest: [requireCoordinatorOrAbove],
+      schema: {
+        tags: ['Projects'],
+        summary: 'Adicionar ou associar Autor/Revisor ao artigo',
+        description: 'Permite ao Coordenador, Gerente ou Admin associar um usuário ao projeto com papel de AUTHOR ou REVIEWER.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string().uuid(),
+        }),
+        body: z.object({
+          userId: z.string().uuid(),
+          role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+        }),
+      },
+    },
+    (req, reply) => controller.addMember(req, reply)
+  );
+
+  // DELETE /api/v1/projects/:id/members/:userId - Remover Autor ou Revisor do artigo
+  app.delete(
+    '/:id/members/:userId',
+    {
+      onRequest: [requireCoordinatorOrAbove],
+      schema: {
+        tags: ['Projects'],
+        summary: 'Remover Autor ou Revisor do artigo',
+        description: 'Permite ao Coordenador, Gerente ou Admin remover um membro de um projeto.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string().uuid(),
+          userId: z.string().uuid(),
+        }),
+      },
+    },
+    (req, reply) => controller.removeMember(req, reply)
+  );
+
+  // GET /api/v1/projects/:id/timeline - Obter Timeline rastreável do artigo
+  app.get(
+    '/:id/timeline',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter Timeline Rastreável do Artigo',
+        description: 'Retorna o histórico cronológico de criações, alterações de prazos com justificativas, PRs e revisões.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string().uuid(),
+        }),
+      },
+    },
+    (req, reply) => controller.getTimeline(req, reply)
   );
 }
