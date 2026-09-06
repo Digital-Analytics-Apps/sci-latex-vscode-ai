@@ -18,11 +18,14 @@ declare module '@fastify/jwt' {
 // Middleware de verificação de autenticação JWT (Enforces Authorization Bearer Header)
 export async function verifyJwt(request: FastifyRequest, reply: FastifyReply) {
   try {
-    if (!request.headers.authorization && request.cookies?.accessToken) {
-      request.headers.authorization = `Bearer ${request.cookies.accessToken}`;
+    if (!request.headers.authorization) {
+      const token = request.cookies?.accessToken || (request.query as any)?.token;
+      if (token) {
+        request.headers.authorization = `Bearer ${token}`;
+      }
     }
     await request.jwtVerify();
-  } catch (err) {
+  } catch {
     return reply.status(401).send({
       statusCode: 401,
       error: 'Unauthorized',
