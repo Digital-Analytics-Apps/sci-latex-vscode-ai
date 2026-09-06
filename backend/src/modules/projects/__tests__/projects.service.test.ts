@@ -28,6 +28,7 @@ class InMemoryProjectsRepository implements IProjectsRepository {
       reviewerFeedback: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      deletedAt: null,
       members: [
         { userId: data.creatorId, role: Role.AUTHOR }
       ],
@@ -37,11 +38,12 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 
   async findById(id: string): Promise<Project | null> {
-    return this.projects.find((p) => p.id === id) ?? null;
+    return this.projects.find((p) => p.id === id && !p.deletedAt) ?? null;
   }
 
   async findAll(filters?: ProjectFilterOptions): Promise<Project[]> {
     return this.projects.filter((p) => {
+      if (p.deletedAt) return false;
       if (filters?.teamId && p.teamId !== filters.teamId) return false;
       if (filters?.academicPeriodId && p.academicPeriodId !== filters.academicPeriodId) return false;
       return true;
@@ -49,7 +51,7 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 
   async update(id: string, data: UpdateProjectData): Promise<Project> {
-    const index = this.projects.findIndex((p) => p.id === id);
+    const index = this.projects.findIndex((p) => p.id === id && !p.deletedAt);
     if (index === -1) throw new Error('PROJECT_NOT_FOUND');
 
     const updated = {
@@ -62,7 +64,7 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 
   async addMember(projectId: string, userId: string, role: Role): Promise<void> {
-    const proj = this.projects.find((p) => p.id === projectId);
+    const proj = this.projects.find((p) => p.id === projectId && !p.deletedAt);
     if (proj) {
       if (!proj.members) proj.members = [];
       const existing = proj.members.find((m) => m.userId === userId);
@@ -75,14 +77,17 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 
   async removeMember(projectId: string, userId: string): Promise<void> {
-    const proj = this.projects.find((p) => p.id === projectId);
+    const proj = this.projects.find((p) => p.id === projectId && !p.deletedAt);
     if (proj && proj.members) {
       proj.members = proj.members.filter((m) => m.userId !== userId);
     }
   }
 
   async delete(id: string): Promise<void> {
-    this.projects = this.projects.filter((p) => p.id !== id);
+    const index = this.projects.findIndex((p) => p.id === id);
+    if (index !== -1) {
+      this.projects[index].deletedAt = new Date();
+    }
   }
 }
 

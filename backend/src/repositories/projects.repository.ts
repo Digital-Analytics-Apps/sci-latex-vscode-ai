@@ -85,8 +85,8 @@ export class PrismaProjectsRepository implements IProjectsRepository {
   }
 
   async findById(id: string): Promise<Project | null> {
-    return prisma.project.findUnique({
-      where: { id },
+    return prisma.project.findFirst({
+      where: { id, deletedAt: null },
       include: {
         team: true,
         academicPeriod: true,
@@ -117,7 +117,9 @@ export class PrismaProjectsRepository implements IProjectsRepository {
   }
 
   async findAll(filters?: ProjectFilterOptions): Promise<Project[]> {
-    const where: Prisma.ProjectWhereInput = {};
+    const where: Prisma.ProjectWhereInput = {
+      deletedAt: null,
+    };
 
     if (filters?.teamId) {
       where.teamId = filters.teamId;
@@ -209,8 +211,11 @@ export class PrismaProjectsRepository implements IProjectsRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await prisma.project.delete({
+    await prisma.project.update({
       where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
     });
   }
 }

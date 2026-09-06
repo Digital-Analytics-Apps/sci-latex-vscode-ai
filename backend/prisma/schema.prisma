@@ -59,6 +59,7 @@ model User {
   role          Role            @default(AUTHOR)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
   
   // Relations
   coordinatedTeams Team[]       @relation("TeamCoordinator")
@@ -80,6 +81,7 @@ model AcademicPeriod {
   endDate   DateTime
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
   projects  Project[]
 }
 
@@ -93,6 +95,7 @@ model Team {
   coordinator   User         @relation("TeamCoordinator", fields: [coordinatorId], references: [id])
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
   members       TeamMember[]
   projects      Project[]
 }
@@ -135,6 +138,7 @@ model Project {
   academicPeriod          AcademicPeriod?  @relation(fields: [academicPeriodId], references: [id])
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
+  deletedAt               DateTime?
   members                 ProjectMember[]
   sections                Section[]
   prs                     PullRequest[]

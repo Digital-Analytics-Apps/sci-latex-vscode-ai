@@ -44,8 +44,8 @@ export class PrismaTeamsRepository {
   }
 
   async findById(id: string): Promise<Team | null> {
-    return prisma.team.findUnique({
-      where: { id },
+    return prisma.team.findFirst({
+      where: { id, deletedAt: null },
       include: {
         coordinator: { select: { id: true, name: true, email: true, role: true } },
         manager: { select: { id: true, name: true, email: true, role: true } },
@@ -54,14 +54,17 @@ export class PrismaTeamsRepository {
             user: { select: { id: true, name: true, email: true, role: true } },
           },
         },
-        projects: true,
+        projects: { where: { deletedAt: null } },
       },
     });
   }
 
   async findAll(managerId?: string): Promise<Team[]> {
     return prisma.team.findMany({
-      where: managerId ? { managerId } : undefined,
+      where: {
+        ...(managerId ? { managerId } : {}),
+        deletedAt: null,
+      },
       include: {
         coordinator: { select: { id: true, name: true, email: true, role: true } },
         manager: { select: { id: true, name: true, email: true, role: true } },
@@ -119,8 +122,11 @@ export class PrismaTeamsRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await prisma.team.delete({
+    await prisma.team.update({
       where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
     });
   }
 }

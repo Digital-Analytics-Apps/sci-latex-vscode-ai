@@ -16,11 +16,11 @@ export interface IUsersRepository {
 
 export class PrismaUsersRepository implements IUsersRepository {
   async findByEmail(email: string): Promise<User | null> {
-    return prisma.user.findUnique({ where: { email } });
+    return prisma.user.findFirst({ where: { email, deletedAt: null } });
   }
 
   async findById(id: string): Promise<User | null> {
-    return prisma.user.findUnique({ where: { id } });
+    return prisma.user.findFirst({ where: { id, deletedAt: null } });
   }
 
   async create(data: CreateUserData): Promise<User> {
