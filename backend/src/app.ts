@@ -17,6 +17,8 @@ import { eventsRoutes } from './modules/events/events.routes';
 import { projectsRoutes } from './modules/projects/projects.routes';
 import { pullRequestsRoutes } from './modules/pull-requests/pull-requests.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
+import { teamsRoutes } from './modules/teams/teams.routes';
+import { academicPeriodsRoutes } from './modules/academic-periods/academic-periods.routes';
 
 export async function buildApp() {
   const app = fastify({
@@ -37,9 +39,11 @@ export async function buildApp() {
       },
       tags: [
         { name: 'Auth', description: 'Autenticação e Gestão de Sessão (Register, Login, Refresh, Logout, Profile)' },
+        { name: 'Teams', description: 'Gestão de Equipes, Laboratórios de Pesquisa e Membros (Gerente e Coordenador)' },
         { name: 'Projects', description: 'Gestão de Artigos Científicos, Repositórios e Congressos (Target/Backup)' },
         { name: 'PullRequests', description: 'Fluxo de Revisão de PRs, Parecer do NIT e Trava de Merge' },
         { name: 'Dashboard', description: 'Painel Consolidado de Gestão e Métricas para Gerente e Admin' },
+        { name: 'AcademicPeriods', description: 'Ciclos e Períodos Acadêmicos' },
         { name: 'Events', description: 'Notificações em Tempo Real via Server-Sent Events (SSE)' },
         { name: 'Health', description: 'Health Check e Status do Servidor' },
       ],
@@ -85,6 +89,8 @@ export async function buildApp() {
   await app.register(projectsRoutes, { prefix: '/api/v1/projects' });
   await app.register(pullRequestsRoutes, { prefix: '/api/v1/pull-requests' });
   await app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
+  await app.register(teamsRoutes, { prefix: '/api/v1/teams' });
+  await app.register(academicPeriodsRoutes, { prefix: '/api/v1/academic-periods' });
 
   // Rota de Health Check
   app.get('/health', {
