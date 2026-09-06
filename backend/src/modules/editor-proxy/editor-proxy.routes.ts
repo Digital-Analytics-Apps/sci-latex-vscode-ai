@@ -1,4 +1,6 @@
 import { FastifyInstance } from 'fastify';
+import fs from 'fs/promises';
+import path from 'path';
 import { z } from 'zod';
 import { env } from '../../config/env';
 import { verifyJwt } from '../../middlewares/auth.middleware';
@@ -18,7 +20,7 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         tags: ['EditorProxy'],
         summary: 'VS Code Web Editor Proxy para Workspace de Escrita LaTeX',
         description:
-          'Redireciona para o code-server Docker ou renderiza a interface de fallback do editor LaTeX.',
+          'Garante o provisionamento do diretório do artigo e redireciona para o VS Code Web (code-server).',
         security: [{ bearerAuth: [] }],
         params: z.object({
           projectId: z.string().uuid(),
@@ -37,23 +39,70 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      // Verifica se o serviço do code-server está ativo na porta 8080 (usando 127.0.0.1 para evitar latência IPv6)
-      let isCodeServerUp = false;
-      const checkUrl = codeServerUrl.replace('localhost', '127.0.0.1');
+      // Garante que o diretório de trabalho do projeto exista em ./storage/projects/:projectId
+      const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
+      await fs.mkdir(projectDir, { recursive: true });
+
+      // Garante que o arquivo main.tex inicial exista
+      const mainTexPath = path.join(projectDir, 'main.tex');
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 800);
-        const response = await fetch(checkUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (response.ok || response.status < 500) {
-          isCodeServerUp = true;
-        }
+        await fs.access(mainTexPath);
       } catch {
-        isCodeServerUp = false;
+        const initialContent = `% SCI-LaTeX Paper Workspace: ${project.name}
+\\documentclass[conference]{IEEEtran}
+\\usepackage[utf8]{inputenc}
+\\usepackage{amsmath,amsfonts,amssymb}
+\\usepackage{graphicx}
+
+\\title{${project.name.replace(/[{}]/g, '')}}
+\\author{\\IEEEauthorblockN{Gilson Russo}\\IEEEauthorblockA{Programa de Pós-Graduação em Computação}}
+
+\\begin{document}
+\\maketitle
+
+\\begin{abstract}
+Este artigo apresenta uma abordagem inovadora utilizando aprendizado profundo e processamento de sinais para otimização de redes.
+\\end{abstract}
+
+\\section{Introdução}
+A escrita científica estruturada garante o rigor metodológico e a reprodutibilidade dos experimentos.
+
+\\section{Metodologia}
+Descreva os métodos e experimentos realizados.
+
+\\section{Resultados e Discussão}
+Apresente os resultados obtidos.
+
+\\section{Conclusão}
+Resuma os achados do trabalho.
+
+\\end{document}
+`;
+        await fs.writeFile(mainTexPath, initialContent, 'utf-8');
+      }
+
+      // Verifica se o serviço do code-server está ativo na porta 8080
+      let isCodeServerUp = false;
+      const urlsToCheck = [codeServerUrl, 'http://code-server:8080', 'http://127.0.0.1:8080'];
+
+      for (const url of urlsToCheck) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 600);
+          const response = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (response.ok || response.status < 500) {
+            isCodeServerUp = true;
+            break;
+          }
+        } catch {
+          // Tenta próxima URL
+        }
       }
 
       if (isCodeServerUp) {
-        const targetUrl = `${codeServerUrl}/?folder=/home/coder/storage/git/${projectId}`;
+        const publicCodeServerHost = process.env.PUBLIC_CODE_SERVER_URL || 'http://localhost:8080';
+        const targetUrl = `${publicCodeServerHost}/?folder=/home/coder/storage/projects/${projectId}`;
         return reply.redirect(targetUrl);
       }
 
