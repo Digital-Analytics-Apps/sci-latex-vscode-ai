@@ -19,6 +19,7 @@ import { pullRequestsRoutes } from './modules/pull-requests/pull-requests.routes
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { teamsRoutes } from './modules/teams/teams.routes';
 import { academicPeriodsRoutes } from './modules/academic-periods/academic-periods.routes';
+import { editorProxyRoutes } from './modules/editor-proxy/editor-proxy.routes';
 
 export async function buildApp() {
   const app = fastify({
@@ -108,6 +109,7 @@ export async function buildApp() {
   await app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
   await app.register(teamsRoutes, { prefix: '/api/v1/teams' });
   await app.register(academicPeriodsRoutes, { prefix: '/api/v1/academic-periods' });
+  await app.register(editorProxyRoutes, { prefix: '/api/v1/editor-proxy' });
 
   // Rota de Health Check
   app.get(
