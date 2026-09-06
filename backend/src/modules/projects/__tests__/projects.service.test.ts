@@ -5,10 +5,10 @@ import { GitService } from '../../git/git.service';
 import { Project, Role, SubmissionStatus } from '@prisma/client';
 
 class InMemoryProjectsRepository implements IProjectsRepository {
-  public projects: (Project & { members?: any[] })[] = [];
+  public projects: (Project & { members?: any[]; deletedAt?: Date | null })[] = [];
 
   async create(data: CreateProjectData): Promise<Project> {
-    const project: Project & { members?: any[] } = {
+    const project: Project & { members?: any[]; deletedAt?: Date | null } = {
       id: `proj-${Date.now()}-${Math.random()}`,
       name: data.name,
       description: data.description ?? null,

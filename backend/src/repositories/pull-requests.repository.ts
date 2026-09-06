@@ -17,7 +17,7 @@ export interface CreatePRData {
   description?: string;
   sectionId: string;
   projectId: string;
-  authorId: string;
+  authorId?: string;
   reviewerId?: string;
   nitStatus?: NITStatus;
 }
@@ -37,13 +37,13 @@ export class PrismaPullRequestsRepository {
         description: data.description,
         sectionId: data.sectionId,
         projectId: data.projectId,
-        authorId: data.authorId,
+        authorId: data.authorId || '',
         reviewerId: data.reviewerId,
         nitStatus: data.nitStatus || NITStatus.WAITING_NIT,
         status: PRStatus.UNDER_REVIEW,
       },
       include: prInclude,
-    });
+    }) as unknown as Promise<PullRequestWithRelations>;
   }
 
   async findById(id: string): Promise<(PullRequestWithRelations & { comments: any[] }) | null> {

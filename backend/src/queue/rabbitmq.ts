@@ -9,7 +9,7 @@ export const QUEUE_LATEX_COMPILATION = 'latex.compilation';
 export const ROUTING_KEY_LATEX = 'latex.*';
 
 export class RabbitMQService {
-  private connection: Connection | null = null;
+  private connection: any = null;
   private channel: Channel | null = null;
   private isConnecting = false;
 
@@ -26,36 +26,39 @@ export class RabbitMQService {
 
     try {
       console.log('🔌 Connecting to RabbitMQ:', env.RABBITMQ_URL);
-      this.connection = await amqp.connect(env.RABBITMQ_URL);
-      this.channel = await this.connection.createChannel();
+      const conn: any = await amqp.connect(env.RABBITMQ_URL);
+      const ch = await conn.createChannel();
 
       // Configura Exchange do tipo Topic
-      await this.channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
+      await ch.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
 
       // Configura a fila git.operations
-      await this.channel.assertQueue(QUEUE_GIT_OPERATIONS, { durable: true });
-      await this.channel.bindQueue(QUEUE_GIT_OPERATIONS, EXCHANGE_NAME, ROUTING_KEY_GIT);
+      await ch.assertQueue(QUEUE_GIT_OPERATIONS, { durable: true });
+      await ch.bindQueue(QUEUE_GIT_OPERATIONS, EXCHANGE_NAME, ROUTING_KEY_GIT);
 
       // Configura a fila latex.compilation
-      await this.channel.assertQueue(QUEUE_LATEX_COMPILATION, { durable: true });
-      await this.channel.bindQueue(QUEUE_LATEX_COMPILATION, EXCHANGE_NAME, ROUTING_KEY_LATEX);
+      await ch.assertQueue(QUEUE_LATEX_COMPILATION, { durable: true });
+      await ch.bindQueue(QUEUE_LATEX_COMPILATION, EXCHANGE_NAME, ROUTING_KEY_LATEX);
 
       console.log('✅ RabbitMQ connected successfully and queues asserted.');
       this.isConnecting = false;
 
-      this.connection.on('error', (err) => {
+      conn.on('error', (err: any) => {
         console.error('❌ RabbitMQ Connection Error:', err);
         this.channel = null;
         this.connection = null;
       });
 
-      this.connection.on('close', () => {
+      conn.on('close', () => {
         console.warn('⚠️ RabbitMQ Connection Closed.');
         this.channel = null;
         this.connection = null;
       });
 
-      return this.channel;
+      this.connection = conn;
+      this.channel = ch;
+
+      return ch;
     } catch (err) {
       this.isConnecting = false;
       console.error('❌ Failed to connect to RabbitMQ:', err);

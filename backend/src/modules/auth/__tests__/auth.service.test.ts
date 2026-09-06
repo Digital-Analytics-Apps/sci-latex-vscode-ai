@@ -25,6 +25,7 @@ class InMemoryUsersRepository implements IUsersRepository {
       role: data.role || Role.AUTHOR,
       createdAt: new Date(),
       updatedAt: new Date(),
+      deletedAt: null,
     };
     this.users.push(user);
     return user;
