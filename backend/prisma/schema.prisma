@@ -1,0 +1,220 @@
+// Prisma Schema Definition for sci-latex-vscode
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  AUTHOR
+  REVIEWER
+  COORDINATOR
+  MANAGER
+  ADMIN
+}
+
+enum PRStatus {
+  DRAFT
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  MERGED
+  CANCELLED
+}
+
+enum NITStatus {
+  NOT_REQUIRED
+  WAITING_NIT
+  APPROVED_NIT
+  REJECTED_NIT
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  WAITING_NIT
+  SUBMITTED_TARGET
+  SUBMITTED_BACKUP
+  ACCEPTED_REVISION_REQUESTED
+  ACCEPTED_CAMERA_READY
+  REJECTED_WAITING_DECISION
+  REJECTED_REOPENED_V2
+  COMPLETED_PUBLISHED
+}
+
+enum DeadlineStatus {
+  ON_TIME
+  WARNING_SOON
+  OVERDUE
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  name          String
+  passwordHash  String
+  role          Role            @default(AUTHOR)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  coordinatedTeams Team[]       @relation("TeamCoordinator")
+  managedTeams     Team[]       @relation("ManagerTeams")
+  teamMemberships  TeamMember[]
+
+  projects      ProjectMember[]
+  pullRequests  PullRequest[]   @relation("AuthorPRs")
+  reviews       PullRequest[]   @relation("ReviewerPRs")
+  comments      ReviewComment[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+}
+
+model AcademicPeriod {
+  id        String    @id @default(uuid())
+  name      String    // e.g., "Academic Cycle 2026/2027"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Team {
+  id            String       @id @default(uuid())
+  name          String
+  description   String?
+  managerId     String?
+  coordinatorId String
+  manager       User?        @relation("ManagerTeams", fields: [managerId], references: [id])
+  coordinator   User         @relation("TeamCoordinator", fields: [coordinatorId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  members       TeamMember[]
+  projects      Project[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  role      Role     @default(AUTHOR)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model Project {
+  id                      String           @id @default(uuid())
+  name                    String
+  description             String?
+  gitRepoPath             String
+  teamId                  String
+  academicPeriodId        String?
+  
+  submissionStatus        SubmissionStatus @default(IN_PROGRESS)
+  currentVersion          Int              @default(1)
+  
+  targetConferenceName    String?
+  targetConferenceDate    DateTime?
+  backupConferenceName    String?
+  backupConferenceDate    DateTime?
+  
+  doi                     String?
+  publicationUrl          String?
+  datasetUrl              String?
+  publishedAt             DateTime?
+  
+  reviewerFeedback        String?
+  
+  team                    Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  academicPeriod          AcademicPeriod?  @relation(fields: [academicPeriodId], references: [id])
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  members                 ProjectMember[]
+  sections                Section[]
+  prs                     PullRequest[]
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  role      Role
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+}
+
+model Section {
+  id          String        @id @default(uuid())
+  title       String
+  filePath    String
+  branchName  String
+  projectId   String
+  assignedTo  String?
+  
+  startDate   DateTime?
+  dueDate     DateTime?
+  
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prs         PullRequest[]
+}
+
+model PullRequest {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  status      PRStatus        @default(DRAFT)
+  
+  nitStatus   NITStatus       @default(NOT_REQUIRED)
+  nitNotes    String?
+  
+  sectionId   String
+  authorId    String
+  reviewerId  String?
+  projectId   String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  mergedAt    DateTime?
+  section     Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  author      User            @relation("AuthorPRs", fields: [authorId], references: [id])
+  reviewer    User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments    ReviewComment[]
+}
+
+model ReviewComment {
+  id            String      @id @default(uuid())
+  pullRequestId String
+  userId        String
+  lineNumer     Int?
+  comment       String
+  createdAt     DateTime    @default(now())
+  pullRequest   PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  details    Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
