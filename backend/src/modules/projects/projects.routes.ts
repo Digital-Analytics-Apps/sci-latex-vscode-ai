@@ -175,4 +175,40 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
     (req, reply) => controller.getTimeline(req, reply)
   );
+
+  // PATCH /api/v1/projects/:id/post-submission - Atualizar status pós-submissão e decisão dos autores
+  app.patch(
+    '/:id/post-submission',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Atualizar status pós-submissão e decisão dos autores (DOI, Aceite, Rejeição, Backup)',
+        description: 'Permite registrar o aceite com DOI, pedido de ajustes, ou decisão dos autores após rejeição (redirecionar para congresso backup ou abrir versão v2).',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string().uuid(),
+        }),
+        body: z.object({
+          submissionStatus: z.enum([
+            'IN_PROGRESS',
+            'WAITING_NIT',
+            'SUBMITTED_TARGET',
+            'SUBMITTED_BACKUP',
+            'ACCEPTED_REVISION_REQUESTED',
+            'ACCEPTED_CAMERA_READY',
+            'REJECTED_WAITING_DECISION',
+            'REJECTED_REOPENED_V2',
+            'COMPLETED_PUBLISHED',
+          ]),
+          doi: z.string().optional(),
+          publicationUrl: z.string().optional(),
+          datasetUrl: z.string().optional(),
+          publishedAt: z.string().optional(),
+          reviewerFeedback: z.string().optional(),
+          decisionReason: z.string().optional(),
+        }),
+      },
+    },
+    (req, reply) => controller.updatePostSubmission(req, reply)
+  );
 }

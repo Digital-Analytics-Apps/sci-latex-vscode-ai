@@ -28,6 +28,16 @@ export interface UpdateProjectDTO {
   justification?: string;
 }
 
+export interface PostSubmissionDTO {
+  submissionStatus: any;
+  doi?: string;
+  publicationUrl?: string;
+  datasetUrl?: string;
+  publishedAt?: Date;
+  reviewerFeedback?: string;
+  decisionReason?: string;
+}
+
 export class ProjectsService {
   constructor(
     private projectsRepository: IProjectsRepository,
@@ -205,5 +215,34 @@ export class ProjectsService {
       author: log.user ? { name: log.user.name, email: log.user.email, role: log.user.role } : null,
       details: log.details,
     }));
+  }
+
+  // Atualização Pós-Submissão e Decisão dos Autores (DOI, Aceite, Rejeição, Backup)
+  async updatePostSubmission(projectId: string, userId: string, data: PostSubmissionDTO) {
+    const existing = await this.projectsRepository.findById(projectId);
+    if (!existing) throw new Error('PROJECT_NOT_FOUND');
+
+    const updated = await this.projectsRepository.update(projectId, {
+      submissionStatus: data.submissionStatus,
+      doi: data.doi,
+      publicationUrl: data.publicationUrl,
+      datasetUrl: data.datasetUrl,
+      publishedAt: data.publishedAt || (data.doi ? new Date() : undefined),
+      reviewerFeedback: data.reviewerFeedback,
+    });
+
+    await logAudit({
+      userId,
+      action: `POST_SUBMISSION_${data.submissionStatus}`,
+      entityType: 'Project',
+      entityId: projectId,
+      details: {
+        submissionStatus: data.submissionStatus,
+        doi: data.doi,
+        decisionReason: data.decisionReason || 'Atualização de status pós-submissão',
+      },
+    });
+
+    return updated;
   }
 }

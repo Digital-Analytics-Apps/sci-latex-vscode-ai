@@ -21,9 +21,12 @@ export interface UpdateProjectData {
   targetConferenceDate?: Date;
   backupConferenceName?: string;
   backupConferenceDate?: Date;
+  submissionStatus?: SubmissionStatus;
   doi?: string;
   publicationUrl?: string;
   datasetUrl?: string;
+  publishedAt?: Date;
+  reviewerFeedback?: string;
 }
 
 export interface ProjectFilterOptions {

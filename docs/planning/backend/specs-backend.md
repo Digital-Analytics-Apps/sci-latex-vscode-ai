@@ -137,7 +137,7 @@ src/
 - [X] Implementar trava de segurança para rota `POST /pull-requests/:id/merge` (exige Revisor Aprovado + NIT Aprovado).
 
 ### 📊 Sprint 4: Pós-Submissão, Gestão de Prazos & Auditoria
-- [ ] Implementar rotas pós-submissão (Aceito + DOI, Pedido de Ajustes no mesmo congresso, Rejeitado + Decisão v2).
-- [ ] Implementar Fila `deadlines.checker` para alertas de cronograma (🟢/🟡/🔴).
-- [ ] Implementar middleware e Worker `audit.logger` gravando na tabela `AuditLog`.
-- [ ] Implementar rotas do dashboard do Gerente (filtros por `AcademicPeriod`).
+- [X] Implementar rotas pós-submissão (Aceito + DOI, Pedido de Ajustes no mesmo congresso, Rejeitado + Decisão v2).
+- [X] Implementar Fila `deadlines.checker` para alertas de cronograma (🟢/🟡/🔴).
+- [X] Implementar middleware e Worker `audit.logger` gravando na tabela `AuditLog`.
+- [X] Implementar rotas do dashboard do Gerente (filtros por `AcademicPeriod`).

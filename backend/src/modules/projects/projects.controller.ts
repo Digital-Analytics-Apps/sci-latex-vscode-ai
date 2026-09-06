@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ProjectsService } from './projects.service';
 import { z } from 'zod';
-import { Role } from '@prisma/client';
+import { Role, SubmissionStatus } from '@prisma/client';
 
 export const createProjectSchema = z.object({
   name: z.string().min(3),
@@ -25,6 +25,26 @@ export const updateProjectSchema = z.object({
   publicationUrl: z.string().url().optional(),
   datasetUrl: z.string().url().optional(),
   justification: z.string().optional(),
+});
+
+export const postSubmissionSchema = z.object({
+  submissionStatus: z.enum([
+    'IN_PROGRESS',
+    'WAITING_NIT',
+    'SUBMITTED_TARGET',
+    'SUBMITTED_BACKUP',
+    'ACCEPTED_REVISION_REQUESTED',
+    'ACCEPTED_CAMERA_READY',
+    'REJECTED_WAITING_DECISION',
+    'REJECTED_REOPENED_V2',
+    'COMPLETED_PUBLISHED',
+  ]),
+  doi: z.string().optional(),
+  publicationUrl: z.string().optional(),
+  datasetUrl: z.string().optional(),
+  publishedAt: z.coerce.date().optional(),
+  reviewerFeedback: z.string().optional(),
+  decisionReason: z.string().optional(),
 });
 
 export class ProjectsController {
@@ -174,6 +194,26 @@ export class ProjectsController {
     try {
       const timeline = await this.projectsService.getTimeline(id);
       return reply.send({ timeline });
+    } catch (err: any) {
+      if (err.message === 'PROJECT_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Project not found' });
+      }
+      throw err;
+    }
+  }
+
+  async updatePostSubmission(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string().uuid(),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+    const userId = request.user.sub;
+    const body = postSubmissionSchema.parse(request.body);
+
+    try {
+      const project = await this.projectsService.updatePostSubmission(id, userId, body);
+      return reply.send({ project });
     } catch (err: any) {
       if (err.message === 'PROJECT_NOT_FOUND') {
         return reply.status(404).send({ message: 'Project not found' });
