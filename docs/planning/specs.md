@@ -42,19 +42,23 @@ graph TD
 
 ---
 
-## 3. Arquitetura de Provisionamento Git & Controle de Acesso (Service Token)
+## 3. Arquitetura de Provisionamento Git Remoto no GitHub & Controle de Acesso (Service Token)
 
-### 3.1 Como Funciona o Acesso e Criação de Repositórios
+### 3.1 Como Funciona o Acesso e Criação Obrigatória no GitHub
 
-O usuário **NÃO** precisa gerenciar chaves SSH ou tokens individuais de Git manualmente. A autenticação do usuário com a plataforma é realizada por **JWT (JSON Web Token)**, enquanto as operações de Git no servidor são gerenciadas pela **Conta de Serviço do Sistema**.
+O usuário **NÃO** precisa gerenciar chaves SSH ou tokens individuais de Git manualmente. A autenticação do usuário com a plataforma é realizada por **Cookies HTTP-Only (`accessToken`)** e **JWT (JSON Web Token)** (em estrita conformidade com os padrões OWASP, sem exposição em query parameters de URL).
+
+* **Provisionamento Automático Remoto:** O backend Fastify utiliza o **Token de Serviço do GitHub (`GITHUB_TOKEN`)** para criar obrigatoriamente um repositório remoto privado via REST API do GitHub (`POST /user/repos` ou `/orgs/{org}/repos`).
+* **Padrão de Nomeação Amigável (Slug + Short Hash):** Os repositórios no GitHub são nomeados com o slug do título limpo e um sufixo curto de 8 caracteres do UUID para garantir 100% de unicidade e identificação clara na interface do GitHub (ex: `sci-paper-otimizacao-de-compiladores-tex-isolados-5550a24e`).
+* **Registro de Progresso Silencioso (`POST /api/v1/projects/:id/sections/:sectionId/commit`):** O salvamento de progresso pelo Autor gera um commit silencioso assinado pela Conta de Serviço em nome do autor (`--author="Nome <email>"`) e um registro auditável no `AuditLog`.
 
 ```mermaid
 graph TD
-    User[Autor / Coordenador] -->|1. Autentica via JWT| API[Backend Fastify]
+    User[Autor / Coordenador] -->|1. Autentica via HTTP-Only Cookie JWT| API[Backend Fastify]
     API -->|2. Valida Permissão de Projeto/Equipe| DB[(PostgreSQL)]
-    API -->|3. Usa SERVICE_TOKEN do Sistema| GitServer[Servidor Git Self-Hosted / Bare Repos]
-    API -->|4. Atribui identidade nos Commits| WorkerGit[Worker RabbitMQ: git.operations]
-    WorkerGit -->|5. Commit com author='User Email'| LocalRepo[Repositório Git do Artigo]
+    API -->|3. REST API GitHub POST /user/repos com GITHUB_TOKEN| GitHub[GitHub Remote Server]
+    API -->|4. Push inicial main.tex e Commits Silenciosos| WorkerGit[Worker RabbitMQ: git.operations]
+    WorkerGit -->|5. Commit com author='User Email'| GitHub
 ```
 
 ---

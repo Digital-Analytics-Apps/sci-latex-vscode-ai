@@ -12,14 +12,15 @@ O objetivo do sistema é fornecer um ambiente web controlado, **100% self-hosted
 
 ---
 
-### 2. Provisionamento Git & Controle de Acesso
+### 2. Provisionamento Git Remoto no GitHub & Controle de Acesso
 
 O usuário **não precisa criar chaves SSH ou gerenciar credenciais de Git manualmente**.
 
-* **Autenticação:** O usuário faz login no sistema web via e-mail/senha e recebe um **JWT**.
-* **Provisionamento de Repositório:** Ao criar um paper, o backend Fastify usa o **Token de Serviço do Sistema** (`GIT_SERVICE_TOKEN`) para inicializar o repositório Git local privado.
-* **Autorização de Acesso:** O backend Fastify autoriza o acesso ao editor `code-server` e aos arquivos consultando o modelo `ProjectMember` no PostgreSQL com base no JWT do usuário.
-* **Assinatura de Commits:** Commits silenciosos gravam a identidade real do autor (`--author="Nome <email>"`), garantindo auditabilidade sem expor credenciais Git ao navegador.
+* **Autenticação Segura (OWASP):** O usuário autentica no sistema web via e-mail/senha e recebe um **Cookie HTTP-Only (`accessToken`)** e **JWT**, sem exposição de tokens sensíveis na URL (`?token=...`).
+* **Provisionamento de Repositório no GitHub:** Ao criar um artigo científico, o backend Fastify utiliza a REST API do GitHub com o **Token de Serviço (`GITHUB_TOKEN`)** para criar obrigatoriamente um repositório remoto privado na conta/organização do GitHub.
+* **Padrão de Nomeação Amigável:** O repositório no GitHub recebe um nome amigável composto pelo **slug do título** e um sufixo hash de 8 caracteres do UUID (ex: `sci-paper-otimizacao-de-compiladores-tex-isolados-5550a24e`).
+* **Autorização de Acesso:** O backend autoriza o acesso ao editor `code-server` e aos arquivos consultando o modelo `ProjectMember` no PostgreSQL com base na sessão autenticada.
+* **Assinatura de Commits e Progresso:** Commits silenciosos (disparados via `POST /api/v1/projects/:id/sections/:sectionId/commit`) gravam a identidade real do autor (`--author="Nome <email>"`), garantindo auditabilidade no `AuditLog` sem expor credenciais Git ao navegador.
 
 ---
 

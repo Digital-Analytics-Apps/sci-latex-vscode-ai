@@ -17,6 +17,7 @@ export interface CreateProjectData {
 export interface UpdateProjectData {
   name?: string;
   description?: string;
+  gitRepoPath?: string;
   targetConferenceName?: string;
   targetConferenceDate?: Date;
   backupConferenceName?: string;

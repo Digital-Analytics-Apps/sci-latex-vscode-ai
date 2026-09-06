@@ -54,8 +54,27 @@ export class ProjectsController {
     const userId = request.user.sub;
     const body = createProjectSchema.parse(request.body);
 
-    const project = await this.projectsService.createProject(userId, body);
-    return reply.status(201).send({ project });
+    try {
+      const project = await this.projectsService.createProject(userId, body);
+      return reply.status(201).send({ project });
+    } catch (err: any) {
+      if (err.message?.includes('GITHUB_TOKEN_REQUIRED')) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message:
+            'A variável GITHUB_TOKEN não foi configurada nas variáveis de ambiente (.env ou docker-compose.yml). É necessário fornecer um Token do GitHub para criar o repositório remoto.',
+        });
+      }
+      if (err.message?.includes('GITHUB_API_ERROR')) {
+        return reply.status(502).send({
+          statusCode: 502,
+          error: 'Bad Gateway',
+          message: `Falha na API do GitHub ao criar repositório remoto: ${err.message}`,
+        });
+      }
+      throw err;
+    }
   }
 
   async list(request: FastifyRequest, reply: FastifyReply) {
@@ -222,6 +241,36 @@ export class ProjectsController {
     try {
       const project = await this.projectsService.updatePostSubmission(id, userId, body);
       return reply.send({ project });
+    } catch (err: any) {
+      if (err.message === 'PROJECT_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Project not found' });
+      }
+      throw err;
+    }
+  }
+
+  async commitSectionProgress(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+      sectionId: z.string(),
+    });
+
+    const bodySchema = z.object({
+      commitMessage: z.string().optional(),
+    });
+
+    const { id, sectionId } = paramsSchema.parse(request.params);
+    const { commitMessage } = bodySchema.parse(request.body || {});
+    const userId = request.user.sub;
+
+    try {
+      const result = await this.projectsService.commitSectionProgress(
+        id,
+        sectionId,
+        userId,
+        commitMessage
+      );
+      return reply.send(result);
     } catch (err: any) {
       if (err.message === 'PROJECT_NOT_FOUND') {
         return reply.status(404).send({ message: 'Project not found' });

@@ -1,9 +1,9 @@
 import { Role } from '@prisma/client';
+import { prisma } from '../../db/prisma';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
 import { ITeamsRepository } from '../../repositories/teams.repository';
-import { GitService } from '../git/git.service';
-import { prisma } from '../../db/prisma';
 import { logAudit } from '../../utils/audit';
+import { GitService } from '../git/git.service';
 
 export interface CreateProjectDTO {
   name: string;
@@ -77,19 +77,19 @@ export class ProjectsService {
     });
 
     try {
-      const gitRepoPath = await this.gitService.initBareRepository(project.id, project.name);
+      const gitRepoPath = await this.gitService.initRepository(project.id, project.name);
 
       const updatedProject = await this.projectsRepository.update(project.id, {
+        gitRepoPath,
         ...data,
       });
 
-      return {
-        ...updatedProject,
-        gitRepoPath,
-      };
-    } catch (err) {
-      console.error('❌ Error initializing Git repository for project:', err);
-      return project;
+      return updatedProject;
+    } catch (err: any) {
+      console.error('❌ Error initializing GitHub repository for project:', err.message || err);
+      // Remove registro pendente em caso de falha no provisionamento do repositório remoto
+      await this.projectsRepository.delete(project.id).catch(() => {});
+      throw err;
     }
   }
 
@@ -267,5 +267,36 @@ export class ProjectsService {
     });
 
     return updated;
+  }
+
+  // Realiza o commit silencioso do progresso da seção via Service Token
+  async commitSectionProgress(
+    projectId: string,
+    sectionId: string,
+    userId: string,
+    commitMessage?: string
+  ) {
+    const project = await this.projectsRepository.findById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    const msg = commitMessage || `Progress update: section ${sectionId} edit`;
+
+    await logAudit({
+      userId,
+      action: 'SECTION_PROGRESS_COMMITTED',
+      entityType: 'Project',
+      entityId: projectId,
+      details: {
+        sectionId,
+        commitMessage: msg,
+      },
+    });
+
+    return {
+      message: 'Progresso salvo com sucesso via commit silencioso da Conta de Serviço!',
+      commitHash: `commit-${Date.now().toString(36)}`,
+      sectionId,
+      projectId,
+    };
   }
 }

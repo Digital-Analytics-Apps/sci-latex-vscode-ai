@@ -61,26 +61,29 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   const onSubmit = async (data: CreateProjectFormData) => {
     try {
-      await createProjectMutation.mutateAsync(data);
+      const res = await createProjectMutation.mutateAsync(data);
       dispatch(
         showNotification({
-          message: `Novo artigo científico "${data.name}" criado com sucesso! Inicializando repositório Git...`,
+          message: `Novo artigo científico "${data.name}" criado com sucesso! Repositório provisionado no GitHub.`,
           severity: "success",
         }),
       );
       reset();
       onClose();
-      navigate("/workspace/proj-1");
-    } catch (_err) {
+      if (res?.project?.id) {
+        navigate(`/workspace/${res.project.id}`);
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.message || err?.message || "Erro ao criar artigo científico.";
       dispatch(
         showNotification({
-          message: `Artigo científico "${data.name}" criado no ambiente! Inicializando workspace do VS Code...`,
-          severity: "success",
+          message: errorMessage,
+          severity: "error",
         }),
       );
-      reset();
-      onClose();
-      navigate("/workspace/proj-1");
     }
   };
 

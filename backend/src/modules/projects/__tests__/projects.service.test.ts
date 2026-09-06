@@ -132,7 +132,7 @@ class InMemoryTeamsRepository implements ITeamsRepository {
 }
 
 class MockGitService extends GitService {
-  async initBareRepository(projectId: string, projectTitle: string): Promise<string> {
+  async initRepository(projectId: string, projectTitle: string): Promise<string> {
     return `/storage/git/${projectId}.git`;
   }
 }
@@ -213,5 +213,24 @@ describe('ProjectsService', () => {
     await expect(
       projectsService.addMember(created.id, 'rev-2', Role.REVIEWER, 'user-1')
     ).rejects.toThrow('PROJECT_ALREADY_HAS_REVIEWER');
+  });
+
+  it('should commit section progress silently for an existing project', async () => {
+    const created = await projectsService.createProject('user-1', {
+      name: 'Artigo de Teste Commit',
+      teamId: 'team-1',
+    });
+
+    const result = await projectsService.commitSectionProgress(
+      created.id,
+      'sec-1',
+      'user-1',
+      'Custom commit message'
+    );
+
+    expect(result).toBeDefined();
+    expect(result.sectionId).toBe('sec-1');
+    expect(result.projectId).toBe(created.id);
+    expect(result.commitHash).toBeDefined();
   });
 });

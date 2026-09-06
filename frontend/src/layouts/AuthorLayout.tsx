@@ -55,7 +55,6 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const handleSendForReview = () => {
-    navigate("/workspace/proj-1");
     dispatch(
       showNotification({
         message:

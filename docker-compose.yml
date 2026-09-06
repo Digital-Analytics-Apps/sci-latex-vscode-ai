@@ -48,7 +48,10 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       JWT_SECRET: super-secret-jwt-key-change-in-production
       GIT_SERVICE_TOKEN: system-git-service-token-secret
-      CODE_SERVER_URL: http://localhost:8080
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_ORG: ${GITHUB_ORG:-}
+      GITHUB_REPO_PREFIX: ${GITHUB_REPO_PREFIX:-sci-paper-}
+      CODE_SERVER_URL: http://code-server:8080
       PORT: 3333
       HOST: 0.0.0.0
       NODE_ENV: development

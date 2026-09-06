@@ -1,10 +1,33 @@
+import { exec } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
-import { exec } from 'child_process';
 import { promisify } from 'util';
 import { env } from '../../config/env';
 
 const execAsync = promisify(exec);
+
+// Helper para gerar um nome de repositório amigável no GitHub com Slug do título + Sufixo Hash de 8 caracteres do UUID
+export function generateRepoName(projectId: string, projectTitle?: string): string {
+  const shortId = projectId.length > 8 ? projectId.slice(0, 8) : projectId;
+  if (!projectTitle || projectTitle.trim() === '') {
+    return `${env.GITHUB_REPO_PREFIX}${shortId}`;
+  }
+
+  const slug = projectTitle
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 40)
+    .replace(/^-+|-+$/g, '');
+
+  return slug
+    ? `${env.GITHUB_REPO_PREFIX}${slug}-${shortId}`
+    : `${env.GITHUB_REPO_PREFIX}${shortId}`;
+}
 
 export class GitService {
   private baseStoragePath: string;
@@ -19,25 +42,32 @@ export class GitService {
   }
 
   // Obtém o caminho ou URL do repositório
-  getRepoPath(projectId: string): string {
+  getRepoPath(projectId: string, projectTitle?: string): string {
     if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
-      const repoName = `${env.GITHUB_REPO_PREFIX}${projectId}`;
+      const repoName = generateRepoName(projectId, projectTitle);
       const owner = env.GITHUB_ORG || 'user';
       return `https://github.com/${owner}/${repoName}.git`;
     }
     return path.join(this.baseStoragePath, `${projectId}.git`);
   }
 
-  // Inicializa um novo repositório (no GitHub via API ou Bare local como fallback)
-  async initBareRepository(projectId: string, projectTitle: string): Promise<string> {
+  // Inicializa um novo repositório obrigatoriamente no GitHub via REST API
+  async initRepository(projectId: string, projectTitle: string): Promise<string> {
     await this.ensureStorageDir();
 
-    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
-    let remoteUrl: string;
-    const repoName = `${env.GITHUB_REPO_PREFIX}${projectId}`;
+    const isTestMode = env.NODE_ENV === 'test';
+    if (!env.GITHUB_TOKEN && !isTestMode) {
+      throw new Error(
+        'GITHUB_TOKEN_REQUIRED: GITHUB_TOKEN environment variable is required to create GitHub repositories.'
+      );
+    }
 
-    if (isGitHubMode) {
-      // 1. Criar repositório remoto no GitHub via REST API
+    let remoteUrl: string;
+    const repoName = generateRepoName(projectId, projectTitle);
+    let owner = env.GITHUB_ORG || 'user';
+
+    if (!isTestMode) {
+      // 1. Criar repositório remoto no GitHub via REST API (Desenvolvimento e Produção)
       const apiUrl = env.GITHUB_ORG
         ? `https://api.github.com/orgs/${env.GITHUB_ORG}/repos`
         : `https://api.github.com/user/repos`;
@@ -64,21 +94,15 @@ export class GitService {
         }
 
         const repoData = (await response.json()) as any;
-        const owner = repoData.owner?.login || env.GITHUB_ORG || 'user';
+        owner = repoData.owner?.login || owner;
         remoteUrl = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
       } catch (error: any) {
         console.error('❌ Error creating GitHub repository:', error.message);
         throw error;
       }
     } else {
-      // Fallback Local (Servidor Bare para desenvolvimento offline e testes)
+      // Modo exclusivo para suíte de testes automatizados sem rede
       const bareRepoPath = path.join(this.baseStoragePath, `${projectId}.git`);
-      try {
-        await fs.stat(bareRepoPath);
-        throw new Error('REPOSITORY_ALREADY_EXISTS');
-      } catch (err: any) {
-        if (err.message === 'REPOSITORY_ALREADY_EXISTS') throw err;
-      }
       await fs.mkdir(bareRepoPath, { recursive: true });
       await execAsync(`git init --bare --initial-branch=main`, { cwd: bareRepoPath });
       remoteUrl = bareRepoPath;
@@ -138,8 +162,8 @@ Resuma os achados do trabalho.
       await fs.rm(tempDir, { recursive: true, force: true });
     }
 
-    return isGitHubMode
-      ? `https://github.com/${env.GITHUB_ORG || 'user'}/${repoName}`
+    return !isTestMode
+      ? `https://github.com/${owner}/${repoName}`
       : path.join(this.baseStoragePath, `${projectId}.git`);
   }
 
@@ -159,9 +183,19 @@ Resuma os achados do trabalho.
 
     let repoLocation = data.repoUrl || this.getRepoPath(data.projectId);
     if (isGitHubMode && !repoLocation.includes('x-access-token')) {
-      const repoName = `${env.GITHUB_REPO_PREFIX}${data.projectId}`;
-      const owner = env.GITHUB_ORG || 'user';
-      repoLocation = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
+      if (repoLocation.startsWith('https://github.com/')) {
+        repoLocation = repoLocation.replace(
+          'https://github.com/',
+          `https://x-access-token:${env.GITHUB_TOKEN}@github.com/`
+        );
+        if (!repoLocation.endsWith('.git')) {
+          repoLocation += '.git';
+        }
+      } else {
+        const repoName = generateRepoName(data.projectId);
+        const owner = env.GITHUB_ORG || 'user';
+        repoLocation = `https://x-access-token:${env.GITHUB_TOKEN}@github.com/${owner}/${repoName}.git`;
+      }
     }
 
     const tempDir = path.join(this.baseStoragePath, `temp-commit-${data.projectId}-${Date.now()}`);

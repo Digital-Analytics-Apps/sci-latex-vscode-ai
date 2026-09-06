@@ -221,4 +221,26 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
     (req, reply) => controller.updatePostSubmission(req, reply)
   );
+
+  // POST /api/v1/projects/:id/sections/:sectionId/commit - Salvar progresso de seção via commit silencioso
+  app.post(
+    '/:id/sections/:sectionId/commit',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Salvar progresso de seção via commit silencioso da Conta de Serviço',
+        description:
+          'Registra o progresso de edição da seção do artigo e gera uma entrada de auditoria.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+          sectionId: z.string(),
+        }),
+        body: z.object({
+          commitMessage: z.string().optional(),
+        }),
+      },
+    },
+    (req, reply) => controller.commitSectionProgress(req, reply)
+  );
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
-import { GitService } from '../git.service';
+import { GitService, generateRepoName } from '../git.service';
 import { env } from '../../../config/env';
 
 describe('GitService', () => {
@@ -18,13 +18,21 @@ describe('GitService', () => {
     try {
       const repoPath = path.join(storageGitDir, `${testProjectId}.git`);
       await fs.rm(repoPath, { recursive: true, force: true });
-    } catch (_err) {
+    } catch {
       // Ignore cleanup error if directory does not exist
     }
   });
 
-  it('should initialize a local git repository in fallback mode during test environment', async () => {
-    const repoPath = await gitService.initBareRepository(testProjectId, 'Quantum Computing Paper');
+  it('should generate clean human-readable repo name with title slug and short UUID suffix', () => {
+    const uuid = '5550a24e-0c16-480e-a5e3-043d7a9d5b2e';
+    const title = 'Otimização de Compiladores TeX Isolados!';
+    const name = generateRepoName(uuid, title);
+
+    expect(name).toContain('otimizacao-de-compiladores-tex-isolados-5550a24e');
+  });
+
+  it('should initialize a test git repository during test environment', async () => {
+    const repoPath = await gitService.initRepository(testProjectId, 'Quantum Computing Paper');
 
     expect(repoPath).toContain(`${testProjectId}.git`);
     const stats = await fs.stat(repoPath);
@@ -32,7 +40,7 @@ describe('GitService', () => {
   });
 
   it('should commit a file successfully into the repository', async () => {
-    await gitService.initBareRepository(testProjectId, 'AI Paper');
+    await gitService.initRepository(testProjectId, 'AI Paper');
 
     const commitHash = await gitService.commitFile({
       projectId: testProjectId,
@@ -46,5 +54,22 @@ describe('GitService', () => {
 
     expect(commitHash).toBeDefined();
     expect(commitHash.length).toBe(40); // 40-character SHA-1 hash
+  });
+
+  it('should throw GITHUB_TOKEN_REQUIRED error in development mode when token is missing', async () => {
+    const originalNodeEnv = env.NODE_ENV;
+    const originalToken = env.GITHUB_TOKEN;
+
+    try {
+      (env as any).NODE_ENV = 'development';
+      (env as any).GITHUB_TOKEN = undefined;
+
+      await expect(gitService.initRepository('no-token-proj', 'No Token Paper')).rejects.toThrow(
+        'GITHUB_TOKEN_REQUIRED'
+      );
+    } finally {
+      (env as any).NODE_ENV = originalNodeEnv;
+      (env as any).GITHUB_TOKEN = originalToken;
+    }
   });
 });
