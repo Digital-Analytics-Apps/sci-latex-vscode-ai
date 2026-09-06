@@ -28,7 +28,7 @@ export class PullRequestsService {
       type: 'COMPILE_PR_PDF',
       projectId: pr.projectId,
       pullRequestId: pr.id,
-      branchName: pr.section.branchName,
+      branchName: (pr as any).section?.branchName || 'main',
       requesterId: authorId,
     });
 
