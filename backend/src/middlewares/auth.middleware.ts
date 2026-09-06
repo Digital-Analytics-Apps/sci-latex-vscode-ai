@@ -18,6 +18,12 @@ declare module '@fastify/jwt' {
 // Middleware de verificação de autenticação JWT
 export async function verifyJwt(request: FastifyRequest, reply: FastifyReply) {
   try {
+    // Permite autenticação via ?token=... (necessário para SSE EventSource e Iframes do VS Code)
+    const queryToken = (request.query as any)?.token;
+    if (queryToken && !request.headers.authorization) {
+      request.headers.authorization = `Bearer ${queryToken}`;
+    }
+
     await request.jwtVerify();
   } catch (err) {
     return reply.status(401).send({
