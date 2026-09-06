@@ -317,7 +317,9 @@ export class ProjectsService {
       });
     } catch (gitErr: any) {
       console.error('❌ Error executing real Git commit to GitHub:', gitErr.message || gitErr);
-      throw new Error(`GITHUB_COMMIT_ERROR: ${gitErr.message || 'Falha ao efetuar commit no GitHub'}`);
+      throw new Error(
+        `GITHUB_COMMIT_ERROR: ${gitErr.message || 'Falha ao efetuar commit no GitHub'}`
+      );
     }
 
     await logAudit({
