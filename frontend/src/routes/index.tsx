@@ -2,7 +2,9 @@ import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { LoginPage } from "../features/auth/LoginPage";
+import { CoordinatorDashboardPage } from "../features/coordinator/CoordinatorDashboardPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
+import { ManagerDashboardPage } from "../features/manager/ManagerDashboardPage";
 import { ReviewDetailPage } from "../features/reviewer/ReviewDetailPage";
 import { ReviewsListPage } from "../features/reviewer/ReviewsListPage";
 import { WorkspacePage } from "../features/workspace/WorkspacePage";
@@ -44,6 +46,22 @@ export const AppRoutes: React.FC = () => {
           element={
             <RoleLayoutResolver>
               <ReviewDetailPage />
+            </RoleLayoutResolver>
+          }
+        />
+        <Route
+          path="/coordinator"
+          element={
+            <RoleLayoutResolver>
+              <CoordinatorDashboardPage />
+            </RoleLayoutResolver>
+          }
+        />
+        <Route
+          path="/manager"
+          element={
+            <RoleLayoutResolver>
+              <ManagerDashboardPage />
             </RoleLayoutResolver>
           }
         />
