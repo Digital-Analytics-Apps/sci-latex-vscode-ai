@@ -136,10 +136,19 @@ export class ProjectsService {
     return updated;
   }
 
-  // Adicionar membro ao projeto (Autor ou Revisor)
+  // Adicionar membro ao projeto (Autor ou Revisor) - Somente 1 Revisor por projeto
   async addMember(projectId: string, userId: string, role: Role, requesterId: string) {
     const project = await this.projectsRepository.findById(projectId);
     if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    if (role === Role.REVIEWER) {
+      const existingReviewer = (project as any).members?.find(
+        (m: any) => m.role === Role.REVIEWER && m.userId !== userId
+      );
+      if (existingReviewer) {
+        throw new Error('PROJECT_ALREADY_HAS_REVIEWER');
+      }
+    }
 
     await this.projectsRepository.addMember(projectId, userId, role);
 

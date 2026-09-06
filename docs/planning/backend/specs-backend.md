@@ -92,6 +92,12 @@ src/
 | **CRUD de Revisores (`REVIEWER`)** | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **CRUD de Equipes (`Team`)** | ✅ | ✅ | ❌ | ❌ | ❌ |
 
+#### 👥 Estrutura de Equipes e Restrição de Integrantes de Artigos
+1. **Composição da Equipe (`Team`):** Uma equipe possui estritamente no máximo **1 Gerente** (`managerId`) e exatamente **1 Coordenador** (`coordinatorId`).
+2. **Vinculação do Projeto/Artigo à Equipe:** Todo artigo/projeto está associado a uma Equipe (`teamId`), herdando o seu Gerente e Coordenador.
+3. **Restrição de Revisor por Artigo:** Um artigo pode possuir **somente 1 Revisor** (`role: REVIEWER`) atribuído em `ProjectMember`. A inclusão de um 2º revisor é bloqueada com erro HTTP 400 Bad Request (`PROJECT_ALREADY_HAS_REVIEWER`).
+4. **Múltiplos Autores:** Um artigo/projeto pode possuir **múltiplos Autores** (`role: AUTHOR`).
+
 #### 📅 Regras de Prazos, Alterações e Timeline Rastreável
 1. **Definição Inicial de Etapas:** Ao criar o artigo, o Autor define as datas limite para cada etapa/seção do artigo. O cadastro das conferências (Target/Backup) pode ser informado ou atualizado posteriormente.
 2. **Obrigatoriedade de Justificativa:** Toda alteração de data (etapa, prazo de seção ou data de submissão) **exige obrigatoriamente uma justificativa legível (`justification`)**.

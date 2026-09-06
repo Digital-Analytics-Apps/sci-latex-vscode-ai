@@ -5,10 +5,10 @@ import { GitService } from '../../git/git.service';
 import { Project, Role, SubmissionStatus } from '@prisma/client';
 
 class InMemoryProjectsRepository implements IProjectsRepository {
-  public projects: Project[] = [];
+  public projects: (Project & { members?: any[] })[] = [];
 
   async create(data: CreateProjectData): Promise<Project> {
-    const project: Project = {
+    const project: Project & { members?: any[] } = {
       id: `proj-${Date.now()}-${Math.random()}`,
       name: data.name,
       description: data.description ?? null,
@@ -28,6 +28,9 @@ class InMemoryProjectsRepository implements IProjectsRepository {
       reviewerFeedback: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      members: [
+        { userId: data.creatorId, role: Role.AUTHOR }
+      ],
     };
     this.projects.push(project);
     return project;
@@ -58,8 +61,26 @@ class InMemoryProjectsRepository implements IProjectsRepository {
     return updated;
   }
 
-  async addMember(projectId: string, userId: string, role: Role): Promise<void> {}
-  async removeMember(projectId: string, userId: string): Promise<void> {}
+  async addMember(projectId: string, userId: string, role: Role): Promise<void> {
+    const proj = this.projects.find((p) => p.id === projectId);
+    if (proj) {
+      if (!proj.members) proj.members = [];
+      const existing = proj.members.find((m) => m.userId === userId);
+      if (existing) {
+        existing.role = role;
+      } else {
+        proj.members.push({ userId, role });
+      }
+    }
+  }
+
+  async removeMember(projectId: string, userId: string): Promise<void> {
+    const proj = this.projects.find((p) => p.id === projectId);
+    if (proj && proj.members) {
+      proj.members = proj.members.filter((m) => m.userId !== userId);
+    }
+  }
+
   async delete(id: string): Promise<void> {
     this.projects = this.projects.filter((p) => p.id !== id);
   }
@@ -130,5 +151,20 @@ describe('ProjectsService', () => {
     await expect(
       projectsService.updateProject('non-existing-id', 'user-1', { name: 'Novo Nome' })
     ).rejects.toThrow('PROJECT_NOT_FOUND');
+  });
+
+  it('should allow adding 1 reviewer and throw when adding a second reviewer to a project', async () => {
+    const created = await projectsService.createProject('user-1', {
+      name: 'Artigo com Revisor Único',
+      teamId: 'team-1',
+    });
+
+    // Adiciona o 1º Revisor com sucesso
+    await projectsService.addMember(created.id, 'rev-1', Role.REVIEWER, 'user-1');
+
+    // Tentar adicionar um 2º Revisor deve lançar erro
+    await expect(
+      projectsService.addMember(created.id, 'rev-2', Role.REVIEWER, 'user-1')
+    ).rejects.toThrow('PROJECT_ALREADY_HAS_REVIEWER');
   });
 });
