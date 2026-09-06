@@ -1,0 +1,307 @@
+import DescriptionIcon from "@mui/icons-material/Description";
+import MergeTypeIcon from "@mui/icons-material/MergeType";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SaveIcon from "@mui/icons-material/Save";
+import SendIcon from "@mui/icons-material/Send";
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Paper,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { useParams } from "react-router-dom";
+import {
+  useMergePRMutation,
+  useProjectDetails,
+  useSaveProgressMutation,
+} from "../../hooks/useProjectQueries";
+import { showNotification } from "../../store/slices/notificationSlice";
+import { CodeServerIframe } from "./CodeServerIframe";
+import { CreatePRModal } from "./CreatePRModal";
+
+export const WorkspacePage: React.FC = () => {
+  const { projectId = "demo-project-1" } = useParams<{ projectId: string }>();
+  const dispatch = useDispatch();
+
+  const { data: project, isLoading, refetch } = useProjectDetails(projectId);
+  const saveProgressMutation = useSaveProgressMutation(projectId);
+  const mergePRMutation = useMergePRMutation(projectId);
+
+  const [activeSectionId, setActiveSectionId] = useState<string>("");
+  const [isPRModalOpen, setIsPRModalOpen] = useState<boolean>(false);
+
+  const mockSections = project?.sections || [
+    {
+      id: "sec-1",
+      title: "1. Introdução & Trabalhos Relacionados",
+      filePath: "sections/01-introduction.tex",
+      branchName: "section/introduction",
+      dueDate: "2026-10-01",
+    },
+    {
+      id: "sec-2",
+      title: "2. Metodologia & Formulacao",
+      filePath: "sections/02-methodology.tex",
+      branchName: "section/methodology",
+      dueDate: "2026-10-05",
+    },
+    {
+      id: "sec-3",
+      title: "3. Resultados & Experimentos",
+      filePath: "sections/03-results.tex",
+      branchName: "section/results",
+      dueDate: "2026-10-10",
+    },
+  ];
+
+  const currentSection =
+    mockSections.find((s) => s.id === activeSectionId) || mockSections[0];
+
+  const handleSaveProgress = async () => {
+    try {
+      await saveProgressMutation.mutateAsync({
+        sectionId: currentSection.id,
+        commitMessage: `Update section ${currentSection.title}`,
+      });
+      dispatch(
+        showNotification({
+          message: `Progresso salvo com sucesso via commit silencioso da Conta de Serviço!`,
+          severity: "success",
+        }),
+      );
+    } catch (_err: any) {
+      dispatch(
+        showNotification({
+          message: "Erro ao salvar progresso do artigo.",
+          severity: "error",
+        }),
+      );
+    }
+  };
+
+  const handleExecuteMerge = async () => {
+    try {
+      await mergePRMutation.mutateAsync("pr-latest");
+      dispatch(
+        showNotification({
+          message: "Merge concluído com sucesso! A branch foi integrada.",
+          severity: "success",
+        }),
+      );
+    } catch (_err: any) {
+      dispatch(
+        showNotification({
+          message:
+            "Aguardando aprovação do parecer do NIT antes de realizar o merge.",
+          severity: "warning",
+        }),
+      );
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          height: "100%",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+        }}
+      >
+        <CircularProgress color="primary" />
+        <Typography variant="body2" color="text.secondary">
+          Carregando informações do projeto acadêmico...
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        height: "100%",
+        width: "100%",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <Paper
+          square
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {project?.name || "Metodologia Científica em Redes Neutras"}
+            </Typography>
+            <Chip
+              label={`Seção Ativa: ${currentSection?.title}`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+            <Chip
+              label="Prazo: 🟢 No Prazo"
+              size="small"
+              color="success"
+              sx={{ fontWeight: 600 }}
+            />
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Tooltip title="Atualizar dados do projeto">
+              <IconButton onClick={() => refetch()} size="small">
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={
+                saveProgressMutation.isPending ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <SaveIcon fontSize="small" />
+                )
+              }
+              onClick={handleSaveProgress}
+              disabled={saveProgressMutation.isPending}
+            >
+              Salvar Progresso
+            </Button>
+
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<SendIcon fontSize="small" />}
+              onClick={() => setIsPRModalOpen(true)}
+            >
+              Enviar p/ Revisão
+            </Button>
+
+            <Button
+              variant="contained"
+              color="success"
+              size="small"
+              startIcon={<MergeTypeIcon fontSize="small" />}
+              onClick={handleExecuteMerge}
+            >
+              Realizar Merge
+            </Button>
+          </Box>
+        </Paper>
+
+        <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
+          <Paper
+            square
+            variant="outlined"
+            sx={{
+              width: 240,
+              minWidth: 240,
+              display: "flex",
+              flexDirection: "column",
+              borderRight: "1px solid",
+              borderColor: "divider",
+              bgcolor: "background.paper",
+            }}
+          >
+            <Box
+              sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 700, textTransform: "uppercase" }}
+              >
+                Seções do Artigo
+              </Typography>
+            </Box>
+
+            <List disablePadding>
+              {mockSections.map((sec) => (
+                <React.Fragment key={sec.id}>
+                  <ListItemButton
+                    selected={
+                      sec.id === (currentSection?.id || mockSections[0].id)
+                    }
+                    onClick={() => setActiveSectionId(sec.id)}
+                    sx={{ py: 1 }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <DescriptionIcon
+                        fontSize="small"
+                        color={
+                          sec.id === currentSection?.id ? "primary" : "inherit"
+                        }
+                      />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={sec.title}
+                      secondary={sec.filePath}
+                      slotProps={{
+                        primary: {
+                          variant: "body2",
+                          sx: {
+                            fontWeight:
+                              sec.id === currentSection?.id ? 700 : 500,
+                          },
+                        },
+                        secondary: {
+                          variant: "caption",
+                          noWrap: true,
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                  <Divider />
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+
+          <Box sx={{ flexGrow: 1, height: "100%", overflow: "hidden" }}>
+            <CodeServerIframe projectId={projectId} />
+          </Box>
+        </Box>
+      </Box>
+
+      <CreatePRModal
+        open={isPRModalOpen}
+        onClose={() => setIsPRModalOpen(false)}
+        projectId={projectId}
+        sections={mockSections}
+      />
+    </Box>
+  );
+};

@@ -1,0 +1,190 @@
+import Brightness4Icon from "@mui/icons-material/Brightness4";
+import Brightness7Icon from "@mui/icons-material/Brightness7";
+import LogoutIcon from "@mui/icons-material/Logout";
+import SaveIcon from "@mui/icons-material/Save";
+import SendIcon from "@mui/icons-material/Send";
+import SignalCellularAltIcon from "@mui/icons-material/SignalCellularAlt";
+import {
+  AppBar,
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  Toolbar,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useSSEEventSource } from "../hooks/useSSEEventSource";
+import type { RootState } from "../store";
+import { logout } from "../store/slices/authSlice";
+import { useColorMode } from "../theme";
+
+export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { mode, toggleColorMode } = useColorMode();
+  const { isConnected } = useSSEEventSource();
+
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) =>
+    setAnchorEl(event.currentTarget);
+  const handleCloseUserMenu = () => setAnchorEl(null);
+
+  const handleLogout = () => {
+    handleCloseUserMenu();
+    dispatch(logout());
+  };
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        width: "100vw",
+        overflow: "hidden",
+      }}
+    >
+      {/* Topbar Minimalista do Autor */}
+      <AppBar
+        position="static"
+        color="default"
+        sx={{ bgcolor: "background.paper" }}
+      >
+        <Toolbar
+          variant="dense"
+          sx={{ justifyContent: "space-between", gap: 2 }}
+        >
+          {/* Identificação do Projeto / Seção */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, color: "primary.main" }}
+            >
+              SCI-LaTeX Workspace
+            </Typography>
+
+            <Chip
+              label="Artigo: Metodologia Científica"
+              size="small"
+              variant="outlined"
+            />
+
+            <Chip
+              label="Prazo Seção 2: 🟢 No Prazo (4 dias restantes)"
+              size="small"
+              color="success"
+              sx={{ fontWeight: 600 }}
+            />
+          </Box>
+
+          {/* Ações Rápidas & Conexão SSE */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Tooltip
+              title={
+                isConnected
+                  ? "Conexão Real-time SSE Ativa"
+                  : "Desconectado do SSE"
+              }
+            >
+              <Chip
+                icon={<SignalCellularAltIcon fontSize="small" />}
+                label={isConnected ? "Real-time SSE" : "Offline"}
+                size="small"
+                color={isConnected ? "success" : "default"}
+                variant="outlined"
+              />
+            </Tooltip>
+
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={<SaveIcon />}
+            >
+              Salvar Progresso
+            </Button>
+
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<SendIcon />}
+            >
+              Enviar p/ Revisão
+            </Button>
+
+            <Tooltip title="Alternar Modo Claro / Escuro">
+              <IconButton
+                onClick={toggleColorMode}
+                size="small"
+                color="inherit"
+              >
+                {mode === "dark" ? (
+                  <Brightness7Icon fontSize="small" />
+                ) : (
+                  <Brightness4Icon fontSize="small" />
+                )}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Perfil do Usuário">
+              <IconButton
+                onClick={handleOpenUserMenu}
+                size="small"
+                sx={{ p: 0 }}
+              >
+                <Avatar
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    bgcolor: "primary.main",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  {user?.name?.charAt(0).toUpperCase() || "A"}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleCloseUserMenu}
+              transformOrigin={{ horizontal: "right", vertical: "top" }}
+              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+            >
+              <Box sx={{ px: 2, py: 1 }}>
+                <Typography variant="subtitle2">{user?.name}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Perfil: {user?.role}
+                </Typography>
+              </Box>
+              <MenuItem
+                onClick={handleLogout}
+                sx={{ gap: 1, color: "error.main" }}
+              >
+                <LogoutIcon fontSize="small" />
+                Sair
+              </MenuItem>
+            </Menu>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      {/* Conteúdo Principal (VS Code Iframe ou Visão Autor) */}
+      <Box
+        sx={{ flexGrow: 1, overflow: "hidden", bgcolor: "background.default" }}
+      >
+        {children}
+      </Box>
+    </Box>
+  );
+};
