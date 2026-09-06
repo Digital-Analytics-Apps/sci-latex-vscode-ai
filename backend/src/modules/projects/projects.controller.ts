@@ -6,7 +6,7 @@ import { Role, SubmissionStatus } from '@prisma/client';
 export const createProjectSchema = z.object({
   name: z.string().min(3),
   description: z.string().optional(),
-  teamId: z.string().uuid(),
+  teamId: z.string().uuid().optional(),
   academicPeriodId: z.string().uuid().optional(),
   targetConferenceName: z.string().optional(),
   targetConferenceDate: z.coerce.date().optional(),

@@ -7,7 +7,7 @@ import { logAudit } from '../../utils/audit';
 export interface CreateProjectDTO {
   name: string;
   description?: string;
-  teamId: string;
+  teamId?: string;
   academicPeriodId?: string;
   targetConferenceName?: string;
   targetConferenceDate?: Date;
@@ -46,9 +46,32 @@ export class ProjectsService {
 
   // Criar um novo projeto/artigo e provisionar seu repositório Git/GitHub
   async createProject(userId: string, data: CreateProjectDTO) {
+    let targetTeamId = data.teamId;
+
+    if (!targetTeamId) {
+      const userTeam = await prisma.teamMember.findFirst({ where: { userId } });
+      if (userTeam) {
+        targetTeamId = userTeam.teamId;
+      } else {
+        const defaultTeam = await prisma.team.findFirst();
+        if (defaultTeam) {
+          targetTeamId = defaultTeam.id;
+        } else {
+          const createdTeam = await prisma.team.create({
+            data: {
+              name: 'Equipe de Pesquisa Padrão',
+              description: 'Equipe padrão para projetos sem time explícito',
+            },
+          });
+          targetTeamId = createdTeam.id;
+        }
+      }
+    }
+
     const tempPath = `storage/git/pending`;
     const project = await this.projectsRepository.create({
       ...data,
+      teamId: targetTeamId,
       gitRepoPath: tempPath,
       creatorId: userId,
     });

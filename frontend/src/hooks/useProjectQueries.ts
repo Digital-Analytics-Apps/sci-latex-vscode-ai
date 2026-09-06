@@ -104,11 +104,17 @@ export function useCreateProjectMutation() {
   return useMutation({
     mutationFn: async (data: {
       name: string;
-      targetConference: string;
-      submissionDeadline: string;
-      template: string;
+      targetConference?: string;
+      submissionDeadline?: string;
+      template?: string;
+      teamId?: string;
     }) => {
-      const response = await api.post("/projects", data);
+      const response = await api.post("/projects", {
+        name: data.name,
+        targetConferenceName: data.targetConference,
+        targetConferenceDate: data.submissionDeadline,
+        teamId: data.teamId,
+      });
       return response.data;
     },
     onSuccess: () => {

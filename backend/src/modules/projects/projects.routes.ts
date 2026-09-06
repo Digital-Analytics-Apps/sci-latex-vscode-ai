@@ -29,7 +29,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         body: z.object({
           name: z.string().min(2),
           description: z.string().optional(),
-          teamId: z.string().uuid(),
+          teamId: z.string().uuid().optional(),
           academicPeriodId: z.string().uuid().optional(),
           targetConferenceName: z.string().optional(),
           targetConferenceDate: z.string().optional(),

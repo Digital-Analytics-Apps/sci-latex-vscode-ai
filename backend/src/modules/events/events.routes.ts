@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { eventsManager } from './events.manager';
 
@@ -20,15 +20,15 @@ export async function eventsRoutes(app: FastifyInstance) {
       const userId = request.user.sub;
 
       // Configura cabeçalhos CORS e HTTP padrão para SSE (Server-Sent Events)
-      const origin = (request.headers.origin as string) || "*";
-      reply.raw.setHeader("Access-Control-Allow-Origin", origin);
-      reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
-      reply.raw.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
+      const origin = (request.headers.origin as string) || '*';
+      reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+      reply.raw.setHeader('Access-Control-Allow-Credentials', 'true');
+      reply.raw.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept');
 
-      reply.raw.setHeader("Content-Type", "text/event-stream");
-      reply.raw.setHeader("Cache-Control", "no-cache, no-transform");
-      reply.raw.setHeader("Connection", "keep-alive");
-      reply.raw.setHeader("X-Accel-Buffering", "no");
+      reply.raw.setHeader('Content-Type', 'text/event-stream');
+      reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
+      reply.raw.setHeader('Connection', 'keep-alive');
+      reply.raw.setHeader('X-Accel-Buffering', 'no');
 
       // Envia mensagem inicial de confirmação de conexão
       reply.raw.write(`: connected\n\n`);
