@@ -27,6 +27,35 @@ export interface ProjectDetails {
   }>;
 }
 
+export interface ProjectListItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  submissionStatus: string;
+  targetConferenceName?: string | null;
+  targetConferenceDate?: string | null;
+  backupConferenceName?: string | null;
+  backupConferenceDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  team?: { id: string; name: string };
+  _count?: { sections: number; members: number };
+}
+
+// Hook para buscar a lista de projetos/artigos aos quais o usuário tem acesso
+export function useProjectsList(filters?: {
+  teamId?: string;
+  academicPeriodId?: string;
+}) {
+  return useQuery<ProjectListItem[]>({
+    queryKey: ["projects", filters],
+    queryFn: async () => {
+      const response = await api.get("/projects", { params: filters });
+      return response.data.projects;
+    },
+  });
+}
+
 // Hook para buscar dados do projeto e suas seções
 export function useProjectDetails(projectId: string) {
   return useQuery<ProjectDetails>({

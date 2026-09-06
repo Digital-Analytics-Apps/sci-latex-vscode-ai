@@ -22,6 +22,7 @@ import {
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useProjectsList } from "../../hooks/useProjectQueries";
 import type { RootState } from "../../store";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 
@@ -29,6 +30,8 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const { data: projects, isLoading } = useProjectsList();
 
   return (
     <Box sx={{ p: 3 }}>
@@ -75,61 +78,127 @@ export const DashboardPage: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Indicador de Carregamento de Projetos */}
+      {isLoading && (
+        <Box sx={{ width: "100%", mb: 3 }}>
+          <LinearProgress color="primary" />
+        </Box>
+      )}
+
       {/* Visão Adaptativa para o AUTOR */}
       {user?.role === "AUTHOR" && (
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 8 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
-                  Meu Artigo em Escrita
+            <Box
+              sx={{
+                mb: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                Meus Artigos em Escrita ({projects?.length || 0})
+              </Typography>
+            </Box>
+
+            {projects && projects.length > 0 ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {projects.map((project) => (
+                  <Card key={project.id} variant="outlined">
+                    <CardContent>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          mb: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 700, color: "primary.main" }}
+                        >
+                          {project.name}
+                        </Typography>
+                        <Chip
+                          label={project.submissionStatus || "IN_PROGRESS"}
+                          size="small"
+                          color="success"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </Box>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1.5 }}
+                      >
+                        Congresso Alvo:{" "}
+                        <strong>
+                          {project.targetConferenceName || "Não especificado"}
+                        </strong>
+                      </Typography>
+
+                      <LinearProgress
+                        variant="determinate"
+                        value={65}
+                        sx={{ height: 6, borderRadius: 3, mb: 2 }}
+                      />
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          Criado em:{" "}
+                          {new Date(project.createdAt).toLocaleDateString()}
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          startIcon={<LaunchIcon />}
+                          onClick={() => navigate(`/workspace/${project.id}`)}
+                        >
+                          Abrir VS Code Workspace
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            ) : (
+              <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
+                <ArticleIcon
+                  sx={{ fontSize: 48, color: "text.secondary", mb: 1 }}
+                />
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                  Nenhum Artigo Encontrado
                 </Typography>
-                <Box
-                  sx={{
-                    mb: 2,
-                    p: 2,
-                    bgcolor: "background.default",
-                    borderRadius: 2,
-                    border: "1px solid",
-                    borderColor: "divider",
-                  }}
-                >
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Metodologia Científica em Redes Neutras
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
-                  >
-                    Congresso Alvo: IEEE International Symposium (Data limite:
-                    15/10/2026)
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={65}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                </Box>
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   color="text.secondary"
-                  sx={{ display: "block", mb: 2 }}
+                  sx={{ mb: 2 }}
                 >
-                  Seção Ativa: Seção 2 - Resultados Experimentais (Prazo: 🟢 No
-                  prazo)
+                  Você ainda não possui artigos científicos cadastrados no seu
+                  repositório.
                 </Typography>
                 <Button
                   variant="contained"
                   color="primary"
-                  startIcon={<LaunchIcon />}
-                  onClick={() => navigate("/workspace/proj-1")}
+                  startIcon={<AddIcon />}
+                  onClick={() => setIsCreateModalOpen(true)}
                 >
-                  Abrir VS Code Workspace
+                  Criar Meu Primeiro Artigo
                 </Button>
-              </CardContent>
-            </Card>
+              </Paper>
+            )}
           </Grid>
+
           <Grid size={{ xs: 12, md: 4 }}>
             <Card variant="outlined">
               <CardContent>
