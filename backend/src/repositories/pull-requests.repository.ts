@@ -1,5 +1,14 @@
-import { PullRequest, PRStatus, NITStatus, ReviewComment } from '@prisma/client';
+import { PullRequest, PRStatus, NITStatus, ReviewComment, Prisma } from '@prisma/client';
 import { prisma } from '../db/prisma';
+
+export type PullRequestWithRelations = Prisma.PullRequestGetPayload<{
+  include: {
+    author: { select: { id: true; name: true; email: true; role: true } };
+    reviewer: { select: { id: true; name: true; email: true; role: true } };
+    section: true;
+    project?: true;
+  };
+}>;
 
 export interface CreatePRData {
   title: string;
@@ -19,7 +28,7 @@ export interface AddCommentData {
 }
 
 export class PrismaPullRequestsRepository {
-  async create(data: CreatePRData): Promise<PullRequest> {
+  async create(data: CreatePRData): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.create({
       data: {
         title: data.title,
@@ -40,7 +49,7 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async findById(id: string): Promise<PullRequest | null> {
+  async findById(id: string): Promise<PullRequestWithRelations | null> {
     return prisma.pullRequest.findUnique({
       where: { id },
       include: {
@@ -58,7 +67,7 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async findAll(projectId?: string): Promise<PullRequest[]> {
+  async findAll(projectId?: string): Promise<PullRequestWithRelations[]> {
     return prisma.pullRequest.findMany({
       where: projectId ? { projectId } : undefined,
       include: {
@@ -70,7 +79,7 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async updateStatus(id: string, status: PRStatus): Promise<PullRequest> {
+  async updateStatus(id: string, status: PRStatus): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.update({
       where: { id },
       data: {
@@ -85,7 +94,7 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async updateNITStatus(id: string, nitStatus: NITStatus, nitNotes?: string): Promise<PullRequest> {
+  async updateNITStatus(id: string, nitStatus: NITStatus, nitNotes?: string): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.update({
       where: { id },
       data: {
