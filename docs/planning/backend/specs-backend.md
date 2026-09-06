@@ -73,6 +73,10 @@ src/
 * `GET /api/v1/projects/:id/pdf`
   * **Action:** Retorna o PDF oficial gerado do artigo completo.
 
+### 3.5 Controle de Acesso aos Repositórios do GitHub (ADR 001)
+* **Modelo Atual (Opção A):** Abstração via Conta de Serviço (`GITHUB_TOKEN`). As permissões de acesso ao artigo são 100% gerenciadas pelo banco de dados (`ProjectMember`) e autenticadas via JWT. Os commits são assinados em nome do autor real. Os usuários finais não precisam de conta no GitHub.
+* **Evolução Futura Registrada:** Ver documento [`adr-001-github-user-access.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/backend/adr-001-github-user-access.md) para detalhes das Opções B (Convite automático via API) e C (Modelo Híbrido).
+
 ---
 
 ## 4. Especificação dos Workers do RabbitMQ
