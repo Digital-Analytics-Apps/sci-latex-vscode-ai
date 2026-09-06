@@ -71,20 +71,20 @@ graph TD
 Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo, a plataforma segue uma convenção estrita de branches:
 
 1. **`main` (Production / Camera-Ready)**:
-   - Contém a versão oficial consolidada do artigo pronto para submissão.
-   - **Bloqueio Estrito**: Não recebe commits diretos. Apenas recebe merges após aprovação final do artigo.
+   - Contém a versão oficial consolidada do artigo pronto para submissão final.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Apenas recebe merges da branch `dev` após aprovação do artigo e **parecer favorável do NIT (Núcleo de Inovação Tecnológica)** na penúltima etapa antes da submissão.
    - **Proteção Total**: Nunca pode ser excluída.
 
 2. **`dev` (Development / Integration)**:
-   - É a branch base de integração constante do projeto e o **target padrão de todos os Pull Requests**.
-   - **Bloqueio Estrito**: Não recebe commits diretos. Apenas recebe merges dos PRs de seções aprovados pelo Revisor e pelo NIT.
+   - É a branch base de integração constante do projeto e o **target padrão de todos os Pull Requests de seções**.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Recebe merges dos PRs de seções aprovados **exclusivamente pelo Revisor** (sem exigir validação do NIT nesta etapa).
    - **Proteção Total**: Nunca pode ser excluída.
 
 3. **Branch da Seção do Autor (`feature/<slug>-<shortHash>` ou `section/<slug>-<shortHash>`)**:
    - Branch de trabalho individual atribuída à seção e ao autor.
    - **Identificador Único (Short Hash)**: Cada branch possui um sufixo hash único de 8 caracteres (ex: `section/introduction-a1b2c3d4` ou `feature/sec-1-5550a24e`) para evitar colisões entre colaboradores ou tentativas paralelas.
    - O autor executa os commits do "Salvar Progresso" nesta branch.
-   - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado (Revisor + NIT) e o merge ser executado na `dev`, a branch da seção é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
+   - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado pelo Revisor e o merge ser executado na `dev`, a branch da seção é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
 
 ---
 
