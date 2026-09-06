@@ -91,6 +91,20 @@ Resuma os achados do trabalho.
         // Ignora erro se chmod não puder ser alterado
       }
 
+      // Garante que o arquivo de classe IEEEtran.cls exista na pasta do projeto para compilação local
+      const ieeeClsPath = path.join(projectDir, 'IEEEtran.cls');
+      try {
+        await fs.access(ieeeClsPath);
+      } catch {
+        const sourceIeeePath = path.resolve(__dirname, '../../../../docker/code-server/IEEEtran.cls');
+        try {
+          await fs.copyFile(sourceIeeePath, ieeeClsPath);
+          await fs.chmod(ieeeClsPath, 0o777);
+        } catch {
+          // Ignora erro se não for possível copiar
+        }
+      }
+
       // Verifica se o serviço do code-server está ativo na porta 8080
       let isCodeServerUp = false;
       const urlsToCheck = [codeServerUrl, 'http://code-server:8080', 'http://127.0.0.1:8080'];

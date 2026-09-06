@@ -2,20 +2,24 @@ FROM codercom/code-server:latest
 
 # Instalar pacotes do TeX Live e utilitários de compilação LaTeX como root
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
     texlive-latex-base \
     texlive-latex-extra \
-    texlive-publishers \
-    texlive-science \
+    texlive-latex-recommended \
     texlive-fonts-recommended \
-    texlive-fonts-extra \
-    texlive-lang-portuguese \
     latexmk \
     chktex \
     ca-certificates \
     curl \
+    wget \
     git \
     && rm -rf /var/lib/apt/lists/*
+
+# Copiar e registrar a classe IEEEtran.cls oficial no TeX Live do sistema e do usuário
+RUN mkdir -p /home/coder/texmf/tex/latex/IEEEtran /usr/share/texmf/tex/latex/IEEEtran
+COPY IEEEtran.cls /home/coder/texmf/tex/latex/IEEEtran/IEEEtran.cls
+COPY IEEEtran.cls /usr/share/texmf/tex/latex/IEEEtran/IEEEtran.cls
+RUN chown -R coder:coder /home/coder/texmf && texhash
 
 # Alternar para o usuário coder (padrao do code-server)
 USER coder
