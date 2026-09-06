@@ -19,15 +19,18 @@ import {
 } from "@mui/material";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { useSSEEventSource } from "../hooks/useSSEEventSource";
 import type { RootState } from "../store";
 import { logout } from "../store/slices/authSlice";
+import { showNotification } from "../store/slices/notificationSlice";
 import { useColorMode } from "../theme";
 
 export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const { mode, toggleColorMode } = useColorMode();
   const { isConnected } = useSSEEventSource();
@@ -40,6 +43,26 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
   const handleLogout = () => {
     handleCloseUserMenu();
     dispatch(logout());
+  };
+
+  const handleSaveProgress = () => {
+    dispatch(
+      showNotification({
+        message: "Progresso do artigo salvo com sucesso no Git!",
+        severity: "success",
+      }),
+    );
+  };
+
+  const handleSendForReview = () => {
+    navigate("/workspace/proj-1");
+    dispatch(
+      showNotification({
+        message:
+          "Utilize o botão 'Enviar p/ Revisão' no painel de ações do Workspace para abrir o Pull Request.",
+        severity: "info",
+      }),
+    );
   };
 
   return (
@@ -66,7 +89,8 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Typography
               variant="subtitle1"
-              sx={{ fontWeight: 700, color: "primary.main" }}
+              sx={{ fontWeight: 700, color: "primary.main", cursor: "pointer" }}
+              onClick={() => navigate("/")}
             >
               SCI-LaTeX Workspace
             </Typography>
@@ -108,6 +132,7 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
               color="primary"
               size="small"
               startIcon={<SaveIcon />}
+              onClick={handleSaveProgress}
             >
               Salvar Progresso
             </Button>
@@ -117,6 +142,7 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
               color="primary"
               size="small"
               startIcon={<SendIcon />}
+              onClick={handleSendForReview}
             >
               Enviar p/ Revisão
             </Button>

@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { useSSEEventSource } from "../hooks/useSSEEventSource";
 import type { RootState } from "../store";
 import { logout } from "../store/slices/authSlice";
@@ -28,6 +29,7 @@ export const ManagerLayout: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const { mode, toggleColorMode } = useColorMode();
   const { isConnected } = useSSEEventSource();
@@ -63,8 +65,16 @@ export const ManagerLayout: React.FC<{ children: React.ReactNode }> = ({
           sx={{ justifyContent: "space-between", gap: 2 }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <AssessmentIcon color="warning" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            <AssessmentIcon
+              color="warning"
+              sx={{ cursor: "pointer" }}
+              onClick={() => navigate("/")}
+            />
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, cursor: "pointer" }}
+              onClick={() => navigate("/")}
+            >
               Dashboard Executivo & Relatórios
             </Typography>
 

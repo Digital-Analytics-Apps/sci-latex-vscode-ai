@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { useSSEEventSource } from "../hooks/useSSEEventSource";
 import type { RootState } from "../store";
 import { logout } from "../store/slices/authSlice";
@@ -26,6 +27,7 @@ export const CoordinatorLayout: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const { mode, toggleColorMode } = useColorMode();
   const { isConnected } = useSSEEventSource();
@@ -60,8 +62,16 @@ export const CoordinatorLayout: React.FC<{ children: React.ReactNode }> = ({
           sx={{ justifyContent: "space-between", gap: 2 }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <GroupsIcon color="info" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            <GroupsIcon
+              color="info"
+              sx={{ cursor: "pointer" }}
+              onClick={() => navigate("/")}
+            />
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, cursor: "pointer" }}
+              onClick={() => navigate("/")}
+            >
               Gestão de Equipe & Matriz de Cronogramas
             </Typography>
             <Chip

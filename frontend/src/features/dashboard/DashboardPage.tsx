@@ -1,3 +1,4 @@
+import AddIcon from "@mui/icons-material/Add";
 import ArticleIcon from "@mui/icons-material/Article";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -18,12 +19,16 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import React from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import type { RootState } from "../../store";
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -36,7 +41,7 @@ export const DashboardPage: React.FC = () => {
         }}
       >
         <Box>
-          <Typography variant="h2" component="h1">
+          <Typography variant="h2" component="h1" sx={{ fontWeight: 700 }}>
             Olá, {user?.name || "Pesquisador"} 👋
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -44,13 +49,30 @@ export const DashboardPage: React.FC = () => {
             é <strong>{user?.role}</strong>.
           </Typography>
         </Box>
-        <Chip
-          icon={<ArticleIcon fontSize="small" />}
-          label={`Perfil Ativo: ${user?.role}`}
-          color="primary"
-          variant="outlined"
-          sx={{ fontWeight: 700 }}
-        />
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Chip
+            icon={<ArticleIcon fontSize="small" />}
+            label={`Perfil Ativo: ${user?.role}`}
+            color="primary"
+            variant="outlined"
+            sx={{ fontWeight: 700 }}
+          />
+
+          {(user?.role === "AUTHOR" ||
+            user?.role === "COORDINATOR" ||
+            user?.role === "ADMIN") && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              Novo Artigo Científico
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Visão Adaptativa para o AUTOR */}
@@ -59,7 +81,7 @@ export const DashboardPage: React.FC = () => {
           <Grid size={{ xs: 12, md: 8 }}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h4" sx={{ mb: 2 }}>
+                <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
                   Meu Artigo em Escrita
                 </Typography>
                 <Box
@@ -68,6 +90,8 @@ export const DashboardPage: React.FC = () => {
                     p: 2,
                     bgcolor: "background.default",
                     borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
                   }}
                 >
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -99,6 +123,7 @@ export const DashboardPage: React.FC = () => {
                   variant="contained"
                   color="primary"
                   startIcon={<LaunchIcon />}
+                  onClick={() => navigate("/workspace/proj-1")}
                 >
                   Abrir VS Code Workspace
                 </Button>
@@ -108,7 +133,7 @@ export const DashboardPage: React.FC = () => {
           <Grid size={{ xs: 12, md: 4 }}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h5" sx={{ mb: 1 }}>
+                <Typography variant="h5" sx={{ mb: 1, fontWeight: 700 }}>
                   Próximas Tarefas
                 </Typography>
                 <Typography
@@ -132,23 +157,29 @@ export const DashboardPage: React.FC = () => {
           <Grid size={{ xs: 12 }}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h4" sx={{ mb: 2 }}>
+                <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
                   Solicitações de Revisão Pendentes (Pull Requests)
                 </Typography>
                 <Paper variant="outlined">
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>PR ID</TableCell>
-                        <TableCell>Artigo / Seção</TableCell>
-                        <TableCell>Autor</TableCell>
-                        <TableCell>Status NIT</TableCell>
-                        <TableCell align="right">Ações</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>PR ID</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>
+                          Artigo / Seção
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Autor</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>
+                          Status NIT
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                          Ações
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>#102</TableCell>
+                      <TableRow hover>
+                        <TableCell sx={{ fontWeight: 600 }}>#102</TableCell>
                         <TableCell>
                           Introdução & Trabalhos Relacionados
                         </TableCell>
@@ -162,9 +193,10 @@ export const DashboardPage: React.FC = () => {
                         </TableCell>
                         <TableCell align="right">
                           <Button
-                            variant="outlined"
+                            variant="contained"
                             size="small"
                             color="primary"
+                            onClick={() => navigate("/reviews/pr-102")}
                           >
                             Avaliar Diff & PDF
                           </Button>
@@ -185,13 +217,23 @@ export const DashboardPage: React.FC = () => {
         user?.role === "ADMIN") && (
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card variant="outlined">
+            <Card
+              variant="outlined"
+              sx={{ cursor: "pointer" }}
+              onClick={() =>
+                navigate(
+                  user?.role === "COORDINATOR" ? "/coordinator" : "/manager",
+                )
+              }
+            >
               <CardContent>
                 <Box
                   sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
                 >
                   <ArticleIcon color="primary" />
-                  <Typography variant="h5">Artigos em Andamento</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Artigos em Andamento
+                  </Typography>
                 </Box>
                 <Typography
                   variant="h2"
@@ -213,7 +255,9 @@ export const DashboardPage: React.FC = () => {
                   sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
                 >
                   <AssignmentTurnedInIcon color="success" />
-                  <Typography variant="h5">Pareceres NIT Concluídos</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Pareceres NIT Concluídos
+                  </Typography>
                 </Box>
                 <Typography
                   variant="h2"
@@ -229,13 +273,19 @@ export const DashboardPage: React.FC = () => {
             </Card>
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card variant="outlined">
+            <Card
+              variant="outlined"
+              sx={{ cursor: "pointer" }}
+              onClick={() => navigate("/manager")}
+            >
               <CardContent>
                 <Box
                   sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
                 >
                   <ScheduleIcon color="warning" />
-                  <Typography variant="h5">Submissões no Alvo</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Submissões no Alvo
+                  </Typography>
                 </Box>
                 <Typography
                   variant="h2"
@@ -252,6 +302,12 @@ export const DashboardPage: React.FC = () => {
           </Grid>
         </Grid>
       )}
+
+      {/* Modal de Criação de Novo Projeto / Artigo */}
+      <CreateProjectModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </Box>
   );
 };

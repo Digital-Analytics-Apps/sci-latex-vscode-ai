@@ -96,3 +96,23 @@ export function useMergePRMutation(projectId: string) {
     },
   });
 }
+
+// Mutação para Criar Novo Projeto / Artigo Científico
+export function useCreateProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      targetConference: string;
+      submissionDeadline: string;
+      template: string;
+    }) => {
+      const response = await api.post("/projects", data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
