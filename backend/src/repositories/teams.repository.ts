@@ -1,4 +1,4 @@
-import { Team, Role } from '@prisma/client';
+import { Role, Team } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
 export interface CreateTeamData {
@@ -15,7 +15,19 @@ export interface UpdateTeamData {
   managerId?: string;
 }
 
-export class PrismaTeamsRepository {
+export interface ITeamsRepository {
+  create(data: CreateTeamData): Promise<Team>;
+  findById(id: string): Promise<Team | null>;
+  findAll(managerId?: string): Promise<Team[]>;
+  update(id: string, data: UpdateTeamData): Promise<Team>;
+  addMember(teamId: string, userId: string, role: Role): Promise<void>;
+  removeMember(teamId: string, userId: string): Promise<void>;
+  delete(id: string): Promise<void>;
+  findDefaultTeamForUser(userId: string): Promise<Team | null>;
+  getOrCreateDefaultTeam(coordinatorId: string): Promise<Team>;
+}
+
+export class PrismaTeamsRepository implements ITeamsRepository {
   async create(data: CreateTeamData): Promise<Team> {
     return prisma.team.create({
       data: {
@@ -127,6 +139,30 @@ export class PrismaTeamsRepository {
       data: {
         deletedAt: new Date(),
       },
+    });
+  }
+
+  async findDefaultTeamForUser(userId: string): Promise<Team | null> {
+    const member = await prisma.teamMember.findFirst({
+      where: { userId },
+      include: { team: true },
+    });
+    if (member?.team) return member.team;
+
+    return prisma.team.findFirst({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getOrCreateDefaultTeam(coordinatorId: string): Promise<Team> {
+    const existingTeam = await this.findDefaultTeamForUser(coordinatorId);
+    if (existingTeam) return existingTeam;
+
+    return this.create({
+      name: 'Equipe de Pesquisa Padrão',
+      description: 'Equipe padrão para projetos de escrita científica',
+      coordinatorId,
     });
   }
 }

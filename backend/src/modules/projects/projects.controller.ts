@@ -1,7 +1,7 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { ProjectsService } from './projects.service';
+import { Role } from '@prisma/client';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { Role, SubmissionStatus } from '@prisma/client';
+import { ProjectsService } from './projects.service';
 
 export const createProjectSchema = z.object({
   name: z.string().min(3),

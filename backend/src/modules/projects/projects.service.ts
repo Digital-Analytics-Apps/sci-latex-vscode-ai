@@ -1,5 +1,6 @@
 import { Role } from '@prisma/client';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
+import { ITeamsRepository } from '../../repositories/teams.repository';
 import { GitService } from '../git/git.service';
 import { prisma } from '../../db/prisma';
 import { logAudit } from '../../utils/audit';
@@ -41,6 +42,7 @@ export interface PostSubmissionDTO {
 export class ProjectsService {
   constructor(
     private projectsRepository: IProjectsRepository,
+    private teamsRepository: ITeamsRepository,
     private gitService: GitService
   ) {}
 
@@ -49,23 +51,8 @@ export class ProjectsService {
     let targetTeamId = data.teamId;
 
     if (!targetTeamId) {
-      const userTeam = await prisma.teamMember.findFirst({ where: { userId } });
-      if (userTeam) {
-        targetTeamId = userTeam.teamId;
-      } else {
-        const defaultTeam = await prisma.team.findFirst();
-        if (defaultTeam) {
-          targetTeamId = defaultTeam.id;
-        } else {
-          const createdTeam = await prisma.team.create({
-            data: {
-              name: 'Equipe de Pesquisa Padrão',
-              description: 'Equipe padrão para projetos sem time explícito',
-            },
-          });
-          targetTeamId = createdTeam.id;
-        }
-      }
+      const defaultTeam = await this.teamsRepository.getOrCreateDefaultTeam(userId);
+      targetTeamId = defaultTeam.id;
     }
 
     const tempPath = `storage/git/pending`;

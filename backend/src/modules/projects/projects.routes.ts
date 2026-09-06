@@ -3,14 +3,16 @@ import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
+import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { GitService } from '../git/git.service';
-import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
+import { ProjectsService } from './projects.service';
 
 export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
+  const teamsRepository = new PrismaTeamsRepository();
   const gitService = new GitService();
-  const projectsService = new ProjectsService(projectsRepository, gitService);
+  const projectsService = new ProjectsService(projectsRepository, teamsRepository, gitService);
   const controller = new ProjectsController(projectsService);
 
   // Exige autenticação JWT para todas as rotas de projetos

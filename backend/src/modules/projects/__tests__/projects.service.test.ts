@@ -1,13 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { ProjectsService } from '../projects.service';
+import { Project, Role, SubmissionStatus } from '@prisma/client';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  CreateProjectData,
   IProjectsRepository,
   ProjectFilterOptions,
-  CreateProjectData,
   UpdateProjectData,
 } from '../../../repositories/projects.repository';
+import {
+  CreateTeamData,
+  ITeamsRepository,
+  UpdateTeamData,
+} from '../../../repositories/teams.repository';
 import { GitService } from '../../git/git.service';
-import { Project, Role, SubmissionStatus } from '@prisma/client';
+import { ProjectsService } from '../projects.service';
 
 class InMemoryProjectsRepository implements IProjectsRepository {
   public projects: (Project & { members?: any[]; deletedAt?: Date | null })[] = [];
@@ -95,6 +100,37 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 }
 
+class InMemoryTeamsRepository implements ITeamsRepository {
+  public teams: any[] = [{ id: 'team-1', name: 'Equipe Teste' }];
+
+  async create(data: CreateTeamData): Promise<any> {
+    const team = { id: `team-${Date.now()}`, name: data.name, coordinatorId: data.coordinatorId };
+    this.teams.push(team);
+    return team;
+  }
+  async findById(id: string): Promise<any> {
+    return this.teams.find((t) => t.id === id) ?? null;
+  }
+  async findAll(): Promise<any[]> {
+    return this.teams;
+  }
+  async update(id: string, data: UpdateTeamData): Promise<any> {
+    const index = this.teams.findIndex((t) => t.id === id);
+    if (index !== -1) this.teams[index] = { ...this.teams[index], ...data };
+    return this.teams[index];
+  }
+  async addMember(): Promise<void> {}
+  async removeMember(): Promise<void> {}
+  async delete(): Promise<void> {}
+  async findDefaultTeamForUser(): Promise<any> {
+    return this.teams[0] ?? null;
+  }
+  async getOrCreateDefaultTeam(coordinatorId: string): Promise<any> {
+    if (this.teams.length > 0) return this.teams[0];
+    return this.create({ name: 'Equipe Padrão', coordinatorId });
+  }
+}
+
 class MockGitService extends GitService {
   async initBareRepository(projectId: string, projectTitle: string): Promise<string> {
     return `/storage/git/${projectId}.git`;
@@ -103,13 +139,15 @@ class MockGitService extends GitService {
 
 describe('ProjectsService', () => {
   let repository: InMemoryProjectsRepository;
+  let teamsRepository: InMemoryTeamsRepository;
   let mockGitService: MockGitService;
   let projectsService: ProjectsService;
 
   beforeEach(() => {
     repository = new InMemoryProjectsRepository();
+    teamsRepository = new InMemoryTeamsRepository();
     mockGitService = new MockGitService();
-    projectsService = new ProjectsService(repository, mockGitService);
+    projectsService = new ProjectsService(repository, teamsRepository, mockGitService);
   });
 
   it('should create a project and initialize its Git bare repository', async () => {
