@@ -54,7 +54,7 @@ export class PullRequestsController {
       id: z.string(),
     });
     const bodySchema = z.object({
-      status: z.enum(['APPROVED', 'CHANGES_REQUESTED']),
+      status: z.enum(['APPROVED', 'CHANGES_REQUESTED', 'UNDER_REVIEW']).optional(),
       comment: z.string().optional(),
       lineNumer: z.number().int().positive().optional(),
     });

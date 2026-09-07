@@ -24,9 +24,8 @@ RUN chown -R coder:coder /home/coder/texmf && texhash
 # Alternar para o usuário coder (padrao do code-server)
 USER coder
 
-# Instalar as extensões oficiais LaTeX Workshop e GitHub Pull Requests & Issues no VS Code Web
+# Instalar a extensão oficial LaTeX Workshop no VS Code Web
 RUN code-server --install-extension James-Yu.latex-workshop || true
-RUN code-server --install-extension GitHub.vscode-pull-request-github || true
 
 # Pre-instalar o arquivo de configurações padrao settings.json nos diretórios de usuário
 RUN mkdir -p /home/coder/.local/share/code-server/User /home/coder/.config/code-server/User

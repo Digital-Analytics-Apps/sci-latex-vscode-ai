@@ -1,6 +1,5 @@
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import SignalCellularAltIcon from "@mui/icons-material/SignalCellularAlt";
@@ -8,7 +7,6 @@ import {
   AppBar,
   Avatar,
   Box,
-  Button,
   Chip,
   IconButton,
   Menu,

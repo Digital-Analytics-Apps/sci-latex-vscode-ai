@@ -9,20 +9,6 @@
   "workbench.tips.enabled": false,
   "editor.lightbulb.enabled": "onCodeAction",
   "editor.wordWrap": "on",
-  "githubPullRequests.remotes": ["origin"],
-  "githubPullRequests.queries": [
-    {
-      "label": "Local Pull Request Branches",
-      "query": "default"
-    },
-    {
-      "query": "repo:${owner}/${repository} is:open is:pr"
-    },
-    {
-      "label": "All Open",
-      "query": "default"
-    }
-  ],
   "latex-workshop.view.pdf.viewer": "tab",
   "latex-workshop.latex.autoBuild.run": "onSave",
   "latex-workshop.latex.outDir": "%DIR%",

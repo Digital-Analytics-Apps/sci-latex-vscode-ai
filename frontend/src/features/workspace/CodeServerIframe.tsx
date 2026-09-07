@@ -6,19 +6,27 @@ import type { RootState } from "../../store";
 
 interface CodeServerIframeProps {
   projectId: string;
+  sectionId?: string;
+  mode?: string;
 }
 
 export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   projectId,
+  sectionId,
+  mode,
 }) => {
   const token = useSelector((state: RootState) => state.auth.token);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const baseUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
-  const iframeSrc = token
-    ? `${baseUrl}/editor-proxy/${projectId}?token=${encodeURIComponent(token)}`
-    : `${baseUrl}/editor-proxy/${projectId}`;
+
+  const params = new URLSearchParams();
+  if (token) params.set("token", token);
+  if (sectionId) params.set("sectionId", sectionId);
+  if (mode) params.set("mode", mode);
+
+  const iframeSrc = `${baseUrl}/editor-proxy/${projectId}?${params.toString()}`;
 
   return (
     <Box

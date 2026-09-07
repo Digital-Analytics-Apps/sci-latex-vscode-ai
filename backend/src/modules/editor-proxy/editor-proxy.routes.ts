@@ -1,10 +1,79 @@
+import { exec } from 'child_process';
 import { FastifyInstance } from 'fastify';
 import fs from 'fs/promises';
 import path from 'path';
+import { promisify } from 'util';
 import { z } from 'zod';
 import { env } from '../../config/env';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
+
+const execAsync = promisify(exec);
+
+async function ensureGitRepositoryWorkspace(
+  projectId: string,
+  gitRepoPath?: string,
+  targetBranch?: string
+) {
+  const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
+  await fs.mkdir(projectDir, { recursive: true, mode: 0o777 });
+
+  const gitDir = path.join(projectDir, '.git');
+  let hasGit = false;
+  try {
+    await fs.access(gitDir);
+    hasGit = true;
+  } catch {
+    hasGit = false;
+  }
+
+  if (!gitRepoPath) return;
+
+  let authenticatedRepoUrl = gitRepoPath;
+  if (env.GITHUB_TOKEN && gitRepoPath.startsWith('https://github.com/')) {
+    authenticatedRepoUrl = gitRepoPath.replace(
+      'https://github.com/',
+      `https://x-access-token:${env.GITHUB_TOKEN}@github.com/`
+    );
+    if (!authenticatedRepoUrl.endsWith('.git')) {
+      authenticatedRepoUrl += '.git';
+    }
+  }
+
+  try {
+    if (!hasGit) {
+      const tempDir = path.resolve(
+        env.STORAGE_PATH,
+        'projects',
+        `temp-clone-${projectId}-${Date.now()}`
+      );
+      await execAsync(`git clone "${authenticatedRepoUrl}" "${tempDir}"`);
+      await fs.cp(path.join(tempDir, '.git'), path.join(projectDir, '.git'), { recursive: true });
+      await fs.rm(tempDir, { recursive: true, force: true });
+
+      await execAsync(`git config user.name "SCI-LaTeX User"`, { cwd: projectDir });
+      await execAsync(`git config user.email "user@sci-latex.org"`, { cwd: projectDir });
+      await execAsync(`git fetch --all`, { cwd: projectDir }).catch(() => {});
+    } else {
+      await execAsync(`git fetch --all`, { cwd: projectDir }).catch(() => {});
+    }
+
+    if (targetBranch) {
+      await execAsync(`git checkout "${targetBranch}"`, { cwd: projectDir }).catch(async () => {
+        await execAsync(`git checkout -b "${targetBranch}" "origin/${targetBranch}"`, {
+          cwd: projectDir,
+        }).catch(() => {});
+      });
+    } else if (!hasGit) {
+      await execAsync(`git checkout dev`, { cwd: projectDir }).catch(() => {});
+    }
+
+    // Permissões de escrita total para o container code-server (usuário coder)
+    await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
+  } catch (err: any) {
+    console.warn(`⚠️ Warning ensuring Git workspace for ${projectId}:`, err.message || err);
+  }
+}
 
 export async function editorProxyRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
@@ -25,10 +94,16 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         params: z.object({
           projectId: z.string().uuid(),
         }),
+        querystring: z.object({
+          sectionId: z.string().optional(),
+          mode: z.string().optional(),
+          token: z.string().optional(),
+        }),
       },
     },
     async (request, reply) => {
       const { projectId } = request.params as { projectId: string };
+      const { sectionId } = request.query as { sectionId?: string; mode?: string };
 
       const project = await projectsRepository.findById(projectId);
       if (!project) {
@@ -39,14 +114,14 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      // Garante que o diretório de trabalho do projeto exista e tenha permissão total de escrita (chmod 777 para o container code-server)
-      const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
-      await fs.mkdir(projectDir, { recursive: true, mode: 0o777 });
-      try {
-        await fs.chmod(projectDir, 0o777);
-      } catch {
-        // Ignora erro se chmod não puder ser alterado
+      let targetBranch: string | undefined = undefined;
+      if (sectionId) {
+        targetBranch = `section/${sectionId}-${projectId.slice(0, 8)}`;
       }
+
+      // Garante que o diretório de trabalho do projeto seja um repositório Git completo e sincronizado na branch correta
+      const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
+      await ensureGitRepositoryWorkspace(projectId, project.gitRepoPath, targetBranch);
 
       // Garante que o arquivo main.tex inicial exista com permissão de escrita
       const mainTexPath = path.join(projectDir, 'main.tex');

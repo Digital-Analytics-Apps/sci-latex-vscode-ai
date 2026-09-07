@@ -87,7 +87,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
           id: z.string(),
         }),
         body: z.object({
-          status: z.enum(['APPROVED', 'CHANGES_REQUESTED']),
+          status: z.enum(['APPROVED', 'CHANGES_REQUESTED', 'UNDER_REVIEW']).optional(),
           comment: z.string().optional(),
           lineNumer: z.number().int().positive().optional(),
         }),

@@ -1,14 +1,23 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CancelIcon from "@mui/icons-material/Cancel";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CloseIcon from "@mui/icons-material/Close";
+import CommentIcon from "@mui/icons-material/Comment";
+import SendIcon from "@mui/icons-material/Send";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Chip,
   CircularProgress,
+  Divider,
+  Drawer,
   IconButton,
+  List,
   Paper,
+  Stack,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -30,29 +39,66 @@ export const ReviewDetailPage: React.FC = () => {
 
   const { data: prDetails, isLoading, error } = usePRDetails(prId);
   const reviewMutation = useReviewPRMutation(prId);
-  const [isNITModalOpen, setIsNITModalOpen] = useState<boolean>(false);
 
-  const handleReview = async (status: "APPROVED" | "CHANGES_REQUESTED") => {
+  const [isNITModalOpen, setIsNITModalOpen] = useState<boolean>(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [commentText, setCommentText] = useState<string>("");
+  const [lineNumber, setLineNumber] = useState<string>("");
+
+  const handleReview = async (
+    status?: "APPROVED" | "CHANGES_REQUESTED",
+    customComment?: string,
+    lineNum?: number
+  ) => {
     try {
-      await reviewMutation.mutateAsync({ status });
+      await reviewMutation.mutateAsync({
+        status,
+        comment: customComment || commentText || undefined,
+        lineNumer:
+          lineNum !== undefined
+            ? lineNum
+            : lineNumber
+            ? parseInt(lineNumber, 10)
+            : undefined,
+      });
+
       dispatch(
         showNotification({
           message:
             status === "APPROVED"
               ? "Pull Request APROVADO com sucesso!"
-              : "Ajustes solicitados ao Autor com sucesso!",
-          severity: status === "APPROVED" ? "success" : "info",
-        }),
+              : status === "CHANGES_REQUESTED"
+              ? "Ajustes solicitados ao Autor com sucesso!"
+              : "Comentário registrado com sucesso!",
+          severity:
+            status === "APPROVED"
+              ? "success"
+              : status === "CHANGES_REQUESTED"
+              ? "info"
+              : "success",
+        })
       );
+
+      setCommentText("");
+      setLineNumber("");
     } catch (err: any) {
       dispatch(
         showNotification({
           message:
             err.response?.data?.message || "Erro ao registrar avaliação do PR.",
           severity: "error",
-        }),
+        })
       );
     }
+  };
+
+  const handleAddCommentOnly = async () => {
+    if (!commentText.trim()) return;
+    await handleReview(
+      undefined,
+      commentText,
+      lineNumber ? parseInt(lineNumber, 10) : undefined
+    );
   };
 
   if (isLoading) {
@@ -107,6 +153,8 @@ export const ReviewDetailPage: React.FC = () => {
         return "default";
     }
   };
+
+  const commentsCount = prDetails.comments?.length || 0;
 
   return (
     <Box
@@ -167,13 +215,27 @@ export const ReviewDetailPage: React.FC = () => {
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Badge badgeContent={commentsCount} color="primary">
+            <Button
+              variant="outlined"
+              color="info"
+              size="small"
+              startIcon={<CommentIcon fontSize="small" />}
+              onClick={() => setIsDrawerOpen(true)}
+            >
+              Comentários
+            </Button>
+          </Badge>
+
           <Button
             variant="outlined"
             color="error"
             size="small"
             startIcon={<CancelIcon fontSize="small" />}
             disabled={reviewMutation.isPending}
-            onClick={() => handleReview("CHANGES_REQUESTED")}
+            onClick={() => {
+              setIsDrawerOpen(true);
+            }}
           >
             Solicitar Ajustes
           </Button>
@@ -200,7 +262,7 @@ export const ReviewDetailPage: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* Workspace do VS Code Web com Extensão de Pull Requests do GitHub */}
+      {/* Workspace do VS Code Web com suporte a Branch de Seção e Modo de Revisão */}
       <Box
         sx={{
           flexGrow: 1,
@@ -209,8 +271,141 @@ export const ReviewDetailPage: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        <CodeServerIframe projectId={prDetails.projectId} />
+        <CodeServerIframe
+          projectId={prDetails.projectId}
+          sectionId={prDetails.sectionId}
+          mode="review"
+        />
       </Box>
+
+      {/* Drawer Lateral de Apontamentos e Comentários do Revisor */}
+      <Drawer
+        anchor="right"
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        slotProps={{
+          paper: {
+            sx: { width: 420, display: "flex", flexDirection: "column" },
+          },
+        }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            bgcolor: "background.default",
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="h6" sx={{ fontSize: 16, fontWeight: 700 }}>
+            💬 Comentários & Apontamentos ({commentsCount})
+          </Typography>
+          <IconButton size="small" onClick={() => setIsDrawerOpen(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+
+        {/* Lista de Comentários Existentes */}
+        <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2 }}>
+          {commentsCount === 0 ? (
+            <Alert severity="info" sx={{ mt: 1 }}>
+              Nenhum comentário registrado para este Pull Request até o momento.
+            </Alert>
+          ) : (
+            <List disablePadding>
+              {prDetails.comments?.map((item) => (
+                <Paper
+                  key={item.id}
+                  variant="outlined"
+                  sx={{ p: 1.5, mb: 1.5, borderColor: "divider" }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      mb: 0.5,
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {item.user?.name || "Revisor"}
+                    </Typography>
+                    {item.lineNumer && (
+                      <Chip
+                        label={`Linha #${item.lineNumer}`}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: 11 }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
+                    {item.comment}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                    {new Date(item.createdAt).toLocaleString("pt-BR")}
+                  </Typography>
+                </Paper>
+              ))}
+            </List>
+          )}
+        </Box>
+
+        <Divider />
+
+        {/* Form para Novo Comentário e Decisão de Revisão */}
+        <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+            Novo Apontamento
+          </Typography>
+          <Stack spacing={1.5}>
+            <TextField
+              label="Linha do arquivo (opcional)"
+              size="small"
+              type="number"
+              value={lineNumber}
+              onChange={(e) => setLineNumber(e.target.value)}
+              placeholder="Ex: 18"
+              fullWidth
+            />
+            <TextField
+              label="Comentário / Parecer técnico"
+              size="small"
+              multiline
+              rows={3}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Descreva aqui observações, sugestões ou correções necessárias..."
+              fullWidth
+            />
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SendIcon fontSize="small" />}
+                disabled={!commentText.trim() || reviewMutation.isPending}
+                onClick={handleAddCommentOnly}
+              >
+                Comentar
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                size="small"
+                startIcon={<CancelIcon fontSize="small" />}
+                disabled={reviewMutation.isPending}
+                onClick={() => handleReview("CHANGES_REQUESTED")}
+              >
+                Solicitar Ajustes
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+      </Drawer>
 
       <NITParecerModal
         open={isNITModalOpen}

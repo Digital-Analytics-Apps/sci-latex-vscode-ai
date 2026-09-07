@@ -170,18 +170,16 @@ export class PullRequestsService {
     return this.prRepository.findAll(projectId);
   }
 
-  // Avaliação pelo Revisor (Aprovar ou Solicitar Ajustes)
+  // Avaliação pelo Revisor (Aprovar, Solicitar Ajustes ou Adicionar Comentários)
   async reviewPR(
     prId: string,
     reviewerId: string,
-    status: 'APPROVED' | 'CHANGES_REQUESTED',
+    status?: 'APPROVED' | 'CHANGES_REQUESTED' | 'UNDER_REVIEW',
     comment?: string,
     lineNumer?: number
   ) {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
-
-    const targetStatus = status === 'APPROVED' ? PRStatus.APPROVED : PRStatus.CHANGES_REQUESTED;
 
     // Se houver comentário, grava na tabela de comentários do PR
     if (comment && comment.trim() !== '') {
@@ -193,25 +191,54 @@ export class PullRequestsService {
       });
     }
 
-    const updatedPR = await this.prRepository.updateStatus(prId, targetStatus);
+    let updatedPR: any = pr;
+    if (
+      status &&
+      (status === 'APPROVED' || status === 'CHANGES_REQUESTED') &&
+      status !== pr.status
+    ) {
+      updatedPR = await this.prRepository.updateStatus(prId, status as PRStatus);
+      await logAudit({
+        userId: reviewerId,
+        action: `PR_${status}`,
+        entityType: 'PullRequest',
+        entityId: prId,
+        details: { status, comment, lineNumer },
+      });
+      eventsManager.broadcastToUser(pr.authorId, 'PR_REVIEWED', {
+        pullRequestId: prId,
+        status,
+        reviewerId,
+      });
+    }
 
-    // Registra na Timeline / AuditLog
-    await logAudit({
-      userId: reviewerId,
-      action: `PR_${status}`,
-      entityType: 'PullRequest',
-      entityId: prId,
-      details: { status: targetStatus, comment, lineNumer },
-    });
+    // Sincroniza o comentário e a avaliação diretamente no Pull Request no GitHub
+    if (this.gitService) {
+      const project = await prisma.project.findUnique({ where: { id: pr.projectId } });
+      const reviewerUser = await prisma.user.findUnique({ where: { id: reviewerId } });
+      const section = pr.sectionId
+        ? await prisma.section.findUnique({ where: { id: pr.sectionId } })
+        : null;
 
-    // Emite evento SSE para o Autor
-    eventsManager.broadcastToUser(pr.authorId, 'PR_REVIEWED', {
-      pullRequestId: prId,
-      status: targetStatus,
-      reviewerId,
-    });
+      await this.gitService
+        .submitPullRequestReviewOnGitHub({
+          projectId: pr.projectId,
+          headBranch: section?.branchName,
+          projectTitle: project?.name,
+          repoUrl: project?.gitRepoPath,
+          status,
+          comment,
+          lineNumer,
+          reviewerName: reviewerUser?.name,
+        })
+        .catch((ghErr) => {
+          console.warn('⚠️ Warning syncing review comment to GitHub:', ghErr.message || ghErr);
+        });
+    }
 
-    return updatedPR;
+    // Retorna o PR atualizado com a lista completa de comentários
+    const fullPR = await this.prRepository.findById(prId);
+    return fullPR || updatedPR;
   }
 
   // Registro Manual do Status do NIT (Núcleo de Inovação Tecnológica)

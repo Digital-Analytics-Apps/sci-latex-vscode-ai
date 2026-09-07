@@ -555,4 +555,113 @@ Resuma os achados do trabalho.
       return false;
     }
   }
+
+  // Envia a avaliação e comentários do Revisor diretamente no Pull Request no GitHub
+  async submitPullRequestReviewOnGitHub(data: {
+    projectId: string;
+    headBranch?: string;
+    projectTitle?: string;
+    repoUrl?: string;
+    prNumber?: number;
+    status?: 'APPROVED' | 'CHANGES_REQUESTED' | 'UNDER_REVIEW';
+    comment?: string;
+    lineNumer?: number;
+    reviewerName?: string;
+  }): Promise<boolean> {
+    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+    if (!isGitHubMode) {
+      return true;
+    }
+
+    let owner = await this.getOwner();
+    let repoName = generateRepoName(data.projectId, data.projectTitle);
+
+    if (data.repoUrl) {
+      const match = data.repoUrl.match(/github\.com\/([^/]+)\/([^/.]+)/);
+      if (match) {
+        owner = match[1];
+        repoName = match[2].replace(/\.git$/, '');
+      }
+    }
+
+    let prNumber = data.prNumber;
+    if (!prNumber && data.headBranch) {
+      try {
+        const listUrl = `https://api.github.com/repos/${owner}/${repoName}/pulls?head=${owner}:${data.headBranch}&state=all`;
+        const res = await fetch(listUrl, {
+          headers: {
+            Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            'User-Agent': 'SCI-LaTeX-Backend',
+          },
+        });
+        if (res.ok) {
+          const prs = (await res.json()) as any[];
+          if (prs.length > 0) {
+            prNumber = prs[0].number;
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (!prNumber) {
+      prNumber = 1;
+    }
+
+    const reviewEventMap: Record<string, string> = {
+      APPROVED: 'APPROVE',
+      CHANGES_REQUESTED: 'REQUEST_CHANGES',
+      UNDER_REVIEW: 'COMMENT',
+    };
+
+    const event = data.status ? reviewEventMap[data.status] || 'COMMENT' : 'COMMENT';
+
+    let bodyText = data.comment || '';
+    if (data.lineNumer) {
+      bodyText = `[Linha #${data.lineNumer}] ${bodyText}`;
+    }
+    if (!bodyText.trim()) {
+      if (event === 'REQUEST_CHANGES') bodyText = 'Ajustes solicitados pelo Revisor Técnico.';
+      else if (event === 'APPROVE') bodyText = 'Seção aprovada pelo Revisor Técnico.';
+      else bodyText = 'Comentário do Revisor Técnico.';
+    }
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/reviews`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'SCI-LaTeX-Backend',
+          Accept: 'application/vnd.github.v3+json',
+        },
+        body: JSON.stringify({
+          event,
+          body: bodyText,
+        }),
+      });
+
+      if (!response.ok) {
+        // Fallback para Issue Comment se PR review de self-approval for negado
+        const issueCommentUrl = `https://api.github.com/repos/${owner}/${repoName}/issues/${prNumber}/comments`;
+        await fetch(issueCommentUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'SCI-LaTeX-Backend',
+          },
+          body: JSON.stringify({ body: bodyText }),
+        }).catch(() => {});
+      }
+
+      return true;
+    } catch (error: any) {
+      console.warn('⚠️ Warning submitting GitHub PR review comment:', error.message || error);
+      return false;
+    }
+  }
 }

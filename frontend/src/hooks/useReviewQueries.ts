@@ -2,6 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NITParecerFormData } from "../schemas/nit.schema";
 import { api } from "../services/api";
 
+export interface ReviewCommentItem {
+  id: string;
+  userId: string;
+  lineNumer?: number;
+  comment: string;
+  createdAt: string;
+  user?: { name: string; email?: string };
+}
+
 export interface PullRequestDetail {
   id: string;
   title: string;
@@ -23,6 +32,7 @@ export interface PullRequestDetail {
   author: { id: string; name: string; email: string };
   reviewer?: { id: string; name: string; email: string };
   section: { id: string; title: string; filePath: string };
+  comments?: ReviewCommentItem[];
   diffContent?: string;
   pdfUrl?: string;
 }
@@ -56,8 +66,9 @@ export function useReviewPRMutation(prId: string) {
 
   return useMutation({
     mutationFn: async (data: {
-      status: "APPROVED" | "CHANGES_REQUESTED";
+      status?: "APPROVED" | "CHANGES_REQUESTED" | "UNDER_REVIEW";
       comment?: string;
+      lineNumer?: number;
     }) => {
       const response = await api.post(`/pull-requests/${prId}/review`, data);
       return response.data;
