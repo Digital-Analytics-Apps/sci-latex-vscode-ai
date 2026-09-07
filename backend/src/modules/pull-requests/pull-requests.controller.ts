@@ -10,10 +10,10 @@ export class PullRequestsController {
     const authorId = request.user.sub;
     const bodySchema = z.object({
       title: z.string().min(3),
-      description: z.string().optional(),
-      sectionId: z.string().uuid(),
-      projectId: z.string().uuid(),
-      reviewerId: z.string().uuid().optional(),
+      description: z.string().optional().nullable(),
+      sectionId: z.string().min(1),
+      projectId: z.string().min(1),
+      reviewerId: z.string().optional().nullable().or(z.literal('')),
     });
 
     const body = bodySchema.parse(request.body);

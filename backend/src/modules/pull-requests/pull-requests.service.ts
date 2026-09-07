@@ -17,8 +17,12 @@ export class PullRequestsService {
 
   // Abertura de Pull Request pelo Autor
   async createPR(authorId: string, data: CreatePRData) {
+    const cleanReviewerId =
+      data.reviewerId && data.reviewerId.trim() !== '' ? data.reviewerId : undefined;
+
     const pr = await this.prRepository.create({
       ...data,
+      reviewerId: cleanReviewerId,
       authorId,
     });
 
