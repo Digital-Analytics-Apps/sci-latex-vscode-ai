@@ -168,6 +168,20 @@ export class GitService {
     try {
       await execAsync(`git init --initial-branch=main`, { cwd: tempDir });
 
+      // Criar diretório de seções modulares para evitar conflitos de mesclagem
+      const sectionsDir = path.join(tempDir, 'sections');
+      await fs.mkdir(sectionsDir, { recursive: true });
+
+      const introContent = `\\section{Introdução & Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`;
+      const methodContent = `\\section{Metodologia & Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`;
+      const resultsContent = `\\section{Resultados & Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`;
+      const conclusionContent = `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`;
+
+      await fs.writeFile(path.join(sectionsDir, '01-introduction.tex'), introContent, 'utf-8');
+      await fs.writeFile(path.join(sectionsDir, '02-methodology.tex'), methodContent, 'utf-8');
+      await fs.writeFile(path.join(sectionsDir, '03-results.tex'), resultsContent, 'utf-8');
+      await fs.writeFile(path.join(sectionsDir, '04-conclusion.tex'), conclusionContent, 'utf-8');
+
       const templateContent = `% SCI-LaTeX Paper Template
 \\documentclass{article}
 \\usepackage[utf8]{inputenc}
@@ -181,17 +195,10 @@ export class GitService {
 
 \\maketitle
 
-\\section{Introdução}
-Bem-vindo ao seu novo artigo científico! Escreva a introdução aqui.
-
-\\section{Metodologia}
-Descreva os métodos e experimentos realizados.
-
-\\section{Resultados e Discussão}
-Apresente os resultados obtidos.
-
-\\section{Conclusão}
-Resuma os achados do trabalho.
+\\input{sections/01-introduction.tex}
+\\input{sections/02-methodology.tex}
+\\input{sections/03-results.tex}
+\\input{sections/04-conclusion.tex}
 
 \\end{document}
 `;
@@ -202,8 +209,8 @@ Resuma os achados do trabalho.
       await execAsync(`git config user.name "SCI-LaTeX System"`, { cwd: tempDir });
       await execAsync(`git config user.email "system@sci-latex.org"`, { cwd: tempDir });
 
-      await execAsync(`git add main.tex`, { cwd: tempDir });
-      await execAsync(`git commit -m "Initial commit: LaTeX paper template main.tex"`, {
+      await execAsync(`git add .`, { cwd: tempDir });
+      await execAsync(`git commit -m "Initial commit: Modular LaTeX paper template main.tex and sections/"`, {
         cwd: tempDir,
       });
 

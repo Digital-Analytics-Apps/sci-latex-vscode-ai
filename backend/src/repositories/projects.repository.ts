@@ -137,6 +137,14 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             status: true,
             nitStatus: true,
             createdAt: true,
+            sectionId: true,
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
       },

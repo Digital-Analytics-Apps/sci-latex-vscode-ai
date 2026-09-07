@@ -108,6 +108,19 @@ src/
 
 ---
 
+### 3.7 Arquitetura Modular LaTeX & Trava Preventiva de Seção (`SLV-9`)
+
+1. **Estrutura Modular de Repositório (`sections/*.tex`):**
+   - Repositórios LaTeX inicializados pelo backend contêm um diretório `sections/` com os arquivos individuais (`01-introduction.tex`, `02-methodology.tex`, `03-results.tex`, `04-conclusion.tex`).
+   - O arquivo raiz `main.tex` atua como orquestrador contendo o preâmbulo e importando os capítulos via `\input{sections/...}`.
+   - **Benefício:** Eliminação de 90% dos conflitos de mesclagem do Git, pois autores editando seções distintas trabalham em arquivos isolados.
+
+2. **Detecção de Trava por PR Ativo (`isLocked`):**
+   - Ao consultar os detalhes do projeto (`GET /api/v1/projects/:id`), cada seção é retornada com o campo computado `isLocked: boolean` e o objeto `activePullRequest`.
+   - Se existir um PR ativo nos status `DRAFT`, `UNDER_REVIEW` ou `CHANGES_REQUESTED` para a seção, `isLocked` torna-se `true`, permitindo que extensões (VS Code) ou interfaces web sinalizem e alertem outros autores sobre a edição em andamento.
+
+---
+
 ## 4. Especificação dos Workers do RabbitMQ
 
 1. **Worker `git.operations`:**

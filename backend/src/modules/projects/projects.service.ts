@@ -96,13 +96,40 @@ export class ProjectsService {
     return this.projectsRepository.findAll(filters);
   }
 
-  // Buscar detalhes de um projeto pelo ID
+  // Buscar detalhes de um projeto pelo ID (com computação de travas por PR ativo nas seções)
   async getProjectById(projectId: string) {
     const project = await this.projectsRepository.findById(projectId);
     if (!project) {
       throw new Error('PROJECT_NOT_FOUND');
     }
-    return project;
+
+    const prs = (project as any).prs || [];
+    const activePRStatuses = ['DRAFT', 'UNDER_REVIEW', 'CHANGES_REQUESTED'];
+
+    const sectionsWithLockStatus = ((project as any).sections || []).map((sec: any) => {
+      const activePR = prs.find(
+        (p: any) => p.sectionId === sec.id && activePRStatuses.includes(p.status)
+      );
+
+      return {
+        ...sec,
+        isLocked: !!activePR,
+        activePullRequest: activePR
+          ? {
+              id: activePR.id,
+              title: activePR.title,
+              status: activePR.status,
+              author: activePR.author,
+              createdAt: activePR.createdAt,
+            }
+          : null,
+      };
+    });
+
+    return {
+      ...project,
+      sections: sectionsWithLockStatus,
+    };
   }
 
   // Atualizar informações do projeto (com trava de justificativa para alteração de datas)
