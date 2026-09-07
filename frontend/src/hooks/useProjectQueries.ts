@@ -95,10 +95,10 @@ export function useCreatePRMutation(projectId: string) {
 
   return useMutation({
     mutationFn: async (data: CreatePRFormData) => {
-      const response = await api.post(
-        `/projects/${projectId}/pull-requests`,
-        data,
-      );
+      const response = await api.post('/pull-requests', {
+        ...data,
+        projectId,
+      });
       return response.data;
     },
     onSuccess: () => {
@@ -108,15 +108,13 @@ export function useCreatePRMutation(projectId: string) {
   });
 }
 
-// Mutação para Realizar Merge da Seção (Liberada após aprovação do NIT)
+// Mutação para Realizar Merge da Seção
 export function useMergePRMutation(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (pullRequestId: string) => {
-      const response = await api.post(
-        `/projects/${projectId}/pull-requests/${pullRequestId}/merge`,
-      );
+      const response = await api.post(`/pull-requests/${pullRequestId}/merge`);
       return response.data;
     },
     onSuccess: () => {

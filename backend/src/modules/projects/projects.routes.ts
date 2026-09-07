@@ -8,12 +8,20 @@ import { GitService } from '../git/git.service';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
+import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.repository';
+import { PullRequestsService } from '../pull-requests/pull-requests.service';
+import { PullRequestsController } from '../pull-requests/pull-requests.controller';
+
 export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
   const teamsRepository = new PrismaTeamsRepository();
   const gitService = new GitService();
   const projectsService = new ProjectsService(projectsRepository, teamsRepository, gitService);
   const controller = new ProjectsController(projectsService);
+
+  const prRepository = new PrismaPullRequestsRepository();
+  const prService = new PullRequestsService(prRepository, gitService);
+  const prController = new PullRequestsController(prService);
 
   // Exige autenticação JWT para todas as rotas de projetos
   app.addHook('onRequest', verifyJwt);
@@ -242,5 +250,47 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
     },
     (req, reply) => controller.commitSectionProgress(req, reply)
+  );
+
+  // POST /api/v1/projects/:projectId/pull-requests - Abertura de PR via alias de projeto
+  app.post(
+    '/:projectId/pull-requests',
+    {
+      schema: {
+        tags: ['PullRequests'],
+        summary: 'Abrir novo Pull Request para um projeto',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+        body: z.object({
+          title: z.string().min(3),
+          description: z.string().optional(),
+          sectionId: z.string(),
+          reviewerId: z.string().optional(),
+        }),
+      },
+    },
+    (req: any, reply) => {
+      req.body = { ...req.body, projectId: req.params.projectId };
+      return prController.create(req, reply);
+    }
+  );
+
+  // POST /api/v1/projects/:projectId/pull-requests/:id/merge - Executar Merge via alias de projeto
+  app.post(
+    '/:projectId/pull-requests/:id/merge',
+    {
+      schema: {
+        tags: ['PullRequests'],
+        summary: 'Executar Merge do PR de um projeto',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+          id: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => prController.merge(req, reply)
   );
 }

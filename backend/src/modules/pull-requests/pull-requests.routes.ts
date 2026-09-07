@@ -6,9 +6,12 @@ import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.r
 import { PullRequestsService } from './pull-requests.service';
 import { PullRequestsController } from './pull-requests.controller';
 
+import { GitService } from '../git/git.service';
+
 export async function pullRequestsRoutes(app: FastifyInstance) {
   const prRepository = new PrismaPullRequestsRepository();
-  const prService = new PullRequestsService(prRepository);
+  const gitService = new GitService();
+  const prService = new PullRequestsService(prRepository, gitService);
   const controller = new PullRequestsController(prService);
 
   app.addHook('onRequest', verifyJwt);
