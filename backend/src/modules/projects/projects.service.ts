@@ -289,7 +289,8 @@ export class ProjectsService {
     // Identifica o arquivo e branch da seção (ou main.tex / dev como padrão)
     const section = (project as any).sections?.find((s: any) => s.id === sectionId);
     const filePath = section?.filePath || 'main.tex';
-    const branchName = section?.branchName || (sectionId ? `section/${sectionId}-${projectId.slice(0, 8)}` : 'dev');
+    const branchName =
+      section?.branchName || (sectionId ? `section/${sectionId}-${projectId.slice(0, 8)}` : 'dev');
 
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     const fullFilePath = path.join(projectDir, filePath);

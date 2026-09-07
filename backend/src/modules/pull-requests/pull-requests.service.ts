@@ -139,7 +139,9 @@ export class PullRequestsService {
       const sourceBranch = pr.section.branchName;
       const targetBranch = 'dev';
 
-      const authorUser = pr.authorId ? await prisma.user.findUnique({ where: { id: pr.authorId } }) : null;
+      const authorUser = pr.authorId
+        ? await prisma.user.findUnique({ where: { id: pr.authorId } })
+        : null;
       const authorName = authorUser?.name || 'SCI-LaTeX Author';
       const authorEmail = authorUser?.email || 'author@sci-latex.org';
 
