@@ -210,9 +210,12 @@ export class GitService {
       await execAsync(`git config user.email "system@sci-latex.org"`, { cwd: tempDir });
 
       await execAsync(`git add .`, { cwd: tempDir });
-      await execAsync(`git commit -m "Initial commit: Modular LaTeX paper template main.tex and sections/"`, {
-        cwd: tempDir,
-      });
+      await execAsync(
+        `git commit -m "Initial commit: Modular LaTeX paper template main.tex and sections/"`,
+        {
+          cwd: tempDir,
+        }
+      );
 
       const gitFlags = this.getGitAuthFlags();
       const cleanRemoteUrl = this.cleanRepoUrl(remoteUrl);

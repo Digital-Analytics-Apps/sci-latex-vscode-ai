@@ -27,11 +27,13 @@ services:
     restart: always
     ports:
       - "3333:3333"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=public
       JWT_SECRET: super-secret-jwt-key-change-in-production
       GIT_SERVICE_TOKEN: system-git-service-token-secret
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_ORG: ${GITHUB_ORG:-}
       GITHUB_REPO_PREFIX: ${GITHUB_REPO_PREFIX:-sci-paper-}
       CODE_SERVER_URL: http://code-server:8080
