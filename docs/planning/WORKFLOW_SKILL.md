@@ -10,7 +10,7 @@ Este documento estabelece o fluxo de trabalho obrigatório para criação de bra
 > 1. **Código em Inglês, Comentários em Português:** Nomes de variáveis, funções, classes, arquivos, enums, rotas e tabelas 100% em Inglês. Comentários explicativos podem ser em Português.
 > 2. **Testes Automatizados Obrigatórios:** Toda implementação backend/frontend que possua lógica de negócio ou rotas de API deve conter seus respectivos arquivos de testes unitários ou de integração (`*.test.ts` / `*.spec.ts`).
 > 3. **Fluxo de Branch por Feature:** Cada nova atividade deve ser desenvolvida em sua própria branch Git (`feature/SLV-X-nome-da-task`). Nenhuma alteração direta é feita na `main`.
-> 4. **Gestão de Tarefas no Jira (Fazendo -> Descrição Textual -> Feito):** Ao assumir/iniciar qualquer task do Jira, transicione-a imediatamente para **`Fazendo`** (In Progress, ID 21). Ao implementar ou concluir, aprimore a descrição da issue no Jira com uma explicação textual detalhada contemplando **Problema** e **Solução** (estritamente em texto descritivo, **sem incluir trechos de código**). Ao finalizar, transicione a issue para **`Feito`** (Done, ID 31).
+> 4. **Gestão de Tarefas no Jira (Fazendo -> Título & Descrição Textual -> Feito):** Ao assumir/iniciar qualquer task do Jira, transicione-a imediatamente para **`Fazendo`** (In Progress, ID 21). Ao implementar ou concluir, aprimore o **Título (Summary)** e a **Descrição (Description)** da issue no Jira com uma explicação textual detalhada contemplando **Problema** e **Solução** (estritamente em texto descritivo, **sem incluir trechos de código**). Ao finalizar, transicione a issue para **`Feito`** (Done, ID 31).
 
 ---
 
@@ -24,7 +24,7 @@ graph TD
     D --> E[5. Executar Lint, Typecheck e npm test]
     E --> F[6. Git Commit & Push da Branch]
     F --> G[7. Criar PR via GitHub MCP Server]
-    G --> H[8. Atualizar Descrição Jira com Problema e Solução Textual]
+    G --> H[8. Atualizar Título e Descrição Jira com Problema e Solução Textual]
     H --> I[9. Transicionar Jira p/ 'Feito' - ID 31 e atualizar task.md]
 ```
 
@@ -67,8 +67,8 @@ graph TD
    * **Base:** `main`
    * **Head:** `feature/SLV-X-nome-da-feature`
 
-### Passo 5: Atualização da Descrição no Jira & Conclusão
-1. **Melhorar a descrição no Jira:** Atualizar a issue (`editJiraIssue`) preenchendo detalhadamente as seções de **Problema** e **Solução** de forma estritamente textual (sem blocos de código).
+### Passo 5: Atualização de Título e Descrição no Jira & Conclusão
+1. **Melhorar o Título e a Descrição no Jira:** Atualizar a issue (`editJiraIssue`) refinando o Título (*summary*) e preenchendo detalhadamente a Descrição (*description*) contemplando **Problema** e **Solução** de forma estritamente textual (sem blocos de código).
 2. Mover o status da issue no Jira para **`Feito`** (`transitionJiraIssue` com ID `31`).
 3. Atualizar o item no `task.md` para concluído `[x]`.
 
