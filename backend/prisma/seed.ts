@@ -39,6 +39,15 @@ async function main() {
     },
   });
 
+  const manager = await prisma.user.create({
+    data: {
+      name: 'Gerente Acadêmico',
+      email: 'manager@google.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.MANAGER,
+    },
+  });
+
   const author = await prisma.user.create({
     data: {
       name: 'Autor Pesquisador',
@@ -57,9 +66,10 @@ async function main() {
     },
   });
 
-  console.log('✅ Users seeded successfully:');
+  console.log('✅ Users seeded successfully (Senha padrão: 123456):');
   console.log(`   - Admin: ${admin.email}`);
   console.log(`   - Coordinator: ${coordinator.email}`);
+  console.log(`   - Manager: ${manager.email}`);
   console.log(`   - Author: ${author.email}`);
   console.log(`   - Reviewer: ${reviewer.email}`);
 
@@ -74,15 +84,17 @@ async function main() {
 
   console.log(`✅ Academic Period created: ${academicPeriod.name}`);
 
-  // 3. Criar Equipe Padrão
+  // 3. Criar Equipe Padrão com todos os perfis (Autor, Revisor, Gerente e Coordenador)
   const team = await prisma.team.create({
     data: {
       name: 'Laboratório de Redes e Sistemas Distribuídos (LSD)',
-      description: 'Grupo de pesquisa em computação de alto desempenho e LaTeX.',
+      description: 'Grupo de pesquisa em computação de alto desempenho e escrita científica.',
       coordinatorId: coordinator.id,
+      managerId: manager.id,
       members: {
         create: [
           { userId: coordinator.id, role: Role.COORDINATOR },
+          { userId: manager.id, role: Role.MANAGER },
           { userId: author.id, role: Role.AUTHOR },
           { userId: reviewer.id, role: Role.REVIEWER },
         ],
@@ -91,6 +103,7 @@ async function main() {
   });
 
   console.log(`✅ Team created: ${team.name}`);
+  console.log('   - Integrantes: Coordenador, Gerente, Autor e Revisor');
   console.log('🌱 Seed completed successfully!');
 }
 
