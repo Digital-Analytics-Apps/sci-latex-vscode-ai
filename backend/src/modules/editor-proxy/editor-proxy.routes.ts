@@ -29,15 +29,19 @@ async function ensureGitRepositoryWorkspace(
 
   if (!gitRepoPath) return;
 
-  let authenticatedRepoUrl = gitRepoPath;
-  if (env.GITHUB_TOKEN && gitRepoPath.startsWith('https://github.com/')) {
-    authenticatedRepoUrl = gitRepoPath.replace(
-      'https://github.com/',
-      `https://x-access-token:${env.GITHUB_TOKEN}@github.com/`
-    );
-    if (!authenticatedRepoUrl.endsWith('.git')) {
-      authenticatedRepoUrl += '.git';
-    }
+  let gitFlags = '';
+  let repoUrl = gitRepoPath;
+
+  if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
+    const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
+    gitFlags = `-c http.extraHeader="Authorization: Basic ${authHeader}"`;
+  }
+
+  if (repoUrl.includes('@github.com/')) {
+    repoUrl = repoUrl.replace(/https:\/\/[^@]+@github\.com\//, 'https://github.com/');
+  }
+  if (repoUrl.startsWith('https://github.com/') && !repoUrl.endsWith('.git')) {
+    repoUrl += '.git';
   }
 
   try {
@@ -47,15 +51,15 @@ async function ensureGitRepositoryWorkspace(
         'projects',
         `temp-clone-${projectId}-${Date.now()}`
       );
-      await execAsync(`git clone "${authenticatedRepoUrl}" "${tempDir}"`);
+      await execAsync(`git ${gitFlags} clone "${repoUrl}" "${tempDir}"`);
       await fs.cp(path.join(tempDir, '.git'), path.join(projectDir, '.git'), { recursive: true });
       await fs.rm(tempDir, { recursive: true, force: true });
 
       await execAsync(`git config user.name "SCI-LaTeX User"`, { cwd: projectDir });
       await execAsync(`git config user.email "user@sci-latex.org"`, { cwd: projectDir });
-      await execAsync(`git fetch --all`, { cwd: projectDir }).catch(() => {});
+      await execAsync(`git ${gitFlags} fetch --all`, { cwd: projectDir }).catch(() => {});
     } else {
-      await execAsync(`git fetch --all`, { cwd: projectDir }).catch(() => {});
+      await execAsync(`git ${gitFlags} fetch --all`, { cwd: projectDir }).catch(() => {});
     }
 
     if (targetBranch) {

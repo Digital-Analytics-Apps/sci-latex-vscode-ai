@@ -10,6 +10,7 @@ Este documento estabelece o fluxo de trabalho obrigatório para criação de bra
 > 1. **Código em Inglês, Comentários em Português:** Nomes de variáveis, funções, classes, arquivos, enums, rotas e tabelas 100% em Inglês. Comentários explicativos podem ser em Português.
 > 2. **Testes Automatizados Obrigatórios:** Toda implementação backend/frontend que possua lógica de negócio ou rotas de API deve conter seus respectivos arquivos de testes unitários ou de integração (`*.test.ts` / `*.spec.ts`).
 > 3. **Fluxo de Branch por Feature:** Cada nova atividade deve ser desenvolvida em sua própria branch Git (`feature/SLV-X-nome-da-task`). Nenhuma alteração direta é feita na `main`.
+> 4. **Gestão de Tarefas no Jira (Fazendo -> Descrição Textual -> Feito):** Ao assumir/iniciar qualquer task do Jira, transicione-a imediatamente para **`Fazendo`** (In Progress, ID 21). Ao implementar ou concluir, aprimore a descrição da issue no Jira com uma explicação textual detalhada contemplando **Problema** e **Solução** (estritamente em texto descritivo, **sem incluir trechos de código**). Ao finalizar, transicione a issue para **`Feito`** (Done, ID 31).
 
 ---
 
@@ -17,27 +18,27 @@ Este documento estabelece o fluxo de trabalho obrigatório para criação de bra
 
 ```mermaid
 graph TD
-    A[1. Selecionar Tarefa no planejamento] --> B[2. Criar Branch Git: feature/SLV-X]
-    B --> C[3. Criar Issue Jira & Mover p/ 'Fazendo']
+    A[1. Selecionar Tarefa / Issue Jira] --> B[2. Mover Jira p/ 'Fazendo' - ID 21]
+    B --> C[3. Criar Branch Git: feature/SLV-X]
     C --> D[4. Escrever Código + Arquivos de Teste]
     D --> E[5. Executar Lint, Typecheck e npm test]
     E --> F[6. Git Commit & Push da Branch]
     F --> G[7. Criar PR via GitHub MCP Server]
-    G --> H[8. Transicionar Jira p/ 'Feito' e atualizar task.md]
+    G --> H[8. Atualizar Descrição Jira com Problema e Solução Textual]
+    H --> I[9. Transicionar Jira p/ 'Feito' - ID 31 e atualizar task.md]
 ```
 
 ---
 
 ## 3. Passo a Passo Detalhado para Cada Feature
 
-### Passo 1: Branch Git & Registro Inicial
-1. Criar e trocar para a nova branch de feature:
+### Passo 1: Início no Jira & Branch Git
+1. Ao pegar uma task no Jira (ex: `SLV-X`), mover a issue para **`Fazendo`** (`transitionJiraIssue` com ID `21`).
+2. Criar e trocar para a nova branch de feature:
    ```bash
    git checkout -b feature/SLV-X-nome-da-feature
    ```
-2. Criar a issue no Jira via MCP (`atlassian-mcp-server` -> `createJiraIssue`) no projeto `SLV`.
-3. Mover a issue no Jira para **`Fazendo`** (`transitionJiraIssue` com ID `21`).
-4. Atualizar o item no `task.md` como em andamento `[/]`.
+3. Atualizar o item no `task.md` como em andamento `[/]`.
 
 ### Passo 2: Implementação & Criar Arquivos de Teste
 1. Escrever o código da funcionalidade mantendo todos os identificadores em Inglês.
@@ -66,19 +67,23 @@ graph TD
    * **Base:** `main`
    * **Head:** `feature/SLV-X-nome-da-feature`
 
-### Passo 5: Conclusão da Tarefa
-1. Mover o status da issue no Jira para **`Feito`** (`transitionJiraIssue` com ID `31`).
-2. Atualizar o item no `task.md` para concluído `[x]`.
+### Passo 5: Atualização da Descrição no Jira & Conclusão
+1. **Melhorar a descrição no Jira:** Atualizar a issue (`editJiraIssue`) preenchendo detalhadamente as seções de **Problema** e **Solução** de forma estritamente textual (sem blocos de código).
+2. Mover o status da issue no Jira para **`Feito`** (`transitionJiraIssue` com ID `31`).
+3. Atualizar o item no `task.md` para concluído `[x]`.
 
 ---
 
 ## 4. Parâmetros de Integração com os MCP Servers
 
 ### Jira (Atlassian MCP Server)
-* **Cloud ID:** `9b8a01c9-a829-4f00-8e5a-42a80e690907`
+* **Cloud ID:** `digitalanalyticsapps.atlassian.net` (ou UUID `9b8a01c9-a829-4f00-8e5a-42a80e690907`)
 * **Project Key:** `SLV`
 * **Transição Fazendo:** `21` | **Transição Feito:** `31`
 
-### GitHub (GitHub MCP Server)
+### GitHub (GitHub MCP Server & Octokit SDK)
 * **Owner:** `Digital-Analytics-Apps`
 * **Repo:** `sci-latex-vscode-ai`
+* **SDK Oficial:** Utilizar `@octokit/rest` para todas as chamadas de API (criação/gestão de PRs, reviews, repositórios).
+* **Autenticação Segura Git CLI:** Para comandos `git` via terminal, não embutir tokens em URLs. Utilizar a flag efêmera em memória `-c http.extraHeader="Authorization: Basic <base64>"`.
+

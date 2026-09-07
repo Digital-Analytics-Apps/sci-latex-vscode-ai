@@ -286,6 +286,7 @@ export class PullRequestsService {
         : null;
       const authorName = authorUser?.name || 'SCI-LaTeX Author';
       const authorEmail = authorUser?.email || 'author@sci-latex.org';
+      const project = await prisma.project.findUnique({ where: { id: pr.projectId } });
 
       try {
         await this.gitService.mergeBranch({
@@ -295,15 +296,32 @@ export class PullRequestsService {
           authorName,
           authorEmail,
           commitMessage: `Merge section PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
+          repoUrl: project?.gitRepoPath,
         });
+
+        // Sincroniza a fusão do Pull Request no GitHub remoto via REST API
+        await this.gitService
+          .mergePullRequestOnGitHub({
+            projectId: pr.projectId,
+            headBranch: sourceBranch,
+            baseBranch: targetBranch,
+            projectTitle: project?.name,
+            repoUrl: project?.gitRepoPath,
+            commitTitle: `Merge section PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
+          })
+          .catch((ghErr) => {
+            console.warn('⚠️ Warning merging PR on GitHub API:', ghErr.message || ghErr);
+          });
 
         // Remove a branch do autor após o merge na dev (protegendo main e dev)
         await this.gitService.deleteBranch({
           projectId: pr.projectId,
           branchName: sourceBranch,
+          repoUrl: project?.gitRepoPath,
         });
       } catch (gitErr: any) {
         console.error('❌ Error executing git merge on PR:', gitErr.message || gitErr);
+        throw new Error(`GIT_MERGE_FAILED: ${gitErr.message || gitErr}`);
       }
     }
 
@@ -343,6 +361,7 @@ export class PullRequestsService {
         authorName: 'SCI-LaTeX System',
         authorEmail: 'system@sci-latex.org',
         commitMessage: `Merge branch 'dev' into main for final submission release`,
+        repoUrl: project.gitRepoPath,
       });
     }
 

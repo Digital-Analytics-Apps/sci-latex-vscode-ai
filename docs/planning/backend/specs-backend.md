@@ -73,7 +73,9 @@ src/
 * `GET /api/v1/projects/:id/pdf`
   * **Action:** Retorna o PDF oficial gerado do artigo completo.
 
-### 3.5 Controle de Acesso aos Repositórios do GitHub (ADR 001)
+### 3.5 Controle de Acesso aos Repositórios do GitHub (ADR 001 & Segurança)
+* **SDK Oficial GitHub Octokit:** Todas as chamadas para a API REST/GraphQL do GitHub (criação de repositórios, Pull Requests, revisões técnicas e solicitações de merge) utilizam a biblioteca oficial `@octokit/rest`.
+* **Autenticação Segura no Git CLI:** Comandos do Git em linha de comando (`git clone`, `git fetch`, `git push`, `git merge`) não embutem tokens nas URLs HTTPS (`x-access-token:`). A autenticação é transmitida de forma efêmera e segura via `-c http.extraHeader="Authorization: Basic <base64>"`, evitando o armazenamento de senhas/tokens no `.git/config` ou vazamento em logs.
 * **Modelo Atual (Opção A):** Abstração via Conta de Serviço (`GITHUB_TOKEN`). As permissões de acesso ao artigo são 100% gerenciadas pelo banco de dados (`ProjectMember`) e autenticadas via JWT. Os commits são assinados em nome do autor real. Os usuários finais não precisam de conta no GitHub.
 * **Evolução Futura Registrada:** Ver documento [`adr-001-github-user-access.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/backend/adr-001-github-user-access.md) para detalhes das Opções B (Convite automático via API) e C (Modelo Híbrido).
 

@@ -47,5 +47,6 @@
       ],
       "env": {}
     }
-  ]
+  ],
+  "workbench.colorTheme": "Dark Modern"
 }
