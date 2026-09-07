@@ -24,6 +24,7 @@ import { useParams } from "react-router-dom";
 import {
   useMergePRMutation,
   useProjectDetails,
+  usePullRequestsList,
   useSaveProgressMutation,
 } from "../../hooks/useProjectQueries";
 import { showNotification } from "../../store/slices/notificationSlice";
@@ -35,10 +36,14 @@ export const WorkspacePage: React.FC = () => {
   const dispatch = useDispatch();
 
   const { data: project, isLoading, refetch } = useProjectDetails(projectId);
+  const { data: pullRequests = [] } = usePullRequestsList(projectId);
   const saveProgressMutation = useSaveProgressMutation(projectId);
   const mergePRMutation = useMergePRMutation(projectId);
 
   const [activeSectionId, setActiveSectionId] = useState<string>("");
+  const [savedSections, setSavedSections] = useState<Record<string, boolean>>(
+    {},
+  );
   const [isPRModalOpen, setIsPRModalOpen] = useState<boolean>(false);
 
   const mockSections = project?.sections || [
@@ -68,15 +73,47 @@ export const WorkspacePage: React.FC = () => {
   const currentSection =
     mockSections.find((s) => s.id === activeSectionId) || mockSections[0];
 
+  const activePR = pullRequests.find(
+    (pr: any) => pr.sectionId === currentSection.id,
+  );
+  const hasSavedProgress = Boolean(
+    savedSections[currentSection.id] || activePR,
+  );
+
+  const canSendForReview =
+    hasSavedProgress && (!activePR || activePR.status === "DRAFT");
+  const canMerge = activePR?.status === "APPROVED";
+
+  const getSendReviewTooltip = () => {
+    if (activePR?.status === "UNDER_REVIEW")
+      return "Seção já enviada e sob análise do Revisor";
+    if (activePR?.status === "APPROVED")
+      return "Revisão desta seção já foi aprovada pelo Revisor";
+    if (activePR?.status === "MERGED")
+      return "Esta seção já foi mesclada na branch dev";
+    if (!hasSavedProgress)
+      return "Clique em 'Salvar Progresso' pelo menos uma vez antes de enviar para revisão";
+    return "Enviar a seção para análise do Revisor (converte Draft em Ready for Review)";
+  };
+
+  const getMergeTooltip = () => {
+    if (canMerge)
+      return "Realizar o merge da seção aprovada na branch dev oficial";
+    if (activePR?.status === "MERGED")
+      return "Merge já foi realizado nesta seção";
+    return "O merge fica disponível somente após a aprovação da revisão pelo Revisor";
+  };
+
   const handleSaveProgress = async () => {
     try {
       await saveProgressMutation.mutateAsync({
         sectionId: currentSection.id,
         commitMessage: `Update section ${currentSection.title}`,
       });
+      setSavedSections((prev) => ({ ...prev, [currentSection.id]: true }));
       dispatch(
         showNotification({
-          message: `Progresso salvo com sucesso via commit silencioso da Conta de Serviço!`,
+          message: `Progresso salvo! Branch atualizada e Draft PR gerado/mantido no GitHub.`,
           severity: "success",
         }),
       );
@@ -91,11 +128,12 @@ export const WorkspacePage: React.FC = () => {
   };
 
   const handleExecuteMerge = async () => {
+    if (!activePR?.id) return;
     try {
-      await mergePRMutation.mutateAsync("pr-latest");
+      await mergePRMutation.mutateAsync(activePR.id);
       dispatch(
         showNotification({
-          message: "Merge concluído com sucesso! A branch foi integrada.",
+          message: "Merge concluído com sucesso! A branch foi integrada à dev.",
           severity: "success",
         }),
       );
@@ -103,8 +141,8 @@ export const WorkspacePage: React.FC = () => {
       dispatch(
         showNotification({
           message:
-            "Aguardando aprovação do parecer do NIT antes de realizar o merge.",
-          severity: "warning",
+            "Erro ao realizar merge. Certifique-se de que a revisão foi aprovada.",
+          severity: "error",
         }),
       );
     }
@@ -168,12 +206,22 @@ export const WorkspacePage: React.FC = () => {
               color="primary"
               variant="outlined"
             />
-            <Chip
-              label="Prazo: 🟢 No Prazo"
-              size="small"
-              color="success"
-              sx={{ fontWeight: 600 }}
-            />
+            {activePR && (
+              <Chip
+                label={`PR: ${activePR.status}`}
+                size="small"
+                color={
+                  activePR.status === "APPROVED"
+                    ? "success"
+                    : activePR.status === "UNDER_REVIEW"
+                      ? "warning"
+                      : activePR.status === "MERGED"
+                        ? "info"
+                        : "default"
+                }
+                sx={{ fontWeight: 600 }}
+              />
+            )}
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -183,42 +231,56 @@ export const WorkspacePage: React.FC = () => {
               </IconButton>
             </Tooltip>
 
-            <Button
-              variant="outlined"
-              color="primary"
-              size="small"
-              startIcon={
-                saveProgressMutation.isPending ? (
-                  <CircularProgress size={14} color="inherit" />
-                ) : (
-                  <SaveIcon fontSize="small" />
-                )
-              }
-              onClick={handleSaveProgress}
-              disabled={saveProgressMutation.isPending}
-            >
-              Salvar Progresso
-            </Button>
+            <Tooltip title="Salva as alterações no Git e cria/mantém o Draft PR no GitHub">
+              <span>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  startIcon={
+                    saveProgressMutation.isPending ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      <SaveIcon fontSize="small" />
+                    )
+                  }
+                  onClick={handleSaveProgress}
+                  disabled={saveProgressMutation.isPending}
+                >
+                  Salvar Progresso
+                </Button>
+              </span>
+            </Tooltip>
 
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<SendIcon fontSize="small" />}
-              onClick={() => setIsPRModalOpen(true)}
-            >
-              Enviar p/ Revisão
-            </Button>
+            <Tooltip title={getSendReviewTooltip()}>
+              <span>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<SendIcon fontSize="small" />}
+                  onClick={() => setIsPRModalOpen(true)}
+                  disabled={!canSendForReview}
+                >
+                  Enviar p/ Revisão
+                </Button>
+              </span>
+            </Tooltip>
 
-            <Button
-              variant="contained"
-              color="success"
-              size="small"
-              startIcon={<MergeTypeIcon fontSize="small" />}
-              onClick={handleExecuteMerge}
-            >
-              Realizar Merge
-            </Button>
+            <Tooltip title={getMergeTooltip()}>
+              <span>
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="small"
+                  startIcon={<MergeTypeIcon fontSize="small" />}
+                  onClick={handleExecuteMerge}
+                  disabled={!canMerge || mergePRMutation.isPending}
+                >
+                  Realizar Merge
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
         </Paper>
 

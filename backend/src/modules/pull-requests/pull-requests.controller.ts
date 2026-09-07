@@ -23,7 +23,7 @@ export class PullRequestsController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().optional(),
     });
 
     const { projectId } = querySchema.parse(request.query);
@@ -33,7 +33,7 @@ export class PullRequestsController {
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
-      id: z.string().uuid(),
+      id: z.string(),
     });
 
     const { id } = paramsSchema.parse(request.params);
@@ -51,7 +51,7 @@ export class PullRequestsController {
 
   async review(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
-      id: z.string().uuid(),
+      id: z.string(),
     });
     const bodySchema = z.object({
       status: z.enum(['APPROVED', 'CHANGES_REQUESTED']),
@@ -76,7 +76,7 @@ export class PullRequestsController {
 
   async updateNIT(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
-      id: z.string().uuid(),
+      id: z.string(),
     });
     const bodySchema = z.object({
       nitStatus: z.enum(['WAITING_NIT', 'APPROVED_NIT', 'REJECTED_NIT']),
@@ -112,7 +112,10 @@ export class PullRequestsController {
 
     try {
       const pr = await this.prService.assignReviewer(id, reviewerId, assignerId);
-      return reply.send({ pullRequest: pr, message: 'Revisor atribuído com sucesso ao Pull Request.' });
+      return reply.send({
+        pullRequest: pr,
+        message: 'Revisor atribuído com sucesso ao Pull Request.',
+      });
     } catch (err: any) {
       if (err.message === 'PR_NOT_FOUND') {
         return reply.status(404).send({ message: 'Pull Request not found' });
@@ -123,7 +126,7 @@ export class PullRequestsController {
 
   async merge(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
-      id: z.string().uuid(),
+      id: z.string(),
     });
 
     const { id } = paramsSchema.parse(request.params);

@@ -48,7 +48,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
         description: 'Retorna os PRs filtrados por projeto ou do usuário logado.',
         security: [{ bearerAuth: [] }],
         querystring: z.object({
-          projectId: z.string().uuid().optional(),
+          projectId: z.string().optional(),
         }),
       },
     },
@@ -66,7 +66,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
           'Retorna os metadados do PR, histórico de comentários por linha e status do NIT.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
       },
     },
@@ -84,7 +84,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
           'Permite ao Revisor aprovar a seção ou solicitar ajustes adicionando comentários linha por linha.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
         body: z.object({
           status: z.enum(['APPROVED', 'CHANGES_REQUESTED']),
@@ -108,7 +108,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
           'Permite ao Coordenador, Gerente ou Admin aprovar ou rejeitar o parecer do NIT sobre a seção.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
         body: z.object({
           nitStatus: z.enum(['WAITING_NIT', 'APPROVED_NIT', 'REJECTED_NIT']),

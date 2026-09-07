@@ -14,11 +14,11 @@ export type PullRequestWithRelations = Prisma.PullRequestGetPayload<{
 
 export interface CreatePRData {
   title: string;
-  description?: string;
+  description?: string | null;
   sectionId: string;
   projectId: string;
   authorId?: string;
-  reviewerId?: string;
+  reviewerId?: string | null;
   nitStatus?: NITStatus;
 }
 

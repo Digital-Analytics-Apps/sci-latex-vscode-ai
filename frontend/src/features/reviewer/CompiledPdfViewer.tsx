@@ -11,7 +11,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { api } from "../../services/api";
 
 interface CompiledPdfViewerProps {
   pdfUrl?: string;
@@ -20,14 +21,64 @@ interface CompiledPdfViewerProps {
 
 export const CompiledPdfViewer: React.FC<CompiledPdfViewerProps> = ({
   pdfUrl,
-  projectId = "demo-project-1",
+  projectId,
 }) => {
   const [zoom, setZoom] = useState<number>(100);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const baseUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
-  const targetPdfUrl = pdfUrl || `${baseUrl}/projects/${projectId}/pdf`;
+  useEffect(() => {
+    let currentObjectUrl: string | null = null;
+    let isMounted = true;
+
+    async function loadPdf() {
+      if (!projectId && !pdfUrl) {
+        setIsLoading(false);
+        setErrorMsg("ID do projeto não fornecido para carregar o PDF.");
+        return;
+      }
+
+      setIsLoading(true);
+      setErrorMsg(null);
+
+      // Se pdfUrl já for um blob local ou data-uri, utilizar diretamente
+      if (pdfUrl && (pdfUrl.startsWith("blob:") || pdfUrl.startsWith("data:"))) {
+        setBlobUrl(pdfUrl);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const endpoint = pdfUrl || `/projects/${projectId}/pdf`;
+        const response = await api.get(endpoint, {
+          responseType: "blob",
+        });
+
+        if (isMounted) {
+          const blob = new Blob([response.data], { type: "application/pdf" });
+          currentObjectUrl = URL.createObjectURL(blob);
+          setBlobUrl(currentObjectUrl);
+          setIsLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          console.error("Erro ao carregar PDF:", err);
+          setErrorMsg("Não foi possível carregar o PDF oficial compilado.");
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadPdf();
+
+    return () => {
+      isMounted = false;
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+      }
+    };
+  }, [pdfUrl, projectId]);
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 15, 200));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 15, 50));
@@ -78,17 +129,18 @@ export const CompiledPdfViewer: React.FC<CompiledPdfViewerProps> = ({
             </IconButton>
           </Tooltip>
 
-          <Button
-            component="a"
-            href={targetPdfUrl}
-            target="_blank"
-            download="compiled-paper.pdf"
-            variant="outlined"
-            size="small"
-            startIcon={<DownloadIcon fontSize="small" />}
-          >
-            Download PDF
-          </Button>
+          {blobUrl && (
+            <Button
+              component="a"
+              href={blobUrl}
+              download="compiled-paper.pdf"
+              variant="outlined"
+              size="small"
+              startIcon={<DownloadIcon fontSize="small" />}
+            >
+              Download PDF
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -124,18 +176,25 @@ export const CompiledPdfViewer: React.FC<CompiledPdfViewerProps> = ({
           </Box>
         )}
 
-        <iframe
-          src={`${targetPdfUrl}#zoom=${zoom}`}
-          title="Compiled TeX PDF Document"
-          onLoad={() => setIsLoading(false)}
-          style={{
-            width: "100%",
-            height: "100%",
-            border: "none",
-            transform: `scale(${zoom / 100})`,
-            transformOrigin: "top center",
-          }}
-        />
+        {errorMsg && !isLoading && (
+          <Box sx={{ p: 3, textAlign: "center", color: "error.main" }}>
+            <Typography variant="body2">{errorMsg}</Typography>
+          </Box>
+        )}
+
+        {blobUrl && !isLoading && (
+          <iframe
+            src={`${blobUrl}#zoom=${zoom}`}
+            title="Compiled TeX PDF Document"
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: "top center",
+            }}
+          />
+        )}
       </Box>
     </Paper>
   );

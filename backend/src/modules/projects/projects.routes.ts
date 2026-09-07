@@ -76,11 +76,27 @@ export async function projectsRoutes(app: FastifyInstance) {
         description: 'Retorna metadados completos, seções e membros associados a um artigo.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
       },
     },
     (req, reply) => controller.getById(req, reply)
+  );
+
+  // GET /api/v1/projects/:id/pdf - Baixar ou visualizar PDF oficial do artigo
+  app.get(
+    '/:id/pdf',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter PDF oficial compilado do artigo',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    (req, reply) => controller.getProjectPDF(req, reply)
   );
 
   // PATCH /api/v1/projects/:id - Atualizar metadados e congressos do projeto (Exige justificativa em datas)
@@ -94,7 +110,7 @@ export async function projectsRoutes(app: FastifyInstance) {
           'Permite atualizar o título, descrição, congressos alvo/backup ou status de submissão do artigo. Requer campo justification caso datas sejam alteradas.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
         body: z.object({
           name: z.string().optional(),
@@ -125,7 +141,7 @@ export async function projectsRoutes(app: FastifyInstance) {
           'Exclui permanentemente um artigo científico do sistema. Requer papel de Coordenador, Gerente ou Admin.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
       },
     },
@@ -144,10 +160,10 @@ export async function projectsRoutes(app: FastifyInstance) {
           'Permite ao Coordenador, Gerente ou Admin associar um usuário ao projeto com papel de AUTHOR ou REVIEWER.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
         body: z.object({
-          userId: z.string().uuid(),
+          userId: z.string(),
           role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
         }),
       },
@@ -166,8 +182,8 @@ export async function projectsRoutes(app: FastifyInstance) {
         description: 'Permite ao Coordenador, Gerente ou Admin remover um membro de um projeto.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
-          userId: z.string().uuid(),
+          id: z.string(),
+          userId: z.string(),
         }),
       },
     },
@@ -185,7 +201,7 @@ export async function projectsRoutes(app: FastifyInstance) {
           'Retorna o histórico cronológico de criações, alterações de prazos com justificativas, PRs e revisões.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
       },
     },
@@ -204,7 +220,7 @@ export async function projectsRoutes(app: FastifyInstance) {
           'Permite registrar o aceite com DOI, pedido de ajustes, ou decisão dos autores após rejeição (redirecionar para congresso backup ou abrir versão v2).',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
         body: z.object({
           submissionStatus: z.enum([

@@ -3,7 +3,6 @@ import {
   PrismaPullRequestsRepository,
   CreatePRData,
 } from '../../repositories/pull-requests.repository';
-import { latexProducer } from '../../queue/producers/latex.producer';
 import { eventsManager } from '../events/events.manager';
 import { logAudit } from '../../utils/audit';
 import { GitService } from '../git/git.service';
@@ -38,7 +37,10 @@ export class PullRequestsService {
     if (!existingSection) {
       const shortHash = data.projectId.slice(0, 8);
       const titleMap: Record<string, { title: string; filePath: string }> = {
-        'sec-1': { title: '1. Introdução & Trabalhos Relacionados', filePath: 'sections/01-introduction.tex' },
+        'sec-1': {
+          title: '1. Introdução & Trabalhos Relacionados',
+          filePath: 'sections/01-introduction.tex',
+        },
         'sec-2': { title: '2. Metodologia & Formulação', filePath: 'sections/02-methodology.tex' },
         'sec-3': { title: '3. Resultados & Experimentos', filePath: 'sections/03-results.tex' },
         'sec-4': { title: '4. Conclusão', filePath: 'sections/04-conclusion.tex' },
@@ -59,11 +61,39 @@ export class PullRequestsService {
       });
     }
 
-    const pr = await this.prRepository.create({
-      ...data,
-      reviewerId: cleanReviewerId,
-      authorId,
+    // Verifica se já existe um Draft PR para a mesma seção e projeto
+    const existingDraftPR = await prisma.pullRequest.findFirst({
+      where: {
+        projectId: data.projectId,
+        sectionId: data.sectionId,
+        status: PRStatus.DRAFT,
+      },
     });
+
+    let pr: any;
+    if (existingDraftPR) {
+      if (cleanReviewerId && cleanReviewerId !== existingDraftPR.reviewerId) {
+        await this.prRepository.updateReviewer(existingDraftPR.id, cleanReviewerId);
+      }
+      pr = await this.prRepository.updateStatus(existingDraftPR.id, PRStatus.UNDER_REVIEW);
+    } else {
+      pr = await this.prRepository.create({
+        ...data,
+        reviewerId: cleanReviewerId,
+        authorId,
+      });
+    }
+
+    // Transiciona o PR no GitHub remoto para Ready for Review
+    if (this.gitService) {
+      const project = await prisma.project.findUnique({ where: { id: data.projectId } });
+      await this.gitService.markPullRequestReadyForReview({
+        projectId: data.projectId,
+        projectTitle: project?.name,
+        headBranch: existingSection.branchName,
+        repoUrl: project?.gitRepoPath,
+      });
+    }
 
     // 1. Registra no AuditLog (Timeline)
     await logAudit({
@@ -71,7 +101,12 @@ export class PullRequestsService {
       action: 'PR_OPENED',
       entityType: 'PullRequest',
       entityId: pr.id,
-      details: { title: pr.title, sectionId: pr.sectionId, projectId: pr.projectId, reviewerId: pr.reviewerId },
+      details: {
+        title: pr.title,
+        sectionId: pr.sectionId,
+        projectId: pr.projectId,
+        reviewerId: pr.reviewerId,
+      },
     });
 
     // 2. Notifica todos os membros do projeto em tempo real via SSE (Autores, Revisores, Coordenadores)
@@ -88,15 +123,6 @@ export class PullRequestsService {
         authorId,
         reviewerId: pr.reviewerId,
       });
-    });
-
-    // 3. Dispara job no RabbitMQ para compilar o PDF de visualização do Revisor
-    await latexProducer.publishCompilation({
-      type: 'COMPILE_PR_PDF',
-      projectId: pr.projectId,
-      pullRequestId: pr.id,
-      branchName: pr.section?.branchName || 'dev',
-      requesterId: authorId,
     });
 
     return pr;
@@ -266,15 +292,7 @@ export class PullRequestsService {
       details: { mergedAt: mergedPR.mergedAt, targetBranch: 'dev' },
     });
 
-    // 2. Dispara compilação do PDF da dev oficial consolidada
-    await latexProducer.publishCompilation({
-      type: 'COMPILE_MASTER_PDF',
-      projectId: pr.projectId,
-      branchName: 'dev',
-      requesterId,
-    });
-
-    // 3. Emite notificação SSE de desbloqueio de merge
+    // 2. Emite notificação SSE de desbloqueio de merge
     eventsManager.broadcastToUser(pr.authorId, 'MERGE_UNLOCKED', {
       pullRequestId: prId,
       projectId: pr.projectId,
@@ -307,13 +325,6 @@ export class PullRequestsService {
       entityType: 'Project',
       entityId: projectId,
       details: { mergedAt: new Date() },
-    });
-
-    await latexProducer.publishCompilation({
-      type: 'COMPILE_MASTER_PDF',
-      projectId,
-      branchName: 'main',
-      requesterId,
     });
 
     return { message: 'Artigo mesclado com sucesso na branch main para submissão final.' };

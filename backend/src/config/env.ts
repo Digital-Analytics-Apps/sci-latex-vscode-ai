@@ -5,7 +5,7 @@ dotenv.config();
 
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
-  RABBITMQ_URL: z.string().default('amqp://guest:guest@localhost:5672'),
+  RABBITMQ_URL: z.string().optional(),
   JWT_SECRET: z.string().min(8),
   GIT_SERVICE_TOKEN: z.string().min(8),
   GITHUB_TOKEN: z.string().optional(),

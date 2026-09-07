@@ -77,17 +77,6 @@ export const ReviewerLayout: React.FC<{ children: React.ReactNode }> = ({
             >
               Painel de Revisão & Parecer NIT
             </Typography>
-            <Chip
-              label="PR #102: Atualização da Introdução"
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-            <Chip
-              label="Status NIT: AGUARDANDO_NIT"
-              size="small"
-              color="warning"
-            />
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -106,15 +95,6 @@ export const ReviewerLayout: React.FC<{ children: React.ReactNode }> = ({
                 variant="outlined"
               />
             </Tooltip>
-
-            <Button
-              variant="contained"
-              color="success"
-              size="small"
-              startIcon={<CheckCircleIcon />}
-            >
-              Aprovar NIT e Liberar Merge
-            </Button>
 
             <Tooltip title="Alternar Modo Claro / Escuro">
               <IconButton

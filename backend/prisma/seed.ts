@@ -18,13 +18,13 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.academicPeriod.deleteMany();
 
-  const defaultPasswordHash = await hashPassword('Password123!');
+  const defaultPasswordHash = await hashPassword('123456');
 
   // 1. Criar Usuários Padrão
   const admin = await prisma.user.create({
     data: {
       name: 'System Admin',
-      email: 'admin@sci-latex.org',
+      email: 'admin@google.com',
       passwordHash: defaultPasswordHash,
       role: Role.ADMIN,
     },
@@ -33,7 +33,7 @@ async function main() {
   const coordinator = await prisma.user.create({
     data: {
       name: 'Prof. Coordenador',
-      email: 'coordinator@sci-latex.org',
+      email: 'coordinator@google.com',
       passwordHash: defaultPasswordHash,
       role: Role.COORDINATOR,
     },
@@ -42,7 +42,7 @@ async function main() {
   const author = await prisma.user.create({
     data: {
       name: 'Autor Pesquisador',
-      email: 'author@sci-latex.org',
+      email: 'author@google.com',
       passwordHash: defaultPasswordHash,
       role: Role.AUTHOR,
     },
@@ -51,7 +51,7 @@ async function main() {
   const reviewer = await prisma.user.create({
     data: {
       name: 'Revisor Técnico',
-      email: 'reviewer@sci-latex.org',
+      email: 'reviewer@google.com',
       passwordHash: defaultPasswordHash,
       role: Role.REVIEWER,
     },

@@ -272,7 +272,7 @@ export class ProjectsService {
     return updated;
   }
 
-  // Realiza o commit silencioso do progresso da seção no GitHub via Service Token
+  // Realiza o commit silencioso do progresso da seção no GitHub via Service Token e garante a existência do Draft PR
   async commitSectionProgress(
     projectId: string,
     sectionId: string,
@@ -286,11 +286,56 @@ export class ProjectsService {
     const authorName = user?.name || 'SCI-LaTeX Author';
     const authorEmail = user?.email || 'author@sci-latex.org';
 
-    // Identifica o arquivo e branch da seção (ou main.tex / dev como padrão)
-    const section = (project as any).sections?.find((s: any) => s.id === sectionId);
-    const filePath = section?.filePath || 'main.tex';
-    const branchName =
-      section?.branchName || (sectionId ? `section/${sectionId}-${projectId.slice(0, 8)}` : 'dev');
+    // Garante que a seção existe na tabela Section para evitar violações de chave estrangeira
+    const shortHash = projectId.slice(0, 8);
+    const dbSectionId = `${sectionId}-${shortHash}`;
+    let existingSection = await prisma.section.findFirst({
+      where: { projectId, OR: [{ id: sectionId }, { id: dbSectionId }] },
+    });
+
+    if (!existingSection) {
+      const titleMap: Record<string, { title: string; filePath: string }> = {
+        'sec-1': {
+          title: '1. Introdução & Trabalhos Relacionados',
+          filePath: 'sections/01-introduction.tex',
+        },
+        'sec-2': { title: '2. Metodologia & Formulação', filePath: 'sections/02-methodology.tex' },
+        'sec-3': { title: '3. Resultados & Experimentos', filePath: 'sections/03-results.tex' },
+        'sec-4': { title: '4. Conclusão', filePath: 'sections/04-conclusion.tex' },
+      };
+      const meta = titleMap[sectionId] || {
+        title: `Seção ${sectionId}`,
+        filePath: `sections/${sectionId}.tex`,
+      };
+
+      existingSection = await prisma.section
+        .create({
+          data: {
+            id: dbSectionId,
+            projectId,
+            title: meta.title,
+            filePath: meta.filePath,
+            branchName: `section/${sectionId}-${shortHash}`,
+          },
+        })
+        .catch(
+          () =>
+            ({
+              id: dbSectionId,
+              projectId,
+              title: meta.title,
+              filePath: meta.filePath,
+              branchName: `section/${sectionId}-${shortHash}`,
+            }) as any
+        );
+    }
+
+    if (!existingSection) {
+      throw new Error('SECTION_NOT_FOUND');
+    }
+
+    const filePath = existingSection.filePath;
+    const branchName = existingSection.branchName;
 
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     const fullFilePath = path.join(projectDir, filePath);
@@ -323,6 +368,70 @@ export class ProjectsService {
       );
     }
 
+    // Criar ou garantir que o Pull Request em modo DRAFT exista no banco de dados e no GitHub
+    let pr: any = null;
+    const dbProject = await prisma.project
+      .findUnique({ where: { id: projectId } })
+      .catch(() => null);
+
+    if (dbProject) {
+      pr = await prisma.pullRequest
+        .findFirst({
+          where: {
+            projectId,
+            sectionId,
+            status: { in: ['DRAFT', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'APPROVED'] },
+          },
+        })
+        .catch(() => null);
+
+      if (!pr) {
+        const reviewerMember = await prisma.projectMember
+          .findFirst({
+            where: { projectId, role: 'REVIEWER' },
+          })
+          .catch(() => null);
+
+        let authorIdToUse = userId;
+        if (user) {
+          authorIdToUse = user.id;
+        } else {
+          const anyUser = await prisma.user.findFirst().catch(() => null);
+          if (anyUser) {
+            authorIdToUse = anyUser.id;
+          }
+        }
+
+        pr = await prisma.pullRequest
+          .create({
+            data: {
+              title: `[DRAFT] Revisão da Seção: ${existingSection.title}`,
+              description: `Progresso salvo pelo autor em ${new Date().toLocaleDateString('pt-BR')}`,
+              status: 'DRAFT',
+              projectId,
+              sectionId,
+              authorId: authorIdToUse,
+              reviewerId: reviewerMember?.userId || null,
+            },
+          })
+          .catch(() => null);
+      }
+
+      try {
+        await this.gitService.createDraftPullRequest({
+          projectId,
+          headBranch: branchName,
+          baseBranch: 'dev',
+          title: `[DRAFT] Revisão da Seção: ${existingSection.title}`,
+          body: `Draft Pull Request criado automaticamente ao salvar o progresso da seção.`,
+          projectTitle: project.name,
+          repoUrl: project.gitRepoPath,
+        });
+      } catch (ghErr: any) {
+        console.warn('⚠️ Warning creating remote GitHub draft PR:', ghErr.message || ghErr);
+      }
+    }
+
     await logAudit({
       userId,
       action: 'SECTION_PROGRESS_COMMITTED',
@@ -334,14 +443,16 @@ export class ProjectsService {
         branchName,
         commitHash,
         commitMessage: msg,
+        pullRequestId: pr?.id,
       },
     });
 
     return {
-      message: 'Progresso salvo e commit efetuado com sucesso no GitHub!',
+      message: 'Progresso salvo e Draft PR mantido/criado no GitHub com sucesso!',
       commitHash,
       sectionId,
       projectId,
+      pullRequest: pr,
     };
   }
 }

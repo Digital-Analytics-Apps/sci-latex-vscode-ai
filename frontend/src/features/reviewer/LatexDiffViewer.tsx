@@ -8,11 +8,8 @@ interface LatexDiffViewerProps {
 export const LatexDiffViewer: React.FC<LatexDiffViewerProps> = ({
   diffContent,
 }) => {
-  const sampleDiff =
-    diffContent ||
-    `--- a/sections/02-methodology.tex\n+++ b/sections/02-methodology.tex\n@@ -12,4 +12,6 @@\n \\section{Metodologia Experimental}\n-Esta secao descreve a formulacao basica.\n+Esta seção apresenta a formulação matemática detalhada do modelo.\n+Utilizamos um conjunto de dados sintéticos com N=1000 amostras.\n \\begin{equation}\n-  E = mc^2\n+  E = mc^2 + \\Delta E_{corr}\n \\end{equation}`;
-
-  const diffLines = sampleDiff.split("\n");
+  const hasDiff = Boolean(diffContent && diffContent.trim());
+  const diffLines = hasDiff ? (diffContent as string).split("\n") : [];
 
   return (
     <Paper
@@ -40,65 +37,74 @@ export const LatexDiffViewer: React.FC<LatexDiffViewerProps> = ({
           fontSize: "0.8rem",
           lineHeight: 1.6,
           bgcolor: "#090d14",
+          display: hasDiff ? "block" : "flex",
+          alignItems: hasDiff ? "stretch" : "center",
+          justifyContent: hasDiff ? "stretch" : "center",
         }}
       >
-        {diffLines.map((line, index) => {
-          const isAddition = line.startsWith("+") && !line.startsWith("+++");
-          const isDeletion = line.startsWith("-") && !line.startsWith("---");
-          const isHeader =
-            line.startsWith("@@") ||
-            line.startsWith("---") ||
-            line.startsWith("+++");
+        {!hasDiff ? (
+          <Typography variant="body2" color="text.secondary">
+            Nenhuma alteração de diff registrada para este Pull Request.
+          </Typography>
+        ) : (
+          diffLines.map((line, index) => {
+            const isAddition = line.startsWith("+") && !line.startsWith("+++");
+            const isDeletion = line.startsWith("-") && !line.startsWith("---");
+            const isHeader =
+              line.startsWith("@@") ||
+              line.startsWith("---") ||
+              line.startsWith("+++");
 
-          return (
-            <Box
-              key={index}
-              sx={{
-                px: 1,
-                py: 0.2,
-                borderRadius: "2px",
-                bgcolor: isAddition
-                  ? "rgba(16, 185, 129, 0.15)"
-                  : isDeletion
-                    ? "rgba(239, 68, 68, 0.15)"
-                    : isHeader
-                      ? "rgba(14, 165, 233, 0.1)"
-                      : "transparent",
-                color: isAddition
-                  ? "#34d399"
-                  : isDeletion
-                    ? "#f87171"
-                    : isHeader
-                      ? "#38bdf8"
-                      : "text.primary",
-                display: "flex",
-                gap: 1,
-              }}
-            >
-              <Typography
-                component="span"
+            return (
+              <Box
+                key={index}
                 sx={{
-                  width: 32,
-                  color: "text.disabled",
-                  fontSize: "0.75rem",
-                  userSelect: "none",
+                  px: 1,
+                  py: 0.2,
+                  borderRadius: "2px",
+                  bgcolor: isAddition
+                    ? "rgba(16, 185, 129, 0.15)"
+                    : isDeletion
+                      ? "rgba(239, 68, 68, 0.15)"
+                      : isHeader
+                        ? "rgba(14, 165, 233, 0.1)"
+                        : "transparent",
+                  color: isAddition
+                    ? "#34d399"
+                    : isDeletion
+                      ? "#f87171"
+                      : isHeader
+                        ? "#38bdf8"
+                        : "text.primary",
+                  display: "flex",
+                  gap: 1,
                 }}
               >
-                {index + 1}
-              </Typography>
-              <Typography
-                component="span"
-                sx={{
-                  fontFamily: "inherit",
-                  fontSize: "inherit",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {line}
-              </Typography>
-            </Box>
-          );
-        })}
+                <Typography
+                  component="span"
+                  sx={{
+                    width: 32,
+                    color: "text.disabled",
+                    fontSize: "0.75rem",
+                    userSelect: "none",
+                  }}
+                >
+                  {index + 1}
+                </Typography>
+                <Typography
+                  component="span"
+                  sx={{
+                    fontFamily: "inherit",
+                    fontSize: "inherit",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {line}
+                </Typography>
+              </Box>
+            );
+          })
+        )}
       </Box>
     </Paper>
   );

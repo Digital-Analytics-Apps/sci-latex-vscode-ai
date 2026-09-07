@@ -23,6 +23,7 @@ import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { useProjectsList } from "../../hooks/useProjectQueries";
+import { usePendingReviews } from "../../hooks/useReviewQueries";
 import type { RootState } from "../../store";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 
@@ -32,6 +33,7 @@ export const DashboardPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const { data: projects, isLoading } = useProjectsList();
+  const { data: pendingReviews } = usePendingReviews();
 
   return (
     <Box sx={{ p: 3 }}>
@@ -247,30 +249,57 @@ export const DashboardPage: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      <TableRow hover>
-                        <TableCell sx={{ fontWeight: 600 }}>#102</TableCell>
-                        <TableCell>
-                          Introdução & Trabalhos Relacionados
-                        </TableCell>
-                        <TableCell>author@sci-latex.org</TableCell>
-                        <TableCell>
-                          <Chip
-                            label="WAITING_NIT"
-                            color="warning"
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Button
-                            variant="contained"
-                            size="small"
-                            color="primary"
-                            onClick={() => navigate("/reviews/pr-102")}
-                          >
-                            Avaliar Diff & PDF
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      {pendingReviews && pendingReviews.length > 0 ? (
+                        pendingReviews.map((pr) => (
+                          <TableRow key={pr.id} hover>
+                            <TableCell sx={{ fontWeight: 600 }}>
+                              #{pr.id.slice(0, 8)}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {pr.title}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {pr.section?.title || pr.sectionId}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              {pr.author?.name || pr.author?.email || "Autor"}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={pr.nitStatus}
+                                color={
+                                  pr.nitStatus === "APPROVED_NIT"
+                                    ? "success"
+                                    : pr.nitStatus === "REJECTED_NIT"
+                                      ? "error"
+                                      : "warning"
+                                }
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Button
+                                variant="contained"
+                                size="small"
+                                color="primary"
+                                onClick={() => navigate(`/reviews/${pr.id}`)}
+                              >
+                                Avaliar Diff & PDF
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Nenhum Pull Request pendente para revisão no momento.
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </Paper>

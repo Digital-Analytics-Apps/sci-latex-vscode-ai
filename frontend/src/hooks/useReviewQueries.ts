@@ -33,7 +33,7 @@ export function usePendingReviews() {
     queryKey: ["pull-requests", "pending"],
     queryFn: async () => {
       const response = await api.get("/pull-requests");
-      return response.data;
+      return response.data.pullRequests || [];
     },
   });
 }
@@ -44,9 +44,28 @@ export function usePRDetails(prId: string) {
     queryKey: ["pull-request", prId],
     queryFn: async () => {
       const response = await api.get(`/pull-requests/${prId}`);
-      return response.data;
+      return response.data.pullRequest;
     },
     enabled: Boolean(prId),
+  });
+}
+
+// Mutação para o Revisor avaliar o PR (Aprovar ou Solicitar Ajustes)
+export function useReviewPRMutation(prId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      status: "APPROVED" | "CHANGES_REQUESTED";
+      comment?: string;
+    }) => {
+      const response = await api.post(`/pull-requests/${prId}/review`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pull-request", prId] });
+      queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
+    },
   });
 }
 

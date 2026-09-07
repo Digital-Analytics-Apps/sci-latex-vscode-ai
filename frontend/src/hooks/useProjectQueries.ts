@@ -95,7 +95,7 @@ export function useCreatePRMutation(projectId: string) {
 
   return useMutation({
     mutationFn: async (data: CreatePRFormData) => {
-      const response = await api.post('/pull-requests', {
+      const response = await api.post("/pull-requests", {
         ...data,
         projectId,
       });
@@ -105,6 +105,20 @@ export function useCreatePRMutation(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
     },
+  });
+}
+
+// Hook para listar Pull Requests filtrados por projeto
+export function usePullRequestsList(projectId?: string) {
+  return useQuery({
+    queryKey: ["pull-requests", projectId],
+    queryFn: async () => {
+      const response = await api.get("/pull-requests", {
+        params: { projectId },
+      });
+      return response.data.pullRequests || [];
+    },
+    enabled: Boolean(projectId),
   });
 }
 
