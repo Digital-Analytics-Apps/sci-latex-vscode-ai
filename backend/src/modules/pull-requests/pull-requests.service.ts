@@ -33,6 +33,32 @@ export class PullRequestsService {
       }
     }
 
+    // Garante a existência da seção no banco PostgreSQL para evitar violações de chave estrangeira
+    let existingSection = await prisma.section.findUnique({ where: { id: data.sectionId } });
+    if (!existingSection) {
+      const shortHash = data.projectId.slice(0, 8);
+      const titleMap: Record<string, { title: string; filePath: string }> = {
+        'sec-1': { title: '1. Introdução & Trabalhos Relacionados', filePath: 'sections/01-introduction.tex' },
+        'sec-2': { title: '2. Metodologia & Formulação', filePath: 'sections/02-methodology.tex' },
+        'sec-3': { title: '3. Resultados & Experimentos', filePath: 'sections/03-results.tex' },
+        'sec-4': { title: '4. Conclusão', filePath: 'sections/04-conclusion.tex' },
+      };
+      const meta = titleMap[data.sectionId] || {
+        title: `Seção ${data.sectionId}`,
+        filePath: `sections/${data.sectionId}.tex`,
+      };
+
+      existingSection = await prisma.section.create({
+        data: {
+          id: data.sectionId,
+          projectId: data.projectId,
+          title: meta.title,
+          filePath: meta.filePath,
+          branchName: `section/${data.sectionId}-${shortHash}`,
+        },
+      });
+    }
+
     const pr = await this.prRepository.create({
       ...data,
       reviewerId: cleanReviewerId,
