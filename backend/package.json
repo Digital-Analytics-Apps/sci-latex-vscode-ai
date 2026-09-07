@@ -15,7 +15,7 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:seed": "prisma db seed",
+    "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {
