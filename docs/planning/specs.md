@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
 **Última Atualização:** 2026-09-07  
-**Status:** Especificação Completa (Arquitetura Ultra-Leve Sem RabbitMQ, Compilação Nativa LaTeX Workshop, Provisionamento Git, Token de Serviço, Fluxo GitHub Draft PR ➔ Ready for Review, Revisão no VS Code Web com Extensão GitHub PR & Token Injetado, Stream SSE)
+**Status:** Especificação Completa (Arquitetura Ultra-Leve Sem RabbitMQ, Compilação Nativa LaTeX Workshop, Provisionamento Git, Token de Serviço, Fluxo GitHub Draft PR ➔ Ready for Review, Revisão no VS Code Web com Branch Checkout Nativo & Painel Lateral de Comentários, Stream SSE)
 
 ---
 
@@ -44,7 +44,7 @@ graph TD
 - **Suporte Nativo a Editores Acadêmicos:** A plataforma suporta múltiplos templates de congressos e periódicos acadêmicos (IEEE via `IEEEtran.cls`, ACM via `acmart.cls`, SBC via `sbc-template.sty` e Springer LNCS via `llncs.cls`).
 - **Auto-provisionamento na Workspace:** Ao criar um artigo, a plataforma grava o arquivo de classe correspondente no próprio repositório do artigo (`./storage/projects/<projectId>/<template>.cls`), garantindo compilação autônoma instantânea no `code-server`.
 - **> [!NOTE] Nota de Evolução Futura (Backlog Arquitetural):**  
-  Em versões futuras, o sistema poderá expandir a gestão de templates para permitir que o usuário (ou Coordenador/Gerente) envie arquivos de classe customizados (`.cls`/`.sty` ou pacote `.zip`) para cadastro no catálogo dinâmico de templates da organização ou upload direto na workspace.
+  Em versões futuras, o sistema poderá expandir a gestão de templates para permitir que o usuário (or Coordenador/Gerente) envie arquivos de classe customizados (`.cls`/`.sty` ou pacote `.zip`) para cadastro no catálogo dinâmico de templates da organização ou upload direto na workspace.
 
 ---
 
@@ -96,21 +96,26 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
    - Quando um Pull Request é aberto (`PR_OPENED`), o backend dispara um broadcast via **Server-Sent Events (SSE)** para **todos os membros do projeto (autores, revisores e coordenador)**.
    - Isso garante ciência imediata em tempo real para toda a equipe sobre a existência de uma revisão pendente.
 
-### 3.4 Sincronização do Ciclo de Vida do GitHub PR (Draft ➔ Ready for Review) & Regras dos Botões de Ação
-
-Para alinhar a experiência da interface com o ciclo de vida real no GitHub, a plataforma adota o seguinte fluxo de estados nos 3 botões de ação do autor (`WorkspacePage.tsx`):
+### 3.4 Sincronização do Ciclo de Vida do GitHub PR (Draft ➔ Ready for Review), Revisão no VS Code Web & Painel de Comentários
 
 1. **Salvar Progresso**:
    - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da seção (`section/<slug>-<shortHash>`), auto-provisiona a seção no PostgreSQL caso ainda não exista e gera/mantém um **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
-   - **Regra de Habilitação**: Habilitado durante a escrita (desabilitado apenas enquanto a requisição de salvamento está em andamento).
+   - **Regra de Habilitação**: Habilitado durante a escrita.
 
 2. **Enviar p/ Revisão**:
    - **Fluxo Backend/GitHub**: Transiciona o Draft PR no GitHub para **Ready for Review** via API (`markPullRequestReadyForReview`), atualizando o status para `UNDER_REVIEW` no banco e emitindo notificação SSE (`PR_OPENED`).
-   - **Regra de Habilitação**: **Desabilitado inicialmente**. Habilitado **somente APÓS o progresso ter sido salvo pelo menos 1 vez** (ou se o PR estiver em estado `DRAFT`). Exibe tooltips orientativos quando desabilitado ou quando a seção já está em revisão (`UNDER_REVIEW`), aprovada (`APPROVED`) ou mesclada (`MERGED`).
 
-3. **Realizar Merge**:
+3. **Ambiente de Revisão no VS Code Web (Diff Nativo & Branch Checkout)**:
+   - Ao abrir o Painel de Revisão (`ReviewDetailPage.tsx`), o backend (`editor-proxy`) utiliza o parâmetro `sectionId` para posicionar automaticamente o repositório da workspace na branch da seção enviada pelo autor (`section/sec-X-...`).
+   - O VS Code Web carrega o código da seção alterada de forma fluida sem depender de login do usuário em extensões de terceiros.
+
+4. **Painel Lateral de Comentários & Pareceres (`Drawer`)**:
+   - A interface do Revisor exibe uma gaveta lateral retrátil contendo:
+     - **Histórico de Apontamentos**: Exibe todos os comentários anteriores com data, autor e número da linha do arquivo (`lineNumer`).
+     - **Formulário de Comentário**: Permite ao revisor inserir observações por linha ou gerais e selecionar se deseja enviar apenas um **Comentário**, **Solicitar Ajustes** (`CHANGES_REQUESTED`) ou **Aprovar a Seção** (`APPROVED`).
+
+5. **Realizar Merge**:
    - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev` e remove a branch temporária da seção do GitHub (`deleteBranch`).
-   - **Regra de Habilitação**: **Desabilitado inicialmente**. Habilitado **somente APÓS a aprovação do Revisor (`status === APPROVED`)**.
 
 ---
 

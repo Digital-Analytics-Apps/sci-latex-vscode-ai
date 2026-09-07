@@ -62,9 +62,10 @@ O usuário **não precisa criar chaves SSH ou gerenciar credenciais de Git manua
 
 | Componente Escolhido | Função Principal | Justificativa Técnica |
 | :--- | :--- | :--- |
-| **VS Code (`code-server`) em `<iframe>`** | Ambiente de Edição | Segurança e Sigilo Absoluto. Edição TeX Live nativa e preview de PDF instantâneo na aba do editor. |
+| **VS Code (`code-server`) em `<iframe>`** | Ambiente de Edição & Revisão | Segurança e Sigilo Absoluto. Edição TeX Live nativa, branch checkout automático da seção e preview de PDF instantâneo. |
+| **Painel Lateral de Comentários (`Drawer`)** | Apontamentos & Parecer do Revisor | Permite registro de observações por linha (`lineNumer`) e parecer técnico direto na aplicação, sem depender de login OAuth em extensões. |
 | **Fastify + Node.js** | Backend API & Proxy | Gerencia a **Conta de Serviço Git**, autoriza acessos por JWT e expõe rotas REST diretas sem intermediários. |
-| **Prisma + PostgreSQL** | Persistência & Auditoria | Armazena a associação `ProjectMember`, `AcademicPeriod`, `PullRequest` e `AuditLog`. |
+| **Prisma + PostgreSQL** | Persistência & Auditoria | Armazena a associação `ProjectMember`, `AcademicPeriod`, `PullRequest`, `ReviewComment` e `AuditLog`. |
 | **Agendador Leve (`node-cron`)** | Verificação de Prazos | Verificação diária automática de prazos de conferências diretamente no backend Node.js (Zero RAM extra). |
 | **Arquitetura Ultra-Leve (Sem Broker)** | Simplicidade Self-Hosted | Eliminação do RabbitMQ/Erlang. Economia de ~300MB de RAM e menos pontos de falha na infraestrutura. |
 
@@ -72,7 +73,7 @@ O usuário **não precisa criar chaves SSH ou gerenciar credenciais de Git manua
 
 ### 6. Configuração da Interface (`settings.json`)
 
-Injetado automaticamente pelo container do `code-server` com suporte à extensão de Pull Requests do GitHub e pré-visualização do TeX Live:
+Injetado automaticamente pelo container do `code-server` com suporte ao TeX Live e compilação nativa no salvamento:
 
 ```json
 {
@@ -83,13 +84,6 @@ Injetado automaticamente pelo container do `code-server` com suporte à extensã
   "workbench.tips.enabled": false,
   "editor.lightbulb.enabled": "onCodeAction",
   "editor.wordWrap": "on",
-  "githubPullRequests.remotes": ["origin"],
-  "githubPullRequests.queries": [
-    {
-      "name": "Pull Requests deste Artigo",
-      "query": "is:open is:pr"
-    }
-  ],
   "latex-workshop.view.pdf.viewer": "tab",
   "latex-workshop.latex.autoBuild.run": "onSave"
 }
