@@ -119,6 +119,27 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
     (req, reply) => controller.updateNIT(req, reply)
   );
 
+  // PATCH /api/v1/pull-requests/:id/reviewer - Atribuir ou atualizar Revisor no PR
+  app.patch(
+    '/:id/reviewer',
+    {
+      onRequest: [requireCoordinatorOrAbove],
+      schema: {
+        tags: ['PullRequests'],
+        summary: 'Atribuir ou atualizar Revisor do Pull Request',
+        description: 'Permite ao Coordenador, Gerente ou Admin designar um Revisor para o PR.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+        }),
+        body: z.object({
+          reviewerId: z.string().min(1),
+        }),
+      },
+    },
+    (req, reply) => controller.assignReviewer(req, reply)
+  );
+
   // POST /api/v1/pull-requests/:id/merge - Executar Merge com Trava de Segurança
   app.post(
     '/:id/merge',
@@ -130,7 +151,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
           'Realiza o merge da seção aprovada. Trava estrita: exige aprovação do Revisor E aprovação do NIT.',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          id: z.string().uuid(),
+          id: z.string(),
         }),
       },
     },

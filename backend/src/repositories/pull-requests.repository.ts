@@ -103,4 +103,12 @@ export class PrismaPullRequestsRepository {
       },
     });
   }
+
+  async updateReviewer(id: string, reviewerId: string): Promise<PullRequestWithRelations> {
+    return prisma.pullRequest.update({
+      where: { id },
+      data: { reviewerId },
+      include: prInclude,
+    });
+  }
 }

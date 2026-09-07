@@ -86,6 +86,16 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
    - O autor executa os commits do "Salvar Progresso" nesta branch.
    - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado pelo Revisor e o merge ser executado na `dev`, a branch da seção é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
 
+### 3.3 Atribuição de Revisores & Notificações Real-Time de PR (`PR_OPENED` e `PR_REVIEWER_ASSIGNED`)
+
+1. **Auto-atribuição e Atribuição Posterior de Revisor**:
+   - Ao abrir um Pull Request, se o autor não definir um revisor específico na tela de envio, o sistema busca automaticamente se o artigo possui um membro associado com papel de **Revisor (`Role.REVIEWER`)** e atribui o PR a ele.
+   - Caso um Revisor seja atribuído posteriormente pelo Coordenador (via `PATCH /api/v1/pull-requests/:id/reviewer` ou associação de membro), o PR é atualizado, disparando evento de notificação em tempo real para o autor e para o novo revisor.
+
+2. **Notificação Real-Time para Todos os Envolvidos**:
+   - Quando um Pull Request é aberto (`PR_OPENED`), o backend dispara um broadcast via **Server-Sent Events (SSE)** para **todos os membros do projeto (autores, revisores e coordenador)**.
+   - Isso garante ciência imediata em tempo real para toda a equipe sobre a existência de uma revisão pendente.
+
 ---
 
 ## 4. Stack Tecnológica Oficial

@@ -17,8 +17,21 @@ export class PullRequestsService {
 
   // Abertura de Pull Request pelo Autor
   async createPR(authorId: string, data: CreatePRData) {
-    const cleanReviewerId =
+    let cleanReviewerId =
       data.reviewerId && data.reviewerId.trim() !== '' ? data.reviewerId : undefined;
+
+    // Se o autor não especificou um revisor, verifica se o projeto já possui um Revisor atribuído
+    if (!cleanReviewerId && data.projectId) {
+      const projectMemberReviewer = await prisma.projectMember.findFirst({
+        where: {
+          projectId: data.projectId,
+          role: 'REVIEWER',
+        },
+      });
+      if (projectMemberReviewer) {
+        cleanReviewerId = projectMemberReviewer.userId;
+      }
+    }
 
     const pr = await this.prRepository.create({
       ...data,
@@ -32,10 +45,26 @@ export class PullRequestsService {
       action: 'PR_OPENED',
       entityType: 'PullRequest',
       entityId: pr.id,
-      details: { title: pr.title, sectionId: pr.sectionId, projectId: pr.projectId },
+      details: { title: pr.title, sectionId: pr.sectionId, projectId: pr.projectId, reviewerId: pr.reviewerId },
     });
 
-    // 2. Dispara job no RabbitMQ para compilar o PDF de visualização do Revisor
+    // 2. Notifica todos os membros do projeto em tempo real via SSE (Autores, Revisores, Coordenadores)
+    const projectMembers = await prisma.projectMember.findMany({
+      where: { projectId: pr.projectId },
+    });
+
+    projectMembers.forEach((member) => {
+      eventsManager.broadcastToUser(member.userId, 'PR_OPENED', {
+        pullRequestId: pr.id,
+        title: pr.title,
+        sectionId: pr.sectionId,
+        projectId: pr.projectId,
+        authorId,
+        reviewerId: pr.reviewerId,
+      });
+    });
+
+    // 3. Dispara job no RabbitMQ para compilar o PDF de visualização do Revisor
     await latexProducer.publishCompilation({
       type: 'COMPILE_PR_PDF',
       projectId: pr.projectId,
@@ -45,6 +74,36 @@ export class PullRequestsService {
     });
 
     return pr;
+  }
+
+  // Atribuição ou atualização de Revisor no PR (por Coordenador/Gerente)
+  async assignReviewer(prId: string, reviewerId: string, assignerId: string) {
+    const pr = await this.prRepository.findById(prId);
+    if (!pr) throw new Error('PR_NOT_FOUND');
+
+    const updatedPR = await this.prRepository.updateReviewer(prId, reviewerId);
+
+    // Registra na Timeline / AuditLog
+    await logAudit({
+      userId: assignerId,
+      action: 'PR_REVIEWER_ASSIGNED',
+      entityType: 'PullRequest',
+      entityId: prId,
+      details: { reviewerId },
+    });
+
+    // Notifica o Autor e o Revisor atribuído via SSE
+    eventsManager.broadcastToUser(pr.authorId, 'PR_REVIEWER_ASSIGNED', {
+      pullRequestId: prId,
+      reviewerId,
+    });
+    eventsManager.broadcastToUser(reviewerId, 'PR_ASSIGNED_TO_YOU', {
+      pullRequestId: prId,
+      title: pr.title,
+      projectId: pr.projectId,
+    });
+
+    return updatedPR;
   }
 
   // Obter detalhes de um PR por ID

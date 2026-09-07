@@ -98,6 +98,29 @@ export class PullRequestsController {
     }
   }
 
+  async assignReviewer(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+    });
+    const bodySchema = z.object({
+      reviewerId: z.string().min(1),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+    const { reviewerId } = bodySchema.parse(request.body);
+    const assignerId = request.user.sub;
+
+    try {
+      const pr = await this.prService.assignReviewer(id, reviewerId, assignerId);
+      return reply.send({ pullRequest: pr, message: 'Revisor atribuído com sucesso ao Pull Request.' });
+    } catch (err: any) {
+      if (err.message === 'PR_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Pull Request not found' });
+      }
+      throw err;
+    }
+  }
+
   async merge(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
       id: z.string().uuid(),
