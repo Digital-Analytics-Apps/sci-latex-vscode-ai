@@ -78,7 +78,56 @@ Todas as contas de teste são criadas com a senha padrão: **`123456`**
 
 ---
 
-## 💻 Comandos Principais
+## 🐳 Comandos Utilitários do Docker Compose
+
+Principais comandos para gerenciamento dos contêineres, banco de dados e execução de rotinas diretamente no Docker:
+
+### 1. Iniciar a Aplicação Completa em Segundo Plano
+```bash
+docker compose up -d
+```
+
+### 2. Reconstruir a Imagem do Backend (Ex: após instalar novas bibliotecas `npm`)
+```bash
+docker compose up --build -d backend
+```
+
+### 3. Sincronizar o Schema Prisma no Banco do Docker (`db push`)
+Útil para criar ou atualizar as tabelas do PostgreSQL no contêiner quando o banco for reiniciado:
+```bash
+docker compose exec backend npx prisma db push
+```
+
+### 4. Popular o Banco com o Seed Diretamente no Contêiner
+```bash
+docker compose exec backend npm run db:seed
+```
+
+### 5. Executar as Migrações do Prisma no Contêiner
+```bash
+docker compose exec backend npm run db:migrate
+```
+
+### 6. Acompanhar os Logs do Backend em Tempo Real
+```bash
+docker compose logs -f backend
+```
+
+### 7. Resolução de Conflitos (Limpeza Forçada de Contêineres Antigos)
+Caso ocorra erro de nome de contêiner em uso (`Conflict. The container name is already in use`):
+```bash
+docker rm -f sci_latex_postgres sci_latex_backend sci_latex_codeserver sci_latex_frontend
+```
+
+### 8. Reiniciar com Remoção Total de Volumes e Dados (Fresh Start)
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+---
+
+## 💻 Comandos Principais (Desenvolvimento Local)
 
 | Comando | Descrição |
 | :--- | :--- |
