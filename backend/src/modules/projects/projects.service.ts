@@ -417,6 +417,10 @@ export class ProjectsService {
           .catch(() => null);
       }
 
+      const authorUser = authorIdToUse
+        ? await prisma.user.findUnique({ where: { id: authorIdToUse } })
+        : null;
+
       try {
         await this.gitService.createDraftPullRequest({
           projectId,
@@ -426,6 +430,9 @@ export class ProjectsService {
           body: `Draft Pull Request criado automaticamente ao salvar o progresso da seção.`,
           projectTitle: project.name,
           repoUrl: project.gitRepoPath,
+          authorName: authorUser?.name,
+          authorEmail: authorUser?.email,
+          authorRole: authorUser?.role,
         });
       } catch (ghErr: any) {
         console.warn('⚠️ Warning creating remote GitHub draft PR:', ghErr.message || ghErr);

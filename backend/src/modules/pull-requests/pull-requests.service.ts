@@ -230,6 +230,8 @@ export class PullRequestsService {
           comment,
           lineNumer,
           reviewerName: reviewerUser?.name,
+          reviewerEmail: reviewerUser?.email,
+          reviewerRole: reviewerUser?.role,
         })
         .catch((ghErr) => {
           console.warn('⚠️ Warning syncing review comment to GitHub:', ghErr.message || ghErr);

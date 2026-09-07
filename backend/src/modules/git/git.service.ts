@@ -471,6 +471,9 @@ Resuma os achados do trabalho.
     body?: string;
     projectTitle?: string;
     repoUrl?: string;
+    authorName?: string;
+    authorEmail?: string;
+    authorRole?: string;
   }): Promise<{ number: number; htmlUrl: string; nodeId?: string }> {
     const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
     const baseBranch = data.baseBranch || 'dev';
@@ -493,13 +496,26 @@ Resuma os achados do trabalho.
       }
     }
 
+    const userMeta = [
+      data.authorName,
+      data.authorEmail ? `<${data.authorEmail}>` : null,
+      data.authorRole ? `[${data.authorRole}]` : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    let prBody = data.body || `Draft PR for ${data.headBranch}`;
+    if (userMeta) {
+      prBody = `👤 **Autor Original:** ${userMeta}\n\n${prBody}`;
+    }
+
     try {
       const octokit = this.getOctokit();
       const res = await octokit.rest.pulls.create({
         owner,
         repo: repoName,
         title: data.title,
-        body: data.body || `Draft PR for ${data.headBranch}`,
+        body: prBody,
         head: data.headBranch,
         base: baseBranch,
         draft: true,
@@ -601,6 +617,8 @@ Resuma os achados do trabalho.
     comment?: string;
     lineNumer?: number;
     reviewerName?: string;
+    reviewerEmail?: string;
+    reviewerRole?: string;
   }): Promise<boolean> {
     const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
     if (!isGitHubMode) {
@@ -648,6 +666,14 @@ Resuma os achados do trabalho.
 
     const event = data.status ? reviewEventMap[data.status] || 'COMMENT' : 'COMMENT';
 
+    const userMeta = [
+      data.reviewerName,
+      data.reviewerEmail ? `<${data.reviewerEmail}>` : null,
+      data.reviewerRole ? `[${data.reviewerRole}]` : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     let bodyText = data.comment || '';
     if (data.lineNumer) {
       bodyText = `[Linha #${data.lineNumer}] ${bodyText}`;
@@ -656,6 +682,10 @@ Resuma os achados do trabalho.
       if (event === 'REQUEST_CHANGES') bodyText = 'Ajustes solicitados pelo Revisor Técnico.';
       else if (event === 'APPROVE') bodyText = 'Seção aprovada pelo Revisor Técnico.';
       else bodyText = 'Comentário do Revisor Técnico.';
+    }
+
+    if (userMeta) {
+      bodyText = `👤 **${userMeta}**\n\n${bodyText}`;
     }
 
     try {
