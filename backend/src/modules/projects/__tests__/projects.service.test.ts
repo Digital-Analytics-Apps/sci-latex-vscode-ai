@@ -19,7 +19,7 @@ class InMemoryProjectsRepository implements IProjectsRepository {
 
   async create(data: CreateProjectData): Promise<Project> {
     const project: Project & { members?: any[]; deletedAt?: Date | null } = {
-      id: `proj-${Date.now()}-${Math.random()}`,
+      id: data.id ?? `proj-${Date.now()}-${Math.random()}`,
       name: data.name,
       description: data.description ?? null,
       gitRepoPath: data.gitRepoPath,

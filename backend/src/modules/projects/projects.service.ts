@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { Role } from '@prisma/client';
@@ -58,15 +59,23 @@ export class ProjectsService {
       targetTeamId = defaultTeam.id;
     }
 
-    const tempPath = `storage/git/pending`;
+    const projectId = crypto.randomUUID();
+
+    // 1. Provisionar primeiramente o repositório remoto no GitHub / Git local.
+    // Isso garante a garantia de consistência: se o GitHub falhar (ex: erro de autenticação ou rede),
+    // a operação será abortada sem deixar lixo ou registros orfãos no PostgreSQL.
+    const gitRepoPath = await this.gitService.initRepository(projectId, data.name);
+
+    // 2. Com a confirmação da criação do repositório remoto, criar a entidade Project no banco
     const project = await this.projectsRepository.create({
       ...data,
+      id: projectId,
       teamId: targetTeamId,
-      gitRepoPath: tempPath,
+      gitRepoPath,
       creatorId: userId,
     });
 
-    // Registrar evento de criação no AuditLog para a Timeline
+    // 3. Registrar evento de criação no AuditLog para a Timeline
     await logAudit({
       userId,
       action: 'PROJECT_CREATED',
@@ -79,21 +88,7 @@ export class ProjectsService {
       },
     });
 
-    try {
-      const gitRepoPath = await this.gitService.initRepository(project.id, project.name);
-
-      const updatedProject = await this.projectsRepository.update(project.id, {
-        gitRepoPath,
-        ...data,
-      });
-
-      return updatedProject;
-    } catch (err: any) {
-      console.error('❌ Error initializing GitHub repository for project:', err.message || err);
-      // Remove registro pendente em caso de falha no provisionamento do repositório remoto
-      await this.projectsRepository.delete(project.id).catch(() => {});
-      throw err;
-    }
+    return project;
   }
 
   // Listar projetos com suporte a filtros por equipe, ciclo acadêmico ou usuário

@@ -2,6 +2,7 @@ import { Project, Prisma, Role, SubmissionStatus } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
 export interface CreateProjectData {
+  id?: string;
   name: string;
   description?: string;
   gitRepoPath: string;
@@ -50,6 +51,7 @@ export class PrismaProjectsRepository implements IProjectsRepository {
   async create(data: CreateProjectData): Promise<Project> {
     return prisma.project.create({
       data: {
+        id: data.id,
         name: data.name,
         description: data.description,
         gitRepoPath: data.gitRepoPath,
@@ -68,25 +70,21 @@ export class PrismaProjectsRepository implements IProjectsRepository {
         sections: {
           create: [
             {
-              id: `sec-1-${data.creatorId.slice(0, 4)}`,
               title: '1. Introdução & Trabalhos Relacionados',
               filePath: 'sections/01-introduction.tex',
               branchName: `section/introduction-${data.creatorId.slice(0, 6)}`,
             },
             {
-              id: `sec-2-${data.creatorId.slice(0, 4)}`,
               title: '2. Metodologia & Formulação',
               filePath: 'sections/02-methodology.tex',
               branchName: `section/methodology-${data.creatorId.slice(0, 6)}`,
             },
             {
-              id: `sec-3-${data.creatorId.slice(0, 4)}`,
               title: '3. Resultados & Experimentos',
               filePath: 'sections/03-results.tex',
               branchName: `section/results-${data.creatorId.slice(0, 6)}`,
             },
             {
-              id: `sec-4-${data.creatorId.slice(0, 4)}`,
               title: '4. Conclusão',
               filePath: 'sections/04-conclusion.tex',
               branchName: `section/conclusion-${data.creatorId.slice(0, 6)}`,

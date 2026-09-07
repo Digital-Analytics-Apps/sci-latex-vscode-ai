@@ -146,7 +146,7 @@ docker compose up --build -d
 ## 🏗️ Arquitetura de Módulos (`src/modules`)
 
 - `auth/`: Autenticação via JWT e Refresh Token em Cookie `httpOnly`.
-- `projects/`: Gerenciamento de artigos/papers, congressos (Target/Backup) e submissões.
+- `projects/`: Gerenciamento de artigos/papers, congressos (Target/Backup) e submissões. **Garantia Transacional:** A inicialização do repositório remoto no GitHub ocorre prioritariamente; somente após a confirmação bem-sucedida no repositório remoto o projeto e seus logs de auditoria são salvos no banco de dados, prevenindo registros órfãos.
 - `sections/`: Gestão de seções do artigo, vinculação de branches Git e prazos.
 - `pull-requests/`: Fluxo de abertura de PR, revisões técnicas, parecer do NIT e trava de segurança para merge.
 - `git/`: Integração com GitHub (via SDK Octokit) e gerenciador de repositórios/branches locais com `http.extraHeader`.
