@@ -84,7 +84,7 @@ async function main() {
 
   console.log(`✅ Academic Period created: ${academicPeriod.name}`);
 
-  // 3. Criar Equipe Padrão com todos os perfis (Autor, Revisor, Gerente e Coordenador)
+  // 3. Criar Equipe Padrão
   const team = await prisma.team.create({
     data: {
       name: 'Laboratório de Redes e Sistemas Distribuídos (LSD)',
@@ -93,8 +93,6 @@ async function main() {
       managerId: manager.id,
       members: {
         create: [
-          { userId: coordinator.id, role: Role.COORDINATOR },
-          { userId: manager.id, role: Role.MANAGER },
           { userId: author.id, role: Role.AUTHOR },
           { userId: reviewer.id, role: Role.REVIEWER },
         ],
@@ -103,7 +101,9 @@ async function main() {
   });
 
   console.log(`✅ Team created: ${team.name}`);
-  console.log('   - Integrantes: Coordenador, Gerente, Autor e Revisor');
+  console.log(`   - Coordenador: ${coordinator.name}`);
+  console.log(`   - Gerente: ${manager.name}`);
+  console.log(`   - Membros da Equipe: ${author.name}, ${reviewer.name}`);
   console.log('🌱 Seed completed successfully!');
 }
 
