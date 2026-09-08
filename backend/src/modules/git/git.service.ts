@@ -172,9 +172,9 @@ export class GitService {
       const sectionsDir = path.join(tempDir, 'sections');
       await fs.mkdir(sectionsDir, { recursive: true });
 
-      const introContent = `\\section{Introdução & Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`;
-      const methodContent = `\\section{Metodologia & Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`;
-      const resultsContent = `\\section{Resultados & Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`;
+      const introContent = `\\section{Introdução \\& Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`;
+      const methodContent = `\\section{Metodologia \\& Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`;
+      const resultsContent = `\\section{Resultados \\& Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`;
       const conclusionContent = `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`;
 
       await fs.writeFile(path.join(sectionsDir, '01-introduction.tex'), introContent, 'utf-8');

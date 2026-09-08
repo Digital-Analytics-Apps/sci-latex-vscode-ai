@@ -132,23 +132,59 @@ export async function editorProxyRoutes(app: FastifyInstance) {
       const sectionsDir = path.join(projectDir, 'sections');
       try {
         await fs.mkdir(sectionsDir, { recursive: true });
-        
+
         const sec1Path = path.join(sectionsDir, '01-introduction.tex');
         const sec2Path = path.join(sectionsDir, '02-methodology.tex');
         const sec3Path = path.join(sectionsDir, '03-results.tex');
         const sec4Path = path.join(sectionsDir, '04-conclusion.tex');
 
-        if (!(await fs.access(sec1Path).then(() => true).catch(() => false))) {
-          await fs.writeFile(sec1Path, `\\section{Introdução & Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`, 'utf-8');
+        if (
+          !(await fs
+            .access(sec1Path)
+            .then(() => true)
+            .catch(() => false))
+        ) {
+          await fs.writeFile(
+            sec1Path,
+            `\\section{Introdução \\& Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`,
+            'utf-8'
+          );
         }
-        if (!(await fs.access(sec2Path).then(() => true).catch(() => false))) {
-          await fs.writeFile(sec2Path, `\\section{Metodologia & Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`, 'utf-8');
+        if (
+          !(await fs
+            .access(sec2Path)
+            .then(() => true)
+            .catch(() => false))
+        ) {
+          await fs.writeFile(
+            sec2Path,
+            `\\section{Metodologia \\& Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`,
+            'utf-8'
+          );
         }
-        if (!(await fs.access(sec3Path).then(() => true).catch(() => false))) {
-          await fs.writeFile(sec3Path, `\\section{Resultados & Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`, 'utf-8');
+        if (
+          !(await fs
+            .access(sec3Path)
+            .then(() => true)
+            .catch(() => false))
+        ) {
+          await fs.writeFile(
+            sec3Path,
+            `\\section{Resultados \\& Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`,
+            'utf-8'
+          );
         }
-        if (!(await fs.access(sec4Path).then(() => true).catch(() => false))) {
-          await fs.writeFile(sec4Path, `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`, 'utf-8');
+        if (
+          !(await fs
+            .access(sec4Path)
+            .then(() => true)
+            .catch(() => false))
+        ) {
+          await fs.writeFile(
+            sec4Path,
+            `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`,
+            'utf-8'
+          );
         }
       } catch {
         // Ignora erros ao criar pasta de seções

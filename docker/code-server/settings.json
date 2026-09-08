@@ -12,6 +12,11 @@
   "latex-workshop.view.pdf.viewer": "tab",
   "latex-workshop.latex.autoBuild.run": "onSave",
   "latex-workshop.latex.outDir": "%DIR%",
+  "[latex]": {
+    "editor.defaultFormatter": "james-yu.latex-workshop",
+    "editor.formatOnSave": true
+  },
+  "latex-workshop.formatting.latex": "latexindent",
   "latex-workshop.latex.recipes": [
     {
       "name": "latexmk",
@@ -47,6 +52,5 @@
       ],
       "env": {}
     }
-  ],
-  "workbench.colorTheme": "Dark Modern"
+  ]
 }
