@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     texlive-latex-extra \
     texlive-latex-recommended \
     texlive-fonts-recommended \
+    texlive-extra-utils \
+    libyaml-tiny-perl \
+    libfile-homedir-perl \
     latexmk \
     chktex \
     ca-certificates \
