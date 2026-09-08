@@ -52,7 +52,7 @@ async function ensureGitRepositoryWorkspace(
         `temp-clone-${projectId}-${Date.now()}`
       );
       await execAsync(`git ${gitFlags} clone "${repoUrl}" "${tempDir}"`);
-      await fs.cp(path.join(tempDir, '.git'), path.join(projectDir, '.git'), { recursive: true });
+      await fs.cp(tempDir, projectDir, { recursive: true });
       await fs.rm(tempDir, { recursive: true, force: true });
 
       await execAsync(`git config user.name "SCI-LaTeX User"`, { cwd: projectDir });
@@ -118,7 +118,8 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      let targetBranch: string | undefined = undefined;
+      // Determina a branch de destino no Git
+      let targetBranch = 'dev';
       if (sectionId) {
         targetBranch = `section/${sectionId}-${projectId.slice(0, 8)}`;
       }
@@ -127,38 +128,54 @@ export async function editorProxyRoutes(app: FastifyInstance) {
       const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
       await ensureGitRepositoryWorkspace(projectId, project.gitRepoPath, targetBranch);
 
-      // Garante que o arquivo main.tex inicial exista com permissão de escrita
+      // Garante a existência do diretório de seções modulares
+      const sectionsDir = path.join(projectDir, 'sections');
+      try {
+        await fs.mkdir(sectionsDir, { recursive: true });
+        
+        const sec1Path = path.join(sectionsDir, '01-introduction.tex');
+        const sec2Path = path.join(sectionsDir, '02-methodology.tex');
+        const sec3Path = path.join(sectionsDir, '03-results.tex');
+        const sec4Path = path.join(sectionsDir, '04-conclusion.tex');
+
+        if (!(await fs.access(sec1Path).then(() => true).catch(() => false))) {
+          await fs.writeFile(sec1Path, `\\section{Introdução & Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`, 'utf-8');
+        }
+        if (!(await fs.access(sec2Path).then(() => true).catch(() => false))) {
+          await fs.writeFile(sec2Path, `\\section{Metodologia & Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`, 'utf-8');
+        }
+        if (!(await fs.access(sec3Path).then(() => true).catch(() => false))) {
+          await fs.writeFile(sec3Path, `\\section{Resultados & Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`, 'utf-8');
+        }
+        if (!(await fs.access(sec4Path).then(() => true).catch(() => false))) {
+          await fs.writeFile(sec4Path, `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`, 'utf-8');
+        }
+      } catch {
+        // Ignora erros ao criar pasta de seções
+      }
+
+      // Garante que o arquivo main.tex inicial exista com a estrutura modular
       const mainTexPath = path.join(projectDir, 'main.tex');
       try {
         await fs.access(mainTexPath);
       } catch {
         const initialContent = `% SCI-LaTeX Paper Workspace: ${project.name}
-\\documentclass[conference]{IEEEtran}
+\\documentclass{article}
 \\usepackage[utf8]{inputenc}
-\\usepackage{amsmath,amsfonts,amssymb}
 \\usepackage{graphicx}
 
 \\title{${project.name.replace(/[{}]/g, '')}}
-\\author{\\IEEEauthorblockN{Gilson Russo}\\IEEEauthorblockA{Programa de Pós-Graduação em Computação}}
+\\author{SCI-LaTeX Author}
+\\date{\\today}
 
 \\begin{document}
+
 \\maketitle
 
-\\begin{abstract}
-Este artigo apresenta uma abordagem inovadora utilizando aprendizado profundo e processamento de sinais para otimização de redes.
-\\end{abstract}
-
-\\section{Introdução}
-A escrita científica estruturada garante o rigor metodológico e a reprodutibilidade dos experimentos.
-
-\\section{Metodologia}
-Descreva os métodos e experimentos realizados.
-
-\\section{Resultados e Discussão}
-Apresente os resultados obtidos.
-
-\\section{Conclusão}
-Resuma os achados do trabalho.
+\\input{sections/01-introduction.tex}
+\\input{sections/02-methodology.tex}
+\\input{sections/03-results.tex}
+\\input{sections/04-conclusion.tex}
 
 \\end{document}
 `;
