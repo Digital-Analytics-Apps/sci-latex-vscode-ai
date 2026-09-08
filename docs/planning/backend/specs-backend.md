@@ -8,7 +8,7 @@
 
 ## 1. Estrutura de Arquitetura do Backend
 
-O backend é construído em **Node.js + Fastify + TypeScript**, seguindo uma arquitetura modular por domínio (Modular Monolith).
+O backend é construído em **Node.js + Fastify + TypeScript**, seguindo uma arquitetura modular por domínio (Modular Monolith). Para produção, os workspaces de edição são orquestrados via Kubernetes Pods sob demanda (Ver [`adr-002-kubernetes-on-demand-pods.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/backend/adr-002-kubernetes-on-demand-pods.md)).
 
 ```
 src/
