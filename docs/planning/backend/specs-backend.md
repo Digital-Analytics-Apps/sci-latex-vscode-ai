@@ -1,24 +1,21 @@
-# Especificação Técnica do Backend (Fastify + Prisma + RabbitMQ)
+# Especificação Técnica do Backend (Fastify + Prisma + TypeScript)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-05  
+**Última Atualização:** 2026-09-08  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
 
 ## 1. Estrutura de Arquitetura do Backend
 
-O backend é construído em **Node.js + Fastify + TypeScript**, seguindo uma arquitetura modular por domínio (Modular Monolith). Para produção, os workspaces de edição são orquestrados via Kubernetes Pods sob demanda (Ver [`adr-002-kubernetes-on-demand-pods.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/backend/adr-002-kubernetes-on-demand-pods.md)).
+O backend é construído em **Node.js + Fastify + TypeScript**, seguindo uma arquitetura modular por domínio (Modular Monolith) **Ultra-Leve (Sem Broker / Sem RabbitMQ)**. Para produção, os workspaces de edição são orquestrados via Kubernetes Pods sob demanda (Ver [`adr-002-kubernetes-on-demand-pods.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/backend/adr-002-kubernetes-on-demand-pods.md)).
 
 ```
 src/
 ├── @types/                 # Definições de tipos globais Fastify e JWT
-├── config/                 # Configurações do env (Zod), RabbitMQ, Prisma e Docker
+├── config/                 # Configurações do env (Zod), Prisma e Docker
 ├── db/                     # Instância do Prisma Client e Seeds
 ├── middlewares/            # Middlewares de Auth JWT, RBAC Guard e Audit Logger
-├── queue/                  # Configuração do RabbitMQ, Exchanges e Channels
-│   ├── producers/          # Disparadores de mensagens para as filas
-│   └── workers/            # Consumidores das filas (Git, Docker TeX, Deadlines)
 ├── modules/                # Módulos de Domínio
 │   ├── auth/               # Autenticação, Login, Refresh Token
 │   ├── academic-periods/   # Gestão de Ciclos/Períodos Acadêmicos
@@ -26,7 +23,7 @@ src/
 │   ├── projects/           # Projetos/Papers, Congressos Alvo/Backup e DOI
 │   ├── sections/           # Seções do artigo, Prazos de etapas e Atribuição
 │   ├── pull-requests/      # PRs, Fluxo de Revisão e Registro Manual do NIT
-│   ├── git/                # Gerenciador de Repositórios e Servidor Bare
+│   ├── git/                # Gerenciador de Repositórios e SDK Octokit
 │   ├── events/             # Stream SSE (Server-Sent Events) para Notificações
 │   └── compiler/           # Gerenciador de Compilação TeX Live em Docker (PRs & Release)
 └── app.ts                  # Inicialização de plugins, rotas e servidor Fastify
@@ -38,8 +35,8 @@ src/
 
 1. **Compilação de Edição (Local no VS Code Iframe):**
    * Processada internamente no container do `code-server` do usuário com a extensão `LaTeX Workshop` e TeX Live. É acionada via auto-save / Ctrl+S para a pré-visualização instantânea do Autor.
-2. **Compilação Oficial do Backend (Fila `latex.compilation`):**
-   * Disparada quando um PR é aberto/atualizado ou quando o artigo completo é consolidado.
+2. **Compilação Oficial do Backend:**
+   * Disparada quando um PR é consolidado ou quando o artigo completo é solicitado.
    * Executa em um container descartável Docker TeX Live para gerar o PDF limpo exibido na **tela do Revisor (`/reviews/:prId`)** e para gerar a versão oficial final em PDF para o **Coordenador**.
 
 ---
@@ -69,7 +66,7 @@ src/
 ### 3.4 Módulo `compiler` (PDF Oficial de PRs e Artigo Consolidado)
 * `POST /api/v1/projects/:id/compile-master`
   * **Permissão:** `COORDINATOR`, `MANAGER`.
-  * **Action:** Enfileira no RabbitMQ `latex.compilation` para compilar a versão oficial do artigo completo.
+  * **Action:** Compila a versão oficial do artigo completo.
 * `GET /api/v1/projects/:id/pdf`
   * **Action:** Retorna o PDF oficial gerado do artigo completo.
 
@@ -121,18 +118,17 @@ src/
 
 ---
 
-## 4. Especificação dos Workers do RabbitMQ
+## 4. Especificação de Serviços de Segundo Plano & Eventos (Sem Broker / Ultra-Leve)
 
-1. **Worker `git.operations`:**
-   * Recebe mensagens do tipo `COMMIT_PROGRESS` e `EXECUTE_MERGE`.
-   * Executa comandos `git` no sistema de arquivos local usando o `GIT_SERVICE_TOKEN` e assinando com o e-mail do autor.
-2. **Worker `latex.compilation`:**
-   * Dispara container Docker TeX Live (`texlive/texlive:latest`) com parâmetros `--network none --cpus=2 -m 2g`.
+1. **Serviço de Operações Git (`GitService`):**
+   * Executa operações de commit, criação de repositórios e merge diretamente via SDK Octokit e comandos Git seguros (`http.extraHeader`).
+2. **Serviço de Compilação TeX (`CompilerService`):**
+   * Dispara container descartável Docker TeX Live (`texlive/texlive:latest`) com parâmetros `--network none --cpus=2 -m 2g`.
    * Retorna o arquivo PDF oficial gerado e salva em `/storage/pdf/<project_id>/`. Emite evento `PDF_COMPILED` via SSE.
-3. **Worker `deadlines.checker`:**
-   * Cron executado a cada 1 hora. Verifica seções com vencimento próximo (48h) ou atrasadas. Emite evento `DEADLINE_ALERT` via SSE.
-4. **Worker `notifications.events`:**
-   * Recebe eventos de negócio e os despacha para a rota de stream SSE (`/api/v1/events/stream`).
+3. **Monitor de Prazos (`DeadlinesChecker`):**
+   * Rotina periódica que verifica seções com vencimento próximo (48h) ou atrasadas. Emite evento `DEADLINE_ALERT` via SSE.
+4. **Notificações em Tempo Real (`EventsStream`):**
+   * Transmite eventos de negócio diretamente na rota de stream SSE (`/api/v1/events/stream`).
 
 ---
 
@@ -148,17 +144,16 @@ src/
 ### 📁 Sprint 2: Provisionamento Git & Módulo de Projetos
 - [X] Implementar serviço de criação de repositórios no GitHub via API REST (`GITHUB_TOKEN`) com fallback local.
 - [X] Implementar rotas de CRUD de `projects` (Paper) e cadastro de congressos (Target/Backup).
-- [X] Configurar RabbitMQ (Exchanges e Fila `git.operations`).
-- [X] Implementar Worker de Git (Commit silencioso no GitHub/remote com `--author` e Merge).
+- [X] Implementar serviço de Git (Commit silencioso no GitHub/remote com `--author` e Merge).
 
 ### 🔍 Sprint 3: Fluxo de Revisão, NIT e Compilação TeX
-- [X] Configurar Fila `latex.compilation` e Worker Docker TeX Live para compilações de PR e PDF Master.
+- [X] Configurar serviços e container Docker TeX Live para compilações de PR e PDF Master.
 - [X] Implementar módulo `pull-requests` (Abertura de PR, Aprovação do Revisor).
 - [X] Implementar rota de registro manual do **NIT** (`WAITING_NIT`, `APPROVED_NIT`).
 - [X] Implementar trava de segurança para rota `POST /pull-requests/:id/merge` (exige Revisor Aprovado + NIT Aprovado).
 
 ### 📊 Sprint 4: Pós-Submissão, Gestão de Prazos & Auditoria
 - [X] Implementar rotas pós-submissão (Aceito + DOI, Pedido de Ajustes no mesmo congresso, Rejeitado + Decisão v2).
-- [X] Implementar Fila `deadlines.checker` para alertas de cronograma (🟢/🟡/🔴).
-- [X] Implementar middleware e Worker `audit.logger` gravando na tabela `AuditLog`.
+- [X] Implementar verificação de prazos e alertas de cronograma (🟢/🟡/🔴).
+- [X] Implementar middleware e logger gravando na tabela `AuditLog`.
 - [X] Implementar rotas do dashboard do Gerente (filtros por `AcademicPeriod`).
