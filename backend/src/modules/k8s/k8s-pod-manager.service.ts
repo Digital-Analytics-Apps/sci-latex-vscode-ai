@@ -41,12 +41,18 @@ export class K8sPodManagerService {
     if (!this.isK8sAvailable || !this.k8sApi) return;
 
     try {
-      const podsRes = await this.k8sApi.listNamespacedPod({
-        namespace: this.namespace,
-        labelSelector: 'app.kubernetes.io/part-of=sci-latex-vscode,role=warm-standby',
-      });
+      const podsRes = await this.k8sApi.listNamespacedPod(
+        this.namespace,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'app.kubernetes.io/part-of=sci-latex-vscode,role=warm-standby'
+      );
 
-      const currentWarmPods = podsRes.items.filter((pod) => pod.status?.phase === 'Running');
+      const currentWarmPods = (podsRes.body.items || []).filter(
+        (pod) => pod.status?.phase === 'Running'
+      );
 
       if (currentWarmPods.length < minWarmPods) {
         const needed = minWarmPods - currentWarmPods.length;
@@ -91,10 +97,7 @@ export class K8sPodManagerService {
       },
     };
 
-    await this.k8sApi.createNamespacedPod({
-      namespace: this.namespace,
-      body: podManifest,
-    });
+    await this.k8sApi.createNamespacedPod(this.namespace, podManifest);
 
     return podName;
   }
@@ -108,10 +111,7 @@ export class K8sPodManagerService {
     }
 
     try {
-      await this.k8sApi.readNamespacedPersistentVolumeClaim({
-        name: pvcName,
-        namespace: this.namespace,
-      });
+      await this.k8sApi.readNamespacedPersistentVolumeClaim(pvcName, this.namespace);
       return pvcName;
     } catch {
       // PVC não existe, cria o PVC dedicado do projeto
@@ -136,10 +136,7 @@ export class K8sPodManagerService {
       };
 
       try {
-        await this.k8sApi.createNamespacedPersistentVolumeClaim({
-          namespace: this.namespace,
-          body: pvcManifest,
-        });
+        await this.k8sApi.createNamespacedPersistentVolumeClaim(this.namespace, pvcManifest);
       } catch (err: any) {
         console.warn(`⚠️ Warning creating PVC ${pvcName}:`, err.message || err);
       }
@@ -162,12 +159,18 @@ export class K8sPodManagerService {
 
     try {
       // Buscar se já existe um Pod ativo dedicado a esse projeto
-      const existingPods = await this.k8sApi.listNamespacedPod({
-        namespace: this.namespace,
-        labelSelector: `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId}`,
-      });
+      const existingPods = await this.k8sApi.listNamespacedPod(
+        this.namespace,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId}`
+      );
 
-      const activePod = existingPods.items.find((pod) => pod.status?.phase === 'Running');
+      const activePod = (existingPods.body.items || []).find(
+        (pod) => pod.status?.phase === 'Running'
+      );
       if (activePod && activePod.metadata?.name) {
         return {
           podName: activePod.metadata.name,
@@ -178,20 +181,24 @@ export class K8sPodManagerService {
       }
 
       // Buscar se existe um Pod livre no Warm Standby Pool
-      const warmPodsRes = await this.k8sApi.listNamespacedPod({
-        namespace: this.namespace,
-        labelSelector: 'app.kubernetes.io/part-of=sci-latex-vscode,role=warm-standby',
-      });
+      const warmPodsRes = await this.k8sApi.listNamespacedPod(
+        this.namespace,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'app.kubernetes.io/part-of=sci-latex-vscode,role=warm-standby'
+      );
 
-      const warmPod = warmPodsRes.items.find((pod) => pod.status?.phase === 'Running');
+      const warmPod = (warmPodsRes.body.items || []).find((pod) => pod.status?.phase === 'Running');
 
       if (warmPod && warmPod.metadata?.name) {
         // Reivindicar o Pod do Warm Standby Pool para o projeto
         const claimedPodName = warmPod.metadata.name;
-        await this.k8sApi.patchNamespacedPod({
-          name: claimedPodName,
-          namespace: this.namespace,
-          body: {
+        await this.k8sApi.patchNamespacedPod(
+          claimedPodName,
+          this.namespace,
+          {
             metadata: {
               labels: {
                 role: 'project-workspace',
@@ -200,7 +207,13 @@ export class K8sPodManagerService {
               },
             },
           },
-        });
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { headers: { 'Content-Type': 'application/strategic-merge-patch+json' } }
+        );
 
         // Dispara em background a reposição de +1 Pod Standby para o Warm Pool
         this.ensureWarmPool(1).catch(() => {});
@@ -253,10 +266,7 @@ export class K8sPodManagerService {
         },
       };
 
-      await this.k8sApi.createNamespacedPod({
-        namespace: this.namespace,
-        body: podManifest,
-      });
+      await this.k8sApi.createNamespacedPod(this.namespace, podManifest);
 
       // Dispara em background a reposição de +1 Pod Standby para o Warm Pool
       this.ensureWarmPool(1).catch(() => {});
@@ -284,10 +294,7 @@ export class K8sPodManagerService {
 
     const pvcName = `pvc-project-${projectId.slice(0, 18)}`;
     try {
-      await this.k8sApi.deleteNamespacedPersistentVolumeClaim({
-        name: pvcName,
-        namespace: this.namespace,
-      });
+      await this.k8sApi.deleteNamespacedPersistentVolumeClaim(pvcName, this.namespace);
       console.log(`🧹 PVC ${pvcName} limpo com sucesso após confirmação no GitHub.`);
     } catch (err: any) {
       console.warn(`⚠️ Error cleaning PVC ${pvcName}:`, err.message || err);
