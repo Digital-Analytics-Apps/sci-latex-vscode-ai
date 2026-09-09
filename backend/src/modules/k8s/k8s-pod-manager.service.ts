@@ -26,6 +26,16 @@ export class K8sPodManagerService {
     try {
       const kc = new k8s.KubeConfig();
       kc.loadFromDefault();
+
+      const cluster = kc.getCurrentCluster();
+      if (cluster) {
+        // Quando executando no container Docker ou ambiente de dev, troca 127.0.0.1 por host.docker.internal
+        cluster.server = cluster.server
+          .replace('127.0.0.1', 'host.docker.internal')
+          .replace('localhost', 'host.docker.internal');
+        (cluster as any).skipTLSVerify = true;
+      }
+
       this.k8sApi = kc.makeApiClient(k8s.CoreV1Api);
       this.isK8sAvailable = true;
     } catch {

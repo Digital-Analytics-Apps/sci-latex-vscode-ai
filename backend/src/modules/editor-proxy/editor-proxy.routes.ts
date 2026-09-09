@@ -247,9 +247,14 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         }
       }
 
-      // Verifica se o serviço do code-server está ativo na porta 8080
+      // Verifica se o serviço do code-server está ativo na porta 30080 (NodePort do KinD) ou 8080
       let isCodeServerUp = false;
-      const urlsToCheck = [codeServerUrl, 'http://code-server:8080', 'http://127.0.0.1:8080'];
+      const urlsToCheck = [
+        'http://host.docker.internal:30080',
+        'http://localhost:30080',
+        'http://127.0.0.1:30080',
+        codeServerUrl,
+      ];
 
       for (const url of urlsToCheck) {
         try {
@@ -267,7 +272,7 @@ export async function editorProxyRoutes(app: FastifyInstance) {
       }
 
       if (isCodeServerUp) {
-        const publicCodeServerHost = process.env.PUBLIC_CODE_SERVER_URL || 'http://localhost:8080';
+        const publicCodeServerHost = process.env.PUBLIC_CODE_SERVER_URL || 'http://localhost:30080';
         const targetUrl = `${publicCodeServerHost}/?folder=/home/coder/storage/projects/${projectId}`;
         return reply.redirect(targetUrl);
       }

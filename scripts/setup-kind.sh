@@ -32,4 +32,7 @@ docker build -t "${IMAGE_NAME}" ./docker/code-server
 echo "🚚 Carregando a imagem '${IMAGE_NAME}' para dentro do cluster KinD..."
 kind load docker-image "${IMAGE_NAME}" --name "${CLUSTER_NAME}"
 
+echo "📜 Aplicando manifestos do code-server e NodePort Service..."
+kubectl apply -f k8s/manifests/code-server-template.yaml
+
 echo "🎉 Cluster KinD '${CLUSTER_NAME}' pronto para uso com a imagem '${IMAGE_NAME}'!"

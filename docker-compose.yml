@@ -44,6 +44,9 @@ services:
       - ./backend:/app
       - ./storage:/app/storage
       - /app/node_modules
+      - ${HOME}/.kube/config:/root/.kube/config:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
