@@ -65,3 +65,20 @@ Para garantir 100% de paridade entre Desenvolvimento e Produção:
   - Tolerância total a quedas de conexão ou F5 no navegador.
   - Zero risco de enviar alterações não autorizadas pelo autor para o GitHub.
   - Baixo consumo de RAM/CPU (Pods inativos são descartados).
+
+---
+
+## 6. Desafios de Implementação & Soluções (Rastreabilidade)
+
+1. **Centralização Única no KinD / Remoção do Container Estático `code-server`:**
+   - **Problema:** A presença de um container estático `code-server` no `docker-compose.yml` criava redundância e desalinhamento com a arquitetura K8s.
+   - **Solução:** Removida a declaração estática do `docker-compose.yml`. Todo o provisionamento do `code-server` é centralizado via `K8sPodManagerService` em Pods do cluster KinD.
+
+2. **Exposição de Rede e Roteamento de Sessão (`NodePort 30080`):**
+   - **Problema:** Pods criados dentro do KinD precisam ser acessíveis ao navegador do usuário em `http://localhost:30080`.
+   - **Solução:** Criado o Service `code-server-service` de tipo `NodePort` (porta `30080`) no manifesto `k8s/manifests/code-server-template.yaml`. O `editorProxyRoutes` faz o _probe_ e redireciona automaticamente a sessão do usuário.
+
+3. **Conectividade do Backend Docker com a API K8s (`host.docker.internal` & `~/.kube/config`):**
+   - **Problema:** O container `sci_latex_backend` não conseguia acessar a API K8s por tentar conectar em `127.0.0.1:37121` (que apontava para dentro do próprio container) e pela ausência das credenciais do Kubeconfig.
+   - **Solução:** Montado `${HOME}/.kube/config:/root/.kube/config:ro` e `host.docker.internal:host-gateway` no `docker-compose.yml`. No `K8sPodManagerService`, o endereço da API é substituído por `host.docker.internal` em ambiente de container.
+
