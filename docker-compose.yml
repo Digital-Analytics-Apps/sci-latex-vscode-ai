@@ -49,25 +49,6 @@ services:
         condition: service_healthy
     command: npm run dev
 
-  code-server:
-    image: sci-latex-vscode-code-server:latest
-    build:
-      context: ./docker/code-server
-      dockerfile: Dockerfile
-    container_name: sci_latex_codeserver
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      PASSWORD: "sci-latex-code-server-secret"
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      GH_TOKEN: ${GITHUB_TOKEN:-}
-    volumes:
-      - ./storage:/home/coder/storage
-      - ./docker/code-server/settings.json:/home/coder/.local/share/code-server/User/settings.json
-      - ./docker/code-server/settings.json:/home/coder/.config/code-server/User/settings.json
-    command: --auth none --disable-telemetry --disable-workspace-trust /home/coder/storage
-
   frontend:
     build:
       context: ./frontend
@@ -83,7 +64,6 @@ services:
       - /app/node_modules
     depends_on:
       - backend
-      - code-server
     command: npm run dev -- --host 0.0.0.0
 
 volumes:
