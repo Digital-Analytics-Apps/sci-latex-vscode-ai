@@ -78,7 +78,7 @@ Todas as contas de teste são criadas com a senha padrão: **`123456`**
 
 ---
 
-## 🐳 Comandos Utilitários do Docker Compose
+## 🐳 Comandos Utilitários do Docker (Backend & Prisma)
 
 Principais comandos para gerenciamento dos contêineres, banco de dados e execução de rotinas diretamente no Docker:
 
@@ -93,18 +93,25 @@ docker compose up --build -d backend
 ```
 
 ### 3. Sincronizar o Schema Prisma no Banco do Docker (`db push`)
-Útil para criar ou atualizar as tabelas do PostgreSQL no contêiner quando o banco for reiniciado:
+Útil para criar ou atualizar as tabelas do PostgreSQL no contêiner quando o schema for alterado em desenvolvimento:
 ```bash
+docker exec sci_latex_backend npx prisma db push
+# ou via compose:
 docker compose exec backend npx prisma db push
 ```
 
-### 4. Popular o Banco com o Seed Diretamente no Contêiner
+### 4. Popular o Banco com o Seed Diretamente no Contêiner (`db seed`)
+Popula o banco de dados com as contas e personas de teste (`author@google.com`, `reviewer@google.com`, etc.):
 ```bash
+docker exec sci_latex_backend npx prisma db seed
+# ou via npm script no compose:
 docker compose exec backend npm run db:seed
 ```
 
-### 5. Executar as Migrações do Prisma no Contêiner
+### 5. Executar as Migrações do Prisma no Contêiner (`migrate dev`)
 ```bash
+docker exec sci_latex_backend npx prisma migrate dev
+# ou via npm script no compose:
 docker compose exec backend npm run db:migrate
 ```
 
