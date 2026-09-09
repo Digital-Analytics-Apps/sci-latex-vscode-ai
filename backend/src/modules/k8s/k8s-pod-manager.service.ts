@@ -30,7 +30,7 @@ export class K8sPodManagerService {
       const cluster = kc.getCurrentCluster();
       if (cluster) {
         // Quando executando no container Docker ou ambiente de dev, troca 127.0.0.1 por host.docker.internal
-        cluster.server = cluster.server
+        (cluster as any).server = cluster.server
           .replace('127.0.0.1', 'host.docker.internal')
           .replace('localhost', 'host.docker.internal');
         (cluster as any).skipTLSVerify = true;
@@ -97,6 +97,13 @@ export class K8sPodManagerService {
             name: 'code-server',
             image: 'sci-latex-vscode-code-server:latest',
             imagePullPolicy: 'IfNotPresent',
+            args: [
+              '--auth',
+              'none',
+              '--disable-telemetry',
+              '--disable-workspace-trust',
+              '/home/coder/storage',
+            ],
             ports: [{ containerPort: 8080, name: 'http' }],
             resources: {
               requests: { cpu: '100m', memory: '256Mi' },
@@ -258,6 +265,13 @@ export class K8sPodManagerService {
               name: 'code-server',
               image: 'sci-latex-vscode-code-server:latest',
               imagePullPolicy: 'IfNotPresent',
+              args: [
+                '--auth',
+                'none',
+                '--disable-telemetry',
+                '--disable-workspace-trust',
+                `/home/coder/storage/projects/${projectId}`,
+              ],
               ports: [{ containerPort: 8080, name: 'http' }],
               volumeMounts: [
                 {

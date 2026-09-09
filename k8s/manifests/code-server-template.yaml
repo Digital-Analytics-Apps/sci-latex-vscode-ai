@@ -44,6 +44,12 @@ spec:
     - name: code-server
       image: sci-latex-vscode-code-server:latest
       imagePullPolicy: IfNotPresent
+      args:
+        - "--auth"
+        - "none"
+        - "--disable-telemetry"
+        - "--disable-workspace-trust"
+        - "/home/coder/storage"
       ports:
         - containerPort: 8080
           name: http

@@ -30,7 +30,8 @@ USER coder
 # Instalar a extensão oficial LaTeX Workshop no VS Code Web
 RUN code-server --install-extension James-Yu.latex-workshop || true
 
-# Pre-instalar o arquivo de configurações padrao settings.json nos diretórios de usuário
-RUN mkdir -p /home/coder/.local/share/code-server/User /home/coder/.config/code-server/User
+# Pre-instalar o arquivo de configurações padrao settings.json e config.yaml nos diretórios de usuário
+RUN mkdir -p /home/coder/.local/share/code-server/User /home/coder/.config/code-server/User /home/coder/.config/code-server
 COPY settings.json /home/coder/.local/share/code-server/User/settings.json
 COPY settings.json /home/coder/.config/code-server/User/settings.json
+COPY config.yaml /home/coder/.config/code-server/config.yaml
