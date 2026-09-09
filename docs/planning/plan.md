@@ -68,6 +68,7 @@ O usuário **não precisa criar chaves SSH ou gerenciar credenciais de Git manua
 | **Prisma + PostgreSQL** | Persistência & Auditoria | Armazena a associação `ProjectMember`, `AcademicPeriod`, `PullRequest`, `ReviewComment` e `AuditLog`. |
 | **Agendador Leve (`node-cron`)** | Verificação de Prazos | Verificação diária automática de prazos de conferências diretamente no backend Node.js (Zero RAM extra). |
 | **Arquitetura Ultra-Leve (Sem Broker)** | Simplicidade Self-Hosted | Eliminação do RabbitMQ/Erlang. Economia de ~300MB de RAM e menos pontos de falha na infraestrutura. |
+| **KinD (Kubernetes in Docker) + Warm Pool & PVCs** | Orquestração de Workspaces | Zero latência para abertura do editor (Pods reservas aquecidos), isolamento multi-tenant e segurança dos rascunhos via PVC por projeto. |
 
 ---
 

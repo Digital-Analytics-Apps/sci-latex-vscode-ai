@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { env } from '../../config/env';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
+import { K8sPodManagerService } from '../k8s/k8s-pod-manager.service';
 
 const execAsync = promisify(exec);
 
@@ -81,6 +82,7 @@ async function ensureGitRepositoryWorkspace(
 
 export async function editorProxyRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
+  const k8sPodManager = new K8sPodManagerService();
 
   app.addHook('onRequest', verifyJwt);
 
@@ -108,6 +110,7 @@ export async function editorProxyRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { projectId } = request.params as { projectId: string };
       const { sectionId } = request.query as { sectionId?: string; mode?: string };
+      const userId = (request.user as any)?.sub || 'user';
 
       const project = await projectsRepository.findById(projectId);
       if (!project) {
@@ -117,6 +120,10 @@ export async function editorProxyRoutes(app: FastifyInstance) {
           message: 'Projeto acadêmico não encontrado.',
         });
       }
+
+      // 1. Reivindica o Pod do Warm Standby Pool ou cria sob demanda com PVC por Projeto no K8s
+      const podResult = await k8sPodManager.claimPodForProject(projectId, userId);
+      request.log.info({ podResult }, 'K8s Pod claimed for project workspace');
 
       // Determina a branch de destino no Git
       let targetBranch = 'dev';

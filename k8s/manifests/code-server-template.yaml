@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-project-template
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: sci-latex-vscode
+    component: project-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: workspace-warm-standby-template
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: sci-latex-vscode
+    component: code-server
+    role: warm-standby
+spec:
+  containers:
+    - name: code-server
+      image: sci-latex-vscode-code-server:latest
+      imagePullPolicy: IFNotPresent
+      ports:
+        - containerPort: 8080
+          name: http
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi

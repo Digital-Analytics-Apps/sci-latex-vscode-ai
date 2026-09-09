@@ -43,12 +43,19 @@ export interface PostSubmissionDTO {
   decisionReason?: string;
 }
 
+import { K8sPodManagerService } from '../k8s/k8s-pod-manager.service';
+
 export class ProjectsService {
+  private k8sPodManager: K8sPodManagerService;
+
   constructor(
     private projectsRepository: IProjectsRepository,
     private teamsRepository: ITeamsRepository,
-    private gitService: GitService
-  ) {}
+    private gitService: GitService,
+    k8sPodManager?: K8sPodManagerService
+  ) {
+    this.k8sPodManager = k8sPodManager || new K8sPodManagerService();
+  }
 
   // Criar um novo projeto/artigo e provisionar seu repositório Git/GitHub
   async createProject(userId: string, data: CreateProjectDTO) {
@@ -222,6 +229,7 @@ export class ProjectsService {
     if (!project) throw new Error('PROJECT_NOT_FOUND');
 
     await this.projectsRepository.delete(projectId);
+    await this.k8sPodManager.cleanProjectPVC(projectId).catch(() => {});
 
     await logAudit({
       userId: requesterId,

@@ -37,6 +37,7 @@
     "@fastify/sensible": "^5.5.0",
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^2.1.0",
+    "@kubernetes/client-node": "^0.21.0",
     "@octokit/rest": "^22.0.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",

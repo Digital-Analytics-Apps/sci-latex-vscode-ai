@@ -1,8 +1,8 @@
 # Especificação Técnica e Arquitetural (Specs)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-07  
-**Status:** Especificação Completa (Arquitetura Ultra-Leve Sem RabbitMQ, Compilação Nativa LaTeX Workshop, Provisionamento Git, Token de Serviço, Fluxo GitHub Draft PR ➔ Ready for Review, Revisão no VS Code Web com Branch Checkout Nativo & Painel Lateral de Comentários, Stream SSE)
+**Última Atualização:** 2026-09-08  
+**Status:** Especificação Completa (KinD Kubernetes Cluster Local, Warm Standby Pool, Pods sob Demanda, PVC por Projeto, Limpeza Inteligente de PVCs, Estrutura Modular TeX, SDK Octokit, Stream SSE)
 
 ---
 
