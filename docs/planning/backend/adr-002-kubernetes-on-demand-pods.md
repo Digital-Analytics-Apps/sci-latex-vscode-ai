@@ -82,3 +82,7 @@ Para garantir 100% de paridade entre Desenvolvimento e Produção:
    - **Problema:** O container `sci_latex_backend` não conseguia acessar a API K8s por tentar conectar em `127.0.0.1:37121` (que apontava para dentro do próprio container) e pela ausência das credenciais do Kubeconfig.
    - **Solução:** Montado `${HOME}/.kube/config:/root/.kube/config:ro` e `host.docker.internal:host-gateway` no `docker-compose.yml`. No `K8sPodManagerService`, o endereço da API é substituído por `host.docker.internal` em ambiente de container.
 
+4. **Resolução Dinâmica do Cliente K8s (`getK8sApiClient`):**
+   - **Problema:** Quando o cluster KinD é recriado ou reiniciado, a porta da API K8s do servidor muda dinamicamente (ex: de `37121` para `41551`). A instância estática anterior do cliente no backend mantinha em cache a porta antiga, gerando erros de `ECONNREFUSED` e forçando o sistema para o modo de fallback sem instanciar novos Pods.
+   - **Solução:** Refatorado o `K8sPodManagerService` para resolver e recarregar dinamicamente as credenciais do `KubeConfig` e o endereço ativo do cluster a cada chamada de gerenciamento (`getK8sApiClient`), garantindo que o backend se conecte com sucesso ao cluster atualizado e crie Pods dedicados para cada usuário.
+
