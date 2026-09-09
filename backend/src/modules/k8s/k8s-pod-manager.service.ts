@@ -105,10 +105,22 @@ export class K8sPodManagerService {
               '/home/coder/storage',
             ],
             ports: [{ containerPort: 8080, name: 'http' }],
+            volumeMounts: [
+              {
+                name: 'host-storage',
+                mountPath: '/home/coder/storage',
+              },
+            ],
             resources: {
               requests: { cpu: '100m', memory: '256Mi' },
               limits: { cpu: '1', memory: '1Gi' },
             },
+          },
+        ],
+        volumes: [
+          {
+            name: 'host-storage',
+            hostPath: { path: '/home/coder/storage' },
           },
         ],
       },
