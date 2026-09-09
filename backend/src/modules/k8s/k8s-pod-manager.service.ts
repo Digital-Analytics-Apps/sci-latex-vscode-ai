@@ -13,14 +13,10 @@ export class K8sPodManagerService {
   private isK8sAvailable = false;
   private namespace = 'default';
 
-  constructor() {
-    this.initK8sClient();
-  }
-
-  private initK8sClient() {
+  private getK8sApiClient(): k8s.CoreV1Api | null {
     if (env.NODE_ENV === 'test') {
       this.isK8sAvailable = false;
-      return;
+      return null;
     }
 
     try {
@@ -38,20 +34,21 @@ export class K8sPodManagerService {
 
       this.k8sApi = kc.makeApiClient(k8s.CoreV1Api);
       this.isK8sAvailable = true;
+      return this.k8sApi;
     } catch {
-      console.log(
-        'ℹ️ Local K8s/KinD cluster not detected. K8sPodManager operating in Fallback Mode.'
-      );
       this.isK8sAvailable = false;
+      this.k8sApi = null;
+      return null;
     }
   }
 
   // 1. Garante o Warm Standby Pool (Pods pré-aquecidos para latência 0ms)
   async ensureWarmPool(minWarmPods = 1): Promise<void> {
-    if (!this.isK8sAvailable || !this.k8sApi) return;
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) return;
 
     try {
-      const podsRes = await this.k8sApi.listNamespacedPod(
+      const podsRes = await k8sApi.listNamespacedPod(
         this.namespace,
         undefined,
         undefined,
@@ -76,7 +73,8 @@ export class K8sPodManagerService {
   }
 
   private async createWarmStandbyPod(): Promise<string> {
-    if (!this.k8sApi) throw new Error('K8S_CLIENT_NOT_INITIALIZED');
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) throw new Error('K8S_CLIENT_NOT_INITIALIZED');
 
     const podName = `workspace-warm-${Date.now().toString(36)}`;
     const podManifest: k8s.V1Pod = {
@@ -126,7 +124,7 @@ export class K8sPodManagerService {
       },
     };
 
-    await this.k8sApi.createNamespacedPod(this.namespace, podManifest);
+    await k8sApi.createNamespacedPod(this.namespace, podManifest);
 
     return podName;
   }
@@ -135,12 +133,13 @@ export class K8sPodManagerService {
   async ensureProjectPVC(projectId: string): Promise<string> {
     const pvcName = `pvc-project-${projectId.slice(0, 18)}`;
 
-    if (!this.isK8sAvailable || !this.k8sApi) {
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) {
       return pvcName;
     }
 
     try {
-      await this.k8sApi.readNamespacedPersistentVolumeClaim(pvcName, this.namespace);
+      await k8sApi.readNamespacedPersistentVolumeClaim(pvcName, this.namespace);
       return pvcName;
     } catch {
       // PVC não existe, cria o PVC dedicado do projeto
@@ -165,7 +164,7 @@ export class K8sPodManagerService {
       };
 
       try {
-        await this.k8sApi.createNamespacedPersistentVolumeClaim(this.namespace, pvcManifest);
+        await k8sApi.createNamespacedPersistentVolumeClaim(this.namespace, pvcManifest);
       } catch (err: any) {
         console.warn(`⚠️ Warning creating PVC ${pvcName}:`, err.message || err);
       }
@@ -177,7 +176,8 @@ export class K8sPodManagerService {
   async claimPodForProject(projectId: string, userId: string): Promise<PodClaimResult> {
     const pvcName = await this.ensureProjectPVC(projectId);
 
-    if (!this.isK8sAvailable || !this.k8sApi) {
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) {
       return {
         podName: `local-fallback-${projectId}`,
         pvcName,
@@ -188,7 +188,7 @@ export class K8sPodManagerService {
 
     try {
       // Buscar se já existe um Pod ativo dedicado a esse projeto
-      const existingPods = await this.k8sApi.listNamespacedPod(
+      const existingPods = await k8sApi.listNamespacedPod(
         this.namespace,
         undefined,
         undefined,
@@ -210,7 +210,7 @@ export class K8sPodManagerService {
       }
 
       // Buscar se existe um Pod livre no Warm Standby Pool
-      const warmPodsRes = await this.k8sApi.listNamespacedPod(
+      const warmPodsRes = await k8sApi.listNamespacedPod(
         this.namespace,
         undefined,
         undefined,
@@ -224,7 +224,7 @@ export class K8sPodManagerService {
       if (warmPod && warmPod.metadata?.name) {
         // Reivindicar o Pod do Warm Standby Pool para o projeto
         const claimedPodName = warmPod.metadata.name;
-        await this.k8sApi.patchNamespacedPod(
+        await k8sApi.patchNamespacedPod(
           claimedPodName,
           this.namespace,
           {
@@ -302,7 +302,7 @@ export class K8sPodManagerService {
         },
       };
 
-      await this.k8sApi.createNamespacedPod(this.namespace, podManifest);
+      await k8sApi.createNamespacedPod(this.namespace, podManifest);
 
       // Dispara em background a reposição de +1 Pod Standby para o Warm Pool
       this.ensureWarmPool(1).catch(() => {});
@@ -326,11 +326,12 @@ export class K8sPodManagerService {
 
   // 4. Limpeza Inteligente do PVC após confirmação de push/merge no GitHub ou deleção
   async cleanProjectPVC(projectId: string): Promise<void> {
-    if (!this.isK8sAvailable || !this.k8sApi) return;
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) return;
 
     const pvcName = `pvc-project-${projectId.slice(0, 18)}`;
     try {
-      await this.k8sApi.deleteNamespacedPersistentVolumeClaim(pvcName, this.namespace);
+      await k8sApi.deleteNamespacedPersistentVolumeClaim(pvcName, this.namespace);
       console.log(`🧹 PVC ${pvcName} limpo com sucesso após confirmação no GitHub.`);
     } catch (err: any) {
       console.warn(`⚠️ Error cleaning PVC ${pvcName}:`, err.message || err);
