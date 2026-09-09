@@ -51,6 +51,9 @@ services:
       postgres:
         condition: service_healthy
     command: npm run dev
+    networks:
+      - default
+      - kind
 
   frontend:
     build:
@@ -68,6 +71,12 @@ services:
     depends_on:
       - backend
     command: npm run dev -- --host 0.0.0.0
+
+networks:
+  default:
+  kind:
+    external: true
+    name: kind
 
 volumes:
   postgres_data:

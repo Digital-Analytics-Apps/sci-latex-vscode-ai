@@ -25,10 +25,8 @@ export class K8sPodManagerService {
 
       const cluster = kc.getCurrentCluster();
       if (cluster) {
-        // Quando executando no container Docker ou ambiente de dev, troca 127.0.0.1 por host.docker.internal
-        (cluster as any).server = cluster.server
-          .replace('127.0.0.1', 'host.docker.internal')
-          .replace('localhost', 'host.docker.internal');
+        // Quando executando no container Docker, conecta diretamente ao control-plane na rede docker 'kind'
+        (cluster as any).server = 'https://sci-latex-kind-control-plane:6443';
         (cluster as any).skipTLSVerify = true;
       }
 
