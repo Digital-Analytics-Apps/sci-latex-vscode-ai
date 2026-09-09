@@ -242,8 +242,10 @@ export class K8sPodManagerService {
           { headers: { 'Content-Type': 'application/strategic-merge-patch+json' } }
         );
 
-        // Dispara em background a reposição de +1 Pod Standby para o Warm Pool
-        this.ensureWarmPool(1).catch(() => {});
+        // Dispara a criação imediata de +1 Pod Standby para repor o Warm Pool
+        this.createWarmStandbyPod().catch((err) =>
+          console.warn('⚠️ Error creating replacement warm pod:', err.message || err)
+        );
 
         return {
           podName: claimedPodName,
