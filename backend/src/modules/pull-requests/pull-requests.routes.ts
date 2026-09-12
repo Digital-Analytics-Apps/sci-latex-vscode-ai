@@ -29,7 +29,7 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
         body: z.object({
           title: z.string().min(3),
           description: z.string().optional().nullable(),
-          sectionId: z.string().min(1),
+          taskId: z.string().optional(),
           projectId: z.string().min(1),
           reviewerId: z.string().optional().nullable().or(z.literal('')),
         }),

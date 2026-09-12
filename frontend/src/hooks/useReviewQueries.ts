@@ -24,14 +24,14 @@ export interface PullRequestDetail {
     | "CANCELLED";
   nitStatus: "NOT_REQUIRED" | "WAITING_NIT" | "APPROVED_NIT" | "REJECTED_NIT";
   nitNotes?: string;
-  sectionId: string;
+  taskId?: string;
   authorId: string;
   reviewerId?: string;
   projectId: string;
   createdAt: string;
   author: { id: string; name: string; email: string };
   reviewer?: { id: string; name: string; email: string };
-  section: { id: string; title: string; filePath: string };
+  task?: { id: string; title: string; branchName: string };
   comments?: ReviewCommentItem[];
   diffContent?: string;
   pdfUrl?: string;

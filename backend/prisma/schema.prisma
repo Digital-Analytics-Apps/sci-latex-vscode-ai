@@ -142,7 +142,6 @@ model Project {
   updatedAt         DateTime           @updatedAt
   deletedAt         DateTime?
   members           ProjectMember[]
-  sections          Section[]
   prs               PullRequest[]
   tasks             Task[]
   workspaces        Workspace[]
@@ -161,21 +160,6 @@ model ProjectMember {
   @@unique([userId, projectId])
 }
 
-model Section {
-  id         String  @id @default(uuid())
-  title      String
-  filePath   String
-  branchName String
-  projectId  String
-  assignedTo String?
-
-  startDate DateTime?
-  dueDate   DateTime?
-
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  prs     PullRequest[]
-}
-
 model PullRequest {
   id          String   @id @default(uuid())
   title       String
@@ -185,19 +169,18 @@ model PullRequest {
   nitStatus NITStatus @default(NOT_REQUIRED)
   nitNotes  String?
 
-  sectionId  String
+  taskId     String?
   authorId   String
   reviewerId String?
   projectId  String
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
   mergedAt   DateTime?
-  section    Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  task       Task?           @relation("TaskPullRequest", fields: [taskId], references: [id], onDelete: SetNull)
   author     User            @relation("AuthorPRs", fields: [authorId], references: [id])
   reviewer   User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
   project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   comments   ReviewComment[]
-  task       Task?
 }
 
 model ReviewComment {
@@ -259,21 +242,20 @@ enum WorkspaceStatus {
 }
 
 model Task {
-  id            String     @id @default(uuid())
-  projectId     String
-  assignedToId  String
-  title         String
-  branchName    String
-  status        TaskStatus @default(NOT_STARTED)
-  dueDate       DateTime?
-  pullRequestId String?    @unique
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id           String        @id @default(uuid())
+  projectId    String
+  assignedToId String
+  title        String
+  branchName   String
+  status       TaskStatus    @default(NOT_STARTED)
+  dueDate      DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee    User         @relation("UserTasks", fields: [assignedToId], references: [id])
-  pullRequest PullRequest? @relation(fields: [pullRequestId], references: [id])
-  workspaces  Workspace[]
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee     User          @relation("UserTasks", fields: [assignedToId], references: [id])
+  pullRequests PullRequest[] @relation("TaskPullRequest")
+  workspaces   Workspace[]
 }
 
 enum TaskStatus {

@@ -30,7 +30,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
   const dispatch = useDispatch();
   const updateDeadlineMutation = useUpdateDeadlineMutation();
 
-  const [selectedSection, setSelectedSection] = useState<{
+  const [selectedTask, setSelectedTask] = useState<{
     id: string;
     title: string;
     dueDate: string;
@@ -39,63 +39,63 @@ export const CoordinatorDashboardPage: React.FC = () => {
 
   const mockTeamMatrix = [
     {
-      id: "sec-1",
+      id: "task-1",
       projectName: "Metodologia Científica em Redes Neutras",
-      sectionTitle: "Seção 1 - Introdução",
+      taskTitle: "Tarefa 1 - Introdução",
       authorName: "autor1@sci-latex.org",
       dueDate: "2026-10-01",
       status: "ON_TIME" as const,
     },
     {
-      id: "sec-2",
+      id: "task-2",
       projectName: "Metodologia Científica em Redes Neutras",
-      sectionTitle: "Seção 2 - Resultados Experimentais",
+      taskTitle: "Tarefa 2 - Resultados Experimentais",
       authorName: "autor2@sci-latex.org",
       dueDate: "2026-09-10",
       status: "WARNING_SOON" as const,
     },
     {
-      id: "sec-3",
+      id: "task-3",
       projectName: "Otimização de Compiladores TeX isolados",
-      sectionTitle: "Seção 3 - Arquitetura de Containers",
+      taskTitle: "Tarefa 3 - Arquitetura de Containers",
       authorName: "autor3@sci-latex.org",
       dueDate: "2026-09-01",
       status: "OVERDUE" as const,
     },
   ];
 
-  const handleOpenEditModal = (sec: {
+  const handleOpenEditModal = (task: {
     id: string;
     title: string;
     dueDate: string;
   }) => {
-    setSelectedSection(sec);
-    setNewDate(sec.dueDate);
+    setSelectedTask(task);
+    setNewDate(task.dueDate);
   };
 
   const handleSaveNewDate = async () => {
-    if (!selectedSection || !newDate) return;
+    if (!selectedTask || !newDate) return;
 
     try {
       await updateDeadlineMutation.mutateAsync({
-        sectionId: selectedSection.id,
+        taskId: selectedTask.id,
         newDueDate: newDate,
       });
       dispatch(
         showNotification({
-          message: `Prazo da seção "${selectedSection.title}" alterado para ${newDate} pelo Coordenador!`,
+          message: `Prazo da tarefa "${selectedTask.title}" alterado para ${newDate} pelo Coordenador!`,
           severity: "success",
         }),
       );
-      setSelectedSection(null);
+      setSelectedTask(null);
     } catch {
       dispatch(
         showNotification({
-          message: `Prazo da seção "${selectedSection.title}" alterado para ${newDate} pelo Coordenador!`,
+          message: `Prazo da tarefa "${selectedTask.title}" alterado para ${newDate} pelo Coordenador!`,
           severity: "success",
         }),
       );
-      setSelectedSection(null);
+      setSelectedTask(null);
     }
   };
 
@@ -154,7 +154,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
                     <TableCell sx={{ fontWeight: 600 }}>
                       {item.projectName}
                     </TableCell>
-                    <TableCell>{item.sectionTitle}</TableCell>
+                    <TableCell>{item.taskTitle}</TableCell>
                     <TableCell>{item.authorName}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>
                       {item.dueDate}
@@ -179,7 +179,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Tooltip title="Alterar Prazo da Seção">
+                      <Tooltip title="Alterar Prazo da Tarefa">
                         <Button
                           variant="outlined"
                           size="small"
@@ -188,7 +188,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
                           onClick={() =>
                             handleOpenEditModal({
                               id: item.id,
-                              title: item.sectionTitle,
+                              title: item.taskTitle,
                               dueDate: item.dueDate,
                             })
                           }
@@ -207,19 +207,19 @@ export const CoordinatorDashboardPage: React.FC = () => {
 
       {/* Modal do Coordenador para Ajuste de Prazo */}
       <Dialog
-        open={Boolean(selectedSection)}
-        onClose={() => setSelectedSection(null)}
+        open={Boolean(selectedTask)}
+        onClose={() => setSelectedTask(null)}
         maxWidth="xs"
         fullWidth
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          Ajustar Prazo da Seção
+          Ajustar Prazo da Tarefa
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Como Coordenador da equipe, você tem autoridade para estender ou
-            antecipar o prazo de entrega da seção{" "}
-            <strong>{selectedSection?.title}</strong>.
+            antecipar o prazo de entrega da tarefa{" "}
+            <strong>{selectedTask?.title}</strong>.
           </Typography>
           <TextField
             fullWidth
@@ -231,7 +231,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setSelectedSection(null)} color="inherit">
+          <Button onClick={() => setSelectedTask(null)} color="inherit">
             Cancelar
           </Button>
           <Button

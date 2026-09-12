@@ -292,24 +292,24 @@ startxref
     }
   }
 
-  async commitSectionProgress(request: FastifyRequest, reply: FastifyReply) {
+  async commitTaskProgress(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
       id: z.string(),
-      sectionId: z.string(),
+      taskId: z.string(),
     });
 
     const bodySchema = z.object({
       commitMessage: z.string().optional(),
     });
 
-    const { id, sectionId } = paramsSchema.parse(request.params);
+    const { id, taskId } = paramsSchema.parse(request.params);
     const { commitMessage } = bodySchema.parse(request.body || {});
     const userId = request.user.sub;
 
     try {
-      const result = await this.projectsService.commitSectionProgress(
+      const result = await this.projectsService.commitTaskProgress(
         id,
-        sectionId,
+        taskId,
         userId,
         commitMessage
       );

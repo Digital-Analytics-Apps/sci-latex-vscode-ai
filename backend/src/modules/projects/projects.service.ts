@@ -143,40 +143,14 @@ export class ProjectsService {
     return this.projectsRepository.findAll(filters);
   }
 
-  // Buscar detalhes de um projeto pelo ID (com computação de travas por PR ativo nas seções)
+  // Buscar detalhes de um projeto pelo ID
   async getProjectById(projectId: string) {
     const project = await this.projectsRepository.findById(projectId);
     if (!project) {
       throw new Error('PROJECT_NOT_FOUND');
     }
 
-    const prs = (project as any).prs || [];
-    const activePRStatuses = ['DRAFT', 'UNDER_REVIEW', 'CHANGES_REQUESTED'];
-
-    const sectionsWithLockStatus = ((project as any).sections || []).map((sec: any) => {
-      const activePR = prs.find(
-        (p: any) => p.sectionId === sec.id && activePRStatuses.includes(p.status)
-      );
-
-      return {
-        ...sec,
-        isLocked: !!activePR,
-        activePullRequest: activePR
-          ? {
-              id: activePR.id,
-              title: activePR.title,
-              status: activePR.status,
-              author: activePR.author,
-              createdAt: activePR.createdAt,
-            }
-          : null,
-      };
-    });
-
-    return {
-      ...project,
-      sections: sectionsWithLockStatus,
-    };
+    return project;
   }
 
   // Atualizar informações do projeto (com trava de justificativa para alteração de datas)
@@ -343,10 +317,10 @@ export class ProjectsService {
     return updated;
   }
 
-  // Realiza o commit silencioso do progresso da seção no GitHub via Service Token e garante a existência do Draft PR
-  async commitSectionProgress(
+  // Realiza o commit silencioso do progresso de uma tarefa no GitHub via Service Token e garante a existência do Draft PR
+  async commitTaskProgress(
     projectId: string,
-    sectionId: string,
+    taskId: string,
     userId: string,
     commitMessage?: string
   ) {
@@ -357,56 +331,9 @@ export class ProjectsService {
     const authorName = user?.name || 'SCI-LaTeX Author';
     const authorEmail = user?.email || 'author@sci-latex.org';
 
-    // Garante que a seção existe na tabela Section para evitar violações de chave estrangeira
-    const shortHash = projectId.slice(0, 8);
-    const dbSectionId = `${sectionId}-${shortHash}`;
-    let existingSection = await prisma.section.findFirst({
-      where: { projectId, OR: [{ id: sectionId }, { id: dbSectionId }] },
-    });
-
-    if (!existingSection) {
-      const titleMap: Record<string, { title: string; filePath: string }> = {
-        'sec-1': {
-          title: '1. Introdução & Trabalhos Relacionados',
-          filePath: 'sections/01-introduction.tex',
-        },
-        'sec-2': { title: '2. Metodologia & Formulação', filePath: 'sections/02-methodology.tex' },
-        'sec-3': { title: '3. Resultados & Experimentos', filePath: 'sections/03-results.tex' },
-        'sec-4': { title: '4. Conclusão', filePath: 'sections/04-conclusion.tex' },
-      };
-      const meta = titleMap[sectionId] || {
-        title: `Seção ${sectionId}`,
-        filePath: `sections/${sectionId}.tex`,
-      };
-
-      existingSection = await prisma.section
-        .create({
-          data: {
-            id: dbSectionId,
-            projectId,
-            title: meta.title,
-            filePath: meta.filePath,
-            branchName: `task/${sectionId}-${shortHash}`,
-          },
-        })
-        .catch(
-          () =>
-            ({
-              id: dbSectionId,
-              projectId,
-              title: meta.title,
-              filePath: meta.filePath,
-              branchName: `task/${sectionId}-${shortHash}`,
-            }) as any
-        );
-    }
-
-    if (!existingSection) {
-      throw new Error('SECTION_NOT_FOUND');
-    }
-
-    const filePath = existingSection.filePath;
-    const branchName = existingSection.branchName;
+    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    const branchName = task?.branchName || `task/${taskId.slice(0, 8)}`;
+    const filePath = 'main.tex';
 
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     const fullFilePath = path.join(projectDir, filePath);
@@ -415,10 +342,10 @@ export class ProjectsService {
     try {
       fileContent = await fs.readFile(fullFilePath, 'utf-8');
     } catch {
-      fileContent = `% Progress update for ${sectionId}\n`;
+      fileContent = `% Progress update for task ${taskId}\n`;
     }
 
-    const msg = commitMessage || `Progress update: section ${sectionId} edit`;
+    const msg = commitMessage || `Progress update: task ${taskId} edit`;
 
     let commitHash = `commit-${Date.now().toString(36)}`;
     try {
@@ -450,7 +377,7 @@ export class ProjectsService {
         .findFirst({
           where: {
             projectId,
-            sectionId,
+            taskId,
             status: { in: ['DRAFT', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'APPROVED'] },
           },
         })
@@ -476,11 +403,11 @@ export class ProjectsService {
         pr = await prisma.pullRequest
           .create({
             data: {
-              title: `[DRAFT] Revisão da Seção: ${existingSection.title}`,
+              title: `[DRAFT] Revisão da Tarefa: ${task?.title || taskId}`,
               description: `Progresso salvo pelo autor em ${new Date().toLocaleDateString('pt-BR')}`,
               status: 'DRAFT',
               projectId,
-              sectionId,
+              taskId,
               authorId: authorIdToUse,
               reviewerId: reviewerMember?.userId || null,
             },
@@ -493,8 +420,8 @@ export class ProjectsService {
           projectId,
           headBranch: branchName,
           baseBranch: 'dev',
-          title: `[DRAFT] Revisão da Seção: ${existingSection.title}`,
-          body: `Draft Pull Request criado automaticamente ao salvar o progresso da seção.`,
+          title: `[DRAFT] Revisão da Tarefa: ${task?.title || taskId}`,
+          body: `Draft Pull Request criado automaticamente ao salvar o progresso da tarefa.`,
           projectTitle: project.name,
           repoUrl: project.gitRepoPath,
           authorName: user?.name,
@@ -508,11 +435,11 @@ export class ProjectsService {
 
     await logAudit({
       userId,
-      action: 'SECTION_PROGRESS_COMMITTED',
+      action: 'TASK_PROGRESS_COMMITTED',
       entityType: 'Project',
       entityId: projectId,
       details: {
-        sectionId,
+        taskId,
         filePath,
         branchName,
         commitHash,
@@ -524,7 +451,7 @@ export class ProjectsService {
     return {
       message: 'Progresso salvo e Draft PR mantido/criado no GitHub com sucesso!',
       commitHash,
-      sectionId,
+      taskId,
       projectId,
       pullRequest: pr,
     };

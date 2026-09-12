@@ -2,15 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreatePRFormData } from "../schemas/pr.schema";
 import { api } from "../services/api";
 
-export interface Section {
-  id: string;
-  title: string;
-  filePath: string;
-  branchName: string;
-  assignedTo?: string;
-  dueDate?: string;
-}
-
 export interface ProjectDetails {
   id: string;
   name: string;
@@ -18,7 +9,12 @@ export interface ProjectDetails {
   gitRepoPath: string;
   teamId: string;
   submissionStatus: string;
-  sections: Section[];
+  tasks?: Array<{
+    id: string;
+    title: string;
+    branchName: string;
+    status: string;
+  }>;
   members: Array<{
     id: string;
     userId: string;
@@ -39,7 +35,7 @@ export interface ProjectListItem {
   createdAt: string;
   updatedAt: string;
   team?: { id: string; name: string };
-  _count?: { sections: number; members: number };
+  _count?: { tasks: number; members: number };
 }
 
 // Hook para buscar a lista de projetos/artigos aos quais o usuário tem acesso
@@ -73,9 +69,9 @@ export function useSaveProgressMutation(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { sectionId: string; commitMessage?: string }) => {
+    mutationFn: async (data: { taskId: string; commitMessage?: string }) => {
       const response = await api.post(
-        `/projects/${projectId}/sections/${data.sectionId}/commit`,
+        `/projects/${projectId}/tasks/${data.taskId}/commit`,
         {
           commitMessage:
             data.commitMessage || "Progress update: LaTeX content edit",

@@ -19,10 +19,7 @@ import {
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
-import {
-  type Section,
-  useCreatePRMutation,
-} from "../../hooks/useProjectQueries";
+import { useCreatePRMutation } from "../../hooks/useProjectQueries";
 import { type CreatePRFormData, createPRSchema } from "../../schemas/pr.schema";
 import { showNotification } from "../../store/slices/notificationSlice";
 
@@ -30,7 +27,7 @@ interface CreatePRModalProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
-  sections: Section[];
+  tasks?: Array<{ id: string; title: string; branchName?: string }>;
   reviewers?: Array<{ id: string; name: string }>;
 }
 
@@ -38,7 +35,7 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({
   open,
   onClose,
   projectId,
-  sections,
+  tasks = [],
   reviewers = [],
 }) => {
   const dispatch = useDispatch();
@@ -56,13 +53,13 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({
     defaultValues: {
       title: "",
       description: "",
-      sectionId: sections[0]?.id || "",
+      taskId: tasks[0]?.id || "",
       reviewerId: reviewers[0]?.id || "",
     },
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const selectedSectionId = watch("sectionId");
+  const selectedTaskId = watch("taskId");
 
   const onSubmit = async (data: CreatePRFormData) => {
     try {
@@ -91,7 +88,7 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
-        Enviar Seção para Revisão Acadêmica
+        Enviar para Revisão Acadêmica
       </DialogTitle>
 
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -111,30 +108,32 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({
             </Typography>
             <TextField
               fullWidth
-              placeholder="ex: Revisão da Seção 2 - Metodologia e Gráficos"
+              placeholder="ex: Revisão da Tarefa - Metodologia e Gráficos"
               {...register("title")}
               error={Boolean(errors.title)}
               helperText={errors.title?.message}
             />
           </Box>
 
-          <FormControl fullWidth size="small" error={Boolean(errors.sectionId)}>
-            <InputLabel>Seção do Artigo *</InputLabel>
-            <Select
-              value={selectedSectionId || ""}
-              label="Seção do Artigo *"
-              onChange={(e) => setValue("sectionId", e.target.value as string)}
-            >
-              {sections.map((sec) => (
-                <MenuItem key={sec.id} value={sec.id}>
-                  {sec.title} ({sec.filePath})
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.sectionId && (
-              <FormHelperText>{errors.sectionId.message}</FormHelperText>
-            )}
-          </FormControl>
+          {tasks.length > 0 && (
+            <FormControl fullWidth size="small" error={Boolean(errors.taskId)}>
+              <InputLabel>Tarefa Associada</InputLabel>
+              <Select
+                value={selectedTaskId || ""}
+                label="Tarefa Associada"
+                onChange={(e) => setValue("taskId", e.target.value as string)}
+              >
+                {tasks.map((task) => (
+                  <MenuItem key={task.id} value={task.id}>
+                    {task.title}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.taskId && (
+                <FormHelperText>{errors.taskId.message}</FormHelperText>
+              )}
+            </FormControl>
+          )}
 
           {reviewers.length > 0 && (
             <FormControl fullWidth size="small">

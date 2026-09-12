@@ -43,77 +43,39 @@ export const WorkspacePage: React.FC = () => {
 
   const activeTask =
     tasksList.find((t) => t.status === "IN_PROGRESS") || tasksList[0];
-
-  const [savedSections, setSavedSections] = useState<Record<string, boolean>>(
-    {},
-  );
   const [isPRModalOpen, setIsPRModalOpen] = useState<boolean>(false);
-
-  const mockSections = project?.sections || [
-    {
-      id: "sec-1",
-      title: "1. Introdução & Trabalhos Relacionados",
-      filePath: "sections/01-introduction.tex",
-      branchName: "task/introduction",
-      dueDate: "2026-10-01",
-    },
-    {
-      id: "sec-2",
-      title: "2. Metodologia & Formulacao",
-      filePath: "sections/02-methodology.tex",
-      branchName: "task/methodology",
-      dueDate: "2026-10-05",
-    },
-    {
-      id: "sec-3",
-      title: "3. Resultados & Experimentos",
-      filePath: "sections/03-results.tex",
-      branchName: "task/results",
-      dueDate: "2026-10-10",
-    },
-  ];
-
-  const currentSection = mockSections[0];
 
   const activePR = pullRequests.find(
     (pr: any) =>
-      pr.sectionId === currentSection.id || pr.projectId === projectId,
+      (activeTask && pr.taskId === activeTask.id) || pr.projectId === projectId,
   );
-  const hasSavedProgress = Boolean(
-    savedSections[currentSection.id] || activePR,
-  );
-
-  const canSendForReview =
-    hasSavedProgress && (!activePR || activePR.status === "DRAFT");
+  const canSendForReview = !activePR || activePR.status === "DRAFT";
   const canMerge = activePR?.status === "APPROVED";
 
   const getSendReviewTooltip = () => {
     if (activePR?.status === "UNDER_REVIEW")
-      return "Seção já enviada e sob análise do Revisor";
+      return "Sob análise do Revisor";
     if (activePR?.status === "APPROVED")
-      return "Revisão desta seção já foi aprovada pelo Revisor";
+      return "Revisão aprovada pelo Revisor";
     if (activePR?.status === "MERGED")
-      return "Esta seção já foi mesclada na branch dev";
-    if (!hasSavedProgress)
-      return "Clique em 'Salvar Progresso' pelo menos uma vez antes de enviar para revisão";
-    return "Enviar a seção para análise do Revisor (converte Draft em Ready for Review)";
+      return "Mesclado na branch dev";
+    return "Enviar para análise do Revisor (converte Draft em Ready for Review)";
   };
 
   const getMergeTooltip = () => {
     if (canMerge)
-      return "Realizar o merge da seção aprovada na branch dev oficial";
+      return "Realizar o merge da tarefa aprovada na branch dev oficial";
     if (activePR?.status === "MERGED")
-      return "Merge já foi realizado nesta seção";
+      return "Merge já foi realizado nesta tarefa";
     return "O merge fica disponível somente após a aprovação da revisão pelo Revisor";
   };
 
   const handleSaveProgress = async () => {
     try {
       await saveProgressMutation.mutateAsync({
-        sectionId: currentSection.id,
-        commitMessage: `Update section ${currentSection.title}`,
+        taskId: activeTask?.id || "default-task",
+        commitMessage: `Update progress on ${activeTask?.title || "article"}`,
       });
-      setSavedSections((prev) => ({ ...prev, [currentSection.id]: true }));
       dispatch(
         showNotification({
           message: `Progresso salvo! Branch atualizada e Draft PR gerado/mantido no GitHub.`,
@@ -308,7 +270,7 @@ export const WorkspacePage: React.FC = () => {
         open={isPRModalOpen}
         onClose={() => setIsPRModalOpen(false)}
         projectId={projectId}
-        sections={mockSections}
+        tasks={tasksList}
       />
     </Box>
   );

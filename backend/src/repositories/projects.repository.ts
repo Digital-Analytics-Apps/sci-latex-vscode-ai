@@ -83,7 +83,6 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             },
           },
         },
-        sections: true,
         tasks: {
           include: {
             assignee: {
@@ -118,7 +117,6 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             },
           },
         },
-        sections: true,
         tasks: {
           include: {
             assignee: {
@@ -138,7 +136,7 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             status: true,
             nitStatus: true,
             createdAt: true,
-            sectionId: true,
+            taskId: true,
             author: {
               select: {
                 id: true,

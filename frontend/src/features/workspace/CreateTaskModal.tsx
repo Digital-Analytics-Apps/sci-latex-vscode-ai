@@ -43,7 +43,6 @@ interface CreateTaskModalProps {
   onClose: () => void;
   projectId: string;
   members?: ProjectMemberOption[];
-  sections?: Array<{ id: string; title: string }>;
   onTaskCreated?: () => void;
 }
 

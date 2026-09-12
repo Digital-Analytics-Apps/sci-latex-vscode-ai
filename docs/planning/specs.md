@@ -56,7 +56,7 @@ O usuário **NÃO** precisa gerenciar chaves SSH ou tokens individuais de Git ma
 
 - **Provisionamento Automático Remoto:** O backend Fastify utiliza o **Token de Serviço do GitHub (`GITHUB_TOKEN`)** para criar obrigatoriamente um repositório remoto privado via REST API do GitHub (`POST /user/repos` ou `/orgs/{org}/repos`).
 - **Padrão de Nomeação Amigável (Slug + Short Hash):** Os repositórios no GitHub são nomeados com o slug do título limpo e um sufixo curto de 8 caracteres do UUID para garantir 100% de unicidade e identificação clara na interface do GitHub (ex: `sci-paper-otimizacao-de-compiladores-tex-isolados-5550a24e`).
-- **Registro de Progresso Silencioso (`POST /api/v1/projects/:id/sections/:sectionId/commit`):** O salvamento de progresso pelo Autor gera um commit silencioso assinado pela Conta de Serviço em nome do autor (`--author="Nome <email>"`) e um registro auditável no `AuditLog`.
+- **Registro de Progresso Silencioso (`POST /api/v1/projects/:id/tasks/:taskId/commit`):** O salvamento de progresso pelo Autor gera um commit silencioso assinado pela Conta de Serviço em nome do autor (`--author="Nome <email>"`) e um registro auditável no `AuditLog`.
 
 ```mermaid
 graph TD
@@ -66,7 +66,7 @@ graph TD
     API -->|4. Push inicial main.tex e Commits Silenciosos| GitHub
 ```
 
-### 3.2 Estratégia de Branches Git (main, dev e feature/section) e Proteções
+### 3.2 Estratégia de Branches Git (main, dev e task/<slug>-<shortHash>) e Proteções
 
 Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo, a plataforma segue uma convenção estrita de branches:
 
@@ -76,15 +76,15 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
    - **Proteção Total**: Nunca pode ser excluída.
 
 2. **`dev` (Development / Integration)**:
-   - É a branch base de integração constante do projeto e o **target padrão de todos os Pull Requests de seções**.
-   - **Bloqueio Estrito**: Não recebe commits diretos. Recebe merges dos PRs de seções aprovados **exclusivamente pelo Revisor** (sem exigir validação do NIT nesta etapa).
+   - É a branch base de integração constante do projeto e o **target padrão de todos os Pull Requests de tarefas**.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Recebe merges dos PRs de tarefas aprovados **exclusivamente pelo Revisor** (sem exigir validação do NIT nesta etapa).
    - **Proteção Total**: Nunca pode ser excluída.
 
-3. **Branch da Seção do Autor (`feature/<slug>-<shortHash>` ou `section/<slug>-<shortHash>`)**:
-   - Branch de trabalho individual atribuída à seção e ao autor.
-   - **Identificador Único (Short Hash)**: Cada branch possui um sufixo hash único de 8 caracteres (ex: `section/introduction-a1b2c3d4` ou `feature/sec-1-5550a24e`) para evitar colisões entre colaboradores ou tentativas paralelas.
+3. **Branch de Tarefa do Autor (`task/<slug>-<shortHash>`)**:
+   - Branch de trabalho individual atribuída à tarefa e ao autor responsável.
+   - **Identificador Único (Short Hash)**: Cada branch possui um sufixo hash único de 8 caracteres (ex: `task/introducao-a1b2c3d4`) para evitar colisões entre colaboradores ou tentativas paralelas.
    - O autor executa os commits do "Salvar Progresso" nesta branch.
-   - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado pelo Revisor e o merge ser executado na `dev`, a branch da seção é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
+   - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado pelo Revisor e o merge ser executado na `dev`, a branch da tarefa é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
 
 ### 3.3 Atribuição de Revisores & Notificações Real-Time de PR (`PR_OPENED` e `PR_REVIEWER_ASSIGNED`)
 
@@ -99,20 +99,20 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
 ### 3.4 Sincronização do Ciclo de Vida do GitHub PR (Draft ➔ Ready for Review), Revisão no VS Code Web & Painel de Comentários
 
 1. **Salvar Progresso**:
-   - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da seção (`section/<slug>-<shortHash>`), auto-provisiona a seção no PostgreSQL caso ainda não exista e gera/mantém um **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
+   - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da tarefa (`task/<slug>-<shortHash>`) e gera/mantém um **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
    - **Regra de Habilitação**: Habilitado durante a escrita.
 
 2. **Enviar p/ Revisão**:
    - **Fluxo Backend/GitHub**: Transiciona o Draft PR no GitHub para **Ready for Review** via API (`markPullRequestReadyForReview`), atualizando o status para `UNDER_REVIEW` no banco e emitindo notificação SSE (`PR_OPENED`).
 
 3. **Ambiente de Revisão no VS Code Web (Diff Nativo & Branch Checkout)**:
-   - Ao abrir o Painel de Revisão (`ReviewDetailPage.tsx`), o backend (`editor-proxy`) utiliza o parâmetro `sectionId` para posicionar automaticamente o repositório da workspace na branch da seção enviada pelo autor (`section/sec-X-...`).
-   - O VS Code Web carrega o código da seção alterada de forma fluida sem depender de login do usuário em extensões de terceiros.
+   - Ao abrir o Painel de Revisão (`ReviewDetailPage.tsx`), o backend (`editor-proxy`) utiliza o parâmetro `taskId` para posicionar automaticamente o repositório da workspace na branch da tarefa enviada pelo autor (`task/...`).
+   - O VS Code Web carrega o código da tarefa alterada de forma fluida sem depender de login do usuário em extensões de terceiros.
 
 4. **Painel Lateral de Comentários & Pareceres (`Drawer`)**:
    - A interface do Revisor exibe uma gaveta lateral retrátil contendo:
      - **Histórico de Apontamentos**: Exibe todos os comentários anteriores com data, autor e número da linha do arquivo (`lineNumer`).
-     - **Formulário de Comentário**: Permite ao revisor inserir observações por linha ou gerais e selecionar se deseja enviar apenas um **Comentário**, **Solicitar Ajustes** (`CHANGES_REQUESTED`) ou **Aprovar a Seção** (`APPROVED`).
+     - **Formulário de Comentário**: Permite ao revisor inserir observações por linha ou gerais e selecionar se deseja enviar apenas um **Comentário**, **Solicitar Ajustes** (`CHANGES_REQUESTED`) ou **Aprovar a Tarefa** (`APPROVED`).
 
 5. **Realizar Merge**:
    - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev` e remove a branch temporária da seção do GitHub (`deleteBranch`).
@@ -281,8 +281,8 @@ model Project {
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
   members                 ProjectMember[]
-  sections                Section[]
   prs                     PullRequest[]
+  tasks                   Task[]
 }
 
 model ProjectMember {
@@ -296,21 +296,6 @@ model ProjectMember {
   @@unique([userId, projectId])
 }
 
-model Section {
-  id          String        @id @default(uuid())
-  title       String
-  filePath    String
-  branchName  String
-  projectId   String
-  assignedTo  String?
-
-  startDate   DateTime?
-  dueDate     DateTime?
-
-  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  prs         PullRequest[]
-}
-
 model PullRequest {
   id          String          @id @default(uuid())
   title       String
@@ -320,14 +305,14 @@ model PullRequest {
   nitStatus   NITStatus       @default(NOT_REQUIRED)
   nitNotes    String?
 
-  sectionId   String
+  taskId      String?
   authorId    String
   reviewerId  String?
   projectId   String
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   mergedAt    DateTime?
-  section     Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  task        Task?           @relation("TaskPullRequest", fields: [taskId], references: [id], onDelete: SetNull)
   author      User            @relation("AuthorPRs", fields: [authorId], references: [id])
   reviewer    User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -395,20 +380,17 @@ enum WorkspaceStatus {
 model Task {
   id            String         @id @default(uuid())
   projectId     String
-  sectionId     String
   assignedToId  String
   title         String
   branchName    String
   status        TaskStatus     @default(NOT_STARTED)
   dueDate       DateTime?
-  pullRequestId String?        @unique
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  section       Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   assignee      User           @relation("UserTasks", fields: [assignedToId], references: [id])
-  pullRequest   PullRequest?   @relation(fields: [pullRequestId], references: [id])
+  pullRequests  PullRequest[]  @relation("TaskPullRequest")
   workspaces    Workspace[]
 }
 
@@ -490,7 +472,7 @@ model Release {
 
 ### 7.3 Atribuição de Tarefas do Artigo (`Task`)
 - **`POST /api/v1/projects/:projectId/tasks`**:
-  - **Payload**: `{ "sectionId": "uuid-section", "assignedToId": "uuid-user", "title": "Título", "dueDate": "YYYY-MM-DD" }`
+  - **Payload**: `{ "projectId": "uuid-project", "assignedToId": "uuid-user", "title": "Título", "dueDate": "YYYY-MM-DD" }`
   - **Regra de Interface**: A seleção do responsável (`assignedToId`) no modal de criação de tarefa é restrita e filtrada para os membros pertencentes àquele artigo específico (`ProjectMember`).
   - **Provisionamento Git**: A criação da tarefa gera automaticamente a branch correspondente no repositório.
 

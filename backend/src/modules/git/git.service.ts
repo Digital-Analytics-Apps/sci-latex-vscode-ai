@@ -320,7 +320,7 @@ export class GitService {
     }
   }
 
-  // Realiza a fusão (git merge) de uma branch de origem (ex: section/intro-a1b2c3d4) em uma branch alvo (ex: dev ou main)
+  // Realiza a fusão (git merge) de uma branch de origem (ex: task/intro-a1b2c3d4) em uma branch alvo (ex: dev ou main)
   async mergeBranch(data: {
     projectId: string;
     sourceBranch: string;

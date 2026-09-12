@@ -273,7 +273,7 @@ export const ReviewDetailPage: React.FC = () => {
       >
         <CodeServerIframe
           projectId={prDetails.projectId}
-          sectionId={prDetails.sectionId}
+          taskId={prDetails.taskId}
           mode="review"
         />
       </Box>

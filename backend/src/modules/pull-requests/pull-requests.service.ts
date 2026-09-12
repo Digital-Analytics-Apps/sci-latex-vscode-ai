@@ -32,43 +32,27 @@ export class PullRequestsService {
       }
     }
 
-    // Garante a existência da seção no banco PostgreSQL para evitar violações de chave estrangeira
-    let existingSection = await prisma.section.findUnique({ where: { id: data.sectionId } });
-    if (!existingSection) {
-      const shortHash = data.projectId.slice(0, 8);
-      const titleMap: Record<string, { title: string; filePath: string }> = {
-        'sec-1': {
-          title: '1. Introdução & Trabalhos Relacionados',
-          filePath: 'sections/01-introduction.tex',
-        },
-        'sec-2': { title: '2. Metodologia & Formulação', filePath: 'sections/02-methodology.tex' },
-        'sec-3': { title: '3. Resultados & Experimentos', filePath: 'sections/03-results.tex' },
-        'sec-4': { title: '4. Conclusão', filePath: 'sections/04-conclusion.tex' },
-      };
-      const meta = titleMap[data.sectionId] || {
-        title: `Seção ${data.sectionId}`,
-        filePath: `sections/${data.sectionId}.tex`,
-      };
+    // 1. Resolver tarefa / branch associada
+    let task: any = null;
+    let headBranchName = 'dev';
 
-      existingSection = await prisma.section.create({
-        data: {
-          id: data.sectionId,
-          projectId: data.projectId,
-          title: meta.title,
-          filePath: meta.filePath,
-          branchName: `task/${data.sectionId}-${shortHash}`,
-        },
-      });
+    if (data.taskId) {
+      task = await prisma.task.findUnique({ where: { id: data.taskId } }).catch(() => null);
+      if (task) {
+        headBranchName = task.branchName;
+      }
     }
 
-    // Verifica se já existe um Draft PR para a mesma seção e projeto
-    const existingDraftPR = await prisma.pullRequest.findFirst({
-      where: {
-        projectId: data.projectId,
-        sectionId: data.sectionId,
-        status: PRStatus.DRAFT,
-      },
-    });
+    // 2. Verifica se já existe um Draft PR para a mesma tarefa e projeto
+    const existingDraftPR = data.taskId
+      ? await prisma.pullRequest.findFirst({
+          where: {
+            projectId: data.projectId,
+            taskId: data.taskId,
+            status: PRStatus.DRAFT,
+          },
+        })
+      : null;
 
     let pr: any;
     if (existingDraftPR) {
@@ -84,18 +68,28 @@ export class PullRequestsService {
       });
     }
 
-    // Transiciona o PR no GitHub remoto para Ready for Review
+    // 3. Atualizar o status da Task associada para UNDER_REVIEW
+    if (data.taskId) {
+      await prisma.task
+        .update({
+          where: { id: data.taskId },
+          data: { status: 'UNDER_REVIEW' },
+        })
+        .catch(() => {});
+    }
+
+    // 4. Transiciona o PR no GitHub remoto para Ready for Review
     if (this.gitService) {
       const project = await prisma.project.findUnique({ where: { id: data.projectId } });
       await this.gitService.markPullRequestReadyForReview({
         projectId: data.projectId,
         projectTitle: project?.name,
-        headBranch: existingSection.branchName,
+        headBranch: headBranchName,
         repoUrl: project?.gitRepoPath,
       });
     }
 
-    // 1. Registra no AuditLog (Timeline)
+    // 5. Registra no AuditLog (Timeline)
     await logAudit({
       userId: authorId,
       action: 'PR_OPENED',
@@ -103,13 +97,13 @@ export class PullRequestsService {
       entityId: pr.id,
       details: {
         title: pr.title,
-        sectionId: pr.sectionId,
+        taskId: pr.taskId,
         projectId: pr.projectId,
         reviewerId: pr.reviewerId,
       },
     });
 
-    // 2. Notifica todos os membros do projeto em tempo real via SSE (Autores, Revisores, Coordenadores)
+    // 6. Notifica todos os membros do projeto em tempo real via SSE (Autores, Revisores, Coordenadores)
     const projectMembers = await prisma.projectMember.findMany({
       where: { projectId: pr.projectId },
     });
@@ -118,7 +112,7 @@ export class PullRequestsService {
       eventsManager.broadcastToUser(member.userId, 'PR_OPENED', {
         pullRequestId: pr.id,
         title: pr.title,
-        sectionId: pr.sectionId,
+        taskId: pr.taskId,
         projectId: pr.projectId,
         authorId,
         reviewerId: pr.reviewerId,
@@ -216,14 +210,12 @@ export class PullRequestsService {
     if (this.gitService) {
       const project = await prisma.project.findUnique({ where: { id: pr.projectId } });
       const reviewerUser = await prisma.user.findUnique({ where: { id: reviewerId } });
-      const section = pr.sectionId
-        ? await prisma.section.findUnique({ where: { id: pr.sectionId } })
-        : null;
+      const headBranch = pr.task?.branchName;
 
       await this.gitService
         .submitPullRequestReviewOnGitHub({
           projectId: pr.projectId,
-          headBranch: section?.branchName,
+          headBranch,
           projectTitle: project?.name,
           repoUrl: project?.gitRepoPath,
           status,
@@ -268,7 +260,7 @@ export class PullRequestsService {
     return updatedPR;
   }
 
-  // Executar MERGE do PR de Seção para a branch 'dev' (Exige apenas aprovação do Revisor)
+  // Executar MERGE do PR de Tarefa para a branch 'dev' (Exige apenas aprovação do Revisor)
   async mergePR(prId: string, requesterId: string) {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
@@ -278,9 +270,10 @@ export class PullRequestsService {
       throw new Error('PR_NOT_APPROVED_BY_REVIEWER');
     }
 
-    // Executa o merge real no repositório Git (seção -> dev) e apaga a branch do autor
-    if (this.gitService && pr.section?.branchName) {
-      const sourceBranch = pr.section.branchName;
+    const sourceBranch = pr.task?.branchName;
+
+    // Executa o merge real no repositório Git (tarefa -> dev) e apaga a branch do autor
+    if (this.gitService && sourceBranch) {
       const targetBranch = 'dev';
 
       const authorUser = pr.authorId
@@ -297,7 +290,7 @@ export class PullRequestsService {
           targetBranch,
           authorName,
           authorEmail,
-          commitMessage: `Merge section PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
+          commitMessage: `Merge task PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
           repoUrl: project?.gitRepoPath,
         });
 
@@ -309,7 +302,7 @@ export class PullRequestsService {
             baseBranch: targetBranch,
             projectTitle: project?.name,
             repoUrl: project?.gitRepoPath,
-            commitTitle: `Merge section PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
+            commitTitle: `Merge task PR #${pr.id} (${sourceBranch}) into ${targetBranch}`,
           })
           .catch((ghErr) => {
             console.warn('⚠️ Warning merging PR on GitHub API:', ghErr.message || ghErr);
@@ -329,6 +322,15 @@ export class PullRequestsService {
 
     // Se aprovado, marca como MERGED no banco de dados
     const mergedPR = await this.prRepository.updateStatus(prId, PRStatus.MERGED);
+
+    if (pr.taskId) {
+      await prisma.task
+        .update({
+          where: { id: pr.taskId },
+          data: { status: 'MERGED' },
+        })
+        .catch(() => {});
+    }
 
     // 1. Registra no AuditLog / Timeline
     await logAudit({

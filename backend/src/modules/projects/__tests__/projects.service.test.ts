@@ -218,21 +218,21 @@ describe('ProjectsService', () => {
     ).rejects.toThrow('PROJECT_ALREADY_HAS_REVIEWER');
   });
 
-  it('should commit section progress silently for an existing project', async () => {
+  it('should commit task progress silently for an existing project', async () => {
     const created = await projectsService.createProject('user-1', {
       name: 'Artigo de Teste Commit',
       teamId: 'team-1',
     });
 
-    const result = await projectsService.commitSectionProgress(
+    const result = await projectsService.commitTaskProgress(
       created.id,
-      'sec-1',
+      'task-1',
       'user-1',
       'Custom commit message'
     );
 
     expect(result).toBeDefined();
-    expect(result.sectionId).toBe('sec-1');
+    expect(result.taskId).toBe('task-1');
     expect(result.projectId).toBe(created.id);
     expect(result.commitHash).toBeDefined();
   });

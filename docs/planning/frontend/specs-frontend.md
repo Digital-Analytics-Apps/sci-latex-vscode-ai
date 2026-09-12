@@ -36,7 +36,7 @@ src/
 | Rota | Permissão Exigida | Descrição da Tela |
 | :--- | :--- | :--- |
 | `/login` | Pública | Tela de Login com autenticação JWT. |
-| `/workspace/:projectId/section/:sectionId` | `AUTHOR` | Workspace de escrita: Iframe do `code-server` + Botões "Salvar Progresso" / "Enviar p/ Revisão" / "Realizar Merge". |
+| `/workspace/:projectId/task/:taskId` | `AUTHOR` | Workspace de escrita: Iframe do `code-server` + Botões "Salvar Progresso" / "Enviar p/ Revisão" / "Realizar Merge". |
 | `/reviews` | `REVIEWER`, `COORDINATOR` | Dashboard de PRs pendentes para avaliação acadêmica. |
 | `/reviews/:prId` | `REVIEWER`, `COORDINATOR` | Tela de avaliação lado a lado: Diff LaTeX + PDF compilado + Painel de Registro Manual do NIT. |
 | `/coordinator` | `COORDINATOR`, `MANAGER` | Dashboard da Equipe: Tabela de papers, seções e prazos com indicadores coloridos (🟢/🟡/🔴). |

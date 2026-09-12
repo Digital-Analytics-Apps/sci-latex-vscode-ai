@@ -4,7 +4,7 @@ import { prisma } from '../db/prisma';
 export const prInclude = {
   author: { select: { id: true, name: true, email: true, role: true } },
   reviewer: { select: { id: true, name: true, email: true, role: true } },
-  section: true,
+  task: true,
   project: true,
 } as const;
 
@@ -15,7 +15,7 @@ export type PullRequestWithRelations = Prisma.PullRequestGetPayload<{
 export interface CreatePRData {
   title: string;
   description?: string | null;
-  sectionId: string;
+  taskId?: string;
   projectId: string;
   authorId?: string;
   reviewerId?: string | null;
@@ -35,7 +35,7 @@ export class PrismaPullRequestsRepository {
       data: {
         title: data.title,
         description: data.description,
-        sectionId: data.sectionId,
+        taskId: data.taskId,
         projectId: data.projectId,
         authorId: data.authorId || '',
         reviewerId: data.reviewerId,

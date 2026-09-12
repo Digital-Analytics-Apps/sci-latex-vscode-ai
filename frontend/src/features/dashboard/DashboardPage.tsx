@@ -676,7 +676,7 @@ export const DashboardPage: React.FC = () => {
                                 variant="caption"
                                 color="text.secondary"
                               >
-                                {pr.section?.title || pr.sectionId}
+                                {pr.task?.title || pr.taskId || "Tarefa"}
                               </Typography>
                             </TableCell>
                             <TableCell>

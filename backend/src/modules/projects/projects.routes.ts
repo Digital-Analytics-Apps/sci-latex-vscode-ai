@@ -245,26 +245,26 @@ export async function projectsRoutes(app: FastifyInstance) {
     (req, reply) => controller.updatePostSubmission(req, reply)
   );
 
-  // POST /api/v1/projects/:id/sections/:sectionId/commit - Salvar progresso de seção via commit silencioso
+  // POST /api/v1/projects/:id/tasks/:taskId/commit - Salvar progresso de tarefa via commit silencioso
   app.post(
-    '/:id/sections/:sectionId/commit',
+    '/:id/tasks/:taskId/commit',
     {
       schema: {
         tags: ['Projects'],
-        summary: 'Salvar progresso de seção via commit silencioso da Conta de Serviço',
+        summary: 'Salvar progresso de tarefa via commit silencioso da Conta de Serviço',
         description:
-          'Registra o progresso de edição da seção do artigo e gera uma entrada de auditoria.',
+          'Registra o progresso de edição da tarefa do artigo e gera uma entrada de auditoria.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string(),
-          sectionId: z.string(),
+          taskId: z.string(),
         }),
         body: z.object({
           commitMessage: z.string().optional(),
         }),
       },
     },
-    (req, reply) => controller.commitSectionProgress(req, reply)
+    (req, reply) => controller.commitTaskProgress(req, reply)
   );
 
   // POST /api/v1/projects/:projectId/pull-requests - Abertura de PR via alias de projeto
@@ -281,7 +281,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         body: z.object({
           title: z.string().min(3),
           description: z.string().optional().nullable(),
-          sectionId: z.string().min(1),
+          taskId: z.string().optional().nullable(),
           reviewerId: z.string().optional().nullable().or(z.literal('')),
         }),
       },

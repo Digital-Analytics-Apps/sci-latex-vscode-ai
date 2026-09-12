@@ -6,7 +6,7 @@ export const createPRSchema = z.object({
     .min(3, "O título deve conter pelo menos 3 caracteres")
     .max(120, "O título deve ter no máximo 120 caracteres"),
   description: z.string().optional(),
-  sectionId: z.string().min(1, "Selecione uma seção para enviar à revisão"),
+  taskId: z.string().optional(),
   reviewerId: z.string().optional(),
 });
 

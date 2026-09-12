@@ -13,7 +13,6 @@ async function main() {
   await prisma.task.deleteMany();
   await prisma.reviewComment.deleteMany();
   await prisma.pullRequest.deleteMany();
-  await prisma.section.deleteMany();
   await prisma.projectMember.deleteMany();
   await prisma.project.deleteMany();
   await prisma.teamMember.deleteMany();

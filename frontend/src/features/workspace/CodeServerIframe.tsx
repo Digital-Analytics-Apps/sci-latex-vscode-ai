@@ -6,13 +6,13 @@ import type { RootState } from "../../store";
 
 interface CodeServerIframeProps {
   projectId: string;
-  sectionId?: string;
+  taskId?: string;
   mode?: string;
 }
 
 export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   projectId,
-  sectionId,
+  taskId,
   mode,
 }) => {
   const token = useSelector((state: RootState) => state.auth.token);
@@ -23,7 +23,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
 
   const params = new URLSearchParams();
   if (token) params.set("token", token);
-  if (sectionId) params.set("sectionId", sectionId);
+  if (taskId) params.set("taskId", taskId);
   if (mode) params.set("mode", mode);
 
   const iframeSrc = `${baseUrl}/editor-proxy/${projectId}?${params.toString()}`;

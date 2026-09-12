@@ -21,7 +21,7 @@ export interface ManagerMetrics {
 export interface TeamDeadlineItem {
   id: string;
   projectName: string;
-  sectionTitle: string;
+  taskTitle: string;
   authorName: string;
   dueDate: string;
   status: "ON_TIME" | "WARNING_SOON" | "OVERDUE";
@@ -51,13 +51,13 @@ export function useManagerMetrics(periodId?: string) {
   });
 }
 
-// Hook para o Coordenador alterar a data limite de uma seção da equipe
+// Hook para o Coordenador alterar a data limite de uma tarefa da equipe
 export function useUpdateDeadlineMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { sectionId: string; newDueDate: string }) => {
-      const response = await api.patch(`/sections/${data.sectionId}/deadline`, {
+    mutationFn: async (data: { taskId: string; newDueDate: string }) => {
+      const response = await api.patch(`/tasks/${data.taskId}/deadline`, {
         dueDate: data.newDueDate,
       });
       return response.data;

@@ -36,7 +36,7 @@ export class DashboardService {
             },
           },
         },
-        sections: true,
+        tasks: true,
         prs: true,
       },
       orderBy: { updatedAt: 'desc' },

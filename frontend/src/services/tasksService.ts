@@ -4,7 +4,6 @@ export interface TaskItem {
   id: string;
   projectId: string;
   projectName?: string;
-  sectionTitle?: string;
   title: string;
   branchName: string;
   status:

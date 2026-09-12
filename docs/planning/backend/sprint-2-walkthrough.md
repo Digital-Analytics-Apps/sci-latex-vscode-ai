@@ -21,7 +21,7 @@ A **Sprint 2** do backend foi concluída com sucesso! Todos os serviços de prov
 
 ### Módulo de Projetos (Papers) & Rotas REST
 - **[projects.repository.ts](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/repositories/projects.repository.ts)**:
-  - Repositório Prisma para abstração de projetos e membros com relacionamentos completos (`Team`, `AcademicPeriod`, `Section`, `PullRequest`).
+  - Repositório Prisma para abstração de projetos e membros com relacionamentos completos (`Team`, `AcademicPeriod`, `Task`, `PullRequest`).
 - **[projects.service.ts](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/projects/projects.service.ts)**:
   - Lógica de negócio para criação de projetos, vinculação com equipe/ciclo e disparo da criação do repositório Git.
 - **[projects.controller.ts](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/projects/projects.controller.ts)** & **[projects.routes.ts](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/projects/projects.routes.ts)**:

@@ -13,7 +13,7 @@ describe('PullRequestsService', () => {
         ...data,
         status: PRStatus.UNDER_REVIEW,
         nitStatus: NITStatus.WAITING_NIT,
-        section: { branchName: 'feature/intro' },
+        task: { branchName: 'task/intro-12345678' },
       }),
       findById: async (id: string) => {
         if (id === 'pr-123') {
@@ -23,7 +23,7 @@ describe('PullRequestsService', () => {
             authorId: 'author-1',
             status: PRStatus.UNDER_REVIEW,
             nitStatus: NITStatus.WAITING_NIT,
-            section: { branchName: 'feature/intro' },
+            task: { branchName: 'task/intro-12345678' },
           };
         }
         if (id === 'pr-approved') {
@@ -33,7 +33,7 @@ describe('PullRequestsService', () => {
             authorId: 'author-1',
             status: PRStatus.APPROVED,
             nitStatus: NITStatus.APPROVED_NIT,
-            section: { branchName: 'feature/intro' },
+            task: { branchName: 'task/intro-12345678' },
           };
         }
         if (id === 'pr-pending-nit') {
@@ -43,7 +43,7 @@ describe('PullRequestsService', () => {
             authorId: 'author-1',
             status: PRStatus.APPROVED,
             nitStatus: NITStatus.WAITING_NIT,
-            section: { branchName: 'feature/intro' },
+            task: { branchName: 'task/intro-12345678' },
           };
         }
         return null;

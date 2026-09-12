@@ -105,8 +105,8 @@ export const ReviewsListPage: React.FC = () => {
                           {pr.title}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {pr.section?.title || pr.sectionId} (
-                          {pr.section?.filePath || "main.tex"})
+                          {pr.task?.title || pr.taskId || "Tarefa"} (
+                          {pr.task?.branchName || "main"})
                         </Typography>
                       </TableCell>
                       <TableCell>
