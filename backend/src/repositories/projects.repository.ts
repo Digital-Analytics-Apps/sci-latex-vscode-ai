@@ -67,58 +67,6 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             role: Role.AUTHOR,
           },
         },
-        sections: {
-          create: [
-            {
-              title: '1. Introdução & Trabalhos Relacionados',
-              filePath: 'sections/01-introduction.tex',
-              branchName: `section/introduction-${data.creatorId.slice(0, 6)}`,
-            },
-            {
-              title: '2. Metodologia & Formulação',
-              filePath: 'sections/02-methodology.tex',
-              branchName: `section/methodology-${data.creatorId.slice(0, 6)}`,
-            },
-            {
-              title: '3. Resultados & Experimentos',
-              filePath: 'sections/03-results.tex',
-              branchName: `section/results-${data.creatorId.slice(0, 6)}`,
-            },
-            {
-              title: '4. Conclusão',
-              filePath: 'sections/04-conclusion.tex',
-              branchName: `section/conclusion-${data.creatorId.slice(0, 6)}`,
-            },
-          ],
-        },
-        tasks: {
-          create: [
-            {
-              title: '1. Iniciar escrita da Introdução & Trabalhos Relacionados',
-              branchName: `section/introduction-${data.creatorId.slice(0, 6)}`,
-              assignedToId: data.creatorId,
-              dueDate: data.targetConferenceDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            },
-            {
-              title: '2. Elaborar Metodologia & Formulação Matemática',
-              branchName: `section/methodology-${data.creatorId.slice(0, 6)}`,
-              assignedToId: data.creatorId,
-              dueDate: data.targetConferenceDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-            },
-            {
-              title: '3. Análise de Resultados & Experimentos',
-              branchName: `section/results-${data.creatorId.slice(0, 6)}`,
-              assignedToId: data.creatorId,
-              dueDate: data.targetConferenceDate || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-            },
-            {
-              title: '4. Redigir Conclusão e Considerações Finais',
-              branchName: `section/conclusion-${data.creatorId.slice(0, 6)}`,
-              assignedToId: data.creatorId,
-              dueDate: data.targetConferenceDate || new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
-            },
-          ],
-        },
       },
       include: {
         team: true,
