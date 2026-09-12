@@ -1,4 +1,3 @@
-import DescriptionIcon from "@mui/icons-material/Description";
 import MergeTypeIcon from "@mui/icons-material/MergeType";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SaveIcon from "@mui/icons-material/Save";
@@ -10,10 +9,6 @@ import {
   CircularProgress,
   Divider,
   IconButton,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   Paper,
   Tooltip,
   Typography,
@@ -21,12 +16,14 @@ import {
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useParams } from "react-router-dom";
+import { useTasksQuery } from "../../hooks/useTaskQueries";
 import {
   useMergePRMutation,
   useProjectDetails,
   usePullRequestsList,
   useSaveProgressMutation,
 } from "../../hooks/useProjectQueries";
+import { useSSEEventSource } from "../../hooks/useSSEEventSource";
 import { showNotification } from "../../store/slices/notificationSlice";
 import { CodeServerIframe } from "./CodeServerIframe";
 import { CreatePRModal } from "./CreatePRModal";
@@ -35,12 +32,18 @@ export const WorkspacePage: React.FC = () => {
   const { projectId = "demo-project-1" } = useParams<{ projectId: string }>();
   const dispatch = useDispatch();
 
+  // Conecta ao canal SSE do projeto para monitorar a presença e alertas em tempo real
+  useSSEEventSource(projectId);
+
   const { data: project, isLoading, refetch } = useProjectDetails(projectId);
+  const { data: tasksList = [] } = useTasksQuery(projectId);
   const { data: pullRequests = [] } = usePullRequestsList(projectId);
   const saveProgressMutation = useSaveProgressMutation(projectId);
   const mergePRMutation = useMergePRMutation(projectId);
 
-  const [activeSectionId, setActiveSectionId] = useState<string>("");
+  const activeTask =
+    tasksList.find((t) => t.status === "IN_PROGRESS") || tasksList[0];
+
   const [savedSections, setSavedSections] = useState<Record<string, boolean>>(
     {},
   );
@@ -70,11 +73,11 @@ export const WorkspacePage: React.FC = () => {
     },
   ];
 
-  const currentSection =
-    mockSections.find((s) => s.id === activeSectionId) || mockSections[0];
+  const currentSection = mockSections[0];
 
   const activePR = pullRequests.find(
-    (pr: any) => pr.sectionId === currentSection.id,
+    (pr: any) =>
+      pr.sectionId === currentSection.id || pr.projectId === projectId,
   );
   const hasSavedProgress = Boolean(
     savedSections[currentSection.id] || activePR,
@@ -117,7 +120,7 @@ export const WorkspacePage: React.FC = () => {
           severity: "success",
         }),
       );
-    } catch (_err: any) {
+    } catch {
       dispatch(
         showNotification({
           message: "Erro ao salvar progresso do artigo.",
@@ -137,7 +140,7 @@ export const WorkspacePage: React.FC = () => {
           severity: "success",
         }),
       );
-    } catch (_err: any) {
+    } catch {
       dispatch(
         showNotification({
           message:
@@ -194,18 +197,23 @@ export const WorkspacePage: React.FC = () => {
             justifyContent: "space-between",
             borderColor: "divider",
             bgcolor: "background.paper",
+            boxShadow: 1,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {project?.name || "Metodologia Científica em Redes Neutras"}
+              {project?.name || "Workspace de Escrita Científica"}
             </Typography>
-            <Chip
-              label={`Seção Ativa: ${currentSection?.title}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
+            <Divider orientation="vertical" flexItem />
+            {activeTask && (
+              <Chip
+                label={`Tarefa Ativa: ${activeTask.title}`}
+                size="small"
+                color="primary"
+                variant="filled"
+                sx={{ fontWeight: 600 }}
+              />
+            )}
             {activePR && (
               <Chip
                 label={`PR: ${activePR.status}`}
@@ -225,7 +233,7 @@ export const WorkspacePage: React.FC = () => {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Tooltip title="Atualizar dados do projeto">
+            <Tooltip title="Atualizar tarefas e dados do projeto">
               <IconButton onClick={() => refetch()} size="small">
                 <RefreshIcon fontSize="small" />
               </IconButton>
@@ -284,77 +292,15 @@ export const WorkspacePage: React.FC = () => {
           </Box>
         </Paper>
 
-        <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
-          <Paper
-            square
-            variant="outlined"
-            sx={{
-              width: 240,
-              minWidth: 240,
-              display: "flex",
-              flexDirection: "column",
-              borderRight: "1px solid",
-              borderColor: "divider",
-              bgcolor: "background.paper",
-            }}
-          >
-            <Box
-              sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 700, textTransform: "uppercase" }}
-              >
-                Seções do Artigo
-              </Typography>
-            </Box>
-
-            <List disablePadding>
-              {mockSections.map((sec) => (
-                <React.Fragment key={sec.id}>
-                  <ListItemButton
-                    selected={
-                      sec.id === (currentSection?.id || mockSections[0].id)
-                    }
-                    onClick={() => setActiveSectionId(sec.id)}
-                    sx={{ py: 1 }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      <DescriptionIcon
-                        fontSize="small"
-                        color={
-                          sec.id === currentSection?.id ? "primary" : "inherit"
-                        }
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={sec.title}
-                      secondary={sec.filePath}
-                      slotProps={{
-                        primary: {
-                          variant: "body2",
-                          sx: {
-                            fontWeight:
-                              sec.id === currentSection?.id ? 700 : 500,
-                          },
-                        },
-                        secondary: {
-                          variant: "caption",
-                          noWrap: true,
-                        },
-                      }}
-                    />
-                  </ListItemButton>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
-
-          <Box sx={{ flexGrow: 1, height: "100%", overflow: "hidden" }}>
-            <CodeServerIframe projectId={projectId} />
-          </Box>
+        <Box
+          sx={{
+            flexGrow: 1,
+            height: "100%",
+            width: "100%",
+            overflow: "hidden",
+          }}
+        >
+          <CodeServerIframe projectId={projectId} />
         </Box>
       </Box>
 

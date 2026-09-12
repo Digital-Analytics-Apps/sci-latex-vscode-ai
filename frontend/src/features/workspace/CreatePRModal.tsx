@@ -20,10 +20,10 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import {
-  useCreatePRMutation,
   type Section,
+  useCreatePRMutation,
 } from "../../hooks/useProjectQueries";
-import { createPRSchema, type CreatePRFormData } from "../../schemas/pr.schema";
+import { type CreatePRFormData, createPRSchema } from "../../schemas/pr.schema";
 import { showNotification } from "../../store/slices/notificationSlice";
 
 interface CreatePRModalProps {
@@ -61,6 +61,7 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedSectionId = watch("sectionId");
 
   const onSubmit = async (data: CreatePRFormData) => {
