@@ -97,18 +97,28 @@ export class ProjectsService {
     if (data.coAuthorIds && Array.isArray(data.coAuthorIds)) {
       for (const coAuthorId of data.coAuthorIds) {
         if (coAuthorId && coAuthorId !== userId) {
-          await this.projectsRepository
-            .addMember(projectId, coAuthorId, Role.AUTHOR)
-            .catch(() => {});
+          const userExists = await prisma.user
+            .findUnique({ where: { id: coAuthorId } })
+            .catch(() => null);
+          if (userExists) {
+            await this.projectsRepository
+              .addMember(projectId, coAuthorId, Role.AUTHOR)
+              .catch((err) => console.error(`Error adding coAuthor ${coAuthorId}:`, err));
+          }
         }
       }
     }
 
     // 2d. Adicionar o revisor técnico selecionado
     if (data.reviewerId) {
-      await this.projectsRepository
-        .addMember(projectId, data.reviewerId, Role.REVIEWER)
-        .catch(() => {});
+      const userExists = await prisma.user
+        .findUnique({ where: { id: data.reviewerId } })
+        .catch(() => null);
+      if (userExists) {
+        await this.projectsRepository
+          .addMember(projectId, data.reviewerId, Role.REVIEWER)
+          .catch((err) => console.error(`Error adding reviewer ${data.reviewerId}:`, err));
+      }
     }
 
     // 3. Registrar evento de criação no AuditLog para a Timeline

@@ -91,6 +91,34 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             },
           ],
         },
+        tasks: {
+          create: [
+            {
+              title: '1. Iniciar escrita da Introdução & Trabalhos Relacionados',
+              branchName: `section/introduction-${data.creatorId.slice(0, 6)}`,
+              assignedToId: data.creatorId,
+              dueDate: data.targetConferenceDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+            {
+              title: '2. Elaborar Metodologia & Formulação Matemática',
+              branchName: `section/methodology-${data.creatorId.slice(0, 6)}`,
+              assignedToId: data.creatorId,
+              dueDate: data.targetConferenceDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            },
+            {
+              title: '3. Análise de Resultados & Experimentos',
+              branchName: `section/results-${data.creatorId.slice(0, 6)}`,
+              assignedToId: data.creatorId,
+              dueDate: data.targetConferenceDate || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+            },
+            {
+              title: '4. Redigir Conclusão e Considerações Finais',
+              branchName: `section/conclusion-${data.creatorId.slice(0, 6)}`,
+              assignedToId: data.creatorId,
+              dueDate: data.targetConferenceDate || new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+            },
+          ],
+        },
       },
       include: {
         team: true,
@@ -98,6 +126,19 @@ export class PrismaProjectsRepository implements IProjectsRepository {
         members: {
           include: {
             user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
+        sections: true,
+        tasks: {
+          include: {
+            assignee: {
               select: {
                 id: true,
                 name: true,
@@ -130,6 +171,18 @@ export class PrismaProjectsRepository implements IProjectsRepository {
           },
         },
         sections: true,
+        tasks: {
+          include: {
+            assignee: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
         prs: {
           select: {
             id: true,
