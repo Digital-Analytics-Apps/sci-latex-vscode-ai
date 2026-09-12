@@ -14,7 +14,8 @@ const execAsync = promisify(exec);
 async function ensureGitRepositoryWorkspace(
   projectId: string,
   gitRepoPath?: string,
-  targetBranch?: string
+  targetBranch?: string,
+  userId?: string
 ) {
   const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
   await fs.mkdir(projectDir, { recursive: true, mode: 0o777 });
@@ -28,55 +29,99 @@ async function ensureGitRepositoryWorkspace(
     hasGit = false;
   }
 
-  if (!gitRepoPath) return;
+  if (gitRepoPath) {
+    let gitFlags = '';
+    let repoUrl = gitRepoPath;
 
-  let gitFlags = '';
-  let repoUrl = gitRepoPath;
+    if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
+      const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
+      gitFlags = `-c http.extraHeader="Authorization: Basic ${authHeader}"`;
+    }
 
-  if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
-    const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
-    gitFlags = `-c http.extraHeader="Authorization: Basic ${authHeader}"`;
+    if (repoUrl.includes('@github.com/')) {
+      repoUrl = repoUrl.replace(/https:\/\/[^@]+@github\.com\//, 'https://github.com/');
+    }
+    if (repoUrl.startsWith('https://github.com/') && !repoUrl.endsWith('.git')) {
+      repoUrl += '.git';
+    }
+
+    try {
+      if (!hasGit) {
+        const tempDir = path.resolve(
+          env.STORAGE_PATH,
+          'projects',
+          `temp-clone-${projectId}-${Date.now()}`
+        );
+        await execAsync(`git ${gitFlags} clone "${repoUrl}" "${tempDir}"`).catch(() => {});
+        if (
+          await fs
+            .access(path.join(tempDir, 'main.tex'))
+            .then(() => true)
+            .catch(() => false)
+        ) {
+          await fs.cp(tempDir, projectDir, { recursive: true });
+        }
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+
+        await execAsync(`git config user.name "SCI-LaTeX User"`, { cwd: projectDir }).catch(
+          () => {}
+        );
+        await execAsync(`git config user.email "user@sci-latex.org"`, { cwd: projectDir }).catch(
+          () => {}
+        );
+        await execAsync(`git ${gitFlags} fetch --all`, { cwd: projectDir }).catch(() => {});
+      } else {
+        await execAsync(`git ${gitFlags} fetch --all`, { cwd: projectDir }).catch(() => {});
+      }
+
+      if (targetBranch) {
+        await execAsync(`git checkout "${targetBranch}"`, { cwd: projectDir }).catch(async () => {
+          await execAsync(`git checkout -b "${targetBranch}" "origin/${targetBranch}"`, {
+            cwd: projectDir,
+          }).catch(() => {});
+        });
+      } else if (!hasGit) {
+        await execAsync(`git checkout dev`, { cwd: projectDir }).catch(() => {});
+      }
+
+      await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
+    } catch (err: any) {
+      console.warn(`⚠️ Warning ensuring Git workspace for ${projectId}:`, err.message || err);
+    }
   }
 
-  if (repoUrl.includes('@github.com/')) {
-    repoUrl = repoUrl.replace(/https:\/\/[^@]+@github\.com\//, 'https://github.com/');
-  }
-  if (repoUrl.startsWith('https://github.com/') && !repoUrl.endsWith('.git')) {
-    repoUrl += '.git';
-  }
+  // Se um userId for especificado, garante que a subpasta do usuário projects/${projectId}/users/${userId} esteja populada
+  if (userId) {
+    const userWorkspaceDir = path.resolve(env.STORAGE_PATH, 'projects', projectId, 'users', userId);
+    await fs.mkdir(userWorkspaceDir, { recursive: true, mode: 0o777 });
 
-  try {
-    if (!hasGit) {
-      const tempDir = path.resolve(
-        env.STORAGE_PATH,
-        'projects',
-        `temp-clone-${projectId}-${Date.now()}`
-      );
-      await execAsync(`git ${gitFlags} clone "${repoUrl}" "${tempDir}"`);
-      await fs.cp(tempDir, projectDir, { recursive: true });
-      await fs.rm(tempDir, { recursive: true, force: true });
+    const userMainTex = path.join(userWorkspaceDir, 'main.tex');
+    const hasUserFiles = await fs
+      .access(userMainTex)
+      .then(() => true)
+      .catch(() => false);
 
-      await execAsync(`git config user.name "SCI-LaTeX User"`, { cwd: projectDir });
-      await execAsync(`git config user.email "user@sci-latex.org"`, { cwd: projectDir });
-      await execAsync(`git ${gitFlags} fetch --all`, { cwd: projectDir }).catch(() => {});
-    } else {
-      await execAsync(`git ${gitFlags} fetch --all`, { cwd: projectDir }).catch(() => {});
+    if (!hasUserFiles) {
+      await fs.cp(projectDir, userWorkspaceDir, { recursive: true }).catch(() => {});
     }
 
     if (targetBranch) {
-      await execAsync(`git checkout "${targetBranch}"`, { cwd: projectDir }).catch(async () => {
-        await execAsync(`git checkout -b "${targetBranch}" "origin/${targetBranch}"`, {
-          cwd: projectDir,
-        }).catch(() => {});
-      });
-    } else if (!hasGit) {
-      await execAsync(`git checkout dev`, { cwd: projectDir }).catch(() => {});
+      await execAsync(`git config user.name "SCI-LaTeX User"`, { cwd: userWorkspaceDir }).catch(
+        () => {}
+      );
+      await execAsync(`git config user.email "user@sci-latex.org"`, {
+        cwd: userWorkspaceDir,
+      }).catch(() => {});
+      await execAsync(`git checkout "${targetBranch}"`, { cwd: userWorkspaceDir }).catch(
+        async () => {
+          await execAsync(`git checkout -b "${targetBranch}"`, { cwd: userWorkspaceDir }).catch(
+            () => {}
+          );
+        }
+      );
     }
 
-    // Permissões de escrita total para o container code-server (usuário coder)
-    await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
-  } catch (err: any) {
-    console.warn(`⚠️ Warning ensuring Git workspace for ${projectId}:`, err.message || err);
+    await execAsync(`chmod -R 777 "${userWorkspaceDir}"`).catch(() => {});
   }
 }
 
@@ -121,21 +166,16 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      // 1. Reivindica o Pod do Warm Standby Pool ou cria sob demanda com PVC por Projeto no K8s
-      const podResult = await k8sPodManager.claimPodForProject(projectId, userId);
-      request.log.info({ podResult }, 'K8s Pod claimed for project workspace');
-
-      // Determina a branch de destino no Git
+      // 1. Determina a branch de destino no Git e prepara o diretório do projeto no disco PRIMEIRO
       let targetBranch = 'dev';
       if (sectionId) {
         targetBranch = `section/${sectionId}-${projectId.slice(0, 8)}`;
       }
 
-      // Garante que o diretório de trabalho do projeto seja um repositório Git completo e sincronizado na branch correta
       const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
-      await ensureGitRepositoryWorkspace(projectId, project.gitRepoPath, targetBranch);
+      await ensureGitRepositoryWorkspace(projectId, project.gitRepoPath, targetBranch, userId);
 
-      // Garante a existência do diretório de seções modulares
+      // Garante a existência do diretório de seções modulares e arquivos de início
       const sectionsDir = path.join(projectDir, 'sections');
       try {
         await fs.mkdir(sectionsDir, { recursive: true });
@@ -247,7 +287,11 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         }
       }
 
-      // Verifica se o serviço do code-server está ativo na porta 30080 (NodePort do KinD) ou 8080
+      // 2. Reivindica/Cria o Pod isolado do projeto no K8s montando estritamente a pasta do artigo
+      const podResult = await k8sPodManager.claimPodForProject(projectId, userId);
+      request.log.info({ podResult }, 'K8s Pod claimed for project workspace');
+
+      // 3. Verifica se o serviço do code-server está ativo na porta 30080 (NodePort do KinD) ou 8080
       let isCodeServerUp = false;
       const urlsToCheck = [
         'http://host.docker.internal:30080',
@@ -273,7 +317,7 @@ export async function editorProxyRoutes(app: FastifyInstance) {
 
       if (isCodeServerUp) {
         const publicCodeServerHost = process.env.PUBLIC_CODE_SERVER_URL || 'http://localhost:30080';
-        const targetUrl = `${publicCodeServerHost}/?folder=/home/coder/storage/projects/${projectId}`;
+        const targetUrl = `${publicCodeServerHost}/?folder=/home/coder/project`;
         return reply.redirect(targetUrl);
       }
 

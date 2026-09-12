@@ -40,8 +40,8 @@ export class K8sPodManagerService {
     }
   }
 
-  // 1. Garante o Warm Standby Pool (Pods pré-aquecidos para latência 0ms)
-  async ensureWarmPool(minWarmPods = 1): Promise<void> {
+  // 1. Garante o Warm Standby Pool (Mantém exatamente targetWarmPods = 1 Pod de reserva)
+  async ensureWarmPool(targetWarmPods = 1): Promise<void> {
     const k8sApi = this.getK8sApiClient();
     if (!k8sApi) return;
 
@@ -56,13 +56,24 @@ export class K8sPodManagerService {
       );
 
       const currentWarmPods = (podsRes.body.items || []).filter(
-        (pod) => pod.status?.phase === 'Running'
+        (pod) => pod.status?.phase === 'Running' || pod.status?.phase === 'Pending'
       );
 
-      if (currentWarmPods.length < minWarmPods) {
-        const needed = minWarmPods - currentWarmPods.length;
+      if (currentWarmPods.length < targetWarmPods) {
+        const needed = targetWarmPods - currentWarmPods.length;
         for (let i = 0; i < needed; i++) {
           await this.createWarmStandbyPod();
+        }
+      } else if (currentWarmPods.length > targetWarmPods) {
+        // Se houver Pods reservas em excesso, remove os excedentes para manter exatamente 1 Warm Pod
+        const excess = currentWarmPods.slice(targetWarmPods);
+        for (const pod of excess) {
+          if (pod.metadata?.name) {
+            await k8sApi.deleteNamespacedPod(pod.metadata.name, this.namespace).catch(() => {});
+            console.log(
+              `🧹 Pod reserva excedente ${pod.metadata.name} removido para manter Warm Pool = ${targetWarmPods}`
+            );
+          }
         }
       }
     } catch (err: any) {
@@ -98,13 +109,14 @@ export class K8sPodManagerService {
               'none',
               '--disable-telemetry',
               '--disable-workspace-trust',
-              '/home/coder/storage',
+              '/home/coder/project',
             ],
             ports: [{ containerPort: 8080, name: 'http' }],
             volumeMounts: [
               {
                 name: 'host-storage',
-                mountPath: '/home/coder/storage',
+                mountPath: '/home/coder/project',
+                subPath: 'projects/default-warm-standby',
               },
             ],
             resources: {
@@ -185,14 +197,18 @@ export class K8sPodManagerService {
     }
 
     try {
-      // Buscar se já existe um Pod ativo dedicado a esse projeto
+      // Buscar se já existe um Pod ativo dedicado a esse usuário + projeto
+      const labelSelector = userId
+        ? `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId},claimedBy=${userId}`
+        : `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId}`;
+
       const existingPods = await k8sApi.listNamespacedPod(
         this.namespace,
         undefined,
         undefined,
         undefined,
         undefined,
-        `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId}`
+        labelSelector
       );
 
       const activePod = (existingPods.body.items || []).find(
@@ -207,7 +223,7 @@ export class K8sPodManagerService {
         };
       }
 
-      // Buscar se existe um Pod livre no Warm Standby Pool
+      // Se o Warm Pool tiver um pod livre, podemos limpar o standby antigo para criar o Pod 100% isolado do usuário
       const warmPodsRes = await k8sApi.listNamespacedPod(
         this.namespace,
         undefined,
@@ -218,45 +234,19 @@ export class K8sPodManagerService {
       );
 
       const warmPod = (warmPodsRes.body.items || []).find((pod) => pod.status?.phase === 'Running');
-
       if (warmPod && warmPod.metadata?.name) {
-        // Reivindicar o Pod do Warm Standby Pool para o projeto
-        const claimedPodName = warmPod.metadata.name;
-        await k8sApi.patchNamespacedPod(
-          claimedPodName,
-          this.namespace,
-          {
-            metadata: {
-              labels: {
-                role: 'project-workspace',
-                projectId,
-                claimedBy: userId,
-              },
-            },
-          },
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          { headers: { 'Content-Type': 'application/strategic-merge-patch+json' } }
-        );
-
-        // Dispara a criação imediata de +1 Pod Standby para repor o Warm Pool
-        this.createWarmStandbyPod().catch((err) =>
-          console.warn('⚠️ Error creating replacement warm pod:', err.message || err)
-        );
-
-        return {
-          podName: claimedPodName,
-          pvcName,
-          status: 'claimed_from_pool',
-          codeServerUrl: env.CODE_SERVER_URL,
-        };
+        // Remove o pod standby genérico para dar lugar ao Pod estritamente isolado do usuário
+        await k8sApi.deleteNamespacedPod(warmPod.metadata.name, this.namespace).catch(() => {});
       }
 
-      // Se o Warm Pool estiver vazio, cria o Pod sob demanda
-      const newPodName = `workspace-${projectId.slice(0, 8)}-${Date.now().toString(36)}`;
+      // Define subcaminho isolado por usuário: projects/${projectId}/users/${userId}
+      const userSubPath = userId
+        ? `projects/${projectId}/users/${userId}`
+        : `projects/${projectId}`;
+
+      // Cria o Pod sob demanda estritamente isolado
+      const userSuffix = userId ? userId.slice(0, 6) : 'user';
+      const newPodName = `workspace-${projectId.slice(0, 6)}-${userSuffix}-${Date.now().toString(36)}`;
       const podManifest: k8s.V1Pod = {
         apiVersion: 'v1',
         kind: 'Pod',
@@ -266,9 +256,9 @@ export class K8sPodManagerService {
           labels: {
             'app.kubernetes.io/part-of': 'sci-latex-vscode',
             component: 'code-server',
-            role: 'project-workspace',
+            role: 'user-workspace',
             projectId,
-            claimedBy: userId,
+            claimedBy: userId || 'anonymous',
           },
         },
         spec: {
@@ -282,21 +272,22 @@ export class K8sPodManagerService {
                 'none',
                 '--disable-telemetry',
                 '--disable-workspace-trust',
-                `/home/coder/storage/projects/${projectId}`,
+                '/home/coder/project',
               ],
               ports: [{ containerPort: 8080, name: 'http' }],
               volumeMounts: [
                 {
-                  name: 'project-storage',
-                  mountPath: `/home/coder/storage/projects/${projectId}`,
+                  name: 'host-storage',
+                  mountPath: '/home/coder/project',
+                  subPath: userSubPath,
                 },
               ],
             },
           ],
           volumes: [
             {
-              name: 'project-storage',
-              persistentVolumeClaim: { claimName: pvcName },
+              name: 'host-storage',
+              hostPath: { path: '/home/coder/storage' },
             },
           ],
         },
@@ -324,7 +315,39 @@ export class K8sPodManagerService {
     }
   }
 
-  // 4. Limpeza Inteligente do PVC após confirmação de push/merge no GitHub ou deleção
+  // 4. Libera e destrói o Pod dedicado do projeto após o usuário fechar a aba/desconectar
+  async releasePodForProject(projectId: string): Promise<void> {
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) return;
+
+    try {
+      const existingPods = await k8sApi.listNamespacedPod(
+        this.namespace,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId}`
+      );
+
+      const podsToDelete = existingPods.body.items || [];
+      for (const pod of podsToDelete) {
+        if (pod.metadata?.name) {
+          await k8sApi.deleteNamespacedPod(pod.metadata.name, this.namespace);
+          console.log(
+            `🧹 Pod ${pod.metadata.name} encerrado com sucesso após desconexão do usuário.`
+          );
+        }
+      }
+
+      // Re-valida o Warm Standby Pool para garantir exatamente 1 Pod livre na reserva
+      await this.ensureWarmPool(1);
+    } catch (err: any) {
+      console.warn(`⚠️ Error releasing Pod for project ${projectId}:`, err.message || err);
+    }
+  }
+
+  // 5. Limpeza Inteligente do PVC após confirmação de push/merge no GitHub ou deleção
   async cleanProjectPVC(projectId: string): Promise<void> {
     const k8sApi = this.getK8sApiClient();
     if (!k8sApi) return;

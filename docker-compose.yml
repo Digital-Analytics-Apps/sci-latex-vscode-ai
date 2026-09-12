@@ -38,7 +38,7 @@ services:
       GITHUB_REPO_PREFIX: ${GITHUB_REPO_PREFIX:-sci-paper-}
       CODE_SERVER_URL: http://code-server:8080
       PORT: 3333
-      HOST: 0.0.0.0
+      HOST: "::"
       NODE_ENV: development
     volumes:
       - ./backend:/app
