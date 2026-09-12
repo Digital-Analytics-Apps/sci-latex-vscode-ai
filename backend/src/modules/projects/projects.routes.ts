@@ -45,6 +45,8 @@ export async function projectsRoutes(app: FastifyInstance) {
           targetConferenceDate: z.string().optional(),
           backupConferenceName: z.string().optional(),
           backupConferenceDate: z.string().optional(),
+          coAuthorIds: z.array(z.string()).optional(),
+          reviewerId: z.string().optional(),
         }),
       },
     },
