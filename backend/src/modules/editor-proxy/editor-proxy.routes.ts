@@ -146,6 +146,8 @@ export async function editorProxyRoutes(app: FastifyInstance) {
           projectId: z.string().uuid(),
         }),
         querystring: z.object({
+          taskId: z.string().optional(),
+          branchName: z.string().optional(),
           sectionId: z.string().optional(),
           mode: z.string().optional(),
           token: z.string().optional(),
@@ -154,7 +156,12 @@ export async function editorProxyRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { projectId } = request.params as { projectId: string };
-      const { sectionId } = request.query as { sectionId?: string; mode?: string };
+      const { taskId, branchName, sectionId } = request.query as {
+        taskId?: string;
+        branchName?: string;
+        sectionId?: string;
+        mode?: string;
+      };
       const userId = (request.user as any)?.sub || 'user';
 
       const project = await projectsRepository.findById(projectId);
@@ -166,10 +173,17 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         });
       }
 
-      // 1. Determina a branch de destino no Git e prepara o diretório do projeto no disco PRIMEIRO
+      // 1. Determina a branch de destino no Git priorizando taskId / branchName
       let targetBranch = 'dev';
-      if (sectionId) {
-        targetBranch = `section/${sectionId}-${projectId.slice(0, 8)}`;
+      if (branchName) {
+        targetBranch = branchName;
+      } else if (taskId) {
+        const task = await prisma.task.findUnique({ where: { id: taskId } }).catch(() => null);
+        if (task?.branchName) {
+          targetBranch = task.branchName;
+        }
+      } else if (sectionId) {
+        targetBranch = `task/${sectionId}-${projectId.slice(0, 8)}`;
       }
 
       const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
