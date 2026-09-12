@@ -24,10 +24,10 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import {
-  doiSchema,
-  rejectionDecisionSchema,
   type DOIFormData,
+  doiSchema,
   type RejectionDecisionFormData,
+  rejectionDecisionSchema,
 } from "../../schemas/post-submission.schema";
 import { showNotification } from "../../store/slices/notificationSlice";
 
@@ -82,6 +82,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedStrategy = watchRejection("decisionStrategy");
 
   const onSubmitDoi = (data: DOIFormData) => {

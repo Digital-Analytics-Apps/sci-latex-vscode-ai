@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
-import { GitService, generateRepoName } from '../git.service';
+import { generateRepoName, GitService } from '../git.service';
 import { env } from '../../../config/env';
 
 describe('GitService', () => {

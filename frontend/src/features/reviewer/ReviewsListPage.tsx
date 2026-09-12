@@ -97,17 +97,22 @@ export const ReviewsListPage: React.FC = () => {
                 ) : (
                   reviews.map((pr) => (
                     <TableRow key={pr.id} hover>
-                      <TableCell sx={{ fontWeight: 700 }}>#{pr.id.slice(0, 8)}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        #{pr.id.slice(0, 8)}
+                      </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {pr.title}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {pr.section?.title || pr.sectionId} ({pr.section?.filePath || "main.tex"})
+                          {pr.section?.title || pr.sectionId} (
+                          {pr.section?.filePath || "main.tex"})
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{pr.author?.name || "Autor"}</Typography>
+                        <Typography variant="body2">
+                          {pr.author?.name || "Autor"}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {pr.author?.email || "autor@sci-latex.org"}
                         </Typography>
@@ -120,8 +125,8 @@ export const ReviewsListPage: React.FC = () => {
                             pr.status === "APPROVED"
                               ? "success"
                               : pr.status === "UNDER_REVIEW"
-                              ? "warning"
-                              : "default"
+                                ? "warning"
+                                : "default"
                           }
                           variant="outlined"
                         />
@@ -134,8 +139,8 @@ export const ReviewsListPage: React.FC = () => {
                             pr.nitStatus === "APPROVED_NIT"
                               ? "success"
                               : pr.nitStatus === "REJECTED_NIT"
-                              ? "error"
-                              : "warning"
+                                ? "error"
+                                : "warning"
                           }
                         />
                       </TableCell>

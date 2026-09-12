@@ -149,17 +149,23 @@ export function useCreateProjectMutation() {
       submissionDeadline?: string;
       template?: string;
       teamId?: string;
+      coAuthorIds?: string[];
+      reviewerId?: string;
     }) => {
       const response = await api.post("/projects", {
         name: data.name,
         targetConferenceName: data.targetConference,
         targetConferenceDate: data.submissionDeadline,
         teamId: data.teamId,
+        coAuthorIds: data.coAuthorIds || [],
+        reviewerId: data.reviewerId,
       });
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["articles"] });
+      queryClient.invalidateQueries({ queryKey: ["user-articles"] });
     },
   });
 }

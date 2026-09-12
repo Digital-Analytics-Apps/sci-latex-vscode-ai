@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../store";
 import { showNotification } from "../store/slices/notificationSlice";
 
-export function useSSEEventSource() {
+export function useSSEEventSource(projectId?: string) {
   const dispatch = useDispatch();
   const token = useSelector((state: RootState) => state.auth.token);
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -15,9 +15,13 @@ export function useSSEEventSource() {
     const baseUrl =
       import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
 
+    const url = projectId
+      ? `${baseUrl}/events/stream?projectId=${projectId}`
+      : `${baseUrl}/events/stream`;
+
     async function connectSSE() {
       try {
-        const response = await fetch(`${baseUrl}/events/stream`, {
+        const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "text/event-stream",
@@ -77,7 +81,7 @@ export function useSSEEventSource() {
       controller.abort();
       setIsConnected(false);
     };
-  }, [token, dispatch]);
+  }, [token, projectId, dispatch]);
 
   return { isConnected: Boolean(token) && isConnected };
 }

@@ -1,14 +1,11 @@
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import LogoutIcon from "@mui/icons-material/Logout";
-import SaveIcon from "@mui/icons-material/Save";
-import SendIcon from "@mui/icons-material/Send";
 import SignalCellularAltIcon from "@mui/icons-material/SignalCellularAlt";
 import {
   AppBar,
   Avatar,
   Box,
-  Button,
   Chip,
   IconButton,
   Menu,
@@ -23,7 +20,6 @@ import { useNavigate } from "react-router-dom";
 import { useSSEEventSource } from "../hooks/useSSEEventSource";
 import type { RootState } from "../store";
 import { logout } from "../store/slices/authSlice";
-import { showNotification } from "../store/slices/notificationSlice";
 import { useColorMode } from "../theme";
 
 export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
@@ -43,25 +39,6 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
   const handleLogout = () => {
     handleCloseUserMenu();
     dispatch(logout());
-  };
-
-  const handleSaveProgress = () => {
-    dispatch(
-      showNotification({
-        message: "Progresso do artigo salvo com sucesso no Git!",
-        severity: "success",
-      }),
-    );
-  };
-
-  const handleSendForReview = () => {
-    dispatch(
-      showNotification({
-        message:
-          "Utilize o botão 'Enviar p/ Revisão' no painel de ações do Workspace para abrir o Pull Request.",
-        severity: "info",
-      }),
-    );
   };
 
   return (
@@ -84,7 +61,7 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
           variant="dense"
           sx={{ justifyContent: "space-between", gap: 2 }}
         >
-          {/* Identificação do Projeto / Seção */}
+          {/* Identificação da Aplicação / Navegação */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Typography
               variant="subtitle1"
@@ -93,19 +70,6 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
             >
               SCI-LaTeX Workspace
             </Typography>
-
-            <Chip
-              label="Artigo: Metodologia Científica"
-              size="small"
-              variant="outlined"
-            />
-
-            <Chip
-              label="Prazo Seção 2: 🟢 No Prazo (4 dias restantes)"
-              size="small"
-              color="success"
-              sx={{ fontWeight: 600 }}
-            />
           </Box>
 
           {/* Ações Rápidas & Conexão SSE */}
@@ -125,26 +89,6 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
                 variant="outlined"
               />
             </Tooltip>
-
-            <Button
-              variant="outlined"
-              color="primary"
-              size="small"
-              startIcon={<SaveIcon />}
-              onClick={handleSaveProgress}
-            >
-              Salvar Progresso
-            </Button>
-
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<SendIcon />}
-              onClick={handleSendForReview}
-            >
-              Enviar p/ Revisão
-            </Button>
 
             <Tooltip title="Alternar Modo Claro / Escuro">
               <IconButton

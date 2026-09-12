@@ -43,7 +43,10 @@ export const CompiledPdfViewer: React.FC<CompiledPdfViewerProps> = ({
       setErrorMsg(null);
 
       // Se pdfUrl já for um blob local ou data-uri, utilizar diretamente
-      if (pdfUrl && (pdfUrl.startsWith("blob:") || pdfUrl.startsWith("data:"))) {
+      if (
+        pdfUrl &&
+        (pdfUrl.startsWith("blob:") || pdfUrl.startsWith("data:"))
+      ) {
         setBlobUrl(pdfUrl);
         setIsLoading(false);
         return;

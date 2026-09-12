@@ -48,7 +48,7 @@ export const ReviewDetailPage: React.FC = () => {
   const handleReview = async (
     status?: "APPROVED" | "CHANGES_REQUESTED",
     customComment?: string,
-    lineNum?: number
+    lineNum?: number,
   ) => {
     try {
       await reviewMutation.mutateAsync({
@@ -58,8 +58,8 @@ export const ReviewDetailPage: React.FC = () => {
           lineNum !== undefined
             ? lineNum
             : lineNumber
-            ? parseInt(lineNumber, 10)
-            : undefined,
+              ? parseInt(lineNumber, 10)
+              : undefined,
       });
 
       dispatch(
@@ -68,15 +68,15 @@ export const ReviewDetailPage: React.FC = () => {
             status === "APPROVED"
               ? "Pull Request APROVADO com sucesso!"
               : status === "CHANGES_REQUESTED"
-              ? "Ajustes solicitados ao Autor com sucesso!"
-              : "Comentário registrado com sucesso!",
+                ? "Ajustes solicitados ao Autor com sucesso!"
+                : "Comentário registrado com sucesso!",
           severity:
             status === "APPROVED"
               ? "success"
               : status === "CHANGES_REQUESTED"
-              ? "info"
-              : "success",
-        })
+                ? "info"
+                : "success",
+        }),
       );
 
       setCommentText("");
@@ -87,7 +87,7 @@ export const ReviewDetailPage: React.FC = () => {
           message:
             err.response?.data?.message || "Erro ao registrar avaliação do PR.",
           severity: "error",
-        })
+        }),
       );
     }
   };
@@ -97,7 +97,7 @@ export const ReviewDetailPage: React.FC = () => {
     await handleReview(
       undefined,
       commentText,
-      lineNumber ? parseInt(lineNumber, 10) : undefined
+      lineNumber ? parseInt(lineNumber, 10) : undefined,
     );
   };
 
@@ -343,10 +343,17 @@ export const ReviewDetailPage: React.FC = () => {
                       />
                     )}
                   </Box>
-                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}
+                  >
                     {item.comment}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mt: 1 }}
+                  >
                     {new Date(item.createdAt).toLocaleString("pt-BR")}
                   </Typography>
                 </Paper>
@@ -382,7 +389,11 @@ export const ReviewDetailPage: React.FC = () => {
               placeholder="Descreva aqui observações, sugestões ou correções necessárias..."
               fullWidth
             />
-            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ justifyContent: "flex-end" }}
+            >
               <Button
                 variant="outlined"
                 size="small"

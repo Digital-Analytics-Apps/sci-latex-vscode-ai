@@ -88,7 +88,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
         }),
       );
       setSelectedSection(null);
-    } catch (_err) {
+    } catch {
       dispatch(
         showNotification({
           message: `Prazo da seção "${selectedSection.title}" alterado para ${newDate} pelo Coordenador!`,

@@ -23,8 +23,8 @@ import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { useSubmitNITParecerMutation } from "../../hooks/useReviewQueries";
 import {
-  nitParecerSchema,
   type NITParecerFormData,
+  nitParecerSchema,
 } from "../../schemas/nit.schema";
 import { showNotification } from "../../store/slices/notificationSlice";
 
@@ -57,6 +57,7 @@ export const NITParecerModal: React.FC<NITParecerModalProps> = ({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedStatus = watch("nitStatus");
 
   const onSubmit = async (data: NITParecerFormData) => {

@@ -21,7 +21,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { loginSchema, type LoginFormData } from "../../schemas/auth.schema";
+import { type LoginFormData, loginSchema } from "../../schemas/auth.schema";
 import { api } from "../../services/api";
 import { setCredentials } from "../../store/slices/authSlice";
 import { useColorMode } from "../../theme";

@@ -4,7 +4,7 @@ import React from "react";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import { AppRoutes } from "./routes";
-import { store, type RootState } from "./store";
+import { type RootState, store } from "./store";
 import { hideNotification } from "./store/slices/notificationSlice";
 import { ThemeContextProvider } from "./theme";
 
