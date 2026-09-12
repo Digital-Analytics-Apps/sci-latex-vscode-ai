@@ -52,10 +52,11 @@ src/
 * `POST /api/v1/auth/logout`
   * Revoga o Refresh Token na tabela `Session`.
 
-### 3.2 Módulo `events` (Server-Sent Events - SSE Stream)
-* `GET /api/v1/events/stream`
+### 3.2 Módulo `events` (Server-Sent Events - SSE Stream & Monitoramento de Presença de Pods)
+* `GET /api/v1/events/stream?projectId=<optional-uuid>`
   * **Headers:** `Accept: text/event-stream`, `Authorization: Bearer <JWT>`
   * **Eventos Emitidos:** `PDF_COMPILED`, `PR_REVIEWED`, `NIT_STATUS_UPDATED`, `MERGE_UNLOCKED`, `DEADLINE_ALERT`.
+  * **Monitoramento de Presença & Ciclo de Vida de Pods K8s:** Quando o parâmetro `projectId` é fornecido na query string, o backend contabiliza os clientes ativos na workspace. Ao zerar as conexões SSE de um projeto (navegador fechado/saída do usuário), o backend aciona um **Grace Period de 1 minuto (`60.000 ms`)**. Se o usuário der F5/reconectar dentro de 1 minuto, a destruição é cancelada. Expirado o prazo sem reconexão, a rotina dispara `releasePodForProject(projectId)`, deletando o Pod no cluster KinD/K8s para liberar instantaneamente a memória RAM e CPU.
 
 ### 3.3 Módulo `projects` (Papers)
 * `POST /api/v1/projects`
@@ -115,6 +116,32 @@ src/
 2. **Detecção de Trava por PR Ativo (`isLocked`):**
    - Ao consultar os detalhes do projeto (`GET /api/v1/projects/:id`), cada seção é retornada com o campo computado `isLocked: boolean` e o objeto `activePullRequest`.
    - Se existir um PR ativo nos status `DRAFT`, `UNDER_REVIEW` ou `CHANGES_REQUESTED` para a seção, `isLocked` torna-se `true`, permitindo que extensões (VS Code) ou interfaces web sinalizem e alertem outros autores sobre a edição em andamento.
+
+### 3.8 Provisionamento Task-Driven de Pods K8s, Release Candidates e Releases (ADR-003)
+
+1. **Abstração Task-Driven (`POST /api/v1/projects/:projectId/tasks/:taskId/workspace`):**
+   - O usuário seleciona a tarefa no dashboard ("Minhas Tarefas").
+   - O backend valida a permissão, obtém a `branchName` da `Task` e busca/aloca o Pod Kubernetes dedicado (`workspace-pod-${projectId}-${userId}`).
+   - O clone do repositório em `${storageDir}/projects/${projectId}/users/${userId}` realiza `checkout` automático da branch da Task e retorna a URL do `code-server` para o iframe.
+
+2. **Nível 2 de Revisão — Release Candidates (`POST /api/v1/projects/:projectId/release-candidates`):**
+   - Quando a branch `dev` acumula avanços, os autores disparam a criação de uma **Release Candidate (ex: `RC-1`)**.
+   - O backend gera uma tag de snapshot no Git e notifica o Revisor Técnico / Orientador (`REVIEWER`).
+   - O Revisor visualiza o PDF compilado ou abre o artigo consolidado. Se solicitar mudanças, cada item do parecer gera **novas Tasks** para os autores.
+
+3. **Ciclo de Publicação na Branch Main (`POST /api/v1/projects/:projectId/releases`):**
+   - Após a aprovação da Release Candidate pelo Revisor, o Coordenador/Gerente dispara o merge da `RC` na branch `main`.
+   - É gravado um registro de **Release (ex: `v1.0 - Submissão Congresso A`)** imutável, vinculando a tag do Git e o PDF oficial publicado.
+
+4. **Resolução Híbrida de Conflitos & Sincronização:**
+   - Quando a branch `dev` recebe merges e a branch do autor fica defasada (`BEHIND`), a interface notifica o autor para sincronizar.
+   - O backend executa `git fetch origin` e `git rebase origin/dev`.
+   - Havendo conflitos (`CONFLICTED`), o autor é orientado a resolver as marcações de merge diretamente na **interface nativa do VS Code (`code-server`)**.
+   - Ao concluir a resolução no editor, o backend finaliza com `git add .` $\rightarrow$ `git rebase --continue` $\rightarrow$ `git push --force-with-lease`.
+
+5. **Ciclo de Vida On-Demand & Standby:**
+   - O backend mantém uma piscina de warm standby (`minWarmPods`) para garantir inicialização instantânea.
+   - Conexões ativas são monitoradas via SSE. Após a saída de todos os usuários de um projeto, um Grace Period de 1 minuto (`60.000 ms`) é iniciado antes do Pod ser destruído com `releasePodForProject`, liberando CPU/RAM do cluster.
 
 ---
 

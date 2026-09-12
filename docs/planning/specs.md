@@ -364,4 +364,136 @@ model Session {
   createdAt    DateTime @default(now())
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-```
+
+model Workspace {
+  id          String          @id @default(uuid())
+  projectId   String
+  userId      String
+  taskId      String?
+  podName     String?
+  status      WorkspaceStatus @default(PROVISIONING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, userId])
+}
+
+enum WorkspaceStatus {
+  PROVISIONING
+  READY
+  DIRTY
+  SYNCING
+  BEHIND
+  CONFLICTED
+  ERROR
+}
+
+model Task {
+  id            String         @id @default(uuid())
+  projectId     String
+  sectionId     String
+  assignedToId  String
+  title         String
+  branchName    String
+  status        TaskStatus     @default(NOT_STARTED)
+  dueDate       DateTime?
+  pullRequestId String?        @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section       Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  assignee      User           @relation("UserTasks", fields: [assignedToId], references: [id])
+  pullRequest   PullRequest?   @relation(fields: [pullRequestId], references: [id])
+  workspaces    Workspace[]
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  MERGED
+}
+
+model ReleaseCandidate {
+  id          String   @id @default(uuid())
+  projectId   String
+  versionTag  String   // ex: RC-1, RC-2
+  commitSha   String
+  status      RCStatus @default(SUBMITTED)
+  feedback    String?
+  reviewerId  String?
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer    User?    @relation("ReviewerRCs", fields: [reviewerId], references: [id])
+}
+
+enum RCStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+}
+
+model Release {
+  id          String   @id @default(uuid())
+  projectId   String
+  versionTag  String   // ex: v1.0, v1.1, v2.0
+  commitSha   String   // SHA fundido na branch main
+  title       String   // ex: "Submissão Congresso A"
+  conference  String?  // ex: "IEEE ICSE 2026"
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+## 7. Especificação de Endpoints REST API & Regras de Negócio de Membros e Tarefas
+
+### 7.1 Criação de Projetos e Associação Inicial de Membros
+- **`POST /api/v1/projects`**:
+  - **Payload**:
+    ```json
+    {
+      "name": "Título do Artigo",
+      "description": "Descrição opcional",
+      "targetConferenceName": "IEEE Transactions 2027",
+      "targetConferenceDate": "2027-02-15",
+      "coAuthorIds": ["uuid-1", "uuid-2"],
+      "reviewerId": "uuid-3"
+    }
+    ```
+  - **Comportamento**:
+    1. Provisiona o repositório remoto Git no GitHub com base no Token de Serviço.
+    2. Cria a entidade `Project` no banco de dados e adiciona o criador como `Role.AUTHOR`.
+    3. Associa cada id contido em `coAuthorIds` como membro autor (`Role.AUTHOR`).
+    4. Associa `reviewerId` como membro revisor (`Role.REVIEWER`).
+    5. Executa `findById(projectId)` e retorna o objeto `project` populado com a lista completa de membros e relacionamentos.
+
+### 7.2 Gestão Dinâmica de Membros do Artigo
+- **`POST /api/v1/projects/:id/members`**:
+  - **Payload**: `{ "userId": "uuid-user", "role": "AUTHOR" | "REVIEWER" }`
+  - **Comportamento**: Associa ou atualiza um usuário como membro do projeto com o papel especificado.
+  - **Regra**: Cada artigo permite múltiplos autores/co-autores e no máximo 1 revisor de par atribuído.
+
+- **`DELETE /api/v1/projects/:id/members/:userId`**:
+  - **Comportamento**: Remove o membro do projeto no banco de dados.
+
+### 7.3 Atribuição de Tarefas do Artigo (`Task`)
+- **`POST /api/v1/projects/:projectId/tasks`**:
+  - **Payload**: `{ "sectionId": "uuid-section", "assignedToId": "uuid-user", "title": "Título", "dueDate": "YYYY-MM-DD" }`
+  - **Regra de Interface**: A seleção do responsável (`assignedToId`) no modal de criação de tarefa é restrita e filtrada para os membros pertencentes àquele artigo específico (`ProjectMember`).
+  - **Provisionamento Git**: A criação da tarefa gera automaticamente a branch correspondente no repositório.
+
+### 7.4 Busca de Usuários com Debounce
+- **`GET /api/v1/users/search?q=...`**:
+  - Retorna lista filtrada por substring no nome ou e-mail com limite prudente de resultados, integrada ao frontend via busca debounced (300ms).

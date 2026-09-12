@@ -86,3 +86,14 @@ Para garantir 100% de paridade entre Desenvolvimento e Produção:
    - **Problema:** Quando o cluster KinD é recriado ou reiniciado, a porta da API K8s do servidor muda dinamicamente (ex: de `37121` para `41551`). A instância estática anterior do cliente no backend mantinha em cache a porta antiga, gerando erros de `ECONNREFUSED` e forçando o sistema para o modo de fallback sem instanciar novos Pods.
    - **Solução:** Refatorado o `K8sPodManagerService` para resolver e recarregar dinamicamente as credenciais do `KubeConfig` e o endereço ativo do cluster a cada chamada de gerenciamento (`getK8sApiClient`), garantindo que o backend se conecte com sucesso ao cluster atualizado e crie Pods dedicados para cada usuário.
 
+5. **Gerenciamento Dinâmico de Pods por Presença SSE com Grace Period de 1 Minuto (`releasePodForProject`):**
+   - **Problema:** Pods do `code-server` continuavam rodando indefinidamente no cluster K8s consumindo memória RAM/CPU mesmo após o usuário fechar a aba, sair do projeto ou fechar o navegador.
+   - **Solução:** Integrado o monitoramento de conexões SSE (`EventsManagerService`) rastreado por `projectId`. Quando as conexões SSE ativas do projeto chegam a `0`, o backend aciona um **Grace Period de 1 minuto (`60.000 ms`)**. Se o usuário reconectar/der F5 dentro deste 1 minuto, o timer é cancelado e o Pod permanece ativo sem latência. Se o tempo expirar sem nova conexão, o backend executa `releasePodForProject(projectId)`, deletando o Pod no Kubernetes me liberando a memória RAM do servidor.
+
+6. **Isolamento Estrito de Projetos / Multi-Tenant Subpath Mount & Pré-provisionamento:**
+   - **Problema:** Ao montar o volume PVC diretamente no diretório raiz do container (`/home/coder/storage`), os usuários podiam navegar pela arvore de arquivos através do seletor "Open Folder" do VS Code e acessar projetos de outros usuários ("Workspace não existe" ou vazamentos de dados). Além disso, tentar abrir o workspace antes de criar os arquivos de template `main.tex` causava erro de diretório inexistente.
+   - **Solução:** 
+     1. **SubPath Mount:** Os Pods de projeto declaram `subPath: projects/${projectId}` montado diretamente em `/home/coder/project`. O container do `code-server` é iniciado diretamente com argumento `/home/coder/project`, tornando impossível ao container acessar o diretório pai ou visualizar arquivos de outros projetos.
+     2. **Pré-provisionamento de Arquivos:** No `editorProxyRoutes`, o repositório Git e a estrutura inicial do LaTeX (`main.tex`, `sections/`, `references.bib`, etc.) são criados no disco do host **antes** de acionar a criação/reserva do Pod e efetuar o redirecionamento HTTP, garantindo que o VS Code abra imediatamente um ambiente preparado e isolado.
+
+
