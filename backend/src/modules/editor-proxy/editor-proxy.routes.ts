@@ -148,7 +148,6 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         querystring: z.object({
           taskId: z.string().optional(),
           branchName: z.string().optional(),
-          sectionId: z.string().optional(),
           mode: z.string().optional(),
           token: z.string().optional(),
         }),
@@ -156,10 +155,9 @@ export async function editorProxyRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { projectId } = request.params as { projectId: string };
-      const { taskId, branchName, sectionId } = request.query as {
+      const { taskId, branchName } = request.query as {
         taskId?: string;
         branchName?: string;
-        sectionId?: string;
         mode?: string;
       };
       const userId = (request.user as any)?.sub || 'user';
@@ -182,8 +180,6 @@ export async function editorProxyRoutes(app: FastifyInstance) {
         if (task?.branchName) {
           targetBranch = task.branchName;
         }
-      } else if (sectionId) {
-        targetBranch = `task/${sectionId}-${projectId.slice(0, 8)}`;
       }
 
       const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
