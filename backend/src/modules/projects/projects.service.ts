@@ -386,7 +386,7 @@ export class ProjectsService {
             projectId,
             title: meta.title,
             filePath: meta.filePath,
-            branchName: `section/${sectionId}-${shortHash}`,
+            branchName: `task/${sectionId}-${shortHash}`,
           },
         })
         .catch(
@@ -396,7 +396,7 @@ export class ProjectsService {
               projectId,
               title: meta.title,
               filePath: meta.filePath,
-              branchName: `section/${sectionId}-${shortHash}`,
+              branchName: `task/${sectionId}-${shortHash}`,
             }) as any
         );
     }

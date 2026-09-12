@@ -56,7 +56,7 @@ export class PullRequestsService {
           projectId: data.projectId,
           title: meta.title,
           filePath: meta.filePath,
-          branchName: `section/${data.sectionId}-${shortHash}`,
+          branchName: `task/${data.sectionId}-${shortHash}`,
         },
       });
     }
