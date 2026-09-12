@@ -60,7 +60,7 @@ describe('TasksService (Unit Tests)', () => {
     });
 
     expect(prisma.task.create).toHaveBeenCalled();
-    expect(result.branchName).toBe('section/escrever-a-introducao-task-u');
+    expect(result.branchName).toBe('task/escrever-a-introducao-task-u');
   });
 
   it('should list tasks for a project', async () => {

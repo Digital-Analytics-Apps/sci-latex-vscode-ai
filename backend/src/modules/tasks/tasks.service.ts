@@ -23,7 +23,7 @@ export class TasksService {
     this.k8sPodManager = k8sPodManager || new K8sPodManagerService();
   }
 
-  // Gera o nome amigável da branch da task: section/<slug>-<uuid>
+  // Gera o nome amigável da branch da task: task/<slug>-<uuid>
   private generateTaskBranchName(title: string, taskId: string): string {
     const slug = title
       .normalize('NFD')
@@ -37,7 +37,7 @@ export class TasksService {
       .replace(/^-+|-+$/g, '');
 
     const shortId = taskId.slice(0, 6);
-    return `section/${slug || 'task'}-${shortId}`;
+    return `task/${slug || 'item'}-${shortId}`;
   }
 
   // 1. Criar nova Task associada ao autor
