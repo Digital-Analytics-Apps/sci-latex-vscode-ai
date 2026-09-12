@@ -1,7 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TeamsService } from '../teams.service';
-import { PrismaTeamsRepository } from '../../../repositories/teams.repository';
-import { Role } from '@prisma/client';
 
 describe('TeamsService', () => {
   let teamsService: TeamsService;

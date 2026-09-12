@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AuthService } from '../auth.service';
-import { IUsersRepository, CreateUserData } from '../../../repositories/users.repository';
+import { CreateUserData, IUsersRepository } from '../../../repositories/users.repository';
 import {
-  ISessionsRepository,
   CreateSessionData,
+  ISessionsRepository,
   SessionWithUser,
 } from '../../../repositories/sessions.repository';
-import { User, Session, Role } from '@prisma/client';
+import { Role, Session, User } from '@prisma/client';
 
 // Mock InMemoryUsersRepository para testes unitários isolados (sem banco de dados)
 class InMemoryUsersRepository implements IUsersRepository {
@@ -18,6 +18,17 @@ class InMemoryUsersRepository implements IUsersRepository {
 
   async findById(id: string): Promise<User | null> {
     return this.users.find((u) => u.id === id) || null;
+  }
+
+  async searchMany({ search, role }: any): Promise<User[]> {
+    return this.users.filter((u) => {
+      const matchesRole = !role || u.role === role;
+      const matchesSearch =
+        !search ||
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase());
+      return matchesRole && matchesSearch;
+    });
   }
 
   async create(data: CreateUserData): Promise<User> {

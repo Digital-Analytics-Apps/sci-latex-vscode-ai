@@ -1,4 +1,4 @@
-import { PullRequest, PRStatus, NITStatus, ReviewComment, Prisma } from '@prisma/client';
+import { NITStatus, Prisma, PRStatus, ReviewComment } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
 export const prInclude = {

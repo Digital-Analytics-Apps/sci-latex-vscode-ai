@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { TeamsService } from './teams.service';
 import { z } from 'zod';
 import { Role } from '@prisma/client';

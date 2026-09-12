@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { eventsManager } from './events.manager';
 
@@ -14,10 +15,14 @@ export async function eventsRoutes(app: FastifyInstance) {
         description:
           'Conexão Server-Sent Events (SSE) para receber alertas de compilação PDF, atualizações de PRs e prazos em tempo real.',
         security: [{ bearerAuth: [] }],
+        querystring: z.object({
+          projectId: z.string().uuid().optional(),
+        }),
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user.sub;
+      const { projectId } = (request.query as { projectId?: string }) || {};
 
       // Configura cabeçalhos CORS e HTTP padrão para SSE (Server-Sent Events)
       const origin = (request.headers.origin as string) || '*';
@@ -33,7 +38,7 @@ export async function eventsRoutes(app: FastifyInstance) {
       // Envia mensagem inicial de confirmação de conexão
       reply.raw.write(`: connected\n\n`);
 
-      eventsManager.addClient(userId, reply);
+      eventsManager.addClient(userId, reply, projectId);
 
       // Heartbeat a cada 30 segundos para manter a conexão viva
       const keepAliveInterval = setInterval(() => {
@@ -43,7 +48,7 @@ export async function eventsRoutes(app: FastifyInstance) {
       // Trata a desconexão do cliente
       request.raw.on('close', () => {
         clearInterval(keepAliveInterval);
-        eventsManager.removeClient(userId, reply);
+        eventsManager.removeClient(userId, reply, projectId);
       });
     }
   );

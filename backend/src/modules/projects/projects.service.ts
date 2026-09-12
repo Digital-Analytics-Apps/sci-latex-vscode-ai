@@ -18,6 +18,8 @@ export interface CreateProjectDTO {
   targetConferenceDate?: Date;
   backupConferenceName?: string;
   backupConferenceDate?: Date;
+  coAuthorIds?: string[];
+  reviewerId?: string;
 }
 
 export interface UpdateProjectDTO {
@@ -75,12 +77,39 @@ export class ProjectsService {
 
     // 2. Com a confirmação da criação do repositório remoto, criar a entidade Project no banco
     const project = await this.projectsRepository.create({
-      ...data,
-      id: projectId,
+      name: data.name,
+      description: data.description,
       teamId: targetTeamId,
+      academicPeriodId: data.academicPeriodId,
+      targetConferenceName: data.targetConferenceName,
+      targetConferenceDate: data.targetConferenceDate,
+      backupConferenceName: data.backupConferenceName,
+      backupConferenceDate: data.backupConferenceDate,
+      id: projectId,
       gitRepoPath,
       creatorId: userId,
     });
+
+    // 2b. Adicionar o criador do projeto como membro (Autor)
+    await this.projectsRepository.addMember(projectId, userId, Role.AUTHOR).catch(() => {});
+
+    // 2c. Adicionar os co-autores selecionados
+    if (data.coAuthorIds && Array.isArray(data.coAuthorIds)) {
+      for (const coAuthorId of data.coAuthorIds) {
+        if (coAuthorId && coAuthorId !== userId) {
+          await this.projectsRepository
+            .addMember(projectId, coAuthorId, Role.AUTHOR)
+            .catch(() => {});
+        }
+      }
+    }
+
+    // 2d. Adicionar o revisor técnico selecionado
+    if (data.reviewerId) {
+      await this.projectsRepository
+        .addMember(projectId, data.reviewerId, Role.REVIEWER)
+        .catch(() => {});
+    }
 
     // 3. Registrar evento de criação no AuditLog para a Timeline
     await logAudit({
@@ -95,7 +124,8 @@ export class ProjectsService {
       },
     });
 
-    return project;
+    const updatedProject = await this.projectsRepository.findById(projectId);
+    return updatedProject || project;
   }
 
   // Listar projetos com suporte a filtros por equipe, ciclo acadêmico ou usuário
@@ -164,7 +194,8 @@ export class ProjectsService {
       throw new Error('JUSTIFICATION_REQUIRED_FOR_DATE_CHANGE');
     }
 
-    const { justification, ...updateData } = data;
+    const updateData = { ...data };
+    delete updateData.justification;
     const updated = await this.projectsRepository.update(projectId, updateData);
 
     // Registra evento na Timeline / AuditLog

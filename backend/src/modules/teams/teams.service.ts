@@ -1,7 +1,7 @@
 import { Role } from '@prisma/client';
 import {
-  PrismaTeamsRepository,
   CreateTeamData,
+  PrismaTeamsRepository,
   UpdateTeamData,
 } from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';

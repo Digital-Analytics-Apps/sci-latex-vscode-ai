@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { Role } from '@prisma/client';
 import { AuthService } from './auth.service';
@@ -126,7 +126,7 @@ export class AuthController {
         accessToken,
         user,
       });
-    } catch (err: any) {
+    } catch {
       return reply.status(401).send({
         statusCode: 401,
         error: 'Unauthorized',
@@ -153,7 +153,7 @@ export class AuthController {
       const userId = request.user.sub;
       const user = await authService.getProfile(userId);
       return reply.send({ user });
-    } catch (err: any) {
+    } catch {
       return reply.status(404).send({
         statusCode: 404,
         error: 'Not Found',

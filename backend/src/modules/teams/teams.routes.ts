@@ -2,8 +2,8 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import {
-  requireManagerOrAdmin,
   requireCoordinatorOrAbove,
+  requireManagerOrAdmin,
 } from '../../middlewares/rbac.middleware';
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { TeamsService } from './teams.service';

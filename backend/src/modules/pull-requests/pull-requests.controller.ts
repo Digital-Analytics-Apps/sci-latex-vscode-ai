@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { PullRequestsService } from './pull-requests.service';
 import { z } from 'zod';
 import { NITStatus } from '@prisma/client';

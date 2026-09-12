@@ -152,12 +152,10 @@ export async function projectsRoutes(app: FastifyInstance) {
   app.post(
     '/:id/members',
     {
-      onRequest: [requireCoordinatorOrAbove],
       schema: {
         tags: ['Projects'],
         summary: 'Adicionar ou associar Autor/Revisor ao artigo',
-        description:
-          'Permite ao Coordenador, Gerente ou Admin associar um usuário ao projeto com papel de AUTHOR ou REVIEWER.',
+        description: 'Permite associar um usuário ao projeto com papel de AUTHOR ou REVIEWER.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string(),
@@ -175,11 +173,10 @@ export async function projectsRoutes(app: FastifyInstance) {
   app.delete(
     '/:id/members/:userId',
     {
-      onRequest: [requireCoordinatorOrAbove],
       schema: {
         tags: ['Projects'],
         summary: 'Remover Autor ou Revisor do artigo',
-        description: 'Permite ao Coordenador, Gerente ou Admin remover um membro de um projeto.',
+        description: 'Permite remover um membro de um projeto.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           id: z.string(),

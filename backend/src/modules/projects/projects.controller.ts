@@ -15,6 +15,8 @@ export const createProjectSchema = z.object({
   targetConferenceDate: z.coerce.date().optional(),
   backupConferenceName: z.string().optional(),
   backupConferenceDate: z.coerce.date().optional(),
+  coAuthorIds: z.array(z.string()).optional(),
+  reviewerId: z.string().optional(),
 });
 
 export const updateProjectSchema = z.object({

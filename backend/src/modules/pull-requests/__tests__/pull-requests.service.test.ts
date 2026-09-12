@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { PRStatus, NITStatus } from '@prisma/client';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { NITStatus, PRStatus } from '@prisma/client';
 import { PullRequestsService } from '../pull-requests.service';
-import { PrismaPullRequestsRepository } from '../../../repositories/pull-requests.repository';
 
 describe('PullRequestsService', () => {
   let prService: PullRequestsService;

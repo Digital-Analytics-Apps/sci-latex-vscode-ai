@@ -20,6 +20,9 @@ import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { teamsRoutes } from './modules/teams/teams.routes';
 import { academicPeriodsRoutes } from './modules/academic-periods/academic-periods.routes';
 import { editorProxyRoutes } from './modules/editor-proxy/editor-proxy.routes';
+import { tasksRoutes } from './modules/tasks/tasks.routes';
+import { releasesRoutes } from './modules/releases/releases.routes';
+import { usersRoutes } from './modules/users/users.routes';
 
 export async function buildApp() {
   const app = fastify({
@@ -56,6 +59,14 @@ export async function buildApp() {
         {
           name: 'PullRequests',
           description: 'Fluxo de Revisão de PRs, Parecer do NIT e Trava de Merge',
+        },
+        {
+          name: 'Tasks',
+          description: 'Gerenciamento de Tarefas e Ativação de Workspace Orientado a Task',
+        },
+        {
+          name: 'Releases',
+          description: 'Gestão de Release Candidates (RCs) e Publicações Oficiais na main',
         },
         {
           name: 'Dashboard',
@@ -110,6 +121,9 @@ export async function buildApp() {
   await app.register(teamsRoutes, { prefix: '/api/v1/teams' });
   await app.register(academicPeriodsRoutes, { prefix: '/api/v1/academic-periods' });
   await app.register(editorProxyRoutes, { prefix: '/api/v1/editor-proxy' });
+  await app.register(tasksRoutes);
+  await app.register(releasesRoutes);
+  await app.register(usersRoutes, { prefix: '/api/v1/users' });
 
   // Rota de Health Check
   app.get(

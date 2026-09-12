@@ -1,4 +1,4 @@
-export async function connect(url: string) {
+export async function connect(_url: string) {
   return {
     createChannel: async () => ({
       assertExchange: async () => {},

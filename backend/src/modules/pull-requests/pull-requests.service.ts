@@ -1,7 +1,7 @@
-import { PRStatus, NITStatus } from '@prisma/client';
+import { NITStatus, PRStatus } from '@prisma/client';
 import {
-  PrismaPullRequestsRepository,
   CreatePRData,
+  PrismaPullRequestsRepository,
 } from '../../repositories/pull-requests.repository';
 import { eventsManager } from '../events/events.manager';
 import { logAudit } from '../../utils/audit';

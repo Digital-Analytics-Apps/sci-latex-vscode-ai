@@ -1,8 +1,8 @@
 import { Role, User } from '@prisma/client';
-import { IUsersRepository } from '../../repositories/users.repository';
-import { ISessionsRepository } from '../../repositories/sessions.repository';
-import { hashPassword, verifyPassword } from '../../utils/hash';
 import { randomBytes } from 'crypto';
+import { ISessionsRepository } from '../../repositories/sessions.repository';
+import { IUsersRepository } from '../../repositories/users.repository';
+import { hashPassword, verifyPassword } from '../../utils/hash';
 
 export interface RegisterDTO {
   name: string;
@@ -43,7 +43,8 @@ export class AuthService {
       role: data.role,
     });
 
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    const userWithoutPassword = { ...user };
+    delete (userWithoutPassword as any).passwordHash;
     return userWithoutPassword;
   }
 
@@ -69,7 +70,8 @@ export class AuthService {
       expiresAt,
     });
 
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    const userWithoutPassword = { ...user };
+    delete (userWithoutPassword as any).passwordHash;
 
     return {
       user: userWithoutPassword,
@@ -88,7 +90,8 @@ export class AuthService {
       throw new Error('INVALID_REFRESH_TOKEN');
     }
 
-    const { passwordHash: _, ...userWithoutPassword } = session.user;
+    const userWithoutPassword = { ...session.user };
+    delete (userWithoutPassword as any).passwordHash;
     return userWithoutPassword;
   }
 
@@ -104,7 +107,8 @@ export class AuthService {
       throw new Error('USER_NOT_FOUND');
     }
 
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    const userWithoutPassword = { ...user };
+    delete (userWithoutPassword as any).passwordHash;
     return userWithoutPassword;
   }
 }

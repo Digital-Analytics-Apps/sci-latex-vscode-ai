@@ -132,10 +132,10 @@ class InMemoryTeamsRepository implements ITeamsRepository {
 }
 
 class MockGitService extends GitService {
-  async initRepository(projectId: string, projectTitle: string): Promise<string> {
+  async initRepository(projectId: string, _projectTitle: string): Promise<string> {
     return `/storage/git/${projectId}.git`;
   }
-  async commitFile(params?: any): Promise<string> {
+  async commitFile(_params?: any): Promise<string> {
     return 'a1b2c3d4e5f678901234567890abcdef12345678';
   }
 }

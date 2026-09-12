@@ -1,4 +1,4 @@
-import { Project, Prisma, Role, SubmissionStatus } from '@prisma/client';
+import { Prisma, Project, Role, SubmissionStatus } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
 export interface CreateProjectData {
