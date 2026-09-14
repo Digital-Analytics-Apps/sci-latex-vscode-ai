@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { tasksService } from '../tasks.service';
-import { prisma } from '../../../db/prisma';
+import { TasksService } from '../tasks.service';
+import { ITasksRepository } from '../../../repositories/tasks.repository';
 
 vi.mock('../../../db/prisma', () => ({
   prisma: {
-    task: {
-      create: vi.fn(),
-      update: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-    },
     workspace: {
       upsert: vi.fn(),
     },
@@ -32,12 +26,22 @@ vi.mock('../../k8s/k8s-pod-manager.service', () => ({
 }));
 
 describe('TasksService (Unit Tests)', () => {
+  let mockTasksRepository: ITasksRepository;
+  let service: TasksService;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTasksRepository = {
+      create: vi.fn(),
+      update: vi.fn(),
+      findById: vi.fn(),
+      findMany: vi.fn(),
+    };
+    service = new TasksService(mockTasksRepository);
   });
 
   it('should create a new Task and generate a clean branch name', async () => {
-    const mockTask = {
+    const mockTask: any = {
       id: 'task-uuid-123',
       projectId: 'proj-1',
       assignedToId: 'user-1',
@@ -48,35 +52,34 @@ describe('TasksService (Unit Tests)', () => {
       updatedAt: new Date(),
     };
 
-    (prisma.task.create as any).mockResolvedValue(mockTask);
-    (prisma.task.update as any).mockImplementation(({ data }: any) =>
+    (mockTasksRepository.create as any).mockResolvedValue(mockTask);
+    (mockTasksRepository.update as any).mockImplementation((_id: string, data: any) =>
       Promise.resolve({ ...mockTask, ...data })
     );
 
-    const result = await tasksService.createTask({
+    const result = await service.createTask({
       projectId: 'proj-1',
       assignedToId: 'user-1',
       title: 'Escrever a Introdução',
     });
 
-    expect(prisma.task.create).toHaveBeenCalled();
+    expect(mockTasksRepository.create).toHaveBeenCalled();
     expect(result.branchName).toBe('task/escrever-a-introducao-task-u');
   });
 
   it('should list tasks for a project', async () => {
-    const mockTasks = [
+    const mockTasks: any = [
       { id: 'task-1', title: 'Task 1', projectId: 'proj-1' },
       { id: 'task-2', title: 'Task 2', projectId: 'proj-1' },
     ];
 
-    (prisma.task.findMany as any).mockResolvedValue(mockTasks);
+    (mockTasksRepository.findMany as any).mockResolvedValue(mockTasks);
 
-    const result = await tasksService.getTasksByProject('proj-1');
+    const result = await service.getTasksByProject('proj-1');
 
-    expect(prisma.task.findMany).toHaveBeenCalledWith({
-      where: { projectId: 'proj-1' },
-      include: expect.any(Object),
-      orderBy: { createdAt: 'desc' },
+    expect(mockTasksRepository.findMany).toHaveBeenCalledWith({
+      projectId: 'proj-1',
+      assignedToId: undefined,
     });
     expect(result).toEqual(mockTasks);
   });

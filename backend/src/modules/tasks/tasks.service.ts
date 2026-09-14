@@ -1,8 +1,8 @@
-import path from 'path';
 import fs from 'fs/promises';
-import { prisma } from '../../db/prisma';
+import path from 'path';
 import { env } from '../../config/env';
-import { GitService } from '../git/git.service';
+import { prisma } from '../../db/prisma';
+import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
 import { K8sPodManagerService } from '../k8s/k8s-pod-manager.service';
 
 export interface CreateTaskDTO {
@@ -13,15 +13,10 @@ export interface CreateTaskDTO {
 }
 
 export class TasksService {
-  private baseStoragePath: string;
-  private gitService: GitService;
-  private k8sPodManager: K8sPodManagerService;
-
-  constructor(gitService?: GitService, k8sPodManager?: K8sPodManagerService) {
-    this.baseStoragePath = path.resolve(env.STORAGE_PATH, 'git');
-    this.gitService = gitService || new GitService();
-    this.k8sPodManager = k8sPodManager || new K8sPodManagerService();
-  }
+  constructor(
+    private tasksRepository: ITasksRepository = new PrismaTasksRepository(),
+    private k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
+  ) {}
 
   // Gera o nome amigável da branch da task: task/<slug>-<uuid>
   private generateTaskBranchName(title: string, taskId: string): string {
@@ -42,23 +37,20 @@ export class TasksService {
 
   // 1. Criar nova Task associada ao autor
   async createTask(dto: CreateTaskDTO) {
-    const task = await prisma.task.create({
-      data: {
-        projectId: dto.projectId,
-        assignedToId: dto.assignedToId,
-        title: dto.title,
-        branchName: 'pending',
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        status: 'NOT_STARTED',
-      },
+    const task = await this.tasksRepository.create({
+      projectId: dto.projectId,
+      assignedToId: dto.assignedToId,
+      title: dto.title,
+      branchName: 'pending',
+      dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      status: 'NOT_STARTED',
     });
 
     const branchName = this.generateTaskBranchName(dto.title, task.id);
 
     // Atualiza a Task com o nome final da branch
-    const updatedTask = await prisma.task.update({
-      where: { id: task.id },
-      data: { branchName },
+    const updatedTask = await this.tasksRepository.update(task.id, {
+      branchName,
     });
 
     return updatedTask;
@@ -66,26 +58,12 @@ export class TasksService {
 
   // 2. Listar tarefas do projeto
   async getTasksByProject(projectId: string, assignedToId?: string) {
-    const where: any = { projectId };
-    if (assignedToId) {
-      where.assignedToId = assignedToId;
-    }
-
-    return prisma.task.findMany({
-      where,
-      include: {
-        assignee: { select: { id: true, name: true, email: true, role: true } },
-        pullRequest: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.tasksRepository.findMany({ projectId, assignedToId });
   }
 
   // 3. Ativar/Iniciar o Workspace orientado a uma Task
   async startTaskWorkspace(projectId: string, taskId: string, userId: string) {
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
-    });
+    const task = await this.tasksRepository.findById(taskId);
 
     if (!task || task.projectId !== projectId) {
       throw new Error('TASK_NOT_FOUND: A tarefa especificada não foi encontrada no projeto.');
@@ -133,9 +111,8 @@ export class TasksService {
 
     // Se o status da task ainda era NOT_STARTED, avança para IN_PROGRESS
     if (task.status === 'NOT_STARTED') {
-      await prisma.task.update({
-        where: { id: taskId },
-        data: { status: 'IN_PROGRESS' },
+      await this.tasksRepository.update(taskId, {
+        status: 'IN_PROGRESS',
       });
     }
 
