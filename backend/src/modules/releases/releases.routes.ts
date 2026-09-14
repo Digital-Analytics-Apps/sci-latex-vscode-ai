@@ -1,75 +1,85 @@
-import { FastifyInstance } from 'fastify';
-import { releasesService } from './releases.service';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
+import { verifyJwt } from '../../middlewares/auth.middleware';
+import { ReleasesController } from './releases.controller';
 
-export async function releasesRoutes(fastify: FastifyInstance) {
+export const releasesRoutes: FastifyPluginAsyncZod = async (fastify) => {
+  const controller = new ReleasesController();
+
   // Hook de autenticação JWT
-  fastify.addHook('onRequest', async (request, reply) => {
-    try {
-      await request.jwtVerify();
-    } catch {
-      reply.status(401).send({ error: 'UNAUTHORIZED', message: 'Token JWT ausente ou inválido' });
-    }
-  });
+  fastify.addHook('onRequest', verifyJwt);
 
   // POST /api/v1/projects/:projectId/release-candidates - Criar nova Release Candidate (RC)
-  fastify.post('/api/v1/projects/:projectId/release-candidates', async (request, reply) => {
-    const { projectId } = request.params as { projectId: string };
-    const body = request.body as { versionTag?: string; reviewerId?: string; feedback?: string };
-
-    try {
-      const rc = await releasesService.createReleaseCandidate({
-        projectId,
-        versionTag: body.versionTag || '',
-        reviewerId: body.reviewerId,
-        feedback: body.feedback,
-      });
-
-      return reply.status(201).send(rc);
-    } catch (err: any) {
-      return reply.status(400).send({ error: 'CREATE_RC_FAILED', message: err.message });
-    }
-  });
+  fastify.post(
+    '/api/v1/projects/:projectId/release-candidates',
+    {
+      schema: {
+        tags: ['Releases'],
+        summary: 'Criar nova Release Candidate (RC)',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string().min(1),
+        }),
+        body: z.object({
+          versionTag: z.string().optional(),
+          reviewerId: z.string().optional(),
+          feedback: z.string().optional(),
+        }),
+      },
+    },
+    controller.createReleaseCandidate.bind(controller)
+  );
 
   // GET /api/v1/projects/:projectId/release-candidates - Listar RCs
-  fastify.get('/api/v1/projects/:projectId/release-candidates', async (request, reply) => {
-    const { projectId } = request.params as { projectId: string };
-
-    try {
-      const rcs = await releasesService.listReleaseCandidates(projectId);
-      return reply.send(rcs);
-    } catch (err: any) {
-      return reply.status(500).send({ error: 'GET_RCS_FAILED', message: err.message });
-    }
-  });
+  fastify.get(
+    '/api/v1/projects/:projectId/release-candidates',
+    {
+      schema: {
+        tags: ['Releases'],
+        summary: 'Listar Release Candidates do projeto',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string().min(1),
+        }),
+      },
+    },
+    controller.listReleaseCandidates.bind(controller)
+  );
 
   // POST /api/v1/projects/:projectId/releases - Publicar Release oficial na main
-  fastify.post('/api/v1/projects/:projectId/releases', async (request, reply) => {
-    const { projectId } = request.params as { projectId: string };
-    const body = request.body as { versionTag: string; title: string; conference?: string };
-
-    try {
-      const release = await releasesService.createRelease({
-        projectId,
-        versionTag: body.versionTag,
-        title: body.title,
-        conference: body.conference,
-      });
-
-      return reply.status(201).send(release);
-    } catch (err: any) {
-      return reply.status(400).send({ error: 'CREATE_RELEASE_FAILED', message: err.message });
-    }
-  });
+  fastify.post(
+    '/api/v1/projects/:projectId/releases',
+    {
+      schema: {
+        tags: ['Releases'],
+        summary: 'Publicar Release oficial na branch main',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string().min(1),
+        }),
+        body: z.object({
+          versionTag: z.string().min(1),
+          title: z.string().min(1),
+          conference: z.string().optional(),
+        }),
+      },
+    },
+    controller.createRelease.bind(controller)
+  );
 
   // GET /api/v1/projects/:projectId/releases - Listar Releases publicadas
-  fastify.get('/api/v1/projects/:projectId/releases', async (request, reply) => {
-    const { projectId } = request.params as { projectId: string };
-
-    try {
-      const releases = await releasesService.listReleases(projectId);
-      return reply.send(releases);
-    } catch (err: any) {
-      return reply.status(500).send({ error: 'GET_RELEASES_FAILED', message: err.message });
-    }
-  });
-}
+  fastify.get(
+    '/api/v1/projects/:projectId/releases',
+    {
+      schema: {
+        tags: ['Releases'],
+        summary: 'Listar Releases publicadas do projeto',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string().min(1),
+        }),
+      },
+    },
+    controller.listReleases.bind(controller)
+  );
+};

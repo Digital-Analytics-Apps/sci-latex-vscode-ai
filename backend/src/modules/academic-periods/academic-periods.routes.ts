@@ -1,10 +1,12 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireManagerOrAdmin } from '../../middlewares/rbac.middleware';
-import { prisma } from '../../db/prisma';
+import { AcademicPeriodsController } from './academic-periods.controller';
 
-export async function academicPeriodsRoutes(app: FastifyInstance) {
+export const academicPeriodsRoutes: FastifyPluginAsyncZod = async (app) => {
+  const controller = new AcademicPeriodsController();
+
   app.addHook('onRequest', verifyJwt);
 
   // POST /api/v1/academic-periods - Criar Período Acadêmico (Gerente ou Admin)
@@ -25,17 +27,7 @@ export async function academicPeriodsRoutes(app: FastifyInstance) {
         }),
       },
     },
-    async (req, reply) => {
-      const body = req.body as any;
-      const period = await prisma.academicPeriod.create({
-        data: {
-          name: body.name,
-          startDate: body.startDate,
-          endDate: body.endDate,
-        },
-      });
-      return reply.status(201).send({ academicPeriod: period });
-    }
+    controller.create.bind(controller)
   );
 
   // GET /api/v1/academic-periods - Listar Ciclos Acadêmicos
@@ -49,11 +41,6 @@ export async function academicPeriodsRoutes(app: FastifyInstance) {
         security: [{ bearerAuth: [] }],
       },
     },
-    async (req, reply) => {
-      const periods = await prisma.academicPeriod.findMany({
-        orderBy: { startDate: 'desc' },
-      });
-      return reply.send({ academicPeriods: periods });
-    }
+    controller.list.bind(controller)
   );
-}
+};

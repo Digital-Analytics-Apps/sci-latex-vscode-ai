@@ -53,12 +53,9 @@ export const WorkspacePage: React.FC = () => {
   const canMerge = activePR?.status === "APPROVED";
 
   const getSendReviewTooltip = () => {
-    if (activePR?.status === "UNDER_REVIEW")
-      return "Sob análise do Revisor";
-    if (activePR?.status === "APPROVED")
-      return "Revisão aprovada pelo Revisor";
-    if (activePR?.status === "MERGED")
-      return "Mesclado na branch dev";
+    if (activePR?.status === "UNDER_REVIEW") return "Sob análise do Revisor";
+    if (activePR?.status === "APPROVED") return "Revisão aprovada pelo Revisor";
+    if (activePR?.status === "MERGED") return "Mesclado na branch dev";
     return "Enviar para análise do Revisor (converte Draft em Ready for Review)";
   };
 

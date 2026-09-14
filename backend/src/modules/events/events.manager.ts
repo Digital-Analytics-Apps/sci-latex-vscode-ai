@@ -10,7 +10,7 @@ interface SSEClient {
 const GRACE_PERIOD_MS = 60_000; // 1 Minuto de Grace Period (Tolerância para F5 / Reconexão)
 
 // Gerenciador central de clientes ativos de Server-Sent Events (SSE)
-class EventsManagerService {
+export class EventsManagerService {
   private clients: SSEClient[] = [];
   private k8sPodManager = new K8sPodManagerService();
   private releaseTimers = new Map<string, NodeJS.Timeout>();
