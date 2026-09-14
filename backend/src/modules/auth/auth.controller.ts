@@ -47,7 +47,7 @@ export class AuthController {
       const data = loginSchema.parse(request.body);
       const { user, refreshToken, expiresAt } = await authService.login(data);
 
-      // Gera o Access Token JWT (15min)
+      // Gera o Access Token JWT (7 dias para fluxo continuo em dev/prod)
       const accessToken = request.server.jwt.sign(
         {
           sub: user.id,
@@ -55,7 +55,7 @@ export class AuthController {
           name: user.name,
           role: user.role,
         },
-        { expiresIn: '15m' }
+        { expiresIn: '7d' }
       );
 
       // Envia o Refresh Token e Access Token nos Cookies HTTP-Only
@@ -72,7 +72,7 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 15 * 60, // 15 minutos
+        maxAge: 7 * 24 * 60 * 60, // 7 dias
       });
 
       return reply.send({
@@ -111,7 +111,7 @@ export class AuthController {
           name: user.name,
           role: user.role,
         },
-        { expiresIn: '15m' }
+        { expiresIn: '7d' }
       );
 
       reply.setCookie('accessToken', accessToken, {
@@ -119,7 +119,7 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 15 * 60,
+        maxAge: 7 * 24 * 60 * 60,
       });
 
       return reply.send({
