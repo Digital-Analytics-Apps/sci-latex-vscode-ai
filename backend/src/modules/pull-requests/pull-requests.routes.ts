@@ -6,7 +6,7 @@ import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.r
 import { PullRequestsService } from './pull-requests.service';
 import { PullRequestsController } from './pull-requests.controller';
 
-import { GitService } from '../git/git.service';
+import { GitService } from '../../infra/git/git.service';
 
 export async function pullRequestsRoutes(app: FastifyInstance) {
   const prRepository = new PrismaPullRequestsRepository();

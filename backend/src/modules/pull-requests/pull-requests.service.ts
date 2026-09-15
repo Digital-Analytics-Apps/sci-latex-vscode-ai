@@ -5,7 +5,7 @@ import {
 } from '../../repositories/pull-requests.repository';
 import { eventsManager } from '../events/events.manager';
 import { logAudit } from '../../utils/audit';
-import { GitService } from '../git/git.service';
+import { GitService } from '../../infra/git/git.service';
 import { prisma } from '../../db/prisma';
 
 export class PullRequestsService {

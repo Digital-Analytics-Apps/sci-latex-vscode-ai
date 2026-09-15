@@ -1,5 +1,5 @@
 import { FastifyReply } from 'fastify';
-import { K8sPodManagerService } from '../k8s/k8s-pod-manager.service';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 
 interface SSEClient {
   userId: string;

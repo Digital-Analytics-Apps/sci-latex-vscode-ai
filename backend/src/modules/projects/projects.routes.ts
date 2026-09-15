@@ -4,7 +4,7 @@ import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
-import { GitService } from '../git/git.service';
+import { GitService } from '../../infra/git/git.service';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 

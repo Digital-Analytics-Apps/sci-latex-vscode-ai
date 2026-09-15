@@ -7,7 +7,7 @@ import {
   PrismaProjectsRepository,
 } from '../../repositories/projects.repository';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
-import { K8sPodManagerService } from '../k8s/k8s-pod-manager.service';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 

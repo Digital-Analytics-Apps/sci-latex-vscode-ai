@@ -14,7 +14,7 @@ vi.mock('../../git/git.service', () => ({
   GitService: vi.fn().mockImplementation(() => ({})),
 }));
 
-vi.mock('../../k8s/k8s-pod-manager.service', () => ({
+vi.mock('../../../infra/k8s/k8s-pod-manager.service', () => ({
   K8sPodManagerService: vi.fn().mockImplementation(() => ({
     claimPodForProject: vi.fn().mockResolvedValue({
       podName: 'workspace-p1-user1-12345',

@@ -11,7 +11,7 @@ import {
   ITeamsRepository,
   UpdateTeamData,
 } from '../../../repositories/teams.repository';
-import { GitService } from '../../git/git.service';
+import { GitService } from '../../../infra/git/git.service';
 import { ProjectsService } from '../projects.service';
 
 class InMemoryProjectsRepository implements IProjectsRepository {

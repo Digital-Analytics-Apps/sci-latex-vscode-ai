@@ -7,7 +7,7 @@ import { prisma } from '../../db/prisma';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
 import { ITeamsRepository } from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';
-import { GitService } from '../git/git.service';
+import { GitService } from '../../infra/git/git.service';
 
 export interface CreateProjectDTO {
   name: string;
@@ -45,7 +45,7 @@ export interface PostSubmissionDTO {
   decisionReason?: string;
 }
 
-import { K8sPodManagerService } from '../k8s/k8s-pod-manager.service';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 
 export class ProjectsService {
   private k8sPodManager: K8sPodManagerService;

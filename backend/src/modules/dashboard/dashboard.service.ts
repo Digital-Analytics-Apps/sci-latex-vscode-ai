@@ -1,5 +1,5 @@
 import { prisma } from '../../db/prisma';
-import { deadlineService } from '../deadlines/deadlines.service';
+import { deadlineService } from '../../utils/deadlines';
 
 export interface DashboardFilterDTO {
   academicPeriodId?: string;
