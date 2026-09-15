@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deadlineService } from '../deadlines.service';
+import { deadlineService } from '../deadlines';
 
 describe('DeadlineService', () => {
   it('should return ON_TIME when due date is more than 48 hours in future', () => {
