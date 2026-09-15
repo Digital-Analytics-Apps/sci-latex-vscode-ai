@@ -43,4 +43,3 @@ export const editorProxyRoutes: FastifyPluginAsyncZod = async (app) => {
     controller.handleProxy.bind(controller)
   );
 };
-

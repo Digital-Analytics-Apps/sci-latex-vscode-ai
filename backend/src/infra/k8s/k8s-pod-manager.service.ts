@@ -1,5 +1,6 @@
 import * as k8s from '@kubernetes/client-node';
 import { env } from '../../config/env';
+import { prisma } from '../../db/prisma';
 
 export interface PodClaimResult {
   podName: string;
@@ -392,6 +393,9 @@ export class K8sPodManagerService {
           );
         }
       }
+
+      // Remove a sessão da tabela Workspace no banco de dados
+      await prisma.workspace.deleteMany({ where: { projectId } }).catch(() => {});
 
       // Re-valida o Warm Standby Pool para garantir exatamente 1 Pod livre na reserva
       await this.ensureWarmPool(1);

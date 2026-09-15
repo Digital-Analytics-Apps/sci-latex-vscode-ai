@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import fs from 'fs/promises';
 import path from 'path';
 import { env } from '../../config/env';
+import { prisma } from '../../db/prisma';
 import {
   IProjectsRepository,
   PrismaProjectsRepository,
@@ -223,6 +224,28 @@ export class EditorProxyController {
     // 2. Reivindica/Cria o Pod isolado do projeto no K8s montando estritamente a pasta do artigo
     const podResult = await this.k8sPodManager.claimPodForProject(projectId, userId);
     request.log.info({ podResult }, 'K8s Pod claimed for project workspace');
+
+    // Grava a sessão ativa na tabela Workspace do banco de dados
+    await prisma.workspace
+      .upsert({
+        where: {
+          projectId_userId: { projectId, userId },
+        },
+        create: {
+          projectId,
+          userId,
+          taskId: taskId || null,
+          podName: podResult.podName,
+          status: 'READY',
+        },
+        update: {
+          taskId: taskId || null,
+          podName: podResult.podName,
+          status: 'READY',
+          updatedAt: new Date(),
+        },
+      })
+      .catch(() => {});
 
     const codeServerUrl = env.CODE_SERVER_URL;
     let isCodeServerUp = false;

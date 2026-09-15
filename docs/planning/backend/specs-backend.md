@@ -15,17 +15,23 @@ src/
 ├── @types/                 # Definições de tipos globais Fastify e JWT
 ├── config/                 # Configurações do env (Zod), Prisma e Docker
 ├── db/                     # Instância do Prisma Client e Seeds
+├── infra/                  # Infraestrutura Técnica Externa
+│   ├── git/                # Gerenciador de Repositórios Git e SDK Octokit
+│   └── k8s/                # Orquestrador K8s Pod Manager e Warm Pool
 ├── middlewares/            # Middlewares de Auth JWT, RBAC Guard e Audit Logger
-├── modules/                # Módulos de Domínio
+├── modules/                # Módulos de Domínio (REST Routes -> Controllers -> Services)
 │   ├── auth/               # Autenticação, Login, Refresh Token
 │   ├── academic-periods/   # Gestão de Ciclos/Períodos Acadêmicos
 │   ├── teams/              # Gestão de Equipes e Coordenadores
 │   ├── projects/           # Projetos/Papers, Congressos Alvo/Backup e DOI
-│   ├── sections/           # Seções do artigo, Prazos de etapas e Atribuição
+│   ├── tasks/              # Atribuição de Tarefas e Workspaces por Task
 │   ├── pull-requests/      # PRs, Fluxo de Revisão e Registro Manual do NIT
-│   ├── git/                # Gerenciador de Repositórios e SDK Octokit
+│   ├── releases/           # Release Candidates e Publicação Oficial
+│   ├── editor-proxy/       # Provisionamento TeX e Reverse Proxy @fastify/http-proxy
 │   ├── events/             # Stream SSE (Server-Sent Events) para Notificações
-│   └── compiler/           # Gerenciador de Compilação TeX Live em Docker (PRs & Release)
+│   └── users/              # Gestão de Perfis de Usuário
+├── repositories/           # Repositórios SOLID (Prisma)
+├── utils/                  # Utilitários Stateless (Deadlines, Hash)
 └── app.ts                  # Inicialização de plugins, rotas e servidor Fastify
 ```
 
