@@ -2,12 +2,15 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import fs from 'fs/promises';
 import path from 'path';
 import { env } from '../../config/env';
-import { prisma } from '../../db/prisma';
 import {
   IProjectsRepository,
   PrismaProjectsRepository,
 } from '../../repositories/projects.repository';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
+import {
+  IWorkspacesRepository,
+  PrismaWorkspacesRepository,
+} from '../../repositories/workspaces.repository';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -174,6 +177,7 @@ export class EditorProxyController {
   constructor(
     private projectsRepository: IProjectsRepository = new PrismaProjectsRepository(),
     private tasksRepository: ITasksRepository = new PrismaTasksRepository(),
+    private workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository(),
     private k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
   ) {}
 
@@ -225,25 +229,14 @@ export class EditorProxyController {
     const podResult = await this.k8sPodManager.claimPodForProject(projectId, userId);
     request.log.info({ podResult }, 'K8s Pod claimed for project workspace');
 
-    // Grava a sessão ativa na tabela Workspace do banco de dados
-    await prisma.workspace
-      .upsert({
-        where: {
-          projectId_userId: { projectId, userId },
-        },
-        create: {
-          projectId,
-          userId,
-          taskId: taskId || null,
-          podName: podResult.podName,
-          status: 'READY',
-        },
-        update: {
-          taskId: taskId || null,
-          podName: podResult.podName,
-          status: 'READY',
-          updatedAt: new Date(),
-        },
+    // Grava a sessão ativa na tabela Workspace via repositório SOLID
+    await this.workspacesRepository
+      .upsertWorkspace({
+        projectId,
+        userId,
+        taskId: taskId || null,
+        podName: podResult.podName,
+        status: 'READY',
       })
       .catch(() => {});
 
