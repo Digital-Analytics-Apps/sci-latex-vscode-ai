@@ -1,0 +1,1 @@
+- Criar uma tela de admin para ver os usuarios ativos no sistema em tempo real. ja que usamos SSE, podemos implementar isso fácil.
