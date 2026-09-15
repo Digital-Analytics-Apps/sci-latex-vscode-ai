@@ -20,12 +20,17 @@ Para guiar a evolução da infraestrutura do **sci-latex-vscode**, é fundamenta
 
 | Dimensão / Funcionalidade | Nosso Estado Atual (`sci-latex-vscode`) | `coder/code-server` | `coder/coder` (Plataforma CDE) |
 | :--- | :--- | :--- | :--- |
-| **Escopo** | Editor Científico TeX + Orquestrador K8s dedicado | Apenas a IDE VS Code no navegador | Plataforma completa de CDE (Provisioner + Agent + Auth) |
-| **Orquestração** | `K8sPodManagerService` com `@kubernetes/client-node` | Nenhuma (depende de executor externo) | Motor baseado em **Terraform** (`coder/provisioner`) |
-| **Pool de Standby & Warming** | **Sim** (`code-server-warm` com tempo de subida < 3s) | Não | Não por padrão (depende de templates Terraform customizados) |
-| **Comunicação / Proxy** | `@fastify/http-proxy` (HTTP + WebSocket isolado) | Servidor HTTP próprio com senha/token | Túneis criptografados via WireGuard (DERP) + App Proxy |
-| **Agente no Pod** | Sem agente (Proxy direto para porta interna do Pod) | Nenhum | **`coder agent`** (executa scripts, checa saúde e métricas) |
-| **Gestão de Inatividade** | Grace Period de 3 minutos via SSE (`events.manager`) | Manual ou encerramento de processo | **Hibernação por TTL** (auto-stop com preservação do PVC) |
+| **Escopo Principais** | Editor Científico TeX + Orquestrador K8s sob demanda | IDE VS Code estática no navegador | Plataforma CDE (Provisioner + Agent + Auth + Multi-cloud) |
+| **Orquestração de Pods** | `K8sPodManagerService` dinâmico via `@kubernetes/client-node` | Nenhuma (requer container runner externo) | Motor de provisionamento via **Terraform** (`coder/provisioner`) |
+| **Pool de Standby (Warm Pods)** | **Sim** (`code-server-warm` com tempo de liberação < 3s) | Não suportado | Não por padrão (depende de scripts Terraform avançados) |
+| **Comunicação e Proxy** | `@fastify/http-proxy` (HTTP + WebSocket isolado de alto fluxo) | Servidor HTTP embutido com suporte a senha/token | Túneis criptografados via WireGuard (DERP) + App Proxy |
+| **Agente no Container** | Sem agente (Proxy direto para porta/IP interno do Pod) | Nenhum | **`coder agent`** (métrica, saúde, startup scripts, SSH) |
+| **Gestão de Inatividade & Custos** | Grace Period de 3 minutos via SSE (`events.manager`) | Encerramento manual de processo | **Hibernação por TTL** (auto-stop com retenção de volume PVC) |
+| **Suporte & Pré-configuração TeX** | Imagem customizada TeX Live + extension `LaTeX Workshop` | Extensions instaladas via CLI no startup | Dynamic Templates com HCL / Dockerfiles |
+| **Segurança Inter-Processos** | Token JWT/Proxy no Fastify com seletor K8s isolado | `--auth password` ou token estático | Token OAuth/OIDC + TLS Mutual + WireGuard |
+| **Integração Git & Workspace** | Clone automático de repositórios TeX + estrutura base | Depende do usuário rodar `git clone` | Git Credentials Helper integrado ao `coder agent` |
+| **Suporte a VS Code Desktop** | Web Iframe / proxy web apenas | Web apenas (ou SSH customizado) | **Suporte Nativo** via `coder ssh` no VS Code Desktop local |
+
 
 ---
 
