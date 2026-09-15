@@ -249,8 +249,10 @@ export class EditorProxyController {
     }
 
     if (isCodeServerUp) {
-      const publicCodeServerHost = process.env.PUBLIC_CODE_SERVER_URL || 'http://localhost:30080';
-      const targetUrl = `${publicCodeServerHost}/?folder=/home/coder/project`;
+      const token =
+        (request.query as any)?.token || request.headers.authorization?.replace('Bearer ', '');
+      const tokenParam = token ? `&token=${token}` : '';
+      const targetUrl = `/api/v1/editor-proxy/app/?folder=/home/coder/project${tokenParam}`;
       return reply.redirect(targetUrl);
     }
 

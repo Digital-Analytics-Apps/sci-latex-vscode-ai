@@ -1,10 +1,22 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import httpProxy from '@fastify/http-proxy';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { EditorProxyController } from './editor-proxy.controller';
 
 export const editorProxyRoutes: FastifyPluginAsyncZod = async (app) => {
   const controller = new EditorProxyController();
+
+  // Registra o Reverse Proxy HTTP e WebSocket para o VS Code Web (code-server)
+  const upstreamUrl =
+    process.env.INTERNAL_CODE_SERVER_URL || 'http://sci-latex-kind-control-plane:30080';
+
+  await app.register(httpProxy, {
+    upstream: upstreamUrl,
+    prefix: '/app',
+    websocket: true,
+    rewritePrefix: '/',
+  });
 
   app.addHook('onRequest', verifyJwt);
 
@@ -15,7 +27,7 @@ export const editorProxyRoutes: FastifyPluginAsyncZod = async (app) => {
         tags: ['EditorProxy'],
         summary: 'VS Code Web Editor Proxy para Workspace de Escrita LaTeX',
         description:
-          'Garante o provisionamento do diretório do artigo e redireciona para o VS Code Web (code-server).',
+          'Garante o provisionamento do diretório do artigo e redireciona para o Reverse Proxy do VS Code Web.',
         security: [{ bearerAuth: [] }],
         params: z.object({
           projectId: z.string().min(1),
@@ -31,3 +43,4 @@ export const editorProxyRoutes: FastifyPluginAsyncZod = async (app) => {
     controller.handleProxy.bind(controller)
   );
 };
+
