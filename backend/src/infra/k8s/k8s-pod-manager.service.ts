@@ -94,7 +94,7 @@ export class K8sPodManagerService {
         namespace: this.namespace,
         labels: {
           'app.kubernetes.io/part-of': 'sci-latex-vscode',
-          component: 'code-server',
+          component: 'code-server-warm',
           role: 'warm-standby',
         },
       },
@@ -182,6 +182,53 @@ export class K8sPodManagerService {
     }
   }
 
+  // Atualiza dinamicamente o selector do Service code-server-service no K8s para o projectId ativo
+  async updateServiceSelector(projectId: string): Promise<void> {
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) return;
+
+    try {
+      const svcRes = await k8sApi.readNamespacedService('code-server-service', this.namespace);
+      const svc = svcRes.body;
+      if (svc.spec) {
+        svc.spec.selector = {
+          'app.kubernetes.io/part-of': 'sci-latex-vscode',
+          component: 'code-server',
+          projectId,
+        };
+        await k8sApi.replaceNamespacedService('code-server-service', this.namespace, svc);
+        console.log(
+          `🎯 Service code-server-service atualizado para apontar exclusivamente para projectId=${projectId}`
+        );
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ Warning updating code-server-service selector:`, err.message || err);
+    }
+  }
+
+  // Aguarda o Pod atingir o estado Running e Container Ready
+  async waitForPodReady(podName: string, timeoutMs = 15000): Promise<boolean> {
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) return true;
+
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const res = await k8sApi.readNamespacedPod(podName, this.namespace);
+        const pod = res.body;
+        const isRunning = pod.status?.phase === 'Running';
+        const containerReady = pod.status?.containerStatuses?.some((cs) => cs.ready);
+        if (isRunning && containerReady) {
+          return true;
+        }
+      } catch {
+        // ignora falhas de leitura temporárias e re-tenta
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    return false;
+  }
+
   // 3. Reivindica um Pod do Warm Pool ou cria um Pod dedicado montando o PVC do projeto
   async claimPodForProject(projectId: string, userId: string): Promise<PodClaimResult> {
     const pvcName = await this.ensureProjectPVC(projectId);
@@ -215,6 +262,8 @@ export class K8sPodManagerService {
         (pod) => pod.status?.phase === 'Running'
       );
       if (activePod && activePod.metadata?.name) {
+        await this.updateServiceSelector(projectId);
+        await this.waitForPodReady(activePod.metadata.name);
         return {
           podName: activePod.metadata.name,
           pvcName,
@@ -294,6 +343,10 @@ export class K8sPodManagerService {
       };
 
       await k8sApi.createNamespacedPod(this.namespace, podManifest);
+
+      // Atualiza o Service selector e aguarda a prontidão do novo pod
+      await this.updateServiceSelector(projectId);
+      await this.waitForPodReady(newPodName);
 
       // Dispara em background a reposição de +1 Pod Standby para o Warm Pool
       this.ensureWarmPool(1).catch(() => {});

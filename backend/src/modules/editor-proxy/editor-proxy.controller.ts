@@ -13,6 +13,110 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+async function ensureTeXTemplateFiles(targetDir: string, projectName: string) {
+  const sectionsDir = path.join(targetDir, 'sections');
+  try {
+    await fs.mkdir(sectionsDir, { recursive: true, mode: 0o777 });
+
+    const sec1Path = path.join(sectionsDir, '01-introduction.tex');
+    const sec2Path = path.join(sectionsDir, '02-methodology.tex');
+    const sec3Path = path.join(sectionsDir, '03-results.tex');
+    const sec4Path = path.join(sectionsDir, '04-conclusion.tex');
+
+    if (
+      !(await fs
+        .access(sec1Path)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      await fs.writeFile(
+        sec1Path,
+        `\\section{Introdução \\& Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`,
+        'utf-8'
+      );
+    }
+    if (
+      !(await fs
+        .access(sec2Path)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      await fs.writeFile(
+        sec2Path,
+        `\\section{Metodologia \\& Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`,
+        'utf-8'
+      );
+    }
+    if (
+      !(await fs
+        .access(sec3Path)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      await fs.writeFile(
+        sec3Path,
+        `\\section{Resultados \\& Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`,
+        'utf-8'
+      );
+    }
+    if (
+      !(await fs
+        .access(sec4Path)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      await fs.writeFile(
+        sec4Path,
+        `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`,
+        'utf-8'
+      );
+    }
+  } catch {
+    // Ignora erro de pasta de seções
+  }
+
+  const mainTexPath = path.join(targetDir, 'main.tex');
+  try {
+    await fs.access(mainTexPath);
+  } catch {
+    const initialContent = `% SCI-LaTeX Paper Workspace: ${projectName}
+\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{graphicx}
+
+\\title{${projectName.replace(/[{}]/g, '')}}
+\\author{SCI-LaTeX Author}
+\\date{\\today}
+
+\\begin{document}
+
+\\maketitle
+
+\\input{sections/01-introduction.tex}
+\\input{sections/02-methodology.tex}
+\\input{sections/03-results.tex}
+\\input{sections/04-conclusion.tex}
+
+\\end{document}
+`;
+    await fs.writeFile(mainTexPath, initialContent, 'utf-8');
+  }
+
+  const ieeeClsPath = path.join(targetDir, 'IEEEtran.cls');
+  try {
+    await fs.access(ieeeClsPath);
+  } catch {
+    const sourceIeeePath = path.resolve(__dirname, '../../../../docker/code-server/IEEEtran.cls');
+    try {
+      await fs.copyFile(sourceIeeePath, ieeeClsPath);
+    } catch {
+      // Ignora se fonte não encontrada
+    }
+  }
+
+  await execAsync(`chmod -R 777 "${targetDir}"`).catch(() => {});
+}
+
 async function ensureGitRepositoryWorkspace(
   projectId: string,
   gitRepoPath?: string,
@@ -103,114 +207,17 @@ export class EditorProxyController {
 
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     await ensureGitRepositoryWorkspace(projectId, project.gitRepoPath, targetBranch, userId);
+    await ensureTeXTemplateFiles(projectDir, project.name);
 
-    // Garante a existência do diretório de seções modulares e arquivos de início
-    const sectionsDir = path.join(projectDir, 'sections');
-    try {
-      await fs.mkdir(sectionsDir, { recursive: true });
-
-      const sec1Path = path.join(sectionsDir, '01-introduction.tex');
-      const sec2Path = path.join(sectionsDir, '02-methodology.tex');
-      const sec3Path = path.join(sectionsDir, '03-results.tex');
-      const sec4Path = path.join(sectionsDir, '04-conclusion.tex');
-
-      if (
-        !(await fs
-          .access(sec1Path)
-          .then(() => true)
-          .catch(() => false))
-      ) {
-        await fs.writeFile(
-          sec1Path,
-          `\\section{Introdução \\& Trabalhos Relacionados}\nBem-vindo ao seu novo artigo científico! Escreva a introdução e trabalhos relacionados aqui.\n`,
-          'utf-8'
-        );
-      }
-      if (
-        !(await fs
-          .access(sec2Path)
-          .then(() => true)
-          .catch(() => false))
-      ) {
-        await fs.writeFile(
-          sec2Path,
-          `\\section{Metodologia \\& Formulação}\nDescreva os métodos, hipóteses e modelos formulados neste trabalho.\n`,
-          'utf-8'
-        );
-      }
-      if (
-        !(await fs
-          .access(sec3Path)
-          .then(() => true)
-          .catch(() => false))
-      ) {
-        await fs.writeFile(
-          sec3Path,
-          `\\section{Resultados \\& Experimentos}\nApresente os resultados obtidos, tabelas e gráficos experimentais.\n`,
-          'utf-8'
-        );
-      }
-      if (
-        !(await fs
-          .access(sec4Path)
-          .then(() => true)
-          .catch(() => false))
-      ) {
-        await fs.writeFile(
-          sec4Path,
-          `\\section{Conclusão}\nResuma as principais conclusões do trabalho e direções de pesquisas futuras.\n`,
-          'utf-8'
-        );
-      }
-    } catch {
-      // Ignora erros ao criar pasta de seções
-    }
-
-    // Garante que o arquivo main.tex inicial exista com a estrutura modular
-    const mainTexPath = path.join(projectDir, 'main.tex');
-    try {
-      await fs.access(mainTexPath);
-    } catch {
-      const initialContent = `% SCI-LaTeX Paper Workspace: ${project.name}
-\\documentclass{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage{graphicx}
-
-\\title{${project.name.replace(/[{}]/g, '')}}
-\\author{SCI-LaTeX Author}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-\\input{sections/01-introduction.tex}
-\\input{sections/02-methodology.tex}
-\\input{sections/03-results.tex}
-\\input{sections/04-conclusion.tex}
-
-\\end{document}
-`;
-      await fs.writeFile(mainTexPath, initialContent, 'utf-8');
-    }
-    try {
-      await fs.chmod(mainTexPath, 0o777);
-    } catch {
-      // Ignora erro se chmod não puder ser alterado
-    }
-
-    // Garante que o arquivo de classe IEEEtran.cls exista na pasta do projeto para compilação local
-    const ieeeClsPath = path.join(projectDir, 'IEEEtran.cls');
-    try {
-      await fs.access(ieeeClsPath);
-    } catch {
-      const sourceIeeePath = path.resolve(__dirname, '../../../../docker/code-server/IEEEtran.cls');
-      try {
-        await fs.copyFile(sourceIeeePath, ieeeClsPath);
-        await fs.chmod(ieeeClsPath, 0o777);
-      } catch {
-        // Ignora erro se não for possível copiar
-      }
+    if (userId) {
+      const userWorkspaceDir = path.resolve(
+        env.STORAGE_PATH,
+        'projects',
+        projectId,
+        'users',
+        userId
+      );
+      await ensureTeXTemplateFiles(userWorkspaceDir, project.name);
     }
 
     // 2. Reivindica/Cria o Pod isolado do projeto no K8s montando estritamente a pasta do artigo

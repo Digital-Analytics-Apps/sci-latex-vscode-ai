@@ -7,7 +7,7 @@ interface SSEClient {
   reply: FastifyReply;
 }
 
-const GRACE_PERIOD_MS = 60_000; // 1 Minuto de Grace Period (Tolerância para F5 / Reconexão)
+const GRACE_PERIOD_MS = 180_000; // 3 Minutos de Grace Period (Tolerância para F5 / Reconexão)
 
 // Gerenciador central de clientes ativos de Server-Sent Events (SSE)
 export class EventsManagerService {
@@ -29,7 +29,7 @@ export class EventsManagerService {
         clearTimeout(this.releaseTimers.get(projectId));
         this.releaseTimers.delete(projectId);
         console.log(
-          `⏱️ Reconexão detectada no projeto ${projectId} dentro do Grace Period de 1 min. Destruição do Pod cancelada.`
+          `⏱️ Reconexão detectada no projeto ${projectId} dentro do Grace Period de 3 min. Destruição do Pod cancelada.`
         );
       }
     }
@@ -44,10 +44,10 @@ export class EventsManagerService {
       const updated = Math.max(0, current - 1);
       this.activeProjectConnections.set(projectId, updated);
 
-      // Se não restar nenhuma conexão SSE ativa para o projeto, inicia o Grace Period de 1 minuto
+      // Se não restar nenhuma conexão SSE ativa para o projeto, inicia o Grace Period de 3 minutos
       if (updated === 0) {
         console.log(
-          `⏳ 0 conexões ativas no projeto ${projectId}. Iniciando Grace Period de 1 minuto antes de destruir o Pod...`
+          `⏳ 0 conexões ativas no projeto ${projectId}. Iniciando Grace Period de 3 minutos antes de destruir o Pod...`
         );
 
         if (this.releaseTimers.has(projectId)) {
@@ -60,7 +60,7 @@ export class EventsManagerService {
           // Re-verifica se o número de conexões ativas ainda é 0
           if ((this.activeProjectConnections.get(projectId) || 0) === 0) {
             console.log(
-              `🧹 Grace Period de 1 minuto expirado para o projeto ${projectId}. Encerrando Pod no K8s e liberando RAM...`
+              `🧹 Grace Period de 3 minutos expirado para o projeto ${projectId}. Encerrando Pod no K8s e liberando RAM...`
             );
             await this.k8sPodManager.releasePodForProject(projectId).catch((err) => {
               console.warn(`⚠️ Error releasing Pod after Grace Period:`, err.message || err);
