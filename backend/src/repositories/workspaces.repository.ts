@@ -13,6 +13,7 @@ export interface IWorkspacesRepository {
   upsertWorkspace(data: UpsertWorkspaceData): Promise<Workspace>;
   deleteByProjectId(projectId: string): Promise<void>;
   findByProjectIdAndUserId(projectId: string, userId: string): Promise<Workspace | null>;
+  updateStatusByProjectId(projectId: string, status: WorkspaceStatus): Promise<void>;
 }
 
 export class PrismaWorkspacesRepository implements IWorkspacesRepository {
@@ -50,6 +51,17 @@ export class PrismaWorkspacesRepository implements IWorkspacesRepository {
     return prisma.workspace.findUnique({
       where: {
         projectId_userId: { projectId, userId },
+      },
+    });
+  }
+
+  async updateStatusByProjectId(projectId: string, status: WorkspaceStatus): Promise<void> {
+    await prisma.workspace.updateMany({
+      where: { projectId },
+      data: {
+        status,
+        podName: status === 'TERMINATED' ? null : undefined,
+        updatedAt: new Date(),
       },
     });
   }

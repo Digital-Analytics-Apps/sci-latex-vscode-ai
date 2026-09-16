@@ -8,14 +8,15 @@
 
 ## 🟢 Bloco 1: Estabilização do Backend & Infraestrutura K8s
 
-- [ ] **1.1 Atualização de Status `TERMINATED`/`DELETED` na Tabela `Workspace`**
-  - *Descrição*: No `events.manager.ts` e no `k8s-pod-manager.service.ts`, garantir que ao encerrar ou destruir um Pod por timeout/deleção, o repositório `IWorkspacesRepository` atualize o status no banco de dados para `TERMINATED` ou `DELETED`.
-- [ ] **1.2 Redirecionamento Sincronizado do Workspace**
-  - *Descrição*: Ajustar o endpoint `/api/v1/editor-proxy/claim` e o controller para só retornar status `READY` quando o Pod do K8s responder com HTTP 200 no proxy reverso, eliminando telas brancas e retries desnecessários no cliente.
-- [ ] **1.3 Injeção Automática de `settings.json` no `code-server`**
-  - *Descrição*: No provisionamento do Pod, injetar em `/home/coder/.local/share/code-server/User/settings.json` as configurações padrão: auto-build do TeX ao salvar (`latex-workshop.latex.autoBuild.run: "onSave"`), tema escuro e desativação de telemetria.
-- [ ] **1.4 Limpeza e `.gitignore` Estrito de Arquivos Temporários TeX**
-  - *Descrição*: Garantir a cópia de um `.gitignore` padrão na inicialização do repositório TeX ignorando `*.aux`, `*.log`, `*.out`, `*.toc`, `*.fls`, `*.fdb_latexmk`, evitando commits de arquivos gerados temporariamente no GitHub.
+- [x] **1.1 Atualização de Status `TERMINATED`/`DELETED` na Tabela `Workspace`**
+  - *Descrição*: No `events.manager.ts` e no `k8s-pod-manager.service.ts`, garantido que ao encerrar ou destruir um Pod por timeout/deleção, o repositório `IWorkspacesRepository` atualiza o status no banco de dados para `TERMINATED` e limpa o `podName`.
+- [x] **1.2 Redirecionamento Sincronizado do Workspace**
+  - *Descrição*: Endpoint/controller `/api/v1/editor-proxy/app` registra `PROVISIONING` quando o Pod está subindo e `READY` apenas quando HTTP 200 no proxy reverso é confirmado, com tela de transição e auto-reload automático.
+- [x] **1.3 Injeção Automática de `settings.json` no `code-server`**
+  - *Descrição*: Configurado auto-build do TeX ao salvar (`latex-workshop.latex.autoBuild.run: "onSave"`), tema escuro e desativação de telemetria no `settings.json` do container e geração automática em `.vscode/settings.json` na workspace.
+- [x] **1.4 Limpeza e `.gitignore` Estrito de Arquivos Temporários TeX**
+  - *Descrição*: Cópia automática de um `.gitignore` padrão na inicialização do repositório TeX ignorando `*.aux`, `*.log`, `*.out`, `*.toc`, `*.fls`, `*.fdb_latexmk`, evitando commits de arquivos gerados temporariamente no GitHub.
+
 
 ---
 

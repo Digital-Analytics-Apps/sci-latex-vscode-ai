@@ -2,6 +2,8 @@
   "security.workspace.trust.enabled": false,
   "security.workspace.trust.startupPrompt": "never",
   "security.workspace.trust.emptyWindow": false,
+  "telemetry.telemetryLevel": "off",
+  "workbench.colorTheme": "Default Dark Modern",
   "workbench.activityBar.location": "default",
   "workbench.statusBar.visible": true,
   "workbench.startupEditor": "none",

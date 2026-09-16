@@ -1,5 +1,9 @@
 import { FastifyReply } from 'fastify';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
+import {
+  IWorkspacesRepository,
+  PrismaWorkspacesRepository,
+} from '../../repositories/workspaces.repository';
 
 interface SSEClient {
   userId: string;
@@ -13,8 +17,13 @@ const GRACE_PERIOD_MS = 180_000; // 3 Minutos de Grace Period (Tolerância para 
 export class EventsManagerService {
   private clients: SSEClient[] = [];
   private k8sPodManager = new K8sPodManagerService();
+  private workspacesRepository: IWorkspacesRepository;
   private releaseTimers = new Map<string, NodeJS.Timeout>();
   private activeProjectConnections = new Map<string, number>();
+
+  constructor(workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository()) {
+    this.workspacesRepository = workspacesRepository;
+  }
 
   // Adiciona novo cliente à lista de conexões ativas
   addClient(userId: string, reply: FastifyReply, projectId?: string) {
@@ -65,6 +74,14 @@ export class EventsManagerService {
             await this.k8sPodManager.releasePodForProject(projectId).catch((err) => {
               console.warn(`⚠️ Error releasing Pod after Grace Period:`, err.message || err);
             });
+            await this.workspacesRepository
+              .updateStatusByProjectId(projectId, 'TERMINATED')
+              .catch((err) => {
+                console.warn(
+                  `⚠️ Error updating Workspace status to TERMINATED:`,
+                  err.message || err
+                );
+              });
           }
         }, GRACE_PERIOD_MS);
 

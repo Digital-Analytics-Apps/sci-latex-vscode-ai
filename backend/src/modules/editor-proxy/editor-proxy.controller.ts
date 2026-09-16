@@ -118,6 +118,49 @@ async function ensureTeXTemplateFiles(targetDir: string, projectName: string) {
     }
   }
 
+  const gitignorePath = path.join(targetDir, '.gitignore');
+  try {
+    await fs.access(gitignorePath);
+  } catch {
+    const gitignoreContent = `# TeX temporary build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.run.xml
+*.bcf
+`;
+    await fs.writeFile(gitignorePath, gitignoreContent, 'utf-8');
+  }
+
+  const vscodeDir = path.join(targetDir, '.vscode');
+  try {
+    await fs.mkdir(vscodeDir, { recursive: true, mode: 0o777 });
+    const vscodeSettingsPath = path.join(vscodeDir, 'settings.json');
+    if (
+      !(await fs
+        .access(vscodeSettingsPath)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      const defaultSettings = {
+        'security.workspace.trust.enabled': false,
+        'telemetry.telemetryLevel': 'off',
+        'editor.wordWrap': 'on',
+        'latex-workshop.latex.autoBuild.run': 'onSave',
+        'latex-workshop.view.pdf.viewer': 'tab',
+      };
+      await fs.writeFile(vscodeSettingsPath, JSON.stringify(defaultSettings, null, 2), 'utf-8');
+    }
+  } catch {
+    // Ignora erros ao criar .vscode/settings.json
+  }
+
   await execAsync(`chmod -R 777 "${targetDir}"`).catch(() => {});
 }
 
@@ -229,17 +272,6 @@ export class EditorProxyController {
     const podResult = await this.k8sPodManager.claimPodForProject(projectId, userId);
     request.log.info({ podResult }, 'K8s Pod claimed for project workspace');
 
-    // Grava a sessão ativa na tabela Workspace via repositório SOLID
-    await this.workspacesRepository
-      .upsertWorkspace({
-        projectId,
-        userId,
-        taskId: taskId || null,
-        podName: podResult.podName,
-        status: 'READY',
-      })
-      .catch(() => {});
-
     const codeServerUrl = env.CODE_SERVER_URL;
     let isCodeServerUp = false;
     const urlsToCheck = [
@@ -264,6 +296,17 @@ export class EditorProxyController {
       }
     }
 
+    // Grava a sessão ativa na tabela Workspace com status sincronizado (READY se respondendo, PROVISIONING se subindo)
+    await this.workspacesRepository
+      .upsertWorkspace({
+        projectId,
+        userId,
+        taskId: taskId || null,
+        podName: podResult.podName,
+        status: isCodeServerUp ? 'READY' : 'PROVISIONING',
+      })
+      .catch(() => {});
+
     if (isCodeServerUp) {
       const token =
         (request.query as any)?.token || request.headers.authorization?.replace('Bearer ', '');
@@ -272,22 +315,29 @@ export class EditorProxyController {
       return reply.redirect(targetUrl);
     }
 
-    // Fallback gracioso caso o container ainda esteja subindo
+    // Fallback gracioso com auto-reload automático de 2s enquanto o container completa a inicialização
     const htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="2">
   <title>VS Code Web Editor - ${project.name}</title>
   <style>
     body { background: #0b0f17; color: #10b981; font-family: monospace; padding: 40px; text-align: center; }
     .card { background: #161b22; border: 1px solid #30363d; padding: 24px; border-radius: 8px; max-width: 500px; margin: 0 auto; }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(16,185,129,0.3); border-radius: 50%; border-top-color: #10b981; animation: spin 1s ease-in-out infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <div class="card">
+    <div class="spinner"></div>
     <h2>⚡ Conectando ao VS Code Server...</h2>
-    <p style="color: #8b949e; margin-top: 12px;">Carregando ambiente TeX Live e extensão LaTeX Workshop.</p>
+    <p style="color: #8b949e; margin-top: 12px;">Carregando ambiente TeX Live e extensão LaTeX Workshop no Pod do Kubernetes.</p>
   </div>
+  <script>
+    setTimeout(() => window.location.reload(), 2000);
+  </script>
 </body>
 </html>`;
 

@@ -239,7 +239,9 @@ enum WorkspaceStatus {
   BEHIND
   CONFLICTED
   ERROR
+  TERMINATED
 }
+
 
 model Task {
   id           String        @id @default(uuid())

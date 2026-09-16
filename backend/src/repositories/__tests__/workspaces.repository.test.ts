@@ -8,6 +8,7 @@ vi.mock('../../db/prisma', () => ({
       upsert: vi.fn(),
       deleteMany: vi.fn(),
       findUnique: vi.fn(),
+      updateMany: vi.fn(),
     },
   },
 }));
@@ -97,5 +98,20 @@ describe('PrismaWorkspacesRepository', () => {
     });
 
     expect(result).toEqual(mockWorkspace);
+  });
+
+  it('should update workspace status by projectId', async () => {
+    vi.mocked(prisma.workspace.updateMany).mockResolvedValue({ count: 1 });
+
+    await repository.updateStatusByProjectId('proj-1', 'TERMINATED');
+
+    expect(prisma.workspace.updateMany).toHaveBeenCalledWith({
+      where: { projectId: 'proj-1' },
+      data: {
+        status: 'TERMINATED',
+        podName: null,
+        updatedAt: expect.any(Date),
+      },
+    });
   });
 });
