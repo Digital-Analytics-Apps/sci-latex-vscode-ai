@@ -74,11 +74,14 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({
       reset();
       onClose();
     } catch (err: any) {
+      const msg = err.response?.data?.message || err.message;
+      const userMessage =
+        msg === "UNCOMMITTED_CHANGES_BEFORE_REVIEW"
+          ? "Você possui alterações não salvas! Clique em 'Salvar Progresso' antes de enviar para revisão."
+          : msg || "Erro ao abrir Pull Request. Tente novamente.";
       dispatch(
         showNotification({
-          message:
-            err.response?.data?.message ||
-            "Erro ao abrir Pull Request. Tente novamente.",
+          message: userMessage,
           severity: "error",
         }),
       );

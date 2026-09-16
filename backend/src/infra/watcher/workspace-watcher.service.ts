@@ -1,3 +1,4 @@
+import chokidar, { FSWatcher } from 'chokidar';
 import fs from 'node:fs';
 import path from 'node:path';
 import { env } from '../../config/env';
@@ -5,22 +6,22 @@ import { eventsManager } from '../../modules/events/events.manager';
 import { GitService } from '../git/git.service';
 
 const IGNORED_PATTERNS = [
-  '/.git/',
-  '/node_modules/',
-  '/.vscode/',
-  '.aux',
-  '.log',
-  '.out',
-  '.toc',
-  '.fls',
-  '.fdb_latexmk',
-  '.synctex.gz',
-  '.bbl',
-  '.blg',
+  '**/.git/**',
+  '**/node_modules/**',
+  '**/.vscode/**',
+  '**/*.aux',
+  '**/*.log',
+  '**/*.out',
+  '**/*.toc',
+  '**/*.fls',
+  '**/*.fdb_latexmk',
+  '**/*.synctex.gz',
+  '**/*.bbl',
+  '**/*.blg',
 ];
 
 export class WorkspaceWatcherService {
-  private readonly watchers = new Map<string, fs.FSWatcher>();
+  private readonly watchers = new Map<string, FSWatcher>();
   private readonly stateCache = new Map<string, boolean>();
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
   private readonly gitService: GitService;
@@ -29,12 +30,8 @@ export class WorkspaceWatcherService {
     this.gitService = gitService || new GitService();
   }
 
-  // Inicia o monitoramento reativo de arquivos do disco do projeto (in-memory inotify)
+  // Inicia o monitoramento reativo de arquivos do disco do projeto (usando chokidar no Linux)
   watchProject(projectId: string, userId?: string): void {
-    if (this.watchers.has(projectId)) {
-      return; // Já está sendo monitorado
-    }
-
     let targetDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     if (userId) {
       const userDir = path.resolve(env.STORAGE_PATH, 'projects', projectId, 'users', userId);
@@ -47,15 +44,20 @@ export class WorkspaceWatcherService {
       return;
     }
 
+    // Se já existia watcher ativo, encerra o antigo para atualizar o diretório alvo
+    if (this.watchers.has(projectId)) {
+      this.unwatchProject(projectId);
+    }
+
     try {
-      const watcher = fs.watch(targetDir, { recursive: true }, (_eventType, filename) => {
-        if (!filename) return;
+      const watcher = chokidar.watch(targetDir, {
+        ignored: IGNORED_PATTERNS,
+        ignoreInitial: true,
+        persistent: true,
+        depth: 99,
+      });
 
-        // Ignora ruído de compilação TeX e diretórios do Git/.vscode
-        const normalized = filename.replaceAll('\\', '/');
-        const isIgnored = IGNORED_PATTERNS.some((pattern) => normalized.includes(pattern));
-        if (isIgnored) return;
-
+      watcher.on('all', (_event, _filePath) => {
         this.triggerDebouncedCheck(projectId, userId);
       });
 
@@ -75,7 +77,7 @@ export class WorkspaceWatcherService {
   unwatchProject(projectId: string): void {
     const watcher = this.watchers.get(projectId);
     if (watcher) {
-      watcher.close();
+      watcher.close().catch(() => {});
       this.watchers.delete(projectId);
     }
 

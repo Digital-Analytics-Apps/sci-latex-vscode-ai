@@ -1,7 +1,10 @@
+import { exec } from 'child_process';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import fs from 'fs/promises';
 import path from 'path';
+import { promisify } from 'util';
 import { env } from '../../config/env';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import {
   IProjectsRepository,
   PrismaProjectsRepository,
@@ -11,9 +14,6 @@ import {
   IWorkspacesRepository,
   PrismaWorkspacesRepository,
 } from '../../repositories/workspaces.repository';
-import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
@@ -123,36 +123,19 @@ async function ensureTeXTemplateFiles(targetDir: string, projectName: string) {
     await fs.access(gitignorePath);
   } catch {
     const gitignoreContent = `# TeX temporary build artifacts
-*.aux
-*.log
-*.out
-*.toc
-*.fls
-*.fdb_latexmk
-*.synctex.gz
-*.bbl
-*.blg
-*.run.xml
-*.bcf
-`;
+        *.aux
+        *.log
+        *.out
+        *.toc
+        *.fls
+        *.fdb_latexmk
+        *.synctex.gz
+        *.bbl
+        *.blg
+        *.run.xml
+        *.bcf
+        `;
     await fs.writeFile(gitignorePath, gitignoreContent, 'utf-8');
-  }
-
-  const vscodeDir = path.join(targetDir, '.vscode');
-  try {
-    await fs.mkdir(vscodeDir, { recursive: true, mode: 0o777 });
-    const vscodeSettingsPath = path.join(vscodeDir, 'settings.json');
-    const defaultSettings = {
-      'security.workspace.trust.enabled': false,
-      'telemetry.telemetryLevel': 'off',
-      'workbench.colorTheme': 'Default Dark Modern',
-      'editor.wordWrap': 'on',
-      'latex-workshop.latex.autoBuild.run': 'onSave',
-      'latex-workshop.view.pdf.viewer': 'tab',
-    };
-    await fs.writeFile(vscodeSettingsPath, JSON.stringify(defaultSettings, null, 2), 'utf-8');
-  } catch {
-    // Ignora erros ao criar .vscode/settings.json
   }
 
   await execAsync(`chmod -R 777 "${targetDir}"`).catch(() => {});
@@ -194,6 +177,8 @@ async function ensureGitRepositoryWorkspace(
     await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
   }
 
+  await execAsync(`git -C "${projectDir}" config core.fileMode false`).catch(() => {});
+
   if (targetBranch && targetBranch !== 'dev' && targetBranch !== 'main') {
     try {
       await execAsync(`git -C "${projectDir}" checkout "${targetBranch}"`);
@@ -205,8 +190,42 @@ async function ensureGitRepositoryWorkspace(
   if (userId) {
     const userWorkspaceDir = path.resolve(env.STORAGE_PATH, 'projects', projectId, 'users', userId);
     await fs.mkdir(userWorkspaceDir, { recursive: true, mode: 0o777 });
-    await fs.cp(projectDir, userWorkspaceDir, { recursive: true }).catch(() => {});
+
+    const userGitDir = path.join(userWorkspaceDir, '.git');
+    let userHasGit = false;
+    try {
+      await fs.access(userGitDir);
+      userHasGit = true;
+    } catch {
+      userHasGit = false;
+    }
+
+    if (!userHasGit) {
+      // Copia arquivos do projeto base (incluindo .git) ignorando a pasta 'users' para evitar recursão
+      const entries = await fs.readdir(projectDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === 'users') continue;
+        const srcPath = path.join(projectDir, entry.name);
+        const destPath = path.join(userWorkspaceDir, entry.name);
+        await fs.cp(srcPath, destPath, { recursive: true }).catch(() => {});
+      }
+    }
+
     await execAsync(`chmod -R 777 "${userWorkspaceDir}"`).catch(() => {});
+    await execAsync(`git -C "${userWorkspaceDir}" config core.fileMode false`).catch(() => {});
+    await execAsync(`git -C "${userWorkspaceDir}" config safe.directory "*"`).catch(() => {});
+    await execAsync(`git -C "${userWorkspaceDir}" config user.name "Autor"`).catch(() => {});
+    await execAsync(`git -C "${userWorkspaceDir}" config user.email "author@sci-latex.com"`).catch(
+      () => {}
+    );
+
+    if (targetBranch && targetBranch !== 'dev' && targetBranch !== 'main') {
+      try {
+        await execAsync(`git -C "${userWorkspaceDir}" checkout "${targetBranch}"`);
+      } catch {
+        await execAsync(`git -C "${userWorkspaceDir}" checkout -b "${targetBranch}"`);
+      }
+    }
   }
 }
 

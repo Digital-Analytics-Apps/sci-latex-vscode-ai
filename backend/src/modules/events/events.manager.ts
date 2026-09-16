@@ -1,6 +1,7 @@
 import { FastifyReply } from 'fastify';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { workspaceWatcher } from '../../infra/watcher/workspace-watcher.service';
+import { GitService } from '../../infra/git/git.service';
 import {
   IWorkspacesRepository,
   PrismaWorkspacesRepository,
@@ -17,10 +18,11 @@ const GRACE_PERIOD_MS = 180_000; // 3 Minutos de Grace Period (Tolerância para 
 // Gerenciador central de clientes ativos de Server-Sent Events (SSE)
 export class EventsManagerService {
   private clients: SSEClient[] = [];
-  private k8sPodManager = new K8sPodManagerService();
-  private workspacesRepository: IWorkspacesRepository;
-  private releaseTimers = new Map<string, NodeJS.Timeout>();
-  private activeProjectConnections = new Map<string, number>();
+  private readonly k8sPodManager = new K8sPodManagerService();
+  private readonly gitService = new GitService();
+  private readonly workspacesRepository: IWorkspacesRepository;
+  private readonly releaseTimers = new Map<string, NodeJS.Timeout>();
+  private readonly activeProjectConnections = new Map<string, number>();
 
   constructor(workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository()) {
     this.workspacesRepository = workspacesRepository;

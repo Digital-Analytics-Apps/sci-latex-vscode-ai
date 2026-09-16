@@ -55,11 +55,12 @@ export class GitService {
 
   // Retorna a flag -c http.extraHeader para autenticar comandos Git CLI via cabeçalho HTTP efêmero em memória
   private getGitAuthFlags(): string {
+    const safeDir = '-c safe.directory="*"';
     if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
       const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
-      return `-c http.extraHeader="Authorization: Basic ${authHeader}"`;
+      return `${safeDir} -c http.extraHeader="Authorization: Basic ${authHeader}"`;
     }
-    return '';
+    return safeDir;
   }
 
   // Sanitiza a URL do repositório garantindo a remoção de credenciais expostas
@@ -345,12 +346,25 @@ export class GitService {
     }
 
     try {
-      const { stdout } = await execAsync('git status --porcelain', { cwd: targetDir });
+      const { stdout } = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" -c core.fileMode=false status --porcelain',
+        {
+          cwd: targetDir,
+        }
+      );
       const dirtyFiles = stdout
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line.length > 0)
-        .map((line) => line.replace(/^[\s\?MADRCU]+\s+/, ''));
+        .map((line) => line.replace(/^[\s\?MADRCU]+\s+/, ''))
+        .filter(
+          (file) =>
+            !file.startsWith('users/') &&
+            !file.startsWith('users\\') &&
+            file !== '.gitignore' &&
+            !file.startsWith('.vscode/') &&
+            !file.startsWith('.vscode\\')
+        );
 
       return {
         hasUncommittedChanges: dirtyFiles.length > 0,

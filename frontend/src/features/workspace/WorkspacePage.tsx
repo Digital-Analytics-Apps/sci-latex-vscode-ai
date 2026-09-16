@@ -49,8 +49,22 @@ export const WorkspacePage: React.FC = () => {
     (pr: any) =>
       (activeTask && pr.taskId === activeTask.id) || pr.projectId === projectId,
   );
+
+  const canSaveProgress =
+    !saveProgressMutation.isPending &&
+    activePR?.status !== "UNDER_REVIEW" &&
+    activePR?.status !== "MERGED";
   const canSendForReview = !activePR || activePR.status === "DRAFT";
   const canMerge = activePR?.status === "APPROVED";
+
+  const getSaveProgressTooltip = () => {
+    if (saveProgressMutation.isPending) return "Salvando progresso...";
+    if (activePR?.status === "UNDER_REVIEW")
+      return "O artigo está sob revisão do Revisor. Edições bloqueadas.";
+    if (activePR?.status === "MERGED")
+      return "Esta tarefa já foi concluída e mesclada na dev.";
+    return "Salva o progresso das suas edições no Git e mantém o Draft PR no GitHub";
+  };
 
   const getSendReviewTooltip = () => {
     if (activePR?.status === "UNDER_REVIEW") return "Sob análise do Revisor";
@@ -198,7 +212,7 @@ export const WorkspacePage: React.FC = () => {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Salva as alterações no Git e cria/mantém o Draft PR no GitHub">
+            <Tooltip title={getSaveProgressTooltip()}>
               <span>
                 <Button
                   variant="outlined"
@@ -212,7 +226,7 @@ export const WorkspacePage: React.FC = () => {
                     )
                   }
                   onClick={handleSaveProgress}
-                  disabled={saveProgressMutation.isPending}
+                  disabled={!canSaveProgress}
                 >
                   Salvar Progresso
                 </Button>

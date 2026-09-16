@@ -11,7 +11,7 @@ export interface PodClaimResult {
 export class K8sPodManagerService {
   private k8sApi: k8s.CoreV1Api | null = null;
   private isK8sAvailable = false;
-  private namespace = 'default';
+  private readonly namespace = 'default';
 
   private getK8sApiClient(): k8s.CoreV1Api | null {
     if (env.NODE_ENV === 'test') {
@@ -261,7 +261,7 @@ export class K8sPodManagerService {
       const activePod = (existingPods.body.items || []).find(
         (pod) => pod.status?.phase === 'Running'
       );
-      if (activePod && activePod.metadata?.name) {
+      if (activePod?.metadata?.name) {
         await this.updateServiceSelector(projectId);
         await this.waitForPodReady(activePod.metadata.name);
         return {
@@ -283,7 +283,7 @@ export class K8sPodManagerService {
       );
 
       const warmPod = (warmPodsRes.body.items || []).find((pod) => pod.status?.phase === 'Running');
-      if (warmPod && warmPod.metadata?.name) {
+      if (warmPod?.metadata?.name) {
         // Remove o pod standby genérico para dar lugar ao Pod estritamente isolado do usuário
         await k8sApi.deleteNamespacedPod(warmPod.metadata.name, this.namespace).catch(() => {});
       }
