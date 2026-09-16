@@ -1,7 +1,7 @@
 # Especificação Técnica do Backend (Fastify + Prisma + TypeScript)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-08  
+**Última Atualização:** 2026-09-15  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -128,7 +128,8 @@ src/
 1. **Abstração Task-Driven (`POST /api/v1/projects/:projectId/tasks/:taskId/workspace`):**
    - O usuário seleciona a tarefa no dashboard ("Minhas Tarefas").
    - O backend valida a permissão, obtém a `branchName` da `Task` e busca/aloca o Pod Kubernetes dedicado (`workspace-pod-${projectId}-${userId}`).
-   - O clone do repositório em `${storageDir}/projects/${projectId}/users/${userId}` realiza `checkout` automático da branch da Task e retorna a URL do `code-server` para o iframe.
+   - O repositório em `${storageDir}/projects/${projectId}/users/${userId}` é inicializado preservando a pasta `.git` (ignorando recursão em `users/`), executa `checkout` automático da branch da Task, aplica `git config core.fileMode false` e retorna a URL do `code-server` para o iframe.
+   - As configurações de ambiente do editor são derivadas da fonte única de verdade `docker/code-server/settings.json` montada globalmente, dispensando arquivos `.vscode/settings.json` duplicados na workspace.
 
 2. **Nível 2 de Revisão — Release Candidates (`POST /api/v1/projects/:projectId/release-candidates`):**
    - Quando a branch `dev` acumula avanços, os autores disparam a criação de uma **Release Candidate (ex: `RC-1`)**.

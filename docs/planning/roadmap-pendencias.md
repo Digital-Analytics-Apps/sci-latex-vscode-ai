@@ -6,33 +6,33 @@
 
 ---
 
-## 🟢 Bloco 1: Estabilização do Backend & Infraestrutura K8s
+## 🟢 Bloco 1: Estabilização do Backend, Infraestrutura K8s & Customização Zen Mode
 
 - [x] **1.1 Atualização de Status `TERMINATED`/`DELETED` na Tabela `Workspace`**
   - *Descrição*: No `events.manager.ts` e no `k8s-pod-manager.service.ts`, garantido que ao encerrar ou destruir um Pod por timeout/deleção, o repositório `IWorkspacesRepository` atualiza o status no banco de dados para `TERMINATED` e limpa o `podName`.
 - [x] **1.2 Redirecionamento Sincronizado do Workspace**
   - *Descrição*: Endpoint/controller `/api/v1/editor-proxy/app` registra `PROVISIONING` quando o Pod está subindo e `READY` apenas quando HTTP 200 no proxy reverso é confirmado, com tela de transição e auto-reload automático.
-- [x] **1.3 Injeção Automática de `settings.json` no `code-server`**
-  - *Descrição*: Configurado auto-build do TeX ao salvar (`latex-workshop.latex.autoBuild.run: "onSave"`), tema escuro e desativação de telemetria no `settings.json` do container e geração automática em `.vscode/settings.json` na workspace.
+- [x] **1.3 Fonte Única de Verdade de Configuração do VS Code (`settings.json`)**
+  - *Descrição*: Centralização de 100% das configurações do editor em `docker/code-server/settings.json` (auto-build do TeX ao salvar, tema escuro, telemetria desativada), eliminando duplicidade de arquivos `.vscode/settings.json` na workspace.
 - [x] **1.4 Limpeza e `.gitignore` Estrito de Arquivos Temporários TeX**
   - *Descrição*: Cópia automática de um `.gitignore` padrão na inicialização do repositório TeX ignorando `*.aux`, `*.log`, `*.out`, `*.toc`, `*.fls`, `*.fdb_latexmk`, evitando commits de arquivos gerados temporariamente no GitHub.
-
+- [x] **1.5 Ambiente de Edição Zen Mode Distraction-Free**
+  - *Descrição*: Remoção das extensões de IA/Copilot no Dockerfile do `code-server`, remoção de atalhos de terminal no `keybindings.json` e ocultação de barras/menus (`workbench.activityBar.location: "hidden"`, `statusBar`, `menuBar`, `panel`) e ocultação de arquivos auxiliares TeX no `files.exclude`.
 
 ---
 
 ## 🔵 Bloco 2: Regras de Negócio de Tarefas & Fluxo de Revisão (ADR-003)
 
-- [x] **2.1 Checagem de Alterações Pendentes (`hasUncommittedChanges`)**
-  - *Descrição*: Criado método `checkUncommittedChanges` no `GitService` executando `git status --porcelain` no repositório do projeto/usuário.
-- [x] **2.2 Endpoint e Habilitação Reativa (`GET /api/v1/projects/:id/git-status`)**
-  - *Descrição*: Criada rota protegida retornando `{ hasUncommittedChanges, dirtyFiles }` para habilitar reativamente os botões do frontend.
+- [x] **2.1 Habilitação de Botões Guiada por Estado de Domínio (Substituição de Dirty Checks)**
+  - *Descrição*: Substituída a sondagem de dirty state no sistema de arquivos por habilitação reativa baseada exclusivamente nos status de negócio do Pull Request (`DRAFT`, `UNDER_REVIEW`, `APPROVED`, `MERGED`). Remoção de código morto do endpoint `/git-status`.
+- [x] **2.2 Suporte Nativo ao Git no Workspace do Pod**
+  - *Descrição*: Preservação da pasta `.git` na workspace do usuário (`users/:userId`), permitindo calhas de diff e comparador side-by-side nativos do VS Code. Adicionadas configurações `git config core.fileMode false` e `safe.directory "*"` no container para eliminar alertas de permissão.
 - [x] **2.3 Validação Estrita do Fluxo "Enviar para Revisão"**
-  - *Descrição*: Implementada trava `UNCOMMITTED_CHANGES_BEFORE_REVIEW` no `PullRequestsService.createPR` que bloqueia o envio caso haja rascunhos não commitados, retornando HTTP 400 com mensagem amigável ao usuário.
+  - *Descrição*: Transição controlada para `UNDER_REVIEW` no `PullRequestsService`, bloqueando envios em estados inválidos e emitindo notificação SSE (`PR_OPENED`).
 - [x] **2.4 Pod e Workspace Isolados para o Revisor**
   - *Descrição*: Garantido que o Revisor receba um Pod e subdiretório isolados (`users/${reviewerId}`) via `claimPodForProject` e `ensureGitRepositoryWorkspace`, mantendo a pasta do Autor 100% intacta.
 - [x] **2.5 Bloqueio Visual e Badge "Em Revisão"**
   - *Descrição*: A transição de status para `UNDER_REVIEW` é exposta em tempo real e bloqueia rascunhos até a conclusão do parecer.
-
 
 ---
 

@@ -1,8 +1,8 @@
 # Especificação Técnica e Arquitetural (Specs)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-08  
-**Status:** Especificação Completa (KinD Kubernetes Cluster Local, Warm Standby Pool, Pods sob Demanda, PVC por Projeto, Limpeza Inteligente de PVCs, Estrutura Modular TeX, SDK Octokit, Stream SSE)
+**Última Atualização:** 2026-09-15  
+**Status:** Especificação Completa (KinD Kubernetes Cluster Local, Warm Standby Pool, Pods sob Demanda, PVC por Projeto, Limpeza Inteligente de PVCs, Estrutura Modular TeX, SDK Octokit, Stream SSE, Interface Zen Mode Distraction-Free, Topbar Guiada a Estado de Domínio)
 
 ---
 
@@ -45,6 +45,26 @@ graph TD
 - **Auto-provisionamento na Workspace:** Ao criar um artigo, a plataforma grava o arquivo de classe correspondente no próprio repositório do artigo (`./storage/projects/<projectId>/<template>.cls`), garantindo compilação autônoma instantânea no `code-server`.
 - **> [!NOTE] Nota de Evolução Futura (Backlog Arquitetural):**  
   Em versões futuras, o sistema poderá expandir a gestão de templates para permitir que o usuário (or Coordenador/Gerente) envie arquivos de classe customizados (`.cls`/`.sty` ou pacote `.zip`) para cadastro no catálogo dinâmico de templates da organização ou upload direto na workspace.
+
+### 2.3 Customização Extrema "Zen Mode" & Git Nativo no Editor
+
+Para proporcionar um ambiente de escrita acadêmica sem distrações:
+1. **Remoção de Extensões de Chat/IA no Build Docker:** As extensões embutidas `copilot`, `prompt-basics` e `terminal-suggest` foram removidas durante a construção da imagem Docker do `code-server`, eliminando o painel de chat da barra lateral direita e assistentes não utilizados.
+2. **Interface Minimalista via `settings.json`:**
+   - `"workbench.activityBar.location": "hidden"`
+   - `"workbench.statusBar.visible": false`
+   - `"window.menuBarVisibility": "hidden"`
+   - `"workbench.secondarySideBar.visible": false`
+   - `"workbench.panel.visible": false`
+   - `"files.exclude"`: Ocultação automática na árvore de arquivos de artefatos temporários de compilação TeX (`*.aux`, `*.log`, `*.synctex.gz`, `*.fls`, `*.fdb_latexmk`, `*.toc`, `*.out`, etc.).
+3. **Desativação Completa do Terminal (`keybindings.json`):** Atalhos para abertura de terminal (`Ctrl+` `, `Ctrl+Shift+` `, `Ctrl+J`) e atalhos de chat (`Ctrl+Shift+I`) foram desativados.
+4. **Git Nativo no Pod sem Ruídos:**
+   - O diretório `.git` é preservado no repositório da workspace do usuário para habilitar os recursos visuais nativos do VS Code (calhas de diff, visualização side-by-side de edições).
+   - Configurações do container: `git config core.fileMode false` (evita falsos modificados por diferenças de permissão de arquivo `0755`/`0644` no Linux) e `safe.directory "*"` configurado em `/etc/gitconfig` (elimina o aviso de "Unsafe Repository").
+
+### 2.4 Fonte Única da Verdade para Configurações do VS Code (Princípio DRY)
+
+Todas as configurações de ambiente do editor são mantidas exclusivamente em `docker/code-server/settings.json` e montadas diretamente no diretório global do usuário no container (`~/.local/share/code-server/User/settings.json`). O backend (`editor-proxy.controller.ts`) não gera mais arquivos `.vscode/settings.json` dinâmicos na workspace, eliminando duplicidades de código.
 
 ---
 
@@ -96,14 +116,19 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
    - Quando um Pull Request é aberto (`PR_OPENED`), o backend dispara um broadcast via **Server-Sent Events (SSE)** para **todos os membros do projeto (autores, revisores e coordenador)**.
    - Isso garante ciência imediata em tempo real para toda a equipe sobre a existência de uma revisão pendente.
 
-### 3.4 Sincronização do Ciclo de Vida do GitHub PR (Draft ➔ Ready for Review), Revisão no VS Code Web & Painel de Comentários
+### 3.4 Sincronização do Ciclo de Vida do GitHub PR (Draft ➔ Ready for Review), Habilitação de Botões por Estado de Domínio & Revisão
 
-1. **Salvar Progresso**:
-   - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da tarefa (`task/<slug>-<shortHash>`) e gera/mantém um **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
-   - **Regra de Habilitação**: Habilitado durante a escrita.
+> [!IMPORTANT]
+> **Habilitação de Botões Orientada 100% pelo Fluxo de Domínio (`PRStatus`):**  
+> A ativação e o bloqueio dos botões de ação na Topbar do Workspace ("Salvar Progresso", "Enviar p/ Revisão", "Realizar Merge") são estritamente guiados pelo estado atual do Pull Request/Tarefa (`activePR.status`: `DRAFT`, `UNDER_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `MERGED`). Essa abordagem elimina a necessidade de monitorar dirty states no sistema de arquivos local (`/git-status`), garantindo um comportamento previsível e zero código morto.
 
-2. **Enviar p/ Revisão**:
+1. **Salvar Progresso (`DRAFT` / `CHANGES_REQUESTED`)**:
+   - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da tarefa (`task/<slug>-<shortHash>`) e gera/mantém o **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
+   - **Regra de Habilitação**: Habilitado enquanto o PR estiver em rascunho (`DRAFT`) ou em ajuste (`CHANGES_REQUESTED`).
+
+2. **Enviar p/ Revisão (`UNDER_REVIEW`)**:
    - **Fluxo Backend/GitHub**: Transiciona o Draft PR no GitHub para **Ready for Review** via API (`markPullRequestReadyForReview`), atualizando o status para `UNDER_REVIEW` no banco e emitindo notificação SSE (`PR_OPENED`).
+   - **Regra de Habilitação**: Habilitado após a realização do primeiro commit/rascunho.
 
 3. **Ambiente de Revisão no VS Code Web (Diff Nativo & Branch Checkout)**:
    - Ao abrir o Painel de Revisão (`ReviewDetailPage.tsx`), o backend (`editor-proxy`) utiliza o parâmetro `taskId` para posicionar automaticamente o repositório da workspace na branch da tarefa enviada pelo autor (`task/...`).
@@ -114,8 +139,9 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
      - **Histórico de Apontamentos**: Exibe todos os comentários anteriores com data, autor e número da linha do arquivo (`lineNumer`).
      - **Formulário de Comentário**: Permite ao revisor inserir observações por linha ou gerais e selecionar se deseja enviar apenas um **Comentário**, **Solicitar Ajustes** (`CHANGES_REQUESTED`) ou **Aprovar a Tarefa** (`APPROVED`).
 
-5. **Realizar Merge**:
+5. **Realizar Merge (`APPROVED`)**:
    - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev` e remove a branch temporária da seção do GitHub (`deleteBranch`).
+   - **Regra de Habilitação**: Habilitado exclusivamente quando o PR é aprovado pelo Revisor (`status === APPROVED`).
 
 ---
 

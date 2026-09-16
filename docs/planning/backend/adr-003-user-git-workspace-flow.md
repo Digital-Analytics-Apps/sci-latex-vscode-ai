@@ -48,6 +48,28 @@ Ao acessar um projeto, o autor visualizará seus cards de trabalho em vez de cai
 2. O autor clica no botão `[ 🔄 Atualizar Tarefa com a dev ]` no painel.
 3. Se houver divergências (`CONFLICTED`), o autor é direcionado ao editor onde a interface nativa do VS Code auxilia na resolução dos conflitos no arquivo LaTeX.
 
+### 2.5 Habilitação de Botões da Topbar 100% Orientada pelo Estado de Domínio (`PRStatus`)
+- **Problema de Arquitetura Anterior**: A sondagem contínua do estado do sistema de arquivos (`hasUncommittedChanges` via `git status --porcelain` / `/git-status`) gerava falsos positivos/negativos devido a ruídos de arquivos temporários do TeX e sincronizações assíncronas no Linux.
+- **Decisão**: A habilitação e desativação dos botões da Topbar ("Salvar Progresso", "Enviar p/ Revisão", "Realizar Merge") passaram a ser guiadas 100% pelos estados de negócio do Pull Request / Tarefa (`DRAFT`, `UNDER_REVIEW`, `APPROVED`, `MERGED`).
+- **Eliminação de Código Morto**: O endpoint `/git-status`, hooks e SSEs associados a *dirty state* foram completamente removidos da base de código backend e frontend, mantendo a arquitetura limpa e determinística.
+
+### 2.6 Preservação do `.git` Nativo & Configuração de Workspace sem Alertas
+- **Decisão**: O repositório `.git` é mantido na pasta workspace do usuário (`users/:userId`), permitindo o uso nativo dos recursos do VS Code (calhas de alteração, diff side-by-side).
+- **Configuração de Git no Container**:
+  - Execução de `git config core.fileMode false` na workspace para suprimir diferenças falsas de permissões do sistema de arquivos Linux em volumes montados (`0755` vs `0644`).
+  - Definição global de `safe.directory "*"` no `/etc/gitconfig` do container do code-server para eliminar alertas de repositório inseguro.
+  - Ajuste na rotina de inicialização de workspace (`editor-proxy.controller.ts`) para ignorar a subpasta `users/` na cópia do repositório base, prevenindo recursão infinita.
+
+### 2.7 Customização Extrema "Zen Mode" (Ambiente de Escrita Sem Distrações)
+- **Desativação de Recursos Desnecessários**: Extensões nativas de chat/IA (`copilot`, `prompt-basics`, `terminal-suggest`) foram excluídas do container via `Dockerfile`.
+- **Desativação do Terminal**: Atalhos de teclado para abrir o terminal (`Ctrl+` `, `Ctrl+Shift+` `, `Ctrl+J`) foram removidos via `keybindings.json`.
+- **Interface Oculta**: Activity Bar, Status Bar, Menu Bar, Painel Inferior e Barra Lateral Secundária foram desativados no `settings.json`.
+- **Filtro de Arquivos Auxiliares**: Artefatos TeX (`*.aux`, `*.log`, `*.synctex.gz`, `*.fls`, etc.) são ocultados da árvore de arquivos pelo `files.exclude`.
+
+### 2.8 Fonte Única da Verdade para Configurações do VS Code (Single Source of Truth)
+- Todas as definições de ambiente do editor são declaradas exclusivamente em `docker/code-server/settings.json` e montadas em `~/.local/share/code-server/User/settings.json`.
+- A geração dinâmica de `.vscode/settings.json` na raiz da workspace foi descontinuada no Fastify backend.
+
 ## 3. Arquitetura de Dois Níveis de Revisão (Peer Review & Release Candidates)
 
 O ciclo de vida do artigo distingue claramente dois níveis de revisão e versionamento:

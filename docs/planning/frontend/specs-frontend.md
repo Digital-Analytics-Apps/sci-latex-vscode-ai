@@ -1,7 +1,7 @@
 # Especificação Técnica do Frontend (ReactJS + Redux Toolkit + TanStack Query)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-05  
+**Última Atualização:** 2026-09-15  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -76,7 +76,12 @@ export function useSSEEventSource() {
 ### 4.1 Proxy & Carregamento Seguro
 * O componente `<CodeServerIframe />` renderiza um `<iframe>` apontando para o proxy do Fastify:
   `src="/api/v1/editor-proxy/:projectId?token=<JWT>"`
-* O proxy Fastify valida o JWT do usuário e redireciona a stream da sessão do `code-server` com as `settings.json` minimalistas injetadas.
+* O proxy Fastify valida o JWT do usuário e redireciona a stream da sessão do `code-server` com o ambiente customizado Zen Mode.
+* **Habilitação de Botões por Estado de Domínio:** A Topbar do Workspace habilita e bloqueia ações com base única e exclusivamente no estado de negócio do Pull Request (`activePR.status`):
+  - *Salvar Progresso*: Ativo quando `status` for `DRAFT` ou `CHANGES_REQUESTED`.
+  - *Enviar p/ Revisão*: Ativo quando houver rascunho salvo e transiciona para `UNDER_REVIEW`.
+  - *Realizar Merge*: Ativo quando o PR estiver aprovado (`APPROVED`).
+  - *Sondagem de Dirty State Desativada*: O frontend não faz polling em rotas de sistema de arquivos local (`/git-status`), garantindo performance e ausência de falsos bloqueios.
 
 ---
 
