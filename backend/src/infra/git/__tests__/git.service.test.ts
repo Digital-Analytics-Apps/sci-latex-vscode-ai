@@ -82,4 +82,14 @@ describe('GitService', () => {
       (env as any).GITHUB_TOKEN = originalToken;
     }
   });
+
+  it('should check uncommitted changes in project directory', async () => {
+    const result = await gitService.checkUncommittedChanges('non-existing-proj-id');
+    expect(result).toEqual({
+      hasUncommittedChanges: false,
+      dirtyFiles: [],
+    });
+  });
 });
+
+

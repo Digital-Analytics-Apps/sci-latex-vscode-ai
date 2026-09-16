@@ -456,4 +456,9 @@ export class ProjectsService {
       pullRequest: pr,
     };
   }
+
+  // Verifica se há rascunhos ou modificações não salvas no repositório do projeto/usuário
+  async checkGitStatus(projectId: string, userId?: string) {
+    return this.gitService.checkUncommittedChanges(projectId, userId);
+  }
 }

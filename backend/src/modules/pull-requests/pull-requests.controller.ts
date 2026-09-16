@@ -17,8 +17,20 @@ export class PullRequestsController {
     });
 
     const body = bodySchema.parse(request.body);
-    const pr = await this.prService.createPR(authorId, body);
-    return reply.status(201).send({ pullRequest: pr });
+    try {
+      const pr = await this.prService.createPR(authorId, body);
+      return reply.status(201).send({ pullRequest: pr });
+    } catch (err: any) {
+      if (err.message === 'UNCOMMITTED_CHANGES_BEFORE_REVIEW') {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message:
+            'Existem alterações não salvas no seu rascunho. Por favor, clique em "Salvar Progresso" antes de enviar para revisão.',
+        });
+      }
+      throw err;
+    }
   }
 
   async list(request: FastifyRequest, reply: FastifyReply) {

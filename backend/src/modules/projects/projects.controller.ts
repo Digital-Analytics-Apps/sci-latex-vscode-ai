@@ -328,4 +328,16 @@ startxref
       throw err;
     }
   }
+
+  async getGitStatus(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+    const userId = request.user.sub;
+
+    const status = await this.projectsService.checkGitStatus(id, userId);
+    return reply.send(status);
+  }
 }

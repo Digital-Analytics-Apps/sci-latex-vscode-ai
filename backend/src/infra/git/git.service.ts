@@ -320,6 +320,50 @@ export class GitService {
     }
   }
 
+  // Verifica se há rascunhos/modificações pendentes de commit no workspace do projeto ou do usuário
+  async checkUncommittedChanges(
+    projectId: string,
+    userId?: string
+  ): Promise<{ hasUncommittedChanges: boolean; dirtyFiles: string[] }> {
+    let targetDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
+    if (userId) {
+      const userWorkspaceDir = path.resolve(
+        env.STORAGE_PATH,
+        'projects',
+        projectId,
+        'users',
+        userId
+      );
+      try {
+        const stats = await fs.stat(userWorkspaceDir);
+        if (stats.isDirectory()) {
+          targetDir = userWorkspaceDir;
+        }
+      } catch {
+        // Usa targetDir padrão se subdiretório não existir
+      }
+    }
+
+    try {
+      const { stdout } = await execAsync('git status --porcelain', { cwd: targetDir });
+      const dirtyFiles = stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => line.replace(/^[\s\?MADRCU]+\s+/, ''));
+
+      return {
+        hasUncommittedChanges: dirtyFiles.length > 0,
+        dirtyFiles,
+      };
+    } catch {
+      return {
+        hasUncommittedChanges: false,
+        dirtyFiles: [],
+      };
+    }
+  }
+
   // Realiza a fusão (git merge) de uma branch de origem (ex: task/intro-a1b2c3d4) em uma branch alvo (ex: dev ou main)
   async mergeBranch(data: {
     projectId: string;

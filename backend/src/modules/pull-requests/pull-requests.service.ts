@@ -16,6 +16,14 @@ export class PullRequestsService {
 
   // Abertura de Pull Request pelo Autor
   async createPR(authorId: string, data: CreatePRData) {
+    // 0. Validação de segurança: Impede o envio para revisão caso existam alterações pendentes de salvamento no rascunho
+    if (this.gitService && data.projectId) {
+      const dirtyCheck = await this.gitService.checkUncommittedChanges(data.projectId, authorId);
+      if (dirtyCheck.hasUncommittedChanges) {
+        throw new Error('UNCOMMITTED_CHANGES_BEFORE_REVIEW');
+      }
+    }
+
     let cleanReviewerId =
       data.reviewerId && data.reviewerId.trim() !== '' ? data.reviewerId : undefined;
 

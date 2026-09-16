@@ -267,6 +267,24 @@ export async function projectsRoutes(app: FastifyInstance) {
     (req, reply) => controller.commitTaskProgress(req, reply)
   );
 
+  // GET /api/v1/projects/:id/git-status - Checar alterações pendentes (hasUncommittedChanges)
+  app.get(
+    '/:id/git-status',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Verificar status Git de rascunhos não salvos (hasUncommittedChanges)',
+        description:
+          'Executa git status --porcelain no repositório do projeto para determinar se há alterações pendentes de commit.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    (req, reply) => controller.getGitStatus(req, reply)
+  );
+
   // POST /api/v1/projects/:projectId/pull-requests - Abertura de PR via alias de projeto
   app.post(
     '/:projectId/pull-requests',

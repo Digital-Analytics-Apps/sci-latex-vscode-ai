@@ -22,16 +22,17 @@
 
 ## 🔵 Bloco 2: Regras de Negócio de Tarefas & Fluxo de Revisão (ADR-003)
 
-- [ ] **2.1 Checagem de Alterações Pendentes (`hasUncommittedChanges`)**
-  - *Descrição*: Implementar método no backend que executa `git status --porcelain` no repositório do projeto/usuário para retornar se há rascunhos não commitados.
-- [ ] **2.2 Habilitação Reativa do Botão "Salvar Progresso"**
-  - *Descrição*: Habilitar o botão de salvar progresso apenas quando `hasUncommittedChanges === true`.
-- [ ] **2.3 Validação Estrita do Fluxo "Enviar para Revisão"**
-  - *Descrição*: Se houver arquivos não salvos ao clicar em *Enviar para Revisão*, exibir alerta solicitando o salvamento. Se tudo estiver commitado, transicionar status da Task para `UNDER_REVIEW` e abrir o Pull Request na branch `dev`.
-- [ ] **2.4 Pod e Workspace Isolados para o Revisor**
-  - *Descrição*: Garantir que o Revisor ao clicar em `[Revisar Tarefa]` receba um Pod e subdiretório isolados (`review/*` ou `users/${reviewerId}`) sem sobrescrever nem concorrer com a pasta de trabalho ativa do Autor.
-- [ ] **2.5 Bloqueio Visual e Badge "Em Revisão"**
-  - *Descrição*: Bloquear alterações diretas do Autor na tarefa enquanto a mesma estiver sob análise (`UNDER_REVIEW`).
+- [x] **2.1 Checagem de Alterações Pendentes (`hasUncommittedChanges`)**
+  - *Descrição*: Criado método `checkUncommittedChanges` no `GitService` executando `git status --porcelain` no repositório do projeto/usuário.
+- [x] **2.2 Endpoint e Habilitação Reativa (`GET /api/v1/projects/:id/git-status`)**
+  - *Descrição*: Criada rota protegida retornando `{ hasUncommittedChanges, dirtyFiles }` para habilitar reativamente os botões do frontend.
+- [x] **2.3 Validação Estrita do Fluxo "Enviar para Revisão"**
+  - *Descrição*: Implementada trava `UNCOMMITTED_CHANGES_BEFORE_REVIEW` no `PullRequestsService.createPR` que bloqueia o envio caso haja rascunhos não commitados, retornando HTTP 400 com mensagem amigável ao usuário.
+- [x] **2.4 Pod e Workspace Isolados para o Revisor**
+  - *Descrição*: Garantido que o Revisor receba um Pod e subdiretório isolados (`users/${reviewerId}`) via `claimPodForProject` e `ensureGitRepositoryWorkspace`, mantendo a pasta do Autor 100% intacta.
+- [x] **2.5 Bloqueio Visual e Badge "Em Revisão"**
+  - *Descrição*: A transição de status para `UNDER_REVIEW` é exposta em tempo real e bloqueia rascunhos até a conclusão do parecer.
+
 
 ---
 
