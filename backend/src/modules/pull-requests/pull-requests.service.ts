@@ -10,8 +10,8 @@ import { prisma } from '../../db/prisma';
 
 export class PullRequestsService {
   constructor(
-    private prRepository: PrismaPullRequestsRepository,
-    private gitService?: GitService
+    private readonly prRepository: PrismaPullRequestsRepository,
+    private readonly gitService?: GitService
   ) {}
 
   // Abertura de Pull Request pelo Autor
@@ -240,7 +240,7 @@ export class PullRequestsService {
 
     // Retorna o PR atualizado com a lista completa de comentários
     const fullPR = await this.prRepository.findById(prId);
-    return fullPR || updatedPR;
+    return fullPR ?? updatedPR;
   }
 
   // Registro Manual do Status do NIT (Núcleo de Inovação Tecnológica)

@@ -1,5 +1,6 @@
 import { FastifyReply } from 'fastify';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
+import { workspaceWatcher } from '../../infra/watcher/workspace-watcher.service';
 import {
   IWorkspacesRepository,
   PrismaWorkspacesRepository,
@@ -32,6 +33,9 @@ export class EventsManagerService {
     if (projectId) {
       const current = this.activeProjectConnections.get(projectId) || 0;
       this.activeProjectConnections.set(projectId, current + 1);
+
+      // Inicia o monitoramento de arquivo por sistema operacional para este projeto
+      workspaceWatcher.watchProject(projectId, userId);
 
       // Se houver um timer de destruição pendente para este projeto, cancela! (Reconexão/F5 dentro do Grace Period)
       if (this.releaseTimers.has(projectId)) {
@@ -82,6 +86,7 @@ export class EventsManagerService {
                   err.message || err
                 );
               });
+            workspaceWatcher.unwatchProject(projectId);
           }
         }, GRACE_PERIOD_MS);
 
@@ -108,8 +113,26 @@ export class EventsManagerService {
   broadcast(eventName: string, data: any) {
     const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
     this.clients.forEach((client) => {
-      client.reply.raw.write(payload);
+      try {
+        client.reply.raw.write(payload);
+      } catch {
+        // ignora se conexão falhou
+      }
     });
+  }
+
+  // Envia evento em tempo real para todos os clientes conectados a um projeto específico
+  broadcastToProject(projectId: string, eventName: string, data: any) {
+    const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+    this.clients
+      .filter((client) => client.projectId === projectId)
+      .forEach((client) => {
+        try {
+          client.reply.raw.write(payload);
+        } catch {
+          // ignora se conexão falhou
+        }
+      });
   }
 }
 

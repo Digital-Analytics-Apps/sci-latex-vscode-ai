@@ -142,21 +142,15 @@ async function ensureTeXTemplateFiles(targetDir: string, projectName: string) {
   try {
     await fs.mkdir(vscodeDir, { recursive: true, mode: 0o777 });
     const vscodeSettingsPath = path.join(vscodeDir, 'settings.json');
-    if (
-      !(await fs
-        .access(vscodeSettingsPath)
-        .then(() => true)
-        .catch(() => false))
-    ) {
-      const defaultSettings = {
-        'security.workspace.trust.enabled': false,
-        'telemetry.telemetryLevel': 'off',
-        'editor.wordWrap': 'on',
-        'latex-workshop.latex.autoBuild.run': 'onSave',
-        'latex-workshop.view.pdf.viewer': 'tab',
-      };
-      await fs.writeFile(vscodeSettingsPath, JSON.stringify(defaultSettings, null, 2), 'utf-8');
-    }
+    const defaultSettings = {
+      'security.workspace.trust.enabled': false,
+      'telemetry.telemetryLevel': 'off',
+      'workbench.colorTheme': 'Default Dark Modern',
+      'editor.wordWrap': 'on',
+      'latex-workshop.latex.autoBuild.run': 'onSave',
+      'latex-workshop.view.pdf.viewer': 'tab',
+    };
+    await fs.writeFile(vscodeSettingsPath, JSON.stringify(defaultSettings, null, 2), 'utf-8');
   } catch {
     // Ignora erros ao criar .vscode/settings.json
   }

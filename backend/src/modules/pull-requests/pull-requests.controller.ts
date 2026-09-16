@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { NITStatus } from '@prisma/client';
 
 export class PullRequestsController {
-  constructor(private prService: PullRequestsService) {}
+  constructor(private readonly prService: PullRequestsService) {}
 
   async create(request: FastifyRequest, reply: FastifyReply) {
     const authorId = request.user.sub;

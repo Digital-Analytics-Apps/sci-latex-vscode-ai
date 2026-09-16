@@ -53,7 +53,7 @@ describe('GitService', () => {
     });
 
     expect(commitHash).toBeDefined();
-    expect(commitHash.length).toBe(40); // 40-character SHA-1 hash
+    expect(commitHash).toHaveLength(40); // 40-character SHA-1 hash
   });
 
   it('should throw CANNOT_DELETE_PROTECTED_BRANCH when trying to delete main or dev branch', async () => {
@@ -91,5 +91,3 @@ describe('GitService', () => {
     });
   });
 });
-
-
