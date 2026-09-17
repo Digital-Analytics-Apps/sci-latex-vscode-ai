@@ -272,6 +272,7 @@ export class GitService {
     authorName: string;
     authorEmail: string;
     repoUrl?: string;
+    userId?: string;
   }): Promise<string> {
     await this.ensureStorageDir();
     const gitFlags = this.getGitAuthFlags();
@@ -308,14 +309,60 @@ export class GitService {
         await execAsync(`git checkout -b ${data.branchName}`, { cwd: tempDir });
       }
 
-      // Copia todo o conteúdo atualizado da workspace do autor (storage/projects/:projectId) para o tempDir do commit
-      const projectDir = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      // Copia o conteúdo atualizado da workspace do autor para o tempDir do commit (evitando pastas de usuários e artefatos TeX)
+      let sourceWorkspace = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      if (data.userId) {
+        const userDir = path.resolve(
+          env.STORAGE_PATH,
+          'projects',
+          data.projectId,
+          'users',
+          data.userId
+        );
+        try {
+          const stats = await fs.stat(userDir);
+          if (stats.isDirectory()) {
+            sourceWorkspace = userDir;
+          }
+        } catch {
+          // Ignora se a pasta por usuário não existir
+        }
+      }
+
+      const isIgnoredBuildArtifact = (srcPath: string) => {
+        const normalized = srcPath.replace(/\\/g, '/');
+        const fileName = path.basename(normalized);
+        const ignoredExtensions = [
+          '.aux',
+          '.log',
+          '.fdb_latexmk',
+          '.fls',
+          '.synctex.gz',
+          '.toc',
+          '.out',
+          '.nav',
+          '.snm',
+          '.bbl',
+          '.blg',
+          '.vrb',
+          '.pdf',
+        ];
+        return (
+          normalized.includes('/.git') ||
+          normalized.includes('/.vscode') ||
+          normalized.includes('/users/') ||
+          normalized.endsWith('/users') ||
+          fileName === 'indent.log' ||
+          ignoredExtensions.some((ext) => fileName.endsWith(ext))
+        );
+      };
+
       try {
-        const stats = await fs.stat(projectDir);
+        const stats = await fs.stat(sourceWorkspace);
         if (stats.isDirectory()) {
-          await fs.cp(projectDir, tempDir, {
+          await fs.cp(sourceWorkspace, tempDir, {
             recursive: true,
-            filter: (src) => !src.includes('/.git'),
+            filter: (src) => !isIgnoredBuildArtifact(src),
           });
         }
       } catch {
@@ -378,19 +425,40 @@ export class GitService {
           cwd: targetDir,
         }
       );
+
+      const isIgnoredFile = (file: string) => {
+        const normalized = file.replace(/\\/g, '/');
+        const fileName = path.basename(normalized);
+        const ignoredExtensions = [
+          '.aux',
+          '.log',
+          '.fdb_latexmk',
+          '.fls',
+          '.synctex.gz',
+          '.toc',
+          '.out',
+          '.nav',
+          '.snm',
+          '.bbl',
+          '.blg',
+          '.vrb',
+          '.pdf',
+        ];
+        return (
+          normalized.startsWith('users/') ||
+          normalized.startsWith('.vscode/') ||
+          normalized === '.gitignore' ||
+          fileName === 'indent.log' ||
+          ignoredExtensions.some((ext) => fileName.endsWith(ext))
+        );
+      };
+
       const dirtyFiles = stdout
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line.length > 0)
         .map((line) => line.replace(/^[\s\?MADRCU]+\s+/, ''))
-        .filter(
-          (file) =>
-            !file.startsWith('users/') &&
-            !file.startsWith('users\\') &&
-            file !== '.gitignore' &&
-            !file.startsWith('.vscode/') &&
-            !file.startsWith('.vscode\\')
-        );
+        .filter((file) => !isIgnoredFile(file));
 
       return {
         hasUncommittedChanges: dirtyFiles.length > 0,

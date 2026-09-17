@@ -351,6 +351,7 @@ export class ProjectsService {
     try {
       commitHash = await this.gitService.commitFile({
         projectId,
+        userId,
         branchName,
         filePath,
         content: fileContent,
