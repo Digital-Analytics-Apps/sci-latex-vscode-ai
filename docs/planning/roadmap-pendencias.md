@@ -33,6 +33,8 @@
   - *Descrição*: Garantido que o Revisor receba um Pod e subdiretório isolados (`users/${reviewerId}`) via `claimPodForProject` e `ensureGitRepositoryWorkspace`, mantendo a pasta do Autor 100% intacta.
 - [x] **2.5 Bloqueio Visual e Badge "Em Revisão"**
   - *Descrição*: A transição de status para `UNDER_REVIEW` é exposta em tempo real e bloqueia rascunhos até a conclusão do parecer.
+- [x] **2.6 Destruição de Pod K8s e Limpeza do PVC após o Merge de Sucesso**
+  - *Descrição*: Após a conclusão do merge no `PullRequestsService` (`mergePR`), o backend aciona `releasePodForProject` e `cleanProjectPVC` no `K8sPodManagerService`, encerrando o Pod isolado do usuário, removendo o PVC temporário e definindo o status da tabela `Workspace` no banco como `TERMINATED`.
 
 ---
 

@@ -108,7 +108,8 @@ export function useSSEEventSource() {
 - [x] Criar Dashboard do Revisor (Cards de PRs pendentes).
 - [x] Criar visualizador de Comparação Side-by-Side (Diff LaTeX no lado esquerdo + PDF Viewer no lado direito).
 - [x] Criar painel de **Registro Manual do NIT** (Badge de status + Formulário de Input do parecer `APPROVED_NIT` / `REJECTED_NIT`).
-- [x] Implementar estado destravado do botão **"Realizar Merge / Concluir Entrega"** no painel do Autor.
+- [x] Implementar estado destravado do botão **"Realizar Merge / Concluir Entrega"** no painel do Autor (com redirecionamento automático para `/` e bloqueio de "Salvar Progresso" pós-aprovação/merge).
+- [x] **Visão de Tarefas Concluídas no Dashboard**: Exibição da badge `Concluída (Merged)` com botão de workspace desabilitado e rotulado como `Tarefa Concluída`.
 
 ### 📊 Sprint 4: Dashboards do Coordenador, Gerente & Pós-Submissão
 - [x] Criar Dashboard do Coordenador (Tabela de prazos das seções da equipe com indicadores 🟢/🟡/🔴 e modal de alteração de datas).

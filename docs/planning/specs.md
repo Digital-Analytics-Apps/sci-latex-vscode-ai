@@ -139,8 +139,9 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
      - **Histórico de Apontamentos**: Exibe todos os comentários anteriores com data, autor e número da linha do arquivo (`lineNumer`).
      - **Formulário de Comentário**: Permite ao revisor inserir observações por linha ou gerais e selecionar se deseja enviar apenas um **Comentário**, **Solicitar Ajustes** (`CHANGES_REQUESTED`) ou **Aprovar a Tarefa** (`APPROVED`).
 
-5. **Realizar Merge (`APPROVED`)**:
-   - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev` e remove a branch temporária da seção do GitHub (`deleteBranch`).
+5. **Realizar Merge (`APPROVED`) & Desativação do Pod/PVC**:
+   - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev`, remove a branch temporária da seção do GitHub (`deleteBranch`), e em seguida aciona a liberação do Pod K8s (`releasePodForProject`), destruição do PVC temporário (`cleanProjectPVC`) e marca a entrada do banco de dados na tabela `Workspace` como `TERMINATED`.
+   - **Fluxo Frontend & UX**: O botão "Salvar Progresso" é bloqueado quando o PR é aprovado pelo Revisor ou concluído. Após a confirmação do merge com sucesso, o frontend redireciona automaticamente o usuário para a página de tarefas (`/`), onde a tarefa passa a ser exibida com a badge `Concluída (Merged)` e o botão de acesso ao workspace é desabilitado.
    - **Regra de Habilitação**: Habilitado exclusivamente quando o PR é aprovado pelo Revisor (`status === APPROVED`).
 
 ---
