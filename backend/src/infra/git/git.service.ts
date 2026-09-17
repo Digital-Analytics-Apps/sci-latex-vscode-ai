@@ -330,7 +330,7 @@ export class GitService {
       }
 
       const isIgnoredBuildArtifact = (srcPath: string) => {
-        const normalized = srcPath.replace(/\\/g, '/');
+        const normalized = srcPath.replaceAll('\\', '/');
         const fileName = path.basename(normalized);
         const ignoredExtensions = [
           '.aux',
@@ -375,16 +375,49 @@ export class GitService {
         await fs.writeFile(fullFilePath, data.content, 'utf-8');
       }
 
-      await execAsync(`git config user.name "${data.authorName.replace(/"/g, '')}"`, {
+      await execAsync(`git config user.name "${data.authorName.replaceAll('"', '')}"`, {
         cwd: tempDir,
       });
-      await execAsync(`git config user.email "${data.authorEmail.replace(/"/g, '')}"`, {
+      await execAsync(`git config user.email "${data.authorEmail.replaceAll('"', '')}"`, {
         cwd: tempDir,
       });
 
       await execAsync(`git add -A`, { cwd: tempDir });
-      await execAsync(`git commit -m "${data.commitMessage.replace(/"/g, '')}"`, { cwd: tempDir });
+      await execAsync(`git commit -m "${data.commitMessage.replaceAll('"', '')}"`, {
+        cwd: tempDir,
+      });
       await execAsync(`git ${gitFlags} push origin ${data.branchName}`, { cwd: tempDir });
+
+      // Sincroniza o commit no repositório Git local do usuário para que o VS Code limpe as marcas de Untracked ("U") e Modified ("M")
+      let localWorkspace = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      if (data.userId) {
+        const userWorkspaceDir = path.resolve(
+          env.STORAGE_PATH,
+          'projects',
+          data.projectId,
+          'users',
+          data.userId
+        );
+        try {
+          const stats = await fs.stat(userWorkspaceDir);
+          if (stats.isDirectory()) {
+            localWorkspace = userWorkspaceDir;
+          }
+        } catch {
+          // Fallback
+        }
+      }
+
+      try {
+        const localGitDir = path.join(localWorkspace, '.git');
+        await fs.access(localGitDir);
+        await execAsync(`git -C "${localWorkspace}" add -A`).catch(() => {});
+        await execAsync(
+          `git -C "${localWorkspace}" commit -m "${data.commitMessage.replaceAll('"', '')}" --allow-empty`
+        ).catch(() => {});
+      } catch {
+        // Ignora se o workspace local não for um repositório git
+      }
 
       // Retorna o hash do commit gerado
       const { stdout } = await execAsync(`git rev-parse HEAD`, { cwd: tempDir });
@@ -427,7 +460,7 @@ export class GitService {
       );
 
       const isIgnoredFile = (file: string) => {
-        const normalized = file.replace(/\\/g, '/');
+        const normalized = file.replaceAll('\\', '/');
         const fileName = path.basename(normalized);
         const ignoredExtensions = [
           '.aux',

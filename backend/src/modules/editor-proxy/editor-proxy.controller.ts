@@ -226,6 +226,16 @@ async function ensureGitRepositoryWorkspace(
         await execAsync(`git -C "${userWorkspaceDir}" checkout -b "${targetBranch}"`);
       }
     }
+
+    // Garante que o repositório Git do workspace do usuário possua um commit inicial para que os arquivos não fiquem como "U" (Untracked)
+    try {
+      await execAsync(`git -C "${userWorkspaceDir}" rev-parse HEAD`);
+    } catch {
+      await execAsync(`git -C "${userWorkspaceDir}" add -A`).catch(() => {});
+      await execAsync(`git -C "${userWorkspaceDir}" commit -m "Initial workspace commit"`).catch(
+        () => {}
+      );
+    }
   }
 }
 
