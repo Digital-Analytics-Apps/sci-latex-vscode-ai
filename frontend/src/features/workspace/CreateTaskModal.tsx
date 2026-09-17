@@ -25,34 +25,24 @@ import { useUserSearchQuery } from "../../hooks/useUserQueries";
 import { tasksService } from "../../services/tasksService";
 import { type UserMemberItem } from "../../services/usersService";
 import { showNotification } from "../../store/slices/notificationSlice";
-
-export interface ProjectMemberOption {
-  id: string;
-  userId: string;
-  role: string;
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-    role?: string;
-  };
-}
+import { Role } from "../../constants/roles";
+import { type ProjectMember } from "../../services/projectsService";
 
 interface CreateTaskModalProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
-  members?: ProjectMemberOption[];
+  members?: ProjectMember[];
   onTaskCreated?: () => void;
 }
 
-export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
+export const CreateTaskModal = ({
   open,
   onClose,
   projectId,
   members: propMembers,
   onTaskCreated,
-}) => {
+}: CreateTaskModalProps) => {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
 
@@ -196,11 +186,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   const userName = m.user?.name || "Membro do Artigo";
                   const userEmail = m.user?.email ? ` (${m.user.email})` : "";
                   const roleLabel =
-                    m.role === "REVIEWER"
-                      ? "Revisor"
-                      : m.role === "CO_AUTHOR"
-                        ? "Co-Autor"
-                        : "Autor";
+                    m.role === Role.REVIEWER ? "Revisor" : "Autor";
                   return (
                     <MenuItem key={targetUserId} value={targetUserId}>
                       {userName} [{roleLabel}]{userEmail}

@@ -30,6 +30,23 @@ export function generateRepoName(projectId: string, projectTitle?: string): stri
     : `${env.GITHUB_REPO_PREFIX}${shortId}`;
 }
 
+export const DEFAULT_PULL_REQUEST_TEMPLATE = `## 📝 Resumo das Alterações
+<!-- Descreva brevemente as modificações realizadas nesta tarefa/seção TeX -->
+
+## 🎯 Seções Acadêmicas Impactadas
+- [ ] Introdução / Trabalhos Relacionados
+- [ ] Metodologia / Formulação
+- [ ] Resultados / Experimentos
+- [ ] Conclusão / Trabalhos Futuros
+
+## 🔍 Checklist de Qualidade TeX
+- [ ] Documento compila sem erros no TeX Live
+- [ ] Figuras, tabelas e citações bibliográficas formatadas adequadamente
+
+## 💬 Observações para o Revisor
+<!-- Dúvidas, notas adicionais ou pontos específicos para a revisão -->
+`;
+
 export class GitService {
   private baseStoragePath: string;
   private cachedOwner?: string;
@@ -205,6 +222,15 @@ export class GitService {
 `;
 
       await fs.writeFile(path.join(tempDir, 'main.tex'), templateContent, 'utf-8');
+
+      // Criar diretório .github e template oficial de Pull Request
+      const githubDir = path.join(tempDir, '.github');
+      await fs.mkdir(githubDir, { recursive: true });
+      await fs.writeFile(
+        path.join(githubDir, 'PULL_REQUEST_TEMPLATE.md'),
+        DEFAULT_PULL_REQUEST_TEMPLATE,
+        'utf-8'
+      );
 
       // Configura autor do commit inicial
       await execAsync(`git config user.name "SCI-LaTeX System"`, { cwd: tempDir });

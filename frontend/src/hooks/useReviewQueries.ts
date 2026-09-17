@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { NITStatus, PRStatus } from "../constants/status";
 import type { NITParecerFormData } from "../schemas/nit.schema";
 import { api } from "../services/api";
+
+export { NITStatus, PRStatus };
 
 export interface ReviewCommentItem {
   id: string;
@@ -15,14 +18,8 @@ export interface PullRequestDetail {
   id: string;
   title: string;
   description?: string;
-  status:
-    | "DRAFT"
-    | "UNDER_REVIEW"
-    | "CHANGES_REQUESTED"
-    | "APPROVED"
-    | "MERGED"
-    | "CANCELLED";
-  nitStatus: "NOT_REQUIRED" | "WAITING_NIT" | "APPROVED_NIT" | "REJECTED_NIT";
+  status: PRStatus;
+  nitStatus: NITStatus;
   nitNotes?: string;
   taskId?: string;
   authorId: string;
@@ -66,7 +63,7 @@ export function useReviewPRMutation(prId: string) {
 
   return useMutation({
     mutationFn: async (data: {
-      status?: "APPROVED" | "CHANGES_REQUESTED" | "UNDER_REVIEW";
+      status?: typeof PRStatus.APPROVED | typeof PRStatus.CHANGES_REQUESTED | typeof PRStatus.UNDER_REVIEW;
       comment?: string;
       lineNumer?: number;
     }) => {

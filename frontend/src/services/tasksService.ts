@@ -1,4 +1,7 @@
+import { TaskStatus } from "../constants/status";
 import { api } from "./api";
+
+export { TaskStatus };
 
 export interface TaskItem {
   id: string;
@@ -6,8 +9,7 @@ export interface TaskItem {
   projectName?: string;
   title: string;
   branchName: string;
-  status:
-    "TODO" | "IN_PROGRESS" | "UNDER_PEER_REVIEW" | "CHANGES_REQUESTED" | "DONE";
+  status: TaskStatus;
   dueDate: string;
   assignee: string;
   assignedToId?: string;

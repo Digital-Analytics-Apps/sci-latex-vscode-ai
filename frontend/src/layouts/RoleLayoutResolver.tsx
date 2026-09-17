@@ -1,5 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { Role } from "../constants/roles";
 import type { RootState } from "../store";
 import { AuthorLayout } from "./AuthorLayout";
 import { CoordinatorLayout } from "./CoordinatorLayout";
@@ -12,14 +13,14 @@ export const RoleLayoutResolver: React.FC<{ children: React.ReactNode }> = ({
   const user = useSelector((state: RootState) => state.auth.user);
 
   switch (user?.role) {
-    case "AUTHOR":
+    case Role.AUTHOR:
       return <AuthorLayout>{children}</AuthorLayout>;
-    case "REVIEWER":
+    case Role.REVIEWER:
       return <ReviewerLayout>{children}</ReviewerLayout>;
-    case "COORDINATOR":
+    case Role.COORDINATOR:
       return <CoordinatorLayout>{children}</CoordinatorLayout>;
-    case "MANAGER":
-    case "ADMIN":
+    case Role.MANAGER:
+    case Role.ADMIN:
       return <ManagerLayout>{children}</ManagerLayout>;
     default:
       return <AuthorLayout>{children}</AuthorLayout>;

@@ -1,3 +1,4 @@
+import { Role } from "../constants/roles";
 import { api } from "./api";
 import type { TaskItem } from "./tasksService";
 
@@ -19,7 +20,7 @@ export interface ArticleItem {
   title: string;
   conference: string;
   repo: string;
-  role: "Autor Principal" | "Co-Autor" | "Revisor de Par";
+  role: "Autor" | "Revisor de Par";
   status: string;
   progress: number;
   tasks: TaskItem[];
@@ -40,11 +41,7 @@ export const articlesService = {
       conference: proj.targetConferenceName || "Conferência TeX",
       repo: proj.gitRepoPath || `github.com/org/${proj.id.slice(0, 8)}`,
       role:
-        proj.members?.[0]?.role === "REVIEWER"
-          ? "Revisor de Par"
-          : proj.members?.[0]?.role === "CO_AUTHOR"
-            ? "Co-Autor"
-            : "Autor Principal",
+        proj.members?.[0]?.role === Role.REVIEWER ? "Revisor de Par" : "Autor",
       status: proj.submissionStatus || "RC-1 em Andamento",
       progress: proj.progress || 0,
       tasks: proj.tasks || [],

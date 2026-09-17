@@ -63,12 +63,11 @@ export function useSSEEventSource(projectId?: string) {
               }
             }
 
-            let dataObj: any = null;
             if (dataStr) {
               try {
-                dataObj = JSON.parse(dataStr);
+                JSON.parse(dataStr);
               } catch {
-                dataObj = dataStr;
+                // Ignore parse errors for raw event strings
               }
             }
 

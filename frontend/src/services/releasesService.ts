@@ -1,10 +1,13 @@
+import { RCStatus } from "../constants/status";
 import { api } from "./api";
+
+export { RCStatus };
 
 export interface ReleaseCandidateItem {
   id: string;
   projectId: string;
   versionTag: string;
-  status: "PENDING" | "APPROVED" | "CHANGES_REQUESTED";
+  status: RCStatus;
   feedback?: string;
   createdAt: string;
 }

@@ -28,8 +28,13 @@ import { showNotification } from "../../store/slices/notificationSlice";
 import { CodeServerIframe } from "./CodeServerIframe";
 import { CreatePRModal } from "./CreatePRModal";
 
-export const WorkspacePage: React.FC = () => {
-  const { projectId = "demo-project-1" } = useParams<{ projectId: string }>();
+import { categorizeProjectMembers } from "../../utils/memberUtils";
+
+export const WorkspacePage = () => {
+  const { projectId = "demo-project-1", taskId } = useParams<{
+    projectId: string;
+    taskId?: string;
+  }>();
   const dispatch = useDispatch();
 
   // Conecta ao canal SSE do projeto para monitorar a presença e alertas em tempo real
@@ -42,7 +47,14 @@ export const WorkspacePage: React.FC = () => {
   const mergePRMutation = useMergePRMutation(projectId);
 
   const activeTask =
-    tasksList.find((t) => t.status === "IN_PROGRESS") || tasksList[0];
+    tasksList.find((t) => t.id === taskId) ||
+    tasksList.find((t) => t.status === "IN_PROGRESS") ||
+    tasksList[0];
+
+  const { allMembers, coAuthors, reviewers } = categorizeProjectMembers(
+    project?.members,
+  );
+
   const [isPRModalOpen, setIsPRModalOpen] = useState<boolean>(false);
 
   const activePR = pullRequests.find(
@@ -281,7 +293,10 @@ export const WorkspacePage: React.FC = () => {
         open={isPRModalOpen}
         onClose={() => setIsPRModalOpen(false)}
         projectId={projectId}
-        tasks={tasksList}
+        activeTask={activeTask}
+        allMembers={allMembers}
+        coAuthors={coAuthors}
+        reviewers={reviewers}
       />
     </Box>
   );

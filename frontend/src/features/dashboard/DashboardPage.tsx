@@ -4,8 +4,8 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArticleIcon from "@mui/icons-material/Article";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import LaunchIcon from "@mui/icons-material/Launch";
-import ScheduleIcon from "@mui/icons-material/Schedule";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import {
   Avatar,
   Box,
@@ -23,7 +23,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -42,9 +42,10 @@ import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateTaskModal } from "../workspace/CreateTaskModal";
 import { ReleaseCandidatesModal } from "../workspace/ReleaseCandidatesModal";
 
+import { Role } from "../../constants/roles";
 import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
 
-export const DashboardPage: React.FC = () => {
+export const DashboardPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -85,13 +86,7 @@ export const DashboardPage: React.FC = () => {
   const { data: articles = [] } = useUserArticlesQuery();
   const { data: pendingReviews } = usePendingReviews();
 
-  const activeProjectId = effectiveSelectedArticleId
-    ? effectiveSelectedArticleId === "art-2"
-      ? "demo-project-2"
-      : effectiveSelectedArticleId === "art-3"
-        ? "demo-project-3"
-        : effectiveSelectedArticleId
-    : projects?.[0]?.id || "";
+  const activeProjectId = effectiveSelectedArticleId || projects?.[0]?.id || "";
 
   const { data: currentProjectDetails } = useProjectDetails(activeProjectId);
 
@@ -111,12 +106,9 @@ export const DashboardPage: React.FC = () => {
           repo:
             currentProjectDetails.gitRepoPath ||
             `github.com/org/${currentProjectDetails.id.slice(0, 8)}`,
-          role: (currentProjectDetails.members?.[0]?.role === "REVIEWER"
+          role: (currentProjectDetails.members?.[0]?.role === Role.REVIEWER
             ? "Revisor de Par"
-            : currentProjectDetails.members?.[0]?.role === "CO_AUTHOR"
-              ? "Co-Autor"
-              : "Autor Principal") as
-            "Autor Principal" | "Co-Autor" | "Revisor de Par",
+            : "Autor") as "Autor" | "Revisor de Par",
           status:
             (currentProjectDetails as any).submissionStatus ||
             "RC-1 em Andamento",
@@ -160,9 +152,9 @@ export const DashboardPage: React.FC = () => {
             sx={{ fontWeight: 700 }}
           />
 
-          {(user?.role === "AUTHOR" ||
-            user?.role === "COORDINATOR" ||
-            user?.role === "ADMIN") && (
+          {(user?.role === Role.AUTHOR ||
+            user?.role === Role.COORDINATOR ||
+            user?.role === Role.ADMIN) && (
             <Button
               variant="contained"
               color="primary"
@@ -184,7 +176,7 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* Visão Adaptativa para o AUTOR (Navegação Despoluída em 2 Níveis - ADR-003) */}
-      {user?.role === "AUTHOR" && (
+      {user?.role === Role.AUTHOR && (
         <Box>
           {!selectedArticle ? (
             /* NIVEL 1: LISTA LIMPA DOS ARTIGOS DO AUTOR */
@@ -229,13 +221,7 @@ export const DashboardPage: React.FC = () => {
                         >
                           <Chip
                             label={article.role}
-                            color={
-                              article.role === "Autor Principal"
-                                ? "primary"
-                                : article.role === "Co-Autor"
-                                  ? "secondary"
-                                  : "default"
-                            }
+                            color="primary"
                             size="small"
                             sx={{ fontWeight: 700 }}
                           />
@@ -298,9 +284,7 @@ export const DashboardPage: React.FC = () => {
                             variant="determinate"
                             value={article.progress}
                             color={
-                              article.role === "Autor Principal"
-                                ? "primary"
-                                : "secondary"
+                              article.role === "Autor" ? "primary" : "secondary"
                             }
                             sx={{ height: 6, borderRadius: 1 }}
                           />
@@ -460,17 +444,9 @@ export const DashboardPage: React.FC = () => {
                         currentMembers.map((m: any) => {
                           const u = m.user || { name: "Membro", email: "" };
                           const roleColor =
-                            m.role === "REVIEWER"
-                              ? "secondary"
-                              : m.role === "CO_AUTHOR"
-                                ? "info"
-                                : "primary";
+                            m.role === Role.REVIEWER ? "secondary" : "primary";
                           const roleLabel =
-                            m.role === "REVIEWER"
-                              ? "Revisor"
-                              : m.role === "CO_AUTHOR"
-                                ? "Co-Autor"
-                                : "Autor";
+                            m.role === Role.REVIEWER ? "Revisor" : "Autor";
                           return (
                             <Chip
                               key={m.id || m.userId}

@@ -17,8 +17,9 @@ import {
   Typography,
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { Role } from "../../constants/roles";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useUserSearchQuery } from "../../hooks/useUserQueries";
 import { api } from "../../services/api";
@@ -32,16 +33,16 @@ interface AddMemberModalProps {
   onMemberAdded?: () => void;
 }
 
-export const AddMemberModal: React.FC<AddMemberModalProps> = ({
+export const AddMemberModal = ({
   open,
   onClose,
   projectId,
   onMemberAdded,
-}) => {
+}: AddMemberModalProps) => {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
 
-  const [role, setRole] = useState<"AUTHOR" | "REVIEWER">("AUTHOR");
+  const [role, setRole] = useState<Role>(Role.AUTHOR);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Busca de Usuários com Debounce
@@ -51,7 +52,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
     useUserSearchQuery(debouncedSearch);
   const [selectedUser, setSelectedUser] = useState<UserMemberItem | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedUser) {
       dispatch(
@@ -83,7 +84,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
       dispatch(
         showNotification({
           message: `${selectedUser.name} foi adicionado como ${
-            role === "REVIEWER" ? "Revisor" : "Co-Autor"
+            role === Role.REVIEWER ? "Revisor" : "Co-Autor"
           } com sucesso!`,
           severity: "success",
         }),
@@ -211,10 +212,12 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             <Select
               value={role}
               label="Papel no Artigo"
-              onChange={(e) => setRole(e.target.value as "AUTHOR" | "REVIEWER")}
+              onChange={(e) => setRole(e.target.value as Role)}
             >
-              <MenuItem value="AUTHOR">Co-Autor (AUTHOR)</MenuItem>
-              <MenuItem value="REVIEWER">Revisor de Par (REVIEWER)</MenuItem>
+              <MenuItem value={Role.AUTHOR}>Co-Autor (AUTHOR)</MenuItem>
+              <MenuItem value={Role.REVIEWER}>
+                Revisor de Par (REVIEWER)
+              </MenuItem>
             </Select>
           </FormControl>
         </Box>

@@ -53,6 +53,8 @@
 - [ ] Criar Dashboard do Revisor listando tarefas e PRs pendentes de avaliação.
 - [ ] Criar visualizador de Comparação Side-by-Side (Diff LaTeX + PDF Viewer embutido).
 - [ ] Criar Drawer de Comentários por linha e painel de **Registro do Parecer / NIT** (`APPROVED`, `CHANGES_REQUESTED`).
+- [ ] **3.3.4 Visão de Revisão entre Pares para Autores (`PEER_REVIEW`)**
+  - *Descrição*: Habilitar a tela de revisão (`/reviews`) para co-autores com papel `AUTHOR` avaliarem Pull Requests de seus pares atribuídos no modal com tipo `PEER_REVIEW`, reutilizando a interface side-by-side e o painel de apontamentos.
 
 ### 📊 3.4 Dashboards do Coordenador, Gerente & Pós-Submissão (Sprint 4 Frontend)
 - [ ] Criar Dashboard do Coordenador (Matriz de prazos das seções da equipe com badges coloridos 🟢/🟡/🔴).

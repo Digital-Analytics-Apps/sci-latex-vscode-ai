@@ -8,6 +8,8 @@ export const createPRSchema = z.object({
   description: z.string().optional(),
   taskId: z.string().optional(),
   reviewerId: z.string().optional(),
+  reviewerIds: z.array(z.string()).optional(),
+  reviewType: z.enum(["PEER_REVIEW", "TECHNICAL_REVIEW"]),
 });
 
 export type CreatePRFormData = z.infer<typeof createPRSchema>;
