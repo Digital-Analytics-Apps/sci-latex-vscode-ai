@@ -21,6 +21,7 @@ import {
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
+import { NITStatus } from "../../constants/status";
 import { useSubmitNITParecerMutation } from "../../hooks/useReviewQueries";
 import {
   type NITParecerFormData,
@@ -52,7 +53,7 @@ export const NITParecerModal: React.FC<NITParecerModalProps> = ({
   } = useForm<NITParecerFormData>({
     resolver: zodResolver(nitParecerSchema),
     defaultValues: {
-      nitStatus: "APPROVED_NIT",
+      nitStatus: NITStatus.APPROVED_NIT,
       nitNotes: "",
     },
   });
@@ -66,10 +67,10 @@ export const NITParecerModal: React.FC<NITParecerModalProps> = ({
       dispatch(
         showNotification({
           message:
-            data.nitStatus === "APPROVED_NIT"
+            data.nitStatus === NITStatus.APPROVED_NIT
               ? "Parecer do NIT registrado com APROVAÇÃO! O evento SSE liberou o botão de Merge para o Autor."
               : "Parecer do NIT registrado com REJEIÇÃO / Ajustes Solicitados.",
-          severity: data.nitStatus === "APPROVED_NIT" ? "success" : "warning",
+          severity: data.nitStatus === NITStatus.APPROVED_NIT ? "success" : "warning",
         }),
       );
       reset();
@@ -117,7 +118,7 @@ export const NITParecerModal: React.FC<NITParecerModalProps> = ({
               }
             >
               <FormControlLabel
-                value="APPROVED_NIT"
+                value={NITStatus.APPROVED_NIT}
                 control={<Radio color="success" />}
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -132,7 +133,7 @@ export const NITParecerModal: React.FC<NITParecerModalProps> = ({
                 }
               />
               <FormControlLabel
-                value="REJECTED_NIT"
+                value={NITStatus.REJECTED_NIT}
                 control={<Radio color="error" />}
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -175,12 +176,12 @@ export const NITParecerModal: React.FC<NITParecerModalProps> = ({
           <Button
             type="submit"
             variant="contained"
-            color={selectedStatus === "APPROVED_NIT" ? "success" : "error"}
+            color={selectedStatus === NITStatus.APPROVED_NIT ? "success" : "error"}
             disabled={submitNITMutation.isPending}
             startIcon={
               submitNITMutation.isPending ? (
                 <CircularProgress size={16} color="inherit" />
-              ) : selectedStatus === "APPROVED_NIT" ? (
+              ) : selectedStatus === NITStatus.APPROVED_NIT ? (
                 <CheckCircleIcon />
               ) : (
                 <CancelIcon />

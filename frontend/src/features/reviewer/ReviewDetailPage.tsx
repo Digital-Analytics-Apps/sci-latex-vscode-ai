@@ -24,6 +24,7 @@ import {
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
+import { NITStatus, PRStatus } from "../../constants/status";
 import {
   usePRDetails,
   useReviewPRMutation,
@@ -46,7 +47,7 @@ export const ReviewDetailPage: React.FC = () => {
   const [lineNumber, setLineNumber] = useState<string>("");
 
   const handleReview = async (
-    status?: "APPROVED" | "CHANGES_REQUESTED",
+    status?: typeof PRStatus.APPROVED | typeof PRStatus.CHANGES_REQUESTED,
     customComment?: string,
     lineNum?: number,
   ) => {
@@ -65,15 +66,15 @@ export const ReviewDetailPage: React.FC = () => {
       dispatch(
         showNotification({
           message:
-            status === "APPROVED"
+            status === PRStatus.APPROVED
               ? "Pull Request APROVADO com sucesso!"
-              : status === "CHANGES_REQUESTED"
+              : status === PRStatus.CHANGES_REQUESTED
                 ? "Ajustes solicitados ao Autor com sucesso!"
                 : "Comentário registrado com sucesso!",
           severity:
-            status === "APPROVED"
+            status === PRStatus.APPROVED
               ? "success"
-              : status === "CHANGES_REQUESTED"
+              : status === PRStatus.CHANGES_REQUESTED
                 ? "info"
                 : "success",
         }),
@@ -140,14 +141,14 @@ export const ReviewDetailPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "APPROVED":
-      case "APPROVED_NIT":
+      case PRStatus.APPROVED:
+      case NITStatus.APPROVED_NIT:
         return "success";
-      case "CHANGES_REQUESTED":
-      case "REJECTED_NIT":
+      case PRStatus.CHANGES_REQUESTED:
+      case NITStatus.REJECTED_NIT:
         return "error";
-      case "UNDER_REVIEW":
-      case "WAITING_NIT":
+      case PRStatus.UNDER_REVIEW:
+      case NITStatus.WAITING_NIT:
         return "warning";
       default:
         return "default";
@@ -246,7 +247,7 @@ export const ReviewDetailPage: React.FC = () => {
             size="small"
             startIcon={<CheckCircleIcon fontSize="small" />}
             disabled={reviewMutation.isPending}
-            onClick={() => handleReview("APPROVED")}
+            onClick={() => handleReview(PRStatus.APPROVED)}
           >
             Aprovar Seção
           </Button>

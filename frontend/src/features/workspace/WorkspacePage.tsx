@@ -15,7 +15,8 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
+import { PRStatus } from "../../constants/status";
 import { useTasksQuery } from "../../hooks/useTaskQueries";
 import {
   useMergePRMutation,
@@ -36,6 +37,7 @@ export const WorkspacePage = () => {
     taskId?: string;
   }>();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // Conecta ao canal SSE do projeto para monitorar a presença e alertas em tempo real
   useSSEEventSource(projectId);
@@ -64,31 +66,34 @@ export const WorkspacePage = () => {
 
   const canSaveProgress =
     !saveProgressMutation.isPending &&
-    activePR?.status !== "UNDER_REVIEW" &&
-    activePR?.status !== "MERGED";
-  const canSendForReview = !activePR || activePR.status === "DRAFT";
-  const canMerge = activePR?.status === "APPROVED";
+    activePR?.status !== PRStatus.UNDER_REVIEW &&
+    activePR?.status !== PRStatus.APPROVED &&
+    activePR?.status !== PRStatus.MERGED;
+  const canSendForReview = !activePR || activePR.status === PRStatus.DRAFT;
+  const canMerge = activePR?.status === PRStatus.APPROVED;
 
   const getSaveProgressTooltip = () => {
     if (saveProgressMutation.isPending) return "Salvando progresso...";
-    if (activePR?.status === "UNDER_REVIEW")
+    if (activePR?.status === PRStatus.UNDER_REVIEW)
       return "O artigo está sob revisão do Revisor. Edições bloqueadas.";
-    if (activePR?.status === "MERGED")
+    if (activePR?.status === PRStatus.APPROVED)
+      return "O Pull Request foi aprovado pelo Revisor. Clique em 'Realizar Merge' para integrar o trabalho.";
+    if (activePR?.status === PRStatus.MERGED)
       return "Esta tarefa já foi concluída e mesclada na dev.";
     return "Salva o progresso das suas edições no Git e mantém o Draft PR no GitHub";
   };
 
   const getSendReviewTooltip = () => {
-    if (activePR?.status === "UNDER_REVIEW") return "Sob análise do Revisor";
-    if (activePR?.status === "APPROVED") return "Revisão aprovada pelo Revisor";
-    if (activePR?.status === "MERGED") return "Mesclado na branch dev";
+    if (activePR?.status === PRStatus.UNDER_REVIEW) return "Sob análise do Revisor";
+    if (activePR?.status === PRStatus.APPROVED) return "Revisão aprovada pelo Revisor";
+    if (activePR?.status === PRStatus.MERGED) return "Mesclado na branch dev";
     return "Enviar para análise do Revisor (converte Draft em Ready for Review)";
   };
 
   const getMergeTooltip = () => {
     if (canMerge)
       return "Realizar o merge da tarefa aprovada na branch dev oficial";
-    if (activePR?.status === "MERGED")
+    if (activePR?.status === PRStatus.MERGED)
       return "Merge já foi realizado nesta tarefa";
     return "O merge fica disponível somente após a aprovação da revisão pelo Revisor";
   };
@@ -125,6 +130,7 @@ export const WorkspacePage = () => {
           severity: "success",
         }),
       );
+      navigate("/");
     } catch {
       dispatch(
         showNotification({
@@ -204,11 +210,11 @@ export const WorkspacePage = () => {
                 label={`PR: ${activePR.status}`}
                 size="small"
                 color={
-                  activePR.status === "APPROVED"
+                  activePR.status === PRStatus.APPROVED
                     ? "success"
-                    : activePR.status === "UNDER_REVIEW"
+                    : activePR.status === PRStatus.UNDER_REVIEW
                       ? "warning"
-                      : activePR.status === "MERGED"
+                      : activePR.status === PRStatus.MERGED
                         ? "info"
                         : "default"
                 }

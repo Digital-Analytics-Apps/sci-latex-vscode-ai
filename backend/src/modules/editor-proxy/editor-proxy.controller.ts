@@ -241,10 +241,10 @@ async function ensureGitRepositoryWorkspace(
 
 export class EditorProxyController {
   constructor(
-    private projectsRepository: IProjectsRepository = new PrismaProjectsRepository(),
-    private tasksRepository: ITasksRepository = new PrismaTasksRepository(),
-    private workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository(),
-    private k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
+    private readonly projectsRepository: IProjectsRepository = new PrismaProjectsRepository(),
+    private readonly tasksRepository: ITasksRepository = new PrismaTasksRepository(),
+    private readonly workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository(),
+    private readonly k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
   ) {}
 
   async handleProxy(request: FastifyRequest, reply: FastifyReply) {

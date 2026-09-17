@@ -3,6 +3,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArticleIcon from "@mui/icons-material/Article";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LaunchIcon from "@mui/icons-material/Launch";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -43,6 +44,7 @@ import { CreateTaskModal } from "../workspace/CreateTaskModal";
 import { ReleaseCandidatesModal } from "../workspace/ReleaseCandidatesModal";
 
 import { Role } from "../../constants/roles";
+import { NITStatus, TaskStatus } from "../../constants/status";
 import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
 
 export const DashboardPage = () => {
@@ -527,14 +529,20 @@ export const DashboardPage = () => {
                                   {task.title}
                                 </Typography>
                                 <Chip
-                                  label={task.status}
+                                  label={
+                                    task.status === TaskStatus.MERGED
+                                      ? "Concluída (Merged)"
+                                      : task.status
+                                  }
                                   size="small"
                                   color={
-                                    task.status === "IN_PROGRESS"
-                                      ? "primary"
-                                      : task.status === "CHANGES_REQUESTED"
-                                        ? "warning"
-                                        : "success"
+                                    task.status === TaskStatus.MERGED
+                                      ? "success"
+                                      : task.status === TaskStatus.IN_PROGRESS
+                                        ? "primary"
+                                        : task.status === TaskStatus.CHANGES_REQUESTED
+                                          ? "warning"
+                                          : "info"
                                   }
                                   sx={{ fontWeight: 700 }}
                                 />
@@ -584,15 +592,34 @@ export const DashboardPage = () => {
                                   </strong>
                                 </Typography>
                                 <Button
-                                  variant="contained"
-                                  color="primary"
+                                  variant={
+                                    task.status === TaskStatus.MERGED
+                                      ? "outlined"
+                                      : "contained"
+                                  }
+                                  color={
+                                    task.status === TaskStatus.MERGED
+                                      ? "inherit"
+                                      : "primary"
+                                  }
                                   size="small"
-                                  startIcon={<LaunchIcon />}
+                                  disabled={task.status === TaskStatus.MERGED}
+                                  startIcon={
+                                    task.status === TaskStatus.MERGED ? (
+                                      <CheckCircleIcon fontSize="small" />
+                                    ) : (
+                                      <LaunchIcon />
+                                    )
+                                  }
                                   onClick={() =>
-                                    navigate(`/workspace/${task.projectId}`)
+                                    navigate(
+                                      `/workspace/${task.projectId}/task/${task.id}`,
+                                    )
                                   }
                                 >
-                                  🚀 Iniciar Workspace
+                                  {task.status === TaskStatus.MERGED
+                                    ? "Tarefa Concluída"
+                                    : "🚀 Iniciar Workspace"}
                                 </Button>
                               </Box>
                             </CardContent>
@@ -662,9 +689,9 @@ export const DashboardPage = () => {
                               <Chip
                                 label={pr.nitStatus}
                                 color={
-                                  pr.nitStatus === "APPROVED_NIT"
+                                  pr.nitStatus === NITStatus.APPROVED_NIT
                                     ? "success"
-                                    : pr.nitStatus === "REJECTED_NIT"
+                                    : pr.nitStatus === NITStatus.REJECTED_NIT
                                       ? "error"
                                       : "warning"
                                 }
