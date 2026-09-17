@@ -5,6 +5,7 @@ import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { GitService } from '../../infra/git/git.service';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
@@ -16,11 +17,12 @@ export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
   const teamsRepository = new PrismaTeamsRepository();
   const gitService = new GitService();
+  const k8sPodManager = new K8sPodManagerService();
   const projectsService = new ProjectsService(projectsRepository, teamsRepository, gitService);
   const controller = new ProjectsController(projectsService);
 
   const prRepository = new PrismaPullRequestsRepository();
-  const prService = new PullRequestsService(prRepository, gitService);
+  const prService = new PullRequestsService(prRepository, gitService, k8sPodManager);
   const prController = new PullRequestsController(prService);
 
   // Exige autenticação JWT para todas as rotas de projetos

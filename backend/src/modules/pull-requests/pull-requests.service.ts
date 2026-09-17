@@ -6,12 +6,14 @@ import {
 import { eventsManager } from '../events/events.manager';
 import { logAudit } from '../../utils/audit';
 import { GitService } from '../../infra/git/git.service';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { prisma } from '../../db/prisma';
 
 export class PullRequestsService {
   constructor(
     private readonly prRepository: PrismaPullRequestsRepository,
-    private readonly gitService?: GitService
+    private readonly gitService?: GitService,
+    private readonly k8sPodManager?: K8sPodManagerService
   ) {}
 
   // Abertura de Pull Request pelo Autor
@@ -355,6 +357,24 @@ export class PullRequestsService {
       projectId: pr.projectId,
       mergedAt: mergedPR.mergedAt,
     });
+
+    // 3. Encerra o Pod K8s e limpa o PVC do projeto/usuário após a confirmação do merge com sucesso
+    if (this.k8sPodManager && pr.projectId) {
+      await this.k8sPodManager.releasePodForProject(pr.projectId).catch((err) => {
+        console.warn('⚠️ Warning releasing Pod on PR merge:', err.message || err);
+      });
+      await this.k8sPodManager.cleanProjectPVC(pr.projectId).catch((err) => {
+        console.warn('⚠️ Warning cleaning PVC on PR merge:', err.message || err);
+      });
+    }
+
+    // 4. Atualiza a tabela Workspace no banco para marcar status TERMINATED e limpar podName
+    await prisma.workspace
+      .updateMany({
+        where: { projectId: pr.projectId },
+        data: { status: 'TERMINATED', podName: null },
+      })
+      .catch(() => {});
 
     return mergedPR;
   }

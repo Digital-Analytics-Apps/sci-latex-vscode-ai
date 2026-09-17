@@ -7,11 +7,13 @@ import { PullRequestsService } from './pull-requests.service';
 import { PullRequestsController } from './pull-requests.controller';
 
 import { GitService } from '../../infra/git/git.service';
+import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 
 export async function pullRequestsRoutes(app: FastifyInstance) {
   const prRepository = new PrismaPullRequestsRepository();
   const gitService = new GitService();
-  const prService = new PullRequestsService(prRepository, gitService);
+  const k8sPodManager = new K8sPodManagerService();
+  const prService = new PullRequestsService(prRepository, gitService, k8sPodManager);
   const controller = new PullRequestsController(prService);
 
   app.addHook('onRequest', verifyJwt);
