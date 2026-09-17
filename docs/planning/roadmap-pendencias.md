@@ -39,27 +39,38 @@
 ## 🟣 Bloco 3: Desenvolvimento do Frontend ReactJS (Sprints 1 a 4)
 
 ### 🎨 3.1 Setup Base, Design System & Auth (Sprint 1 Frontend)
-- [ ] Criar projeto ReactJS + TypeScript + Vite com Redux Toolkit e TanStack Query.
-- [ ] Implementar Design System Base (`index.css`) com suporte a Dark Mode, botões, modais, cards e badges.
-- [ ] Implementar página de Login com autenticação JWT e hook `useSSEEventSource` para escutar notificações SSE.
+- [x] Criar projeto ReactJS + TypeScript + Vite com Redux Toolkit e TanStack Query.
+- [x] Implementar Design System Base (`index.css`) com suporte a Dark Mode, botões, modais, cards e badges.
+- [x] Implementar página de Login com autenticação JWT e hook `useSSEEventSource` para escutar notificações SSE.
 
 ### ✍️ 3.2 Dashboard do Autor, Onboarding "Spinning Up" & Iframe (Sprint 2 Frontend)
-- [ ] Criar Dashboard do Autor ("Minhas Tarefas") listando os cards de trabalho por projeto.
-- [ ] Criar tela de transição *Spinning Up Stepper* (exibindo passo-a-passo a prontidão do Pod no K8s antes de abrir o editor).
-- [ ] Criar componente `<CodeServerIframe />` integrado ao proxy Fastify `/api/v1/editor-proxy/app`.
-- [ ] Implementar Topbar do Workspace com botões *Salvar Progresso*, *Enviar p/ Revisão* e contador do prazo da tarefa.
+- [x] Criar Dashboard do Autor ("Minhas Tarefas") listando os cards de trabalho por projeto.
+- [x] Criar tela de transição *Spinning Up Stepper* (exibindo passo-a-passo a prontidão do Pod no K8s antes de abrir o editor).
+- [x] Criar componente `<CodeServerIframe />` integrado ao proxy Fastify `/api/v1/editor-proxy/app`.
+- [x] Implementar Topbar do Workspace com botões *Salvar Progresso*, *Enviar p/ Revisão* e contador do prazo da tarefa.
 
 ### 🔍 3.3 Dashboard do Revisor, Diff Side-by-Side & Registro NIT (Sprint 3 Frontend)
-- [ ] Criar Dashboard do Revisor listando tarefas e PRs pendentes de avaliação.
-- [ ] Criar visualizador de Comparação Side-by-Side (Diff LaTeX + PDF Viewer embutido).
-- [ ] Criar Drawer de Comentários por linha e painel de **Registro do Parecer / NIT** (`APPROVED`, `CHANGES_REQUESTED`).
-- [ ] **3.3.4 Visão de Revisão entre Pares para Autores (`PEER_REVIEW`)**
+- [x] Criar Dashboard do Revisor listando tarefas e PRs pendentes de avaliação.
+- [x] Criar visualizador de Comparação Side-by-Side (Diff LaTeX + PDF Viewer embutido).
+- [x] Criar Drawer de Comentários por linha e painel de **Registro do Parecer / NIT** (`APPROVED`, `CHANGES_REQUESTED`).
+- [x] **3.3.4 Visão de Revisão entre Pares para Autores (`PEER_REVIEW`)**
   - *Descrição*: Habilitar a tela de revisão (`/reviews`) para co-autores com papel `AUTHOR` avaliarem Pull Requests de seus pares atribuídos no modal com tipo `PEER_REVIEW`, reutilizando a interface side-by-side e o painel de apontamentos.
 
 ### 📊 3.4 Dashboards do Coordenador, Gerente & Pós-Submissão (Sprint 4 Frontend)
-- [ ] Criar Dashboard do Coordenador (Matriz de prazos das seções da equipe com badges coloridos 🟢/🟡/🔴).
-- [ ] Criar Dashboard do Gerente com filtro por Período Acadêmico e métricas globais da organização.
-- [ ] Criar modais pós-submissão para cadastro de DOI, links camera-ready e seleção de submissão backup / v2.
+- [x] Criar Dashboard do Coordenador (Matriz de prazos das seções da equipe com badges coloridos 🟢/🟡/🔴).
+- [x] Criar Dashboard do Gerente com filtro por Período Acadêmico e métricas globais da organização.
+- [x] Criar modais pós-submissão para cadastro de DOI, links camera-ready e seleção de submissão backup / v2.
+
+### 🏗️ 3.5 Camada Centralizada de Serviços e Padronização de Tipos & Constantes
+- [x] **Centralização dos Serviços HTTP em `src/services/`**:
+  - Encapsulamento completo de chamadas REST (`projectsService`, `managementService`, `tasksService`, `releasesService`, `articlesService`) separando requisições HTTP dos hooks do React Query (`useProjectQueries`, `useManagementQueries`, `useReviewQueries`).
+- [x] **Padronização de Constantes de Status & Roles em `src/constants/`**:
+  - `status.ts`: Definição centralizada de `TaskStatus`, `DeadlineStatus`, `PRStatus`, `NITStatus`, `ReleaseStatus`.
+  - `roles.ts`: Definição de `Role`, `ROLE_LABELS` e `SYSTEM_ROLES` garantindo conformidade com a biblioteca e eliminação de strings hardcoded.
+- [x] **Qualidade e Estilo de Código**:
+  - Ausência total de `React.FC` e arquivos de re-exportação barril (`index.ts`).
+  - Utilização de `as const` compatível com `erasableSyntaxOnly` (sem `enum`s do TypeScript).
+  - 0 avisos no ESLint e 0 erros no TypeScript (`npx tsc --noEmit`).
 
 ---
 

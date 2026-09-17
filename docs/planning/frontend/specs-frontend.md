@@ -14,18 +14,22 @@ O frontend é desenvolvido em **ReactJS + TypeScript**, utilizando **Redux Toolk
 src/
 ├── assets/                 # Logotipos, ícones e fontes
 ├── components/             # Componentes genéricos e reutilizáveis de UI (Button, Modal, Badge, Card, Table)
+│   └── common/             # Selectors e Cards modularizados (ReviewerSelector, ReviewTypeSelector, ActiveTaskCard)
+├── constants/              # Fontes únicas da verdade para tipos/enumerações (status.ts, roles.ts)
 ├── features/               # Módulos Funcionais e Telas por Domínio
 │   ├── auth/               # Página de Login e componente de Proteção de Rota (RBAC)
-│   ├── workspace/          # Workspace do Autor: Iframe code-server + Topbar de Ações + Status de Prazo
+│   ├── dashboard/          # Dashboard principal unificado com navegação por persona e seletor de projetos
+│   ├── workspace/          # Workspace do Autor: Iframe code-server + Topbar de Ações + Status de Prazo + Modais
 │   ├── reviewer/           # Dashboard do Revisor + Comparador Side-by-Side (Diff LaTeX + PDF Viewer) + Modal NIT
 │   ├── coordinator/        # Dashboard do Coordenador: Matriz de Prazos da Equipe + Gestão de Cronograma
 │   ├── manager/            # Dashboard do Gerente: Filtro de Período Acadêmico + Métricas Globais
 │   └── post-submission/    # Modais Pós-Submissão: DOI/Links Camera-Ready & Seleção v2 (Backup/Novo Congresso)
-├── hooks/                  # Hooks customizados (useAuth, useSSEEventSource, useIframeBridge)
-├── layouts/                # Layouts principais (DashboardLayout, WorkspaceLayout, AuthLayout)
+├── hooks/                  # Hooks customizados (useAuth, useSSEEventSource, useProjectQueries, useManagementQueries)
+├── layouts/                # Layouts principais (DashboardLayout, WorkspaceLayout, AuthLayout, RoleLayoutResolver)
 ├── routes/                 # Definição de rotas do React Router DOM
-├── services/               # Configuração do Axios/Fetch, SSE Client (/api/v1/events/stream) e API Endpoints
+├── services/               # Serviços REST centralizados (api, projectsService, managementService, tasksService, releasesService, articlesService)
 ├── store/                  # Redux Store Toolkit (slices: auth, ui, workspace, notifications)
+├── utils/                  # Utilitários puros (memberUtils)
 └── styles/                 # Estilos globais (Vanilla CSS / Design System Tokens)
 ```
 
@@ -37,8 +41,8 @@ src/
 | :--- | :--- | :--- |
 | `/login` | Pública | Tela de Login com autenticação JWT. |
 | `/workspace/:projectId/task/:taskId` | `AUTHOR` | Workspace de escrita: Iframe do `code-server` + Botões "Salvar Progresso" / "Enviar p/ Revisão" / "Realizar Merge". |
-| `/reviews` | `REVIEWER`, `COORDINATOR` | Dashboard de PRs pendentes para avaliação acadêmica. |
-| `/reviews/:prId` | `REVIEWER`, `COORDINATOR` | Tela de avaliação lado a lado: Diff LaTeX + PDF compilado + Painel de Registro Manual do NIT. |
+| `/reviews` | `REVIEWER`, `COORDINATOR`, `AUTHOR` | Dashboard de PRs pendentes para avaliação acadêmica (inclui modal `PEER_REVIEW`). |
+| `/reviews/:prId` | `REVIEWER`, `COORDINATOR`, `AUTHOR` | Tela de avaliação lado a lado: Diff LaTeX + PDF compilado + Painel de Registro Manual do NIT. |
 | `/coordinator` | `COORDINATOR`, `MANAGER` | Dashboard da Equipe: Tabela de papers, seções e prazos com indicadores coloridos (🟢/🟡/🔴). |
 | `/manager` | `MANAGER`, `ADMIN` | Dashboard executivo com filtro por **Período Acadêmico** (ex: *Ciclo 2026/2027*) e relatórios globais. |
 
@@ -88,25 +92,30 @@ export function useSSEEventSource() {
 ## 5. Backlog de Tarefas do Frontend (Divisão de Tarefas)
 
 ### 🎨 Sprint 1: Design System, Layouts, Auth & SSE Hook
-- [ ] Configurar projeto ReactJS + TypeScript + Vite.
-- [ ] Criar Design System base (`index.css`) com suporte a Dark Mode, cores HSL, botões, modais, badges e cards.
-- [ ] Implementar Redux Store + Slices (`authSlice`, `uiSlice`, `notificationSlice`).
-- [ ] Criar hook `useSSEEventSource` consumindo o stream `/api/v1/events/stream`.
-- [ ] Criar página de Login e componente de Rota Protegida com base nas *Roles*.
+- [x] Configurar projeto ReactJS + TypeScript + Vite.
+- [x] Criar Design System base (`index.css`) com suporte a Dark Mode, cores HSL, botões, modais, badges e cards.
+- [x] Implementar Redux Store + Slices (`authSlice`, `uiSlice`, `notificationSlice`).
+- [x] Criar hook `useSSEEventSource` consumindo o stream `/api/v1/events/stream`.
+- [x] Criar página de Login e componente de Rota Protegida com base nas *Roles*.
 
 ### ✍️ Sprint 2: Workspace do Autor & Iframe VS Code
-- [ ] Criar layout do Workspace do Autor (Topbar + Sidebar de Seções + Central Iframe).
-- [ ] Implementar componente `<CodeServerIframe />` integrado ao proxy Fastify.
-- [ ] Implementar botão "Salvar Progresso" (dispara mutação React Query para a API do Fastify).
-- [ ] Implementar botão "Enviar para Revisão" (Abre modal de abertura de PR).
+- [x] Criar layout do Workspace do Autor (Topbar + Sidebar de Seções + Central Iframe).
+- [x] Implementar componente `<CodeServerIframe />` integrado ao proxy Fastify.
+- [x] Implementar botão "Salvar Progresso" (dispara mutação React Query para a API do Fastify).
+- [x] Implementar botão "Enviar para Revisão" (Abre modal de abertura de PR com seletor de revisor e tipo `PEER_REVIEW` ou `FULL_REVIEW`).
 
 ### 🔍 Sprint 3: Dashboard de Revisão, Diff & Registro NIT
-- [ ] Criar Dashboard do Revisor (Cards de PRs pendentes).
-- [ ] Criar visualizador de Comparação Side-by-Side (Diff LaTeX no lado esquerdo + PDF Viewer no lado direito).
-- [ ] Criar painel de **Registro Manual do NIT** (Badge de status + Formulário de Input do parecer `APPROVED_NIT` / `REJECTED_NIT`).
-- [ ] Implementar estado destravado do botão **"Realizar Merge / Concluir Entrega"** no painel do Autor.
+- [x] Criar Dashboard do Revisor (Cards de PRs pendentes).
+- [x] Criar visualizador de Comparação Side-by-Side (Diff LaTeX no lado esquerdo + PDF Viewer no lado direito).
+- [x] Criar painel de **Registro Manual do NIT** (Badge de status + Formulário de Input do parecer `APPROVED_NIT` / `REJECTED_NIT`).
+- [x] Implementar estado destravado do botão **"Realizar Merge / Concluir Entrega"** no painel do Autor.
 
 ### 📊 Sprint 4: Dashboards do Coordenador, Gerente & Pós-Submissão
-- [ ] Criar Dashboard do Coordenador (Tabela de prazos das seções da equipe com indicadores 🟢/🟡/🔴 e modal de alteração de datas).
-- [ ] Criar Dashboard do Gerente (Dropdown de filtro de **Período Acadêmico** e gráficos/cards de métricas da equipe).
-- [ ] Criar modais pós-submissão (Cadastro de DOI/Links e Modal de Decisão dos Autores pós-rejeição).
+- [x] Criar Dashboard do Coordenador (Tabela de prazos das seções da equipe com indicadores 🟢/🟡/🔴 e modal de alteração de datas).
+- [x] Criar Dashboard do Gerente (Dropdown de filtro de **Período Acadêmico** e gráficos/cards de métricas da equipe).
+- [x] Criar modais pós-submissão (Cadastro de DOI/Links e Modal de Decisão dos Autores pós-rejeição).
+
+### 🏗️ Sprint 5: Refatoração da Camada de Serviços, Tipagem & Arquitetura
+- [x] **Camada de Serviços HTTP (`src/services/`)**: Centralização de `projectsService`, `managementService`, `tasksService`, `releasesService` e `articlesService`.
+- [x] **Constantes Globais (`src/constants/`)**: `status.ts` e `roles.ts` estruturados com `as const` (compatível com `erasableSyntaxOnly`).
+- [x] **Regras de Qualidade**: 0 warnings no ESLint e 0 erros no TypeScript. Componentes funcionais sem `React.FC` ou exportações barril (`index.ts`).
