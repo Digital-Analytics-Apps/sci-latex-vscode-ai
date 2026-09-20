@@ -23,6 +23,7 @@ import { editorProxyRoutes } from './modules/editor-proxy/editor-proxy.routes';
 import { tasksRoutes } from './modules/tasks/tasks.routes';
 import { releasesRoutes } from './modules/releases/releases.routes';
 import { usersRoutes } from './modules/users/users.routes';
+import { githubIntegrationRoutes } from './modules/github-integration/github-integration.routes';
 
 export async function buildApp() {
   const app = fastify({
@@ -124,6 +125,7 @@ export async function buildApp() {
   await app.register(tasksRoutes);
   await app.register(releasesRoutes);
   await app.register(usersRoutes, { prefix: '/api/v1/users' });
+  await app.register(githubIntegrationRoutes, { prefix: '/api/v1/github' });
 
   // Rota de Health Check
   app.get(
