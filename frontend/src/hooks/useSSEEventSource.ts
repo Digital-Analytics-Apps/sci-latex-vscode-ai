@@ -72,6 +72,14 @@ export function useSSEEventSource(projectId?: string) {
             }
 
             if (
+              eventName === "WORK_ITEM_UPDATED" ||
+              eventName === "PROJECT_ITEM_UPDATED" ||
+              chunk.includes("WORK_ITEM_UPDATED")
+            ) {
+              queryClient.invalidateQueries({ queryKey: ["tasks"] });
+              queryClient.invalidateQueries({ queryKey: ["work-items"] });
+              queryClient.invalidateQueries({ queryKey: ["projects"] });
+            } else if (
               eventName === "PDF_COMPILED" ||
               chunk.includes("PDF_COMPILED")
             ) {

@@ -8,6 +8,7 @@ import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/pr
 import { ITeamsRepository } from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';
 import { GitService } from '../../infra/git/git.service';
+import { githubIntegrationService } from '../github-integration/github-integration.service';
 
 export interface CreateProjectDTO {
   name: string;
@@ -88,6 +89,11 @@ export class ProjectsService {
       id: projectId,
       gitRepoPath,
       creatorId: userId,
+    });
+
+    // 2a. Automação GitHub-Native: Provisiona o repositório TeX, Project v2 e Work Items (Issues)
+    await githubIntegrationService.setupArticleGithubIntegration(projectId, data.name).catch((err) => {
+      console.warn(`⚠️ Warning initializing GitHub Project v2 integration for ${projectId}:`, err);
     });
 
     // 2b. Adicionar o criador do projeto como membro (Autor)
