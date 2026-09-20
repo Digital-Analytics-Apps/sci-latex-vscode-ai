@@ -9,6 +9,7 @@ import {
   PrismaProjectsRepository,
 } from '../../repositories/projects.repository';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
+import { prisma } from '../../db/prisma';
 import {
   IWorkspacesRepository,
   PrismaWorkspacesRepository,
@@ -359,9 +360,31 @@ export class EditorProxyService {
     if (params.branchName) {
       targetBranch = params.branchName;
     } else if (params.taskId) {
-      const task = await this.tasksRepository.findById(params.taskId).catch(() => null);
-      if (task?.branchName) {
-        targetBranch = task.branchName;
+      // 1a. Consulta primeiramente se o ID/número corresponde a um Work Item do GitHub (GithubIssueProjection)
+      const parsedBigInt = BigInt(params.taskId.replaceAll(/\D/g, '') || '-1');
+      const issueProj = await prisma.githubIssueProjection
+        .findFirst({
+          where: {
+            OR: [
+              { githubIssueId: parsedBigInt },
+              { issueNumber: Number.parseInt(params.taskId, 10) || -1 },
+            ],
+          },
+        })
+        .catch(() => null);
+
+      if (issueProj) {
+        const slug = issueProj.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 30);
+        targetBranch = `task/${issueProj.issueNumber}-${slug}`;
+      } else {
+        const task = await this.tasksRepository.findById(params.taskId).catch(() => null);
+        if (task?.branchName) {
+          targetBranch = task.branchName;
+        }
       }
     }
 

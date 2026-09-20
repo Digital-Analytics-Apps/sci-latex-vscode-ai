@@ -268,6 +268,35 @@ export class PullRequestsService {
       nitApprovedAt: data.nitApprovedAt ? new Date(data.nitApprovedAt) : undefined,
     });
 
+    // Registra o processo institucional completo do NIT no PostgreSQL
+    await prisma.nitProcess
+      .create({
+        data: {
+          articleId: pr.projectId,
+          githubPrNodeId: pr.id,
+          status: data.nitStatus,
+          sentAt: data.sentToNitAt ? new Date(data.sentToNitAt) : new Date(),
+          sentNotes: data.sentToNitNotes,
+          approvedAt: data.nitApprovedAt ? new Date(data.nitApprovedAt) : undefined,
+          responseNotes: data.nitNotes,
+        },
+      })
+      .catch((err) => console.warn('⚠️ Warning creating nitProcess record:', err));
+
+    // Sincroniza a projeção local do resumo do NIT no quadro do GitHub Project v2
+    const projectIntegration = await prisma.githubIntegration.findFirst({
+      where: { articleId: pr.projectId },
+    });
+
+    if (projectIntegration) {
+      await prisma.githubProjectItemProjection
+        .updateMany({
+          where: { githubProjectV2Id: projectIntegration.githubProjectV2Id },
+          data: { nitStatusValue: data.nitStatus, lastSyncedAt: new Date() },
+        })
+        .catch(() => {});
+    }
+
     // Registra na Timeline / AuditLog
     await logAudit({
       userId,
