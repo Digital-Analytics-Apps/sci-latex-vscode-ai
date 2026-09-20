@@ -10,11 +10,11 @@ interface CodeServerIframeProps {
   mode?: string;
 }
 
-export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
+export const CodeServerIframe = ({
   projectId,
   taskId,
   mode,
-}) => {
+}: CodeServerIframeProps) => {
   const token = useSelector((state: RootState) => state.auth.token);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 

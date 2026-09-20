@@ -14,6 +14,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Grid,
   LinearProgress,
   Paper,
@@ -32,12 +33,16 @@ import {
   useProjectsList,
 } from "../../hooks/useProjectQueries";
 import { usePendingReviews } from "../../hooks/useReviewQueries";
-import { useTasksQuery } from "../../hooks/useTaskQueries";
+import {
+  useActivateTaskWorkspaceMutation,
+  useTasksQuery,
+} from "../../hooks/useTaskQueries";
 import type { RootState } from "../../store";
 import {
   clearSelectedArticle,
   selectArticle,
 } from "../../store/slices/articleSlice";
+import { showNotification } from "../../store/slices/notificationSlice";
 import { AddMemberModal } from "../workspace/AddMemberModal";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateTaskModal } from "../workspace/CreateTaskModal";
@@ -55,6 +60,32 @@ export const DashboardPage = () => {
   const selectedArticleId = useSelector(
     (state: RootState) => state.article.selectedArticleId,
   );
+
+  const [provisioningTaskId, setProvisioningTaskId] = useState<string | null>(
+    null,
+  );
+  const activateWorkspaceMutation = useActivateTaskWorkspaceMutation(
+    selectedArticleId || "",
+  );
+
+  const handleStartWorkspace = async (task: any) => {
+    setProvisioningTaskId(task.id);
+    try {
+      await activateWorkspaceMutation.mutateAsync(task.id);
+      navigate(`/workspace/${task.projectId}/task/${task.id}`);
+    } catch (err: any) {
+      dispatch(
+        showNotification({
+          message:
+            err?.response?.data?.message ||
+            "Erro ao inicializar workspace no Pod.",
+          severity: "error",
+        }),
+      );
+    } finally {
+      setProvisioningTaskId(null);
+    }
+  };
 
   const [searchParams, setSearchParams] = useSearchParams();
   const urlArticleId = searchParams.get("articleId");
@@ -540,7 +571,8 @@ export const DashboardPage = () => {
                                       ? "success"
                                       : task.status === TaskStatus.IN_PROGRESS
                                         ? "primary"
-                                        : task.status === TaskStatus.CHANGES_REQUESTED
+                                        : task.status ===
+                                            TaskStatus.CHANGES_REQUESTED
                                           ? "warning"
                                           : "info"
                                   }
@@ -603,23 +635,29 @@ export const DashboardPage = () => {
                                       : "primary"
                                   }
                                   size="small"
-                                  disabled={task.status === TaskStatus.MERGED}
+                                  disabled={
+                                    task.status === TaskStatus.MERGED ||
+                                    provisioningTaskId === task.id
+                                  }
                                   startIcon={
-                                    task.status === TaskStatus.MERGED ? (
+                                    provisioningTaskId === task.id ? (
+                                      <CircularProgress
+                                        size={14}
+                                        color="inherit"
+                                      />
+                                    ) : task.status === TaskStatus.MERGED ? (
                                       <CheckCircleIcon fontSize="small" />
                                     ) : (
                                       <LaunchIcon />
                                     )
                                   }
-                                  onClick={() =>
-                                    navigate(
-                                      `/workspace/${task.projectId}/task/${task.id}`,
-                                    )
-                                  }
+                                  onClick={() => handleStartWorkspace(task)}
                                 >
                                   {task.status === TaskStatus.MERGED
                                     ? "Tarefa Concluída"
-                                    : "🚀 Iniciar Workspace"}
+                                    : provisioningTaskId === task.id
+                                      ? "⚡ Provisionando..."
+                                      : "🚀 Iniciar Workspace"}
                                 </Button>
                               </Box>
                             </CardContent>

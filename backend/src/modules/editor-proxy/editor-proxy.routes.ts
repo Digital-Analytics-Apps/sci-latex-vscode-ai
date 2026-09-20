@@ -1,5 +1,5 @@
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import httpProxy from '@fastify/http-proxy';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { EditorProxyController } from './editor-proxy.controller';

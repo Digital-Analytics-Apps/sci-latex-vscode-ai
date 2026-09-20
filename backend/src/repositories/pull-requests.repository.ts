@@ -29,6 +29,14 @@ export interface AddCommentData {
   comment: string;
 }
 
+export interface UpdateNITData {
+  nitStatus: NITStatus;
+  nitNotes?: string;
+  sentToNitAt?: Date | null;
+  sentToNitNotes?: string | null;
+  nitApprovedAt?: Date | null;
+}
+
 export class PrismaPullRequestsRepository {
   async create(data: CreatePRData): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.create({
@@ -80,16 +88,20 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async updateNITStatus(
-    id: string,
-    nitStatus: NITStatus,
-    nitNotes?: string
-  ): Promise<PullRequestWithRelations> {
+  async updateNITStatus(id: string, data: UpdateNITData): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.update({
       where: { id },
       data: {
-        nitStatus,
-        nitNotes,
+        nitStatus: data.nitStatus,
+        nitNotes: data.nitNotes,
+        sentToNitAt: data.sentToNitAt !== undefined ? data.sentToNitAt : undefined,
+        sentToNitNotes: data.sentToNitNotes !== undefined ? data.sentToNitNotes : undefined,
+        nitApprovedAt:
+          data.nitApprovedAt !== undefined
+            ? data.nitApprovedAt
+            : data.nitStatus === NITStatus.APPROVED_NIT
+              ? new Date()
+              : undefined,
       },
       include: prInclude,
     });

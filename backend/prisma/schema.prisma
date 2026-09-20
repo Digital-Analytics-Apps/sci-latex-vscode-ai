@@ -166,8 +166,11 @@ model PullRequest {
   description String?
   status      PRStatus @default(DRAFT)
 
-  nitStatus NITStatus @default(NOT_REQUIRED)
-  nitNotes  String?
+  nitStatus      NITStatus @default(NOT_REQUIRED)
+  nitNotes       String?
+  sentToNitAt    DateTime?
+  sentToNitNotes String?
+  nitApprovedAt  DateTime?
 
   taskId     String?
   authorId   String

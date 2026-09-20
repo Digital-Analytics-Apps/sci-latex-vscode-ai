@@ -64,7 +64,7 @@ Para proporcionar um ambiente de escrita acadêmica sem distrações:
 
 ### 2.4 Fonte Única da Verdade para Configurações do VS Code (Princípio DRY)
 
-Todas as configurações de ambiente do editor são mantidas exclusivamente em `docker/code-server/settings.json` e montadas diretamente no diretório global do usuário no container (`~/.local/share/code-server/User/settings.json`). O backend (`editor-proxy.controller.ts`) não gera mais arquivos `.vscode/settings.json` dinâmicos na workspace, eliminando duplicidades de código.
+Todas as configurações de ambiente do editor são mantidas exclusivamente em `docker/code-server/settings.json` e montadas diretamente no diretório global do usuário no container (`~/.local/share/code-server/User/settings.json`). O módulo `editor-proxy` é estruturado na arquitetura em camadas com `EditorProxyService` (`backend/src/modules/editor-proxy/editor-proxy.service.ts`), controlador enxuto e especificação `specs.md` na pasta do módulo. O provisionamento é exibido diretamente nos cards de tarefas do frontend (`"⚡ Provisionando..."`), eliminando telas HTML com recarregamento efêmero no iframe.
 
 ---
 

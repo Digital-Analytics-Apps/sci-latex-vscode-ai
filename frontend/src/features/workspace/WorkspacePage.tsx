@@ -13,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router";
 import { PRStatus } from "../../constants/status";
@@ -25,6 +25,7 @@ import {
   useSaveProgressMutation,
 } from "../../hooks/useProjectQueries";
 import { useSSEEventSource } from "../../hooks/useSSEEventSource";
+import { tasksService } from "../../services/tasksService";
 import { showNotification } from "../../store/slices/notificationSlice";
 import { CodeServerIframe } from "./CodeServerIframe";
 import { CreatePRModal } from "./CreatePRModal";
@@ -52,6 +53,29 @@ export const WorkspacePage = () => {
     tasksList.find((t) => t.id === taskId) ||
     tasksList.find((t) => t.status === "IN_PROGRESS") ||
     tasksList[0];
+
+  const targetTaskId = taskId || activeTask?.id;
+  const shouldProvision = Boolean(projectId && targetTaskId);
+  const [isProvisioning, setIsProvisioning] =
+    useState<boolean>(shouldProvision);
+
+  useEffect(() => {
+    if (!shouldProvision || !projectId || !targetTaskId) return;
+
+    let isSubscribed = true;
+    tasksService
+      .activateWorkspace(projectId, targetTaskId)
+      .catch(() => {})
+      .finally(() => {
+        if (isSubscribed) {
+          setIsProvisioning(false);
+        }
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [projectId, targetTaskId, shouldProvision]);
 
   const { allMembers, coAuthors, reviewers } = categorizeProjectMembers(
     project?.members,
@@ -84,8 +108,10 @@ export const WorkspacePage = () => {
   };
 
   const getSendReviewTooltip = () => {
-    if (activePR?.status === PRStatus.UNDER_REVIEW) return "Sob análise do Revisor";
-    if (activePR?.status === PRStatus.APPROVED) return "Revisão aprovada pelo Revisor";
+    if (activePR?.status === PRStatus.UNDER_REVIEW)
+      return "Sob análise do Revisor";
+    if (activePR?.status === PRStatus.APPROVED)
+      return "Revisão aprovada pelo Revisor";
     if (activePR?.status === PRStatus.MERGED) return "Mesclado na branch dev";
     return "Enviar para análise do Revisor (converte Draft em Ready for Review)";
   };
@@ -289,9 +315,32 @@ export const WorkspacePage = () => {
             height: "100%",
             width: "100%",
             overflow: "hidden",
+            position: "relative",
           }}
         >
-          <CodeServerIframe projectId={projectId} />
+          {isProvisioning ? (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                gap: 2,
+                bgcolor: "#0b0f17",
+              }}
+            >
+              <CircularProgress color="primary" size={36} />
+              <Typography variant="body2" color="text.secondary">
+                ⚡ Sincronizando repositório Git e verificando Pod Kubernetes...
+              </Typography>
+            </Box>
+          ) : (
+            <CodeServerIframe
+              projectId={projectId}
+              taskId={activeTask?.id || taskId}
+            />
+          )}
         </Box>
       </Box>
 

@@ -10,8 +10,8 @@
 
 - [x] **1.1 Atualização de Status `TERMINATED`/`DELETED` na Tabela `Workspace`**
   - *Descrição*: No `events.manager.ts` e no `k8s-pod-manager.service.ts`, garantido que ao encerrar ou destruir um Pod por timeout/deleção, o repositório `IWorkspacesRepository` atualiza o status no banco de dados para `TERMINATED` e limpa o `podName`.
-- [x] **1.2 Redirecionamento Sincronizado do Workspace**
-  - *Descrição*: Endpoint/controller `/api/v1/editor-proxy/app` registra `PROVISIONING` quando o Pod está subindo e `READY` apenas quando HTTP 200 no proxy reverso é confirmado, com tela de transição e auto-reload automático.
+- [x] **1.2 Redirecionamento Sincronizado e Refatoração do Módulo `editor-proxy`**
+  - *Descrição*: Refatorado o controlador `/api/v1/editor-proxy` para desacoplar a regra de negócio em `EditorProxyService`, criando a especificação `specs.md` no módulo. Removida a tela HTML de auto-reload interna do iframe; o frontend agora exibe feedback de carregamento no próprio card da tarefa (`"⚡ Provisionando..."`) enquanto o backend aguarda o status `READY`.
 - [x] **1.3 Fonte Única de Verdade de Configuração do VS Code (`settings.json`)**
   - *Descrição*: Centralização de 100% das configurações do editor em `docker/code-server/settings.json` (auto-build do TeX ao salvar, tema escuro, telemetria desativada), eliminando duplicidade de arquivos `.vscode/settings.json` na workspace.
 - [x] **1.4 Limpeza e `.gitignore` Estrito de Arquivos Temporários TeX**

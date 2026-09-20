@@ -15,11 +15,10 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { usePendingReviews } from "../../hooks/useReviewQueries";
 
-export const ReviewsListPage: React.FC = () => {
+export const ReviewsListPage = () => {
   const navigate = useNavigate();
   const { data: reviews = [], isLoading } = usePendingReviews();
 
@@ -76,6 +75,7 @@ export const ReviewsListPage: React.FC = () => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>ID PR</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Projeto</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Título & Seção</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Autor</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status do PR</TableCell>
@@ -88,7 +88,7 @@ export const ReviewsListPage: React.FC = () => {
               <TableBody>
                 {reviews.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                       <Typography variant="body2" color="text.secondary">
                         Nenhum Pull Request aguardando revisão no momento.
                       </Typography>
@@ -99,6 +99,15 @@ export const ReviewsListPage: React.FC = () => {
                     <TableRow key={pr.id} hover>
                       <TableCell sx={{ fontWeight: 700 }}>
                         #{pr.id.slice(0, 8)}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={pr.project?.name || "Projeto"}
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>

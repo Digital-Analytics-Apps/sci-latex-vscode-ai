@@ -20,6 +20,9 @@ export interface PullRequestDetail {
   description?: string;
   status: PRStatus;
   nitStatus: NITStatus;
+  sentToNitAt?: string;
+  sentToNitNotes?: string;
+  nitApprovedAt?: string;
   nitNotes?: string;
   taskId?: string;
   authorId: string;
@@ -29,6 +32,7 @@ export interface PullRequestDetail {
   author: { id: string; name: string; email: string };
   reviewer?: { id: string; name: string; email: string };
   task?: { id: string; title: string; branchName: string };
+  project?: { id: string; name: string };
   comments?: ReviewCommentItem[];
   diffContent?: string;
   pdfUrl?: string;
@@ -63,7 +67,10 @@ export function useReviewPRMutation(prId: string) {
 
   return useMutation({
     mutationFn: async (data: {
-      status?: typeof PRStatus.APPROVED | typeof PRStatus.CHANGES_REQUESTED | typeof PRStatus.UNDER_REVIEW;
+      status?:
+        | typeof PRStatus.APPROVED
+        | typeof PRStatus.CHANGES_REQUESTED
+        | typeof PRStatus.UNDER_REVIEW;
       comment?: string;
       lineNumer?: number;
     }) => {

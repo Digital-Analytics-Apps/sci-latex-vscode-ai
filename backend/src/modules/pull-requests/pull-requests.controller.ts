@@ -91,16 +91,25 @@ export class PullRequestsController {
       id: z.string(),
     });
     const bodySchema = z.object({
-      nitStatus: z.enum(['WAITING_NIT', 'APPROVED_NIT', 'REJECTED_NIT']),
-      nitNotes: z.string().optional(),
+      nitStatus: z.enum(['WAITING_NIT', 'APPROVED_NIT', 'REJECTED_NIT', 'NOT_REQUIRED']),
+      nitNotes: z.string().optional().nullable(),
+      sentToNitAt: z.string().optional().nullable(),
+      sentToNitNotes: z.string().optional().nullable(),
+      nitApprovedAt: z.string().optional().nullable(),
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { nitStatus, nitNotes } = bodySchema.parse(request.body);
+    const body = bodySchema.parse(request.body);
     const userId = request.user.sub;
 
     try {
-      const pr = await this.prService.updateNITStatus(id, userId, nitStatus as NITStatus, nitNotes);
+      const pr = await this.prService.updateNITStatus(id, userId, {
+        nitStatus: body.nitStatus as NITStatus,
+        nitNotes: body.nitNotes || undefined,
+        sentToNitAt: body.sentToNitAt || undefined,
+        sentToNitNotes: body.sentToNitNotes || undefined,
+        nitApprovedAt: body.nitApprovedAt || undefined,
+      });
       return reply.send({ pullRequest: pr });
     } catch (err: any) {
       if (err.message === 'PR_NOT_FOUND') {

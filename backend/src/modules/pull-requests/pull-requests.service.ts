@@ -245,12 +245,28 @@ export class PullRequestsService {
     return fullPR ?? updatedPR;
   }
 
-  // Registro Manual do Status do NIT (Núcleo de Inovação Tecnológica)
-  async updateNITStatus(prId: string, userId: string, nitStatus: NITStatus, nitNotes?: string) {
+  // Registro Manual do Status / Envio do NIT (Núcleo de Inovação Tecnológica)
+  async updateNITStatus(
+    prId: string,
+    userId: string,
+    data: {
+      nitStatus: NITStatus;
+      nitNotes?: string;
+      sentToNitAt?: string | Date;
+      sentToNitNotes?: string;
+      nitApprovedAt?: string | Date;
+    }
+  ) {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
 
-    const updatedPR = await this.prRepository.updateNITStatus(prId, nitStatus, nitNotes);
+    const updatedPR = await this.prRepository.updateNITStatus(prId, {
+      nitStatus: data.nitStatus,
+      nitNotes: data.nitNotes,
+      sentToNitAt: data.sentToNitAt ? new Date(data.sentToNitAt) : undefined,
+      sentToNitNotes: data.sentToNitNotes,
+      nitApprovedAt: data.nitApprovedAt ? new Date(data.nitApprovedAt) : undefined,
+    });
 
     // Registra na Timeline / AuditLog
     await logAudit({
@@ -258,13 +274,17 @@ export class PullRequestsService {
       action: 'NIT_STATUS_UPDATED',
       entityType: 'PullRequest',
       entityId: prId,
-      details: { nitStatus, nitNotes },
+      details: {
+        nitStatus: data.nitStatus,
+        nitNotes: data.nitNotes,
+        sentToNitNotes: data.sentToNitNotes,
+      },
     });
 
     // Emite notificação SSE
     eventsManager.broadcastToUser(pr.authorId, 'NIT_STATUS_UPDATED', {
       pullRequestId: prId,
-      nitStatus,
+      nitStatus: data.nitStatus,
     });
 
     return updatedPR;

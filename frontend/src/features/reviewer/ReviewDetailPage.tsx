@@ -21,7 +21,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { NITStatus, PRStatus } from "../../constants/status";
@@ -33,7 +33,7 @@ import { showNotification } from "../../store/slices/notificationSlice";
 import { CodeServerIframe } from "../workspace/CodeServerIframe";
 import { NITParecerModal } from "./NITParecerModal";
 
-export const ReviewDetailPage: React.FC = () => {
+export const ReviewDetailPage = () => {
   const { prId = "" } = useParams<{ prId: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -191,6 +191,16 @@ export const ReviewDetailPage: React.FC = () => {
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {prDetails.title}
           </Typography>
+
+          {prDetails.project?.name && (
+            <Chip
+              label={`Projeto: ${prDetails.project.name}`}
+              size="small"
+              color="secondary"
+              variant="filled"
+              sx={{ fontWeight: 600 }}
+            />
+          )}
 
           {prDetails.author && (
             <Chip
@@ -423,6 +433,11 @@ export const ReviewDetailPage: React.FC = () => {
         open={isNITModalOpen}
         onClose={() => setIsNITModalOpen(false)}
         pullRequestId={prId}
+        pdfUrl={prDetails?.pdfUrl}
+        currentNitStatus={prDetails?.nitStatus}
+        sentToNitAt={prDetails?.sentToNitAt}
+        sentToNitNotes={prDetails?.sentToNitNotes}
+        nitNotes={prDetails?.nitNotes}
       />
     </Box>
   );

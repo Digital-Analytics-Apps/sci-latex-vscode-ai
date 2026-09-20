@@ -1,4 +1,3 @@
-import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -10,7 +9,7 @@ import { ReviewsListPage } from "../features/reviewer/ReviewsListPage";
 import { WorkspacePage } from "../features/workspace/WorkspacePage";
 import { RoleLayoutResolver } from "../layouts/RoleLayoutResolver";
 
-export const AppRoutes: React.FC = () => {
+export const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -27,6 +26,14 @@ export const AppRoutes: React.FC = () => {
         />
         <Route
           path="/workspace/:projectId"
+          element={
+            <RoleLayoutResolver>
+              <WorkspacePage />
+            </RoleLayoutResolver>
+          }
+        />
+        <Route
+          path="/workspace/:projectId/task/:taskId"
           element={
             <RoleLayoutResolver>
               <WorkspacePage />

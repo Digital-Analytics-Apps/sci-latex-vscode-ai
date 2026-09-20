@@ -2,8 +2,8 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireManagerOrAdmin } from '../../middlewares/rbac.middleware';
-import { DashboardService } from './dashboard.service';
 import { DashboardController } from './dashboard.controller';
+import { DashboardService } from './dashboard.service';
 
 export async function dashboardRoutes(app: FastifyInstance) {
   const dashboardService = new DashboardService();
