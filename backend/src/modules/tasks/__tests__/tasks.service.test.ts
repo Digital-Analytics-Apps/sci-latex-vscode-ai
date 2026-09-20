@@ -7,6 +7,14 @@ vi.mock('../../../db/prisma', () => ({
     workspace: {
       upsert: vi.fn(),
     },
+    githubIntegration: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    githubIssueProjection: {
+      count: vi.fn().mockResolvedValue(0),
+      findMany: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn(),
+    },
   },
 }));
 
@@ -52,7 +60,9 @@ describe('TasksService (Unit Tests)', () => {
       updatedAt: new Date(),
     };
 
-    (mockTasksRepository.create as any).mockResolvedValue(mockTask);
+    (mockTasksRepository.create as any).mockImplementation((data: any) =>
+      Promise.resolve({ ...mockTask, ...data })
+    );
     (mockTasksRepository.update as any).mockImplementation((_id: string, data: any) =>
       Promise.resolve({ ...mockTask, ...data })
     );
@@ -64,7 +74,7 @@ describe('TasksService (Unit Tests)', () => {
     });
 
     expect(mockTasksRepository.create).toHaveBeenCalled();
-    expect(result.branchName).toBe('task/escrever-a-introducao-task-u');
+    expect(result.branchName).toBe('task/escrever-a-introducao-proj-1');
   });
 
   it('should list tasks for a project', async () => {

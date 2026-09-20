@@ -229,7 +229,7 @@ export function NITParecerModal({
                   {...register("sentToNitAt")}
                   error={Boolean(errors.sentToNitAt)}
                   helperText={errors.sentToNitAt?.message}
-                  SlotProps={{ inputLabel: { shrink: true } }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
               </Box>
 

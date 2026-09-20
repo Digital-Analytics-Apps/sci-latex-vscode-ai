@@ -37,28 +37,116 @@ export class TasksService {
 
   // 1. Criar nova Task associada ao autor
   async createTask(dto: CreateTaskDTO) {
+    const integration = await prisma.githubIntegration.findFirst({
+      where: { articleId: dto.projectId },
+    });
+
+    let issueNumber = 1;
+    if (integration) {
+      const count = await prisma.githubIssueProjection.count({
+        where: { githubRepositoryId: integration.githubRepositoryId },
+      });
+      issueNumber = count + 1;
+    }
+
+    const slug = dto.title
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 30)
+      .replace(/^-+|-+$/g, '');
+
+    const branchName = integration
+      ? `task/${issueNumber}-${slug || 'item'}`
+      : this.generateTaskBranchName(dto.title, dto.projectId);
+
     const task = await this.tasksRepository.create({
       projectId: dto.projectId,
       assignedToId: dto.assignedToId,
       title: dto.title,
-      branchName: 'pending',
+      branchName,
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
       status: 'NOT_STARTED',
     });
 
-    const branchName = this.generateTaskBranchName(dto.title, task.id);
+    if (integration) {
+      const fakeIssueId = BigInt(Date.now());
+      await prisma.githubIssueProjection.upsert({
+        where: { githubIssueId: fakeIssueId },
+        create: {
+          githubIssueId: fakeIssueId,
+          githubRepositoryId: integration.githubRepositoryId,
+          issueNumber,
+          title: dto.title,
+          state: 'open',
+          htmlUrl: `https://github.com/org/${integration.githubRepoName}/issues/${issueNumber}`,
+          updatedAt: new Date(),
+        },
+        update: {},
+      });
+    }
 
-    // Atualiza a Task com o nome final da branch
-    const updatedTask = await this.tasksRepository.update(task.id, {
-      branchName,
-    });
-
-    return updatedTask;
+    return task;
   }
 
   // 2. Listar tarefas do projeto
   async getTasksByProject(projectId: string, assignedToId?: string) {
-    return this.tasksRepository.findMany({ projectId, assignedToId });
+    const localTasks = await this.tasksRepository.findMany({ projectId, assignedToId });
+
+    const integration = await prisma.githubIntegration.findFirst({
+      where: { articleId: projectId },
+    });
+
+    if (integration) {
+      const issueProjections = await prisma.githubIssueProjection.findMany({
+        where: { githubRepositoryId: integration.githubRepositoryId },
+        orderBy: { issueNumber: 'asc' },
+      });
+
+      for (const issue of issueProjections) {
+        const slug = issue.title
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/[\s_]+/g, '-')
+          .replace(/-+/g, '-')
+          .slice(0, 30);
+        const branchName = `task/${issue.issueNumber}-${slug || 'item'}`;
+
+        const existing = localTasks.find(
+          (t) =>
+            t.branchName.includes(`task/${issue.issueNumber}-`) ||
+            t.title.trim().toLowerCase() === issue.title.trim().toLowerCase()
+        );
+
+        if (!existing) {
+          localTasks.push({
+            id: `github-issue-${issue.githubIssueId.toString()}`,
+            projectId,
+            assignedToId: assignedToId || '',
+            title: issue.title,
+            branchName,
+            status: issue.state === 'closed' ? 'MERGED' : 'IN_PROGRESS',
+            dueDate: undefined as any,
+            createdAt: issue.updatedAt,
+            updatedAt: issue.updatedAt,
+            assignee: {
+              id: 'github-user',
+              name: issue.assigneeGithubUsername || 'Membro Atribuído',
+              email: 'assigned@scilatex.org',
+            } as any,
+          } as any);
+        }
+      }
+    }
+
+    return localTasks;
   }
 
   // 3. Ativar/Iniciar o Workspace orientado a uma Task
