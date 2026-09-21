@@ -48,7 +48,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: npm run dev
+    command: sh -c "npx prisma generate && npm run dev"
     networks:
       - default
       - kind
