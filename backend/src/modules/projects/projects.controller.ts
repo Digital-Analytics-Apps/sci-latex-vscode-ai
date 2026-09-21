@@ -71,11 +71,16 @@ export class ProjectsController {
             'A variável GITHUB_TOKEN não foi configurada nas variáveis de ambiente (.env ou docker-compose.yml). É necessário fornecer um Token do GitHub para criar o repositório remoto.',
         });
       }
-      if (err.message?.includes('GITHUB_API_ERROR')) {
+      if (
+        err.message?.includes('GITHUB_API_ERROR') ||
+        err.status === 401 ||
+        err.statusCode === 401 ||
+        err.name === 'HttpError'
+      ) {
         return reply.status(502).send({
           statusCode: 502,
           error: 'Bad Gateway',
-          message: `Falha na API do GitHub ao criar repositório remoto: ${err.message}`,
+          message: `Falha na API do GitHub ao criar repositório remoto: ${err.message || 'Credenciais do GitHub inválidas ou sem permissão.'}`,
         });
       }
       throw err;
