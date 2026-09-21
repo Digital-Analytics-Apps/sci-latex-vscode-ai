@@ -8,7 +8,10 @@ import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/pr
 import { ITeamsRepository } from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';
 import { GitService } from '../../infra/git/git.service';
-import { githubIntegrationService } from '../github-integration/github-integration.service';
+import {
+  getGithubProvider,
+  githubIntegrationService,
+} from '../github-integration/github-integration.service';
 
 export interface CreateProjectDTO {
   name: string;
@@ -428,7 +431,7 @@ export class ProjectsService {
       }
 
       try {
-        await this.gitService.createDraftPullRequest({
+        const draftPrResult = await this.gitService.createDraftPullRequest({
           projectId,
           headBranch: branchName,
           baseBranch: 'dev',
@@ -440,6 +443,27 @@ export class ProjectsService {
           authorEmail: user?.email,
           authorRole: user?.role,
         });
+
+        if (draftPrResult?.nodeId) {
+          const integration = await prisma.githubIntegration
+            .findFirst({ where: { articleId: projectId } })
+            .catch(() => null);
+
+          if (
+            integration?.githubProjectV2Id &&
+            integration.githubProjectV2Id.startsWith('PVT_kw')
+          ) {
+            const provider = getGithubProvider();
+            await provider
+              .addIssueToProjectV2(integration.githubProjectV2Id, draftPrResult.nodeId)
+              .catch((err: any) =>
+                console.warn(
+                  `⚠️ Warning linking PR ${draftPrResult.number} to Project v2:`,
+                  err.message || err
+                )
+              );
+          }
+        }
       } catch (ghErr: any) {
         console.warn('⚠️ Warning creating remote GitHub draft PR:', ghErr.message || ghErr);
       }

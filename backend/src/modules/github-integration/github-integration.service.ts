@@ -5,10 +5,13 @@ import { LiveGithubProvider } from './live-github.provider';
 import { MockGithubProvider } from './mock-github.provider';
 
 export function getGithubProvider(): IGithubProvider {
-  if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
-    return new LiveGithubProvider();
+  if (env.NODE_ENV === 'test' && !env.GITHUB_TOKEN) {
+    return new MockGithubProvider();
   }
-  return new MockGithubProvider();
+  if (!env.GITHUB_TOKEN) {
+    throw new Error('GITHUB_TOKEN_REQUIRED: GITHUB_TOKEN é obrigatório fora do ambiente de teste.');
+  }
+  return new LiveGithubProvider();
 }
 
 export class GithubIntegrationService {

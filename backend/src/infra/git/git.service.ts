@@ -672,14 +672,20 @@ export class GitService {
     authorEmail?: string;
     authorRole?: string;
   }): Promise<{ number: number; htmlUrl: string; nodeId?: string }> {
-    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+    const isTestMode = env.NODE_ENV === 'test' && !env.GITHUB_TOKEN;
     const baseBranch = data.baseBranch || 'dev';
 
-    if (!isGitHubMode) {
+    if (isTestMode) {
       return {
         number: 1,
         htmlUrl: `http://localhost/mock-pr/${data.headBranch}`,
       };
+    }
+
+    if (!env.GITHUB_TOKEN) {
+      throw new Error(
+        'GITHUB_TOKEN_REQUIRED: GITHUB_TOKEN é obrigatório para operar com o GitHub.'
+      );
     }
 
     let owner = await this.getOwner();
@@ -701,9 +707,18 @@ export class GitService {
       .filter(Boolean)
       .join(' ');
 
+    let issueRef = '';
+    const issueMatch = data.headBranch.match(/^task\/(\d+)-/);
+    if (issueMatch) {
+      issueRef = `Resolves #${issueMatch[1]}`;
+    }
+
     let prBody = data.body || `Draft PR for ${data.headBranch}`;
     if (userMeta) {
       prBody = `👤 **Autor Original:** ${userMeta}\n\n${prBody}`;
+    }
+    if (issueRef && !prBody.includes(issueRef)) {
+      prBody = `${prBody}\n\n${issueRef}`;
     }
 
     try {

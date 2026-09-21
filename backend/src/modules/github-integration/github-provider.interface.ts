@@ -32,6 +32,7 @@ export interface IGithubProvider {
     fieldName: string,
     value: string
   ): Promise<void>;
+  addIssueToProjectV2(projectV2Id: string, contentNodeId: string): Promise<void>;
   createPullRequest(
     repositoryId: bigint,
     title: string,
