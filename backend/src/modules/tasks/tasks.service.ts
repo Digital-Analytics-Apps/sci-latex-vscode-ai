@@ -197,7 +197,46 @@ export class TasksService {
 
   // 3. Ativar/Iniciar o Workspace orientado a uma Task
   async startTaskWorkspace(projectId: string, taskId: string, userId: string) {
-    const task = await this.tasksRepository.findById(taskId);
+    let task = await this.tasksRepository.findById(taskId);
+
+    if (!task && taskId.startsWith('github-issue-')) {
+      const issueIdStr = taskId.replace('github-issue-', '');
+      try {
+        const issueProjection = await prisma.githubIssueProjection.findUnique({
+          where: { githubIssueId: BigInt(issueIdStr) },
+        });
+
+        if (issueProjection) {
+          const slug = issueProjection.title
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/[\s_]+/g, '-')
+            .replace(/-+/g, '-')
+            .slice(0, 30);
+          const branchName = `task/${issueProjection.issueNumber}-${slug || 'item'}`;
+
+          const localTasks = await this.tasksRepository.findMany({ projectId });
+          const existing = localTasks.find((t) => t.branchName === branchName);
+
+          if (existing) {
+            task = existing;
+          } else {
+            task = await this.tasksRepository.create({
+              projectId,
+              assignedToId: userId,
+              title: issueProjection.title,
+              branchName,
+              status: 'NOT_STARTED',
+            });
+          }
+        }
+      } catch (err) {
+        console.warn(`⚠️ Warning resolving virtual github issue ${taskId}:`, err);
+      }
+    }
 
     if (!task || task.projectId !== projectId) {
       throw new Error('TASK_NOT_FOUND: A tarefa especificada não foi encontrada no projeto.');
@@ -232,12 +271,12 @@ export class TasksService {
       create: {
         projectId,
         userId,
-        taskId,
+        taskId: task.id,
         podName: podResult.podName,
         status: 'READY',
       },
       update: {
-        taskId,
+        taskId: task.id,
         podName: podResult.podName,
         status: 'READY',
       },
@@ -245,7 +284,7 @@ export class TasksService {
 
     // Se o status da task ainda era NOT_STARTED, avança para IN_PROGRESS
     if (task.status === 'NOT_STARTED') {
-      await this.tasksRepository.update(taskId, {
+      task = await this.tasksRepository.update(task.id, {
         status: 'IN_PROGRESS',
       });
     }
