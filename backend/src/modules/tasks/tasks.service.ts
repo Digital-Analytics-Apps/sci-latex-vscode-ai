@@ -117,6 +117,17 @@ export class TasksService {
         orderBy: { issueNumber: 'asc' },
       });
 
+      const projectItemProjections = await prisma.githubProjectItemProjection.findMany({
+        where: { githubProjectV2Id: integration.githubProjectV2Id },
+      });
+
+      const itemStatusMap = new Map<string, string>();
+      for (const item of projectItemProjections) {
+        if (item.statusValue) {
+          itemStatusMap.set(item.githubIssueId.toString(), item.statusValue);
+        }
+      }
+
       for (const issue of issueProjections) {
         const slug = issue.title
           .normalize('NFD')
@@ -136,13 +147,34 @@ export class TasksService {
         );
 
         if (!existing) {
+          let status: any = 'NOT_STARTED';
+          if (issue.state === 'closed') {
+            status = 'MERGED';
+          } else {
+            const itemStatus = itemStatusMap.get(issue.githubIssueId.toString());
+            if (itemStatus) {
+              const lower = itemStatus.toLowerCase();
+              if (lower.includes('progress') || lower.includes('andamento')) {
+                status = 'IN_PROGRESS';
+              } else if (lower.includes('done') || lower.includes('concluid') || lower.includes('merged')) {
+                status = 'MERGED';
+              } else if (lower.includes('review')) {
+                status = 'UNDER_REVIEW';
+              } else {
+                status = 'NOT_STARTED';
+              }
+            } else {
+              status = 'NOT_STARTED';
+            }
+          }
+
           localTasks.push({
             id: `github-issue-${issue.githubIssueId.toString()}`,
             projectId,
             assignedToId: assignedToId || '',
             title: issue.title,
             branchName,
-            status: issue.state === 'closed' ? 'MERGED' : 'IN_PROGRESS',
+            status,
             dueDate: undefined as any,
             createdAt: issue.updatedAt,
             updatedAt: issue.updatedAt,
