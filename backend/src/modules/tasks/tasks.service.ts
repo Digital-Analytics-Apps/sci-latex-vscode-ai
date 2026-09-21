@@ -156,7 +156,11 @@ export class TasksService {
               const lower = itemStatus.toLowerCase();
               if (lower.includes('progress') || lower.includes('andamento')) {
                 status = 'IN_PROGRESS';
-              } else if (lower.includes('done') || lower.includes('concluid') || lower.includes('merged')) {
+              } else if (
+                lower.includes('done') ||
+                lower.includes('concluid') ||
+                lower.includes('merged')
+              ) {
                 status = 'MERGED';
               } else if (lower.includes('review')) {
                 status = 'UNDER_REVIEW';
