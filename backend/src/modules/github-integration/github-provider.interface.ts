@@ -33,6 +33,11 @@ export interface IGithubProvider {
     value: string
   ): Promise<void>;
   addIssueToProjectV2(projectV2Id: string, contentNodeId: string): Promise<void>;
+  updateIssueStatusInProjectV2(
+    projectV2Id: string,
+    issueNumber: number,
+    targetStatusName: 'In Progress' | 'Done' | 'Todo'
+  ): Promise<void>;
   createPullRequest(
     repositoryId: bigint,
     title: string,

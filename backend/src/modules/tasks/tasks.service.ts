@@ -4,7 +4,10 @@ import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { githubIntegrationService } from '../github-integration/github-integration.service';
+import {
+  getGithubProvider,
+  githubIntegrationService,
+} from '../github-integration/github-integration.service';
 
 export interface CreateTaskDTO {
   projectId: string;
@@ -287,6 +290,31 @@ export class TasksService {
       task = await this.tasksRepository.update(task.id, {
         status: 'IN_PROGRESS',
       });
+    }
+
+    // Atualiza o status da issue no GitHub Project v2 para "In Progress"
+    const integration = await prisma.githubIntegration
+      .findFirst({ where: { articleId: projectId } })
+      .catch(() => null);
+
+    if (integration?.githubProjectV2Id) {
+      const issueMatch = task.branchName.match(/^task\/(\d+)-/);
+      if (issueMatch) {
+        const issueNumber = Number.parseInt(issueMatch[1], 10);
+        try {
+          const provider = getGithubProvider();
+          await provider.updateIssueStatusInProjectV2(
+            integration.githubProjectV2Id,
+            issueNumber,
+            'In Progress'
+          );
+        } catch (err: any) {
+          console.warn(
+            `⚠️ Warning updating Project v2 issue #${issueNumber} status to In Progress:`,
+            err.message || err
+          );
+        }
+      }
     }
 
     const codeServerUrl = `${podResult.codeServerUrl}/?folder=/home/coder/project`;

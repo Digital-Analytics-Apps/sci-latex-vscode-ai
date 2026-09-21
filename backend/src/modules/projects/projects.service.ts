@@ -449,10 +449,7 @@ export class ProjectsService {
             .findFirst({ where: { articleId: projectId } })
             .catch(() => null);
 
-          if (
-            integration?.githubProjectV2Id &&
-            integration.githubProjectV2Id.startsWith('PVT_kw')
-          ) {
+          if (integration?.githubProjectV2Id?.startsWith('PVT_kw')) {
             const provider = getGithubProvider();
             await provider
               .addIssueToProjectV2(integration.githubProjectV2Id, draftPrResult.nodeId)
@@ -462,6 +459,23 @@ export class ProjectsService {
                   err.message || err
                 )
               );
+
+            const issueMatch = branchName.match(/^task\/(\d+)-/);
+            if (issueMatch) {
+              const issueNumber = Number.parseInt(issueMatch[1], 10);
+              await provider
+                .updateIssueStatusInProjectV2(
+                  integration.githubProjectV2Id,
+                  issueNumber,
+                  'In Progress'
+                )
+                .catch((err: any) =>
+                  console.warn(
+                    `⚠️ Warning updating issue #${issueNumber} status to In Progress:`,
+                    err.message || err
+                  )
+                );
+            }
           }
         }
       } catch (ghErr: any) {

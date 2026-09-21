@@ -72,6 +72,14 @@ export class MockGithubProvider implements IGithubProvider {
     // Mock no-op
   }
 
+  async updateIssueStatusInProjectV2(
+    _projectV2Id: string,
+    _issueNumber: number,
+    _targetStatusName: 'In Progress' | 'Done' | 'Todo'
+  ): Promise<void> {
+    // Mock no-op
+  }
+
   async createPullRequest(
     repositoryId: bigint,
     _title: string,

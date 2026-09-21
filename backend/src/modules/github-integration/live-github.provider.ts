@@ -175,6 +175,99 @@ export class LiveGithubProvider implements IGithubProvider {
     });
   }
 
+  async updateIssueStatusInProjectV2(
+    projectV2Id: string,
+    issueNumber: number,
+    targetStatusName: 'In Progress' | 'Done' | 'Todo'
+  ): Promise<void> {
+    if (!projectV2Id || !projectV2Id.startsWith('PVT_kw')) return;
+
+    try {
+      const octokit = this.getOctokit();
+      const query = `
+        query($projectId: ID!) {
+          node(id: $projectId) {
+            ... on ProjectV2 {
+              fields(first: 20) {
+                nodes {
+                  ... on ProjectV2SingleSelectField {
+                    id
+                    name
+                    options {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+              items(first: 50) {
+                nodes {
+                  id
+                  content {
+                    ... on Issue {
+                      number
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const data: any = await octokit.graphql(query, { projectId: projectV2Id });
+      const projectNode = data?.node;
+      if (!projectNode) return;
+
+      const fields = projectNode.fields?.nodes || [];
+      const statusField = fields.find(
+        (f: any) => f?.name === 'Status' || f?.options?.length > 0
+      );
+      if (!statusField) return;
+
+      const targetOption = statusField.options?.find(
+        (opt: any) => opt.name.toLowerCase() === targetStatusName.toLowerCase()
+      );
+      if (!targetOption) return;
+
+      const items = projectNode.items?.nodes || [];
+      const targetItem = items.find(
+        (item: any) => item?.content?.number === issueNumber
+      );
+      if (!targetItem) return;
+
+      const mutation = `
+        mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $singleSelectOptionId: String!) {
+          updateProjectV2ItemFieldValue(
+            input: {
+              projectId: $projectId
+              itemId: $itemId
+              fieldId: $fieldId
+              value: {
+                singleSelectOptionId: $singleSelectOptionId
+              }
+            }
+          ) {
+            projectV2Item {
+              id
+            }
+          }
+        }
+      `;
+
+      await octokit.graphql(mutation, {
+        projectId: projectV2Id,
+        itemId: targetItem.id,
+        fieldId: statusField.id,
+        singleSelectOptionId: targetOption.id,
+      });
+
+      console.log(`✅ GitHub Project v2 Issue #${issueNumber} status updated to "${targetStatusName}"`);
+    } catch (err: any) {
+      console.warn(`⚠️ Warning updating Project v2 status for issue #${issueNumber}:`, err.message || err);
+    }
+  }
+
   async createWorkItemIssue(
     repositoryId: bigint,
     title: string,
