@@ -34,6 +34,7 @@ export class TasksController {
       const tasks = await this.service.getTasksByProject(projectId, assignedToId);
       return reply.send({ tasks });
     } catch (err: any) {
+      console.error('❌ GET /projects/:projectId/tasks error:', err);
       return reply.status(500).send({ error: 'GET_TASKS_FAILED', message: err.message });
     }
   }

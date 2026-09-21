@@ -87,12 +87,20 @@ export class LiveGithubProvider implements IGithubProvider {
           title,
           body: `Work Item gerado automaticamente pelo SCI-LaTeX para a escrita do artigo "${params.articleName}".`,
         });
+
         initialIssues.push({
           issueId: BigInt(issueRes.data.id),
           issueNumber: issueRes.data.number,
           title: issueRes.data.title,
           htmlUrl: issueRes.data.html_url,
         });
+
+        // Adicionar o item (Issue) ao Quadro Project v2 no GitHub
+        if (projectV2Id && projectV2Id.startsWith('PVT_kw')) {
+          await this.addIssueToProjectV2(projectV2Id, issueRes.data.node_id).catch((err) =>
+            console.warn(`⚠️ Warning linking issue #${issueRes.data.number} to Project v2:`, err.message || err)
+          );
+        }
       } catch (issueErr: any) {
         console.warn(
           `⚠️ Warning creating issue "${title}" on GitHub:`,
@@ -124,18 +132,42 @@ export class LiveGithubProvider implements IGithubProvider {
           createProjectV2(input: {ownerId: $ownerId, title: $title}) {
             projectV2 {
               id
+              url
             }
           }
         }
       `;
       const response: any = await octokit.graphql(query, {
         ownerId: userRes.data.node_id,
-        title: `Project: ${title}`,
+        title: `Paper: ${title}`,
       });
-      return response?.createProjectV2?.projectV2?.id || `PVT_${repositoryId}`;
-    } catch {
+      const projectV2Id = response?.createProjectV2?.projectV2?.id;
+      if (projectV2Id) {
+        console.log(`✅ GitHub Project v2 created successfully: ${projectV2Id} (${response?.createProjectV2?.projectV2?.url})`);
+        return projectV2Id;
+      }
+      return `PVT_${repositoryId}`;
+    } catch (err: any) {
+      console.warn('⚠️ Could not create GitHub Project v2 board via GraphQL:', err.message || err);
       return `PVT_${repositoryId}_${title.slice(0, 8)}`;
     }
+  }
+
+  async addIssueToProjectV2(projectV2Id: string, issueNodeId: string): Promise<void> {
+    const octokit = this.getOctokit();
+    const query = `
+      mutation($projectId: ID!, $contentId: ID!) {
+        addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+          item {
+            id
+          }
+        }
+      }
+    `;
+    await octokit.graphql(query, {
+      projectId: projectV2Id,
+      contentId: issueNodeId,
+    });
   }
 
   async createWorkItemIssue(

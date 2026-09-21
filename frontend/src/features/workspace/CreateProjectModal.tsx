@@ -138,21 +138,16 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       if (onArticleCreated) {
         onArticleCreated(newId);
       }
-    } catch {
+    } catch (err: any) {
       dispatch(
         showNotification({
-          message: `Novo artigo científico "${data.name}" criado com sucesso! Redirecionando para as tarefas...`,
-          severity: "success",
+          message:
+            err?.response?.data?.message ||
+            err?.message ||
+            "Erro ao criar artigo científico. Tente novamente.",
+          severity: "error",
         }),
       );
-      reset();
-      setActiveStep(0);
-      setSelectedCoAuthors([]);
-      setSelectedReviewer(null);
-      onClose();
-      if (onArticleCreated) {
-        onArticleCreated("art-1");
-      }
     }
   };
 

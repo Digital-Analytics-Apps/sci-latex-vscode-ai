@@ -169,7 +169,9 @@ export class GitService {
         remoteUrl = `https://github.com/${owner}/${repoName}.git`;
       } catch (error: any) {
         console.error('❌ Error creating GitHub repository via Octokit:', error.message || error);
-        throw new Error(`GITHUB_API_ERROR: ${error.message || 'Falha ao conectar à API do GitHub'}`);
+        throw new Error(
+          `GITHUB_API_ERROR: ${error.message || 'Falha ao conectar à API do GitHub'}`
+        );
       }
     } else {
       // Modo exclusivo para suíte de testes automatizados sem rede
