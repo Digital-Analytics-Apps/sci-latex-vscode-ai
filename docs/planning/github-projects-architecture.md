@@ -102,6 +102,8 @@ SCI-LaTeX Article
 O GitHub Projects v2 referencia Issues e Pull Requests e fornece campos próprios de planejamento. É importante notar que **não existe uma sincronização bidirecional genérica de todos os campos via uma única chamada de API**:
 * **Propriedades da Issue / PR** (ex: `assignees`, `labels`, `milestone`, `repository`): Pertencem diretamente ao objeto Issue/PR. Sua alteração exige as mutations ou endpoints GraphQL/REST específicos da Issue/PR (`addAssigneesToAssignable`, `addLabelsToLabelable`, etc.).
 * **Campos do Project v2** (ex: `Status`, `Iteration`, `Custom Fields`): Pertencem ao item dentro do Project v2. Suas alterações exigem a mutation `updateProjectV2ItemFieldValue`.
+* **Sincronização de Transições de Trabalho**: Quando um autor clica em *"Iniciar Workspace"* ou comita o progresso de uma tarefa, o backend invoca `updateIssueStatusInProjectV2` via GraphQL, alterando o valor do campo `Status` no quadro Project v2 do GitHub de `Todo` para `In Progress`.
+* **Vinculação em Seção Development**: O corpo do Draft PR contém a diretiva `Resolves #<issueNumber>`, garantindo que o GitHub associe o PR à Issue e ao bloco *Development* automaticamente.
 
 ---
 

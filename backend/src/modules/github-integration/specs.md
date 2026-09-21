@@ -17,12 +17,13 @@ O módulo `github-integration` é o responsável por orquestrar toda a comunica�
 2. **Open/Closed Principle (OCP)** & **Dependency Inversion Principle (DIP)**:
    - `IGithubProvider` define o contrato de integração com o GitHub.
    - Suporte a dois provedores plugáveis sem alterar a regra de negócio:
-     - `LiveOctokitGithubProvider`: Comunicação real via API REST/GraphQL do GitHub.
-     - `MockGithubProvider`: Emulação determinística para ambiente de testes e desenvolvimento local offline.
+     - `LiveGithubProvider`: Comunicação real via API REST/GraphQL do GitHub (utilizado estritamente em ambiente de dev/prod quando `GITHUB_TOKEN` está presente). Lança `GITHUB_TOKEN_REQUIRED` se o token estiver ausente em ambiente de execução.
+     - `MockGithubProvider`: Reservado exclusivamente para execução da suíte de testes unitários (`NODE_ENV === 'test'`). Sem fallbacks silenciosos para mock em produção.
 
 3. **Don't Repeat Yourself (DRY)**:
    - Utilitário centralizado de verificação de assinatura HMAC.
    - Mapeamentos reutilizáveis de status do Project v2 (`NOT_REQUIRED`, `WAITING_NIT`, `APPROVED_NIT`, `REJECTED_NIT`).
+   - Sincronização automatizada de status do Project v2 (`updateIssueStatusInProjectV2`) e vinculação de PRs em seções de *Development* (`Resolves #<issueNumber>`).
 
 ---
 
@@ -39,7 +40,12 @@ export interface CreateArticleGithubRepositoryResult {
   githubRepositoryId: bigint;
   githubRepoName: string;
   githubProjectV2Id: string;
-  initialIssueIds: bigint[];
+  initialIssues: Array<{
+    issueId: bigint;
+    issueNumber: number;
+    title: string;
+    htmlUrl: string;
+  }>;
 }
 
 export interface IGithubProvider {
@@ -47,6 +53,8 @@ export interface IGithubProvider {
   createProjectV2Board(repositoryId: bigint, title: string): Promise<string>;
   createWorkItemIssue(repositoryId: bigint, title: string, body?: string): Promise<{ issueId: bigint; issueNumber: number; htmlUrl: string }>;
   updateProjectV2CustomField(projectV2Id: string, itemId: string, fieldName: string, value: string): Promise<void>;
+  addIssueToProjectV2(projectV2Id: string, contentNodeId: string): Promise<void>;
+  updateIssueStatusInProjectV2(projectV2Id: string, issueNumber: number, targetStatusName: 'In Progress' | 'Done' | 'Todo'): Promise<void>;
   createPullRequest(repositoryId: bigint, title: string, headBranch: string, baseBranch: string): Promise<{ prNodeId: string; prNumber: number }>;
   mergePullRequest(repositoryId: bigint, prNumber: number): Promise<void>;
 }

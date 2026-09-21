@@ -124,6 +124,9 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
 
 1. **Salvar Progresso (`DRAFT` / `CHANGES_REQUESTED`)**:
    - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da tarefa (`task/<slug>-<shortHash>`) e gera/mantém o **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
+   - **Vinculação Automática com Issue & Project v2**: O corpo do PR inclui a instrução `Resolves #<issueNumber>`, vinculando automaticamente o PR à Issue na seção *Development* do GitHub. Adicionalmente, executa a mutation `addProjectV2ItemById` (vinculando o PR ao quadro Project v2) e `updateProjectV2ItemFieldValue` (garantindo que o status no quadro esteja como `In Progress`).
+   - **Materialização Sob Demanda**: Ao iniciar um workspace para uma projeção sintética (`github-issue-*`), o backend materializa dinamicamente a entidade `Task` no PostgreSQL, mantendo consistência relacional com a tabela `Workspace`.
+   - **Resiliência a Falhas de API (`502 Bad Gateway`)**: Erros de comunicação com a API do GitHub são mapeados para HTTP 502 (Bad Gateway), evitando que interceptores de autenticação no frontend confundam falhas de integração com expiracão de token (`401 Unauthorized`).
    - **Regra de Habilitação**: Habilitado enquanto o PR estiver em rascunho (`DRAFT`) ou em ajuste (`CHANGES_REQUESTED`).
 
 2. **Enviar p/ Revisão (`UNDER_REVIEW`)**:
