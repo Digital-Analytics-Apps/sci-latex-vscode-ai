@@ -96,9 +96,12 @@ export class LiveGithubProvider implements IGithubProvider {
         });
 
         // Adicionar o item (Issue) ao Quadro Project v2 no GitHub
-        if (projectV2Id && projectV2Id.startsWith('PVT_kw')) {
+        if (projectV2Id?.startsWith('PVT_kw')) {
           await this.addIssueToProjectV2(projectV2Id, issueRes.data.node_id).catch((err) =>
-            console.warn(`⚠️ Warning linking issue #${issueRes.data.number} to Project v2:`, err.message || err)
+            console.warn(
+              `⚠️ Warning linking issue #${issueRes.data.number} to Project v2:`,
+              err.message || err
+            )
           );
         }
       } catch (issueErr: any) {
@@ -143,7 +146,9 @@ export class LiveGithubProvider implements IGithubProvider {
       });
       const projectV2Id = response?.createProjectV2?.projectV2?.id;
       if (projectV2Id) {
-        console.log(`✅ GitHub Project v2 created successfully: ${projectV2Id} (${response?.createProjectV2?.projectV2?.url})`);
+        console.log(
+          `✅ GitHub Project v2 created successfully: ${projectV2Id} (${response?.createProjectV2?.projectV2?.url})`
+        );
         return projectV2Id;
       }
       return `PVT_${repositoryId}`;

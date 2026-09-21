@@ -10,6 +10,9 @@ vi.mock('../../../db/prisma', () => ({
     githubIntegration: {
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    project: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
     githubIssueProjection: {
       count: vi.fn().mockResolvedValue(0),
       findMany: vi.fn().mockResolvedValue([]),

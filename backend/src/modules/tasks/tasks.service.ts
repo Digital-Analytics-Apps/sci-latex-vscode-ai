@@ -1,9 +1,10 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
+import { githubIntegrationService } from '../github-integration/github-integration.service';
 
 export interface CreateTaskDTO {
   projectId: string;
@@ -97,9 +98,18 @@ export class TasksService {
   async getTasksByProject(projectId: string, assignedToId?: string) {
     const localTasks = await this.tasksRepository.findMany({ projectId, assignedToId });
 
-    const integration = await prisma.githubIntegration.findFirst({
+    let integration = await prisma.githubIntegration.findFirst({
       where: { articleId: projectId },
     });
+
+    if (!integration) {
+      const project = await prisma.project.findUnique({ where: { id: projectId } });
+      if (project) {
+        integration = await githubIntegrationService
+          .setupArticleGithubIntegration(projectId, project.name)
+          .catch(() => null);
+      }
+    }
 
     if (integration) {
       const issueProjections = await prisma.githubIssueProjection.findMany({
@@ -119,7 +129,7 @@ export class TasksService {
           .slice(0, 30);
         const branchName = `task/${issue.issueNumber}-${slug || 'item'}`;
 
-        const existing = localTasks.find(
+        const existing = localTasks.some(
           (t) =>
             t.branchName.includes(`task/${issue.issueNumber}-`) ||
             t.title.trim().toLowerCase() === issue.title.trim().toLowerCase()
