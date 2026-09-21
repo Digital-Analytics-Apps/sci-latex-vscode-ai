@@ -1,9 +1,18 @@
+import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { IGithubProvider } from './github-provider.interface';
+import { LiveGithubProvider } from './live-github.provider';
 import { MockGithubProvider } from './mock-github.provider';
 
+export function getGithubProvider(): IGithubProvider {
+  if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
+    return new LiveGithubProvider();
+  }
+  return new MockGithubProvider();
+}
+
 export class GithubIntegrationService {
-  constructor(private readonly provider: IGithubProvider = new MockGithubProvider()) {}
+  constructor(private readonly provider: IGithubProvider = getGithubProvider()) {}
 
   /**
    * Configura o repositório, Project v2 e Work Items no GitHub para um Artigo TeX
