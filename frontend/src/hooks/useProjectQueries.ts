@@ -26,6 +26,19 @@ export function useProjectDetails(projectId: string) {
   });
 }
 
+// Hook para obter o resumo acadêmico de alterações no rascunho
+export function useTaskDiffSummary(
+  projectId: string,
+  taskId?: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["task-diff-summary", projectId, taskId],
+    queryFn: () => projectsService.getTaskDiffSummary(projectId, taskId!),
+    enabled: Boolean(projectId && taskId && enabled),
+  });
+}
+
 // Mutação para Salvar Progresso (Commit Silencioso do Autor via Service Token)
 export function useSaveProgressMutation(projectId: string) {
   const queryClient = useQueryClient();

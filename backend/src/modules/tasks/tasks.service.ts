@@ -1,13 +1,18 @@
+import { exec } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
-import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
+import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
+import { editorProxyService } from '../editor-proxy/editor-proxy.service';
 import {
   getGithubProvider,
   githubIntegrationService,
 } from '../github-integration/github-integration.service';
+
+const execAsync = promisify(exec);
 
 export interface CreateTaskDTO {
   projectId: string;
@@ -245,43 +250,80 @@ export class TasksService {
       throw new Error('TASK_NOT_FOUND: A tarefa especificada não foi encontrada no projeto.');
     }
 
-    // Garante a existência do diretório do repositório no host para o usuário
+    // Garante a existência do repositório base do projeto
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
     const projectBaseDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
-    const userWorkspaceDir = path.resolve(env.STORAGE_PATH, 'projects', projectId, 'users', userId);
-    await fs.mkdir(userWorkspaceDir, { recursive: true, mode: 0o777 });
+    await fs.mkdir(projectBaseDir, { recursive: true, mode: 0o777 });
 
-    const userMainTex = path.join(userWorkspaceDir, 'main.tex');
-    const hasUserFiles = await fs
-      .access(userMainTex)
-      .then(() => true)
-      .catch(() => false);
-    if (
-      !hasUserFiles &&
-      (await fs
-        .access(projectBaseDir)
+    // Invariante 5: Se task.branchName não existir no repositório base do projeto, cria a partir do SHA explícito de dev
+    try {
+      const gitDir = path.join(projectBaseDir, '.git');
+      const hasGit = await fs
+        .access(gitDir)
         .then(() => true)
-        .catch(() => false))
-    ) {
-      await fs.cp(projectBaseDir, userWorkspaceDir, { recursive: true }).catch(() => {});
+        .catch(() => false);
+      if (hasGit) {
+        const branchCheck = await execAsync(
+          `git -C "${projectBaseDir}" rev-parse --verify "${task.branchName}"`
+        ).catch(() => null);
+
+        if (!branchCheck) {
+          const devShaRes = await execAsync(`git -C "${projectBaseDir}" rev-parse dev`).catch(
+            () => null
+          );
+          const devSha = devShaRes?.stdout?.trim();
+          if (devSha) {
+            await execAsync(
+              `git -C "${projectBaseDir}" branch "${task.branchName}" "${devSha}"`
+            ).catch(() => {});
+          }
+        }
+      }
+    } catch {
+      // Ignora erro de preparação de branch no repositório base
     }
 
-    // Provisiona / reivindica o Pod Kubernetes dedicado ao par projectId + userId
-    const podResult = await this.k8sPodManager.claimPodForProject(projectId, userId);
+    // Invariante 3 & 4: Inicializa o diretório isolado do workspace da tarefa (projects/P/users/U/tasks/T)
+    await editorProxyService.ensureTaskWorkspace({
+      projectId,
+      userId,
+      taskId: task.id,
+      branchName: task.branchName,
+      gitRepoPath: project?.gitRepoPath,
+    });
 
-    // Atualiza ou cria o registro do Workspace do usuário em estado READY
+    let podResult: any;
+    let workspaceStatus: 'READY' | 'ERROR' = 'READY';
+
+    try {
+      // Reivindica o Pod atômico montado no subcaminho exclusivo da tarefa
+      podResult = await this.k8sPodManager.claimPodForTask(projectId, userId, task.id);
+    } catch (podErr) {
+      console.warn(`⚠️ Error claiming Pod for task ${task.id}:`, podErr);
+      podResult = { podName: null };
+      workspaceStatus = 'ERROR';
+    }
+
+    // Invariante 2 & 7: Upsert do Workspace na chave única composta (projectId, userId, taskId)
     const workspace = await prisma.workspace.upsert({
-      where: { projectId_userId: { projectId, userId } },
+      where: {
+        projectId_userId_taskId: {
+          projectId,
+          userId,
+          taskId: task.id,
+        },
+      },
       create: {
         projectId,
         userId,
         taskId: task.id,
-        podName: podResult.podName,
-        status: 'READY',
+        podName: podResult.podName || null,
+        status: workspaceStatus,
       },
       update: {
-        taskId: task.id,
-        podName: podResult.podName,
-        status: 'READY',
+        podName: podResult.podName || undefined,
+        status: workspaceStatus,
+        updatedAt: new Date(),
       },
     });
 

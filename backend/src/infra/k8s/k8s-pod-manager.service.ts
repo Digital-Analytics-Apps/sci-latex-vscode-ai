@@ -182,8 +182,8 @@ export class K8sPodManagerService {
     }
   }
 
-  // Atualiza dinamicamente o selector do Service code-server-service no K8s para o projectId ativo
-  async updateServiceSelector(projectId: string): Promise<void> {
+  // Atualiza dinamicamente o selector do Service code-server-service no K8s para o Pod exclusivo (projectId, userId, taskId)
+  async updateServiceSelector(projectId: string, userId?: string, taskId?: string): Promise<void> {
     const k8sApi = this.getK8sApiClient();
     if (!k8sApi) return;
 
@@ -191,14 +191,18 @@ export class K8sPodManagerService {
       const svcRes = await k8sApi.readNamespacedService('code-server-service', this.namespace);
       const svc = svcRes.body;
       if (svc.spec) {
-        svc.spec.selector = {
+        const selector: Record<string, string> = {
           'app.kubernetes.io/part-of': 'sci-latex-vscode',
           component: 'code-server',
           projectId,
         };
+        if (userId) selector.claimedBy = userId;
+        if (taskId) selector.taskId = taskId;
+
+        svc.spec.selector = selector;
         await k8sApi.replaceNamespacedService('code-server-service', this.namespace, svc);
         console.log(
-          `🎯 Service code-server-service atualizado para apontar exclusivamente para projectId=${projectId}`
+          `🎯 Service code-server-service atualizado para apontar exclusivamente para projectId=${projectId}, userId=${userId}, taskId=${taskId}`
         );
       }
     } catch (err: any) {
@@ -229,14 +233,18 @@ export class K8sPodManagerService {
     return false;
   }
 
-  // 3. Reivindica um Pod do Warm Pool ou cria um Pod dedicado montando o PVC do projeto
-  async claimPodForProject(projectId: string, userId: string): Promise<PodClaimResult> {
+  // 3. Reivindica um Pod do Warm Pool ou cria um Pod dedicado montando o PVC/Volume isolado da Task do usuário
+  async claimPodForTask(
+    projectId: string,
+    userId: string,
+    taskId: string
+  ): Promise<PodClaimResult> {
     const pvcName = await this.ensureProjectPVC(projectId);
 
     const k8sApi = this.getK8sApiClient();
     if (!k8sApi) {
       return {
-        podName: `local-fallback-${projectId}`,
+        podName: `local-fallback-${projectId}-${taskId.slice(0, 6)}`,
         pvcName,
         status: 'fallback_mode',
         codeServerUrl: env.CODE_SERVER_URL,
@@ -244,10 +252,8 @@ export class K8sPodManagerService {
     }
 
     try {
-      // Buscar se já existe um Pod ativo dedicado a esse usuário + projeto
-      const labelSelector = userId
-        ? `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId},claimedBy=${userId}`
-        : `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId}`;
+      // Buscar se já existe um Pod ativo dedicado a essa tríade (projectId, userId, taskId)
+      const labelSelector = `app.kubernetes.io/part-of=sci-latex-vscode,projectId=${projectId},claimedBy=${userId},taskId=${taskId}`;
 
       const existingPods = await k8sApi.listNamespacedPod(
         this.namespace,
@@ -262,7 +268,7 @@ export class K8sPodManagerService {
         (pod) => pod.status?.phase === 'Running'
       );
       if (activePod?.metadata?.name) {
-        await this.updateServiceSelector(projectId);
+        await this.updateServiceSelector(projectId, userId, taskId);
         await this.waitForPodReady(activePod.metadata.name);
         return {
           podName: activePod.metadata.name,
@@ -272,7 +278,7 @@ export class K8sPodManagerService {
         };
       }
 
-      // Se o Warm Pool tiver um pod livre, podemos limpar o standby antigo para criar o Pod 100% isolado do usuário
+      // Se o Warm Pool tiver um pod livre, podemos limpar o standby antigo para criar o Pod 100% isolado da Task
       const warmPodsRes = await k8sApi.listNamespacedPod(
         this.namespace,
         undefined,
@@ -284,18 +290,16 @@ export class K8sPodManagerService {
 
       const warmPod = (warmPodsRes.body.items || []).find((pod) => pod.status?.phase === 'Running');
       if (warmPod?.metadata?.name) {
-        // Remove o pod standby genérico para dar lugar ao Pod estritamente isolado do usuário
         await k8sApi.deleteNamespacedPod(warmPod.metadata.name, this.namespace).catch(() => {});
       }
 
-      // Define subcaminho isolado por usuário: projects/${projectId}/users/${userId}
-      const userSubPath = userId
-        ? `projects/${projectId}/users/${userId}`
-        : `projects/${projectId}`;
+      // Define subcaminho isolado por tarefa do usuário: projects/${projectId}/users/${userId}/tasks/${taskId}
+      const userTaskSubPath = `projects/${projectId}/users/${userId}/tasks/${taskId}`;
 
-      // Cria o Pod sob demanda estritamente isolado
+      // Cria o Pod sob demanda estritamente isolado da Task
       const userSuffix = userId ? userId.slice(0, 6) : 'user';
-      const newPodName = `workspace-${projectId.slice(0, 6)}-${userSuffix}-${Date.now().toString(36)}`;
+      const taskSuffix = taskId ? taskId.slice(0, 6) : 'task';
+      const newPodName = `workspace-${projectId.slice(0, 6)}-${userSuffix}-${taskSuffix}-${Date.now().toString(36)}`;
       const podManifest: k8s.V1Pod = {
         apiVersion: 'v1',
         kind: 'Pod',
@@ -308,6 +312,7 @@ export class K8sPodManagerService {
             role: 'user-workspace',
             projectId,
             claimedBy: userId || 'anonymous',
+            taskId,
           },
         },
         spec: {
@@ -328,7 +333,7 @@ export class K8sPodManagerService {
                 {
                   name: 'host-storage',
                   mountPath: '/home/coder/project',
-                  subPath: userSubPath,
+                  subPath: userTaskSubPath,
                 },
               ],
             },
@@ -345,7 +350,7 @@ export class K8sPodManagerService {
       await k8sApi.createNamespacedPod(this.namespace, podManifest);
 
       // Atualiza o Service selector e aguarda a prontidão do novo pod
-      await this.updateServiceSelector(projectId);
+      await this.updateServiceSelector(projectId, userId, taskId);
       await this.waitForPodReady(newPodName);
 
       // Dispara em background a reposição de +1 Pod Standby para o Warm Pool
@@ -358,14 +363,23 @@ export class K8sPodManagerService {
         codeServerUrl: env.CODE_SERVER_URL,
       };
     } catch (err: any) {
-      console.warn('⚠️ Error claiming K8s pod:', err.message || err);
+      console.warn('⚠️ Error claiming K8s pod for task:', err.message || err);
       return {
-        podName: `fallback-${projectId}`,
+        podName: `fallback-${projectId}-${taskId.slice(0, 6)}`,
         pvcName,
         status: 'fallback_mode',
         codeServerUrl: env.CODE_SERVER_URL,
       };
     }
+  }
+
+  // Fallback de compatibilidade
+  async claimPodForProject(
+    projectId: string,
+    userId: string,
+    taskId?: string
+  ): Promise<PodClaimResult> {
+    return this.claimPodForTask(projectId, userId, taskId || 'default-task');
   }
 
   // 4. Libera e destrói o Pod dedicado do projeto após o usuário fechar a aba/desconectar

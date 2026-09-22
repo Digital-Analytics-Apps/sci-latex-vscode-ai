@@ -29,6 +29,7 @@ import { tasksService } from "../../services/tasksService";
 import { showNotification } from "../../store/slices/notificationSlice";
 import { CodeServerIframe } from "./CodeServerIframe";
 import { CreatePRModal } from "./CreatePRModal";
+import { SaveProgressModal } from "./SaveProgressModal";
 
 import { categorizeProjectMembers } from "../../utils/memberUtils";
 
@@ -82,6 +83,8 @@ export const WorkspacePage = () => {
   );
 
   const [isPRModalOpen, setIsPRModalOpen] = useState<boolean>(false);
+  const [isSaveProgressModalOpen, setIsSaveProgressModalOpen] =
+    useState<boolean>(false);
 
   const activePR = pullRequests.find(
     (pr: any) =>
@@ -122,28 +125,6 @@ export const WorkspacePage = () => {
     if (activePR?.status === PRStatus.MERGED)
       return "Merge já foi realizado nesta tarefa";
     return "O merge fica disponível somente após a aprovação da revisão pelo Revisor";
-  };
-
-  const handleSaveProgress = async () => {
-    try {
-      await saveProgressMutation.mutateAsync({
-        taskId: activeTask?.id || "default-task",
-        commitMessage: `Update progress on ${activeTask?.title || "article"}`,
-      });
-      dispatch(
-        showNotification({
-          message: `Progresso salvo! Branch atualizada e Draft PR gerado/mantido no GitHub.`,
-          severity: "success",
-        }),
-      );
-    } catch {
-      dispatch(
-        showNotification({
-          message: "Erro ao salvar progresso do artigo.",
-          severity: "error",
-        }),
-      );
-    }
   };
 
   const handleExecuteMerge = async () => {
@@ -269,7 +250,7 @@ export const WorkspacePage = () => {
                       <SaveIcon fontSize="small" />
                     )
                   }
-                  onClick={handleSaveProgress}
+                  onClick={() => setIsSaveProgressModalOpen(true)}
                   disabled={!canSaveProgress}
                 >
                   Salvar Progresso
@@ -343,6 +324,13 @@ export const WorkspacePage = () => {
           )}
         </Box>
       </Box>
+
+      <SaveProgressModal
+        open={isSaveProgressModalOpen}
+        onClose={() => setIsSaveProgressModalOpen(false)}
+        projectId={projectId}
+        activeTask={activeTask}
+      />
 
       <CreatePRModal
         open={isPRModalOpen}

@@ -223,7 +223,7 @@ model Workspace {
   id        String          @id @default(uuid())
   projectId String
   userId    String
-  taskId    String?
+  taskId    String
   podName   String?
   status    WorkspaceStatus @default(PROVISIONING)
   createdAt DateTime        @default(now())
@@ -231,9 +231,9 @@ model Workspace {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, userId])
+  @@unique([projectId, userId, taskId])
 }
 
 enum WorkspaceStatus {

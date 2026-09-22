@@ -220,9 +220,7 @@ export class LiveGithubProvider implements IGithubProvider {
       if (!projectNode) return;
 
       const fields = projectNode.fields?.nodes || [];
-      const statusField = fields.find(
-        (f: any) => f?.name === 'Status' || f?.options?.length > 0
-      );
+      const statusField = fields.find((f: any) => f?.name === 'Status' || f?.options?.length > 0);
       if (!statusField) return;
 
       const targetOption = statusField.options?.find(
@@ -231,9 +229,7 @@ export class LiveGithubProvider implements IGithubProvider {
       if (!targetOption) return;
 
       const items = projectNode.items?.nodes || [];
-      const targetItem = items.find(
-        (item: any) => item?.content?.number === issueNumber
-      );
+      const targetItem = items.find((item: any) => item?.content?.number === issueNumber);
       if (!targetItem) return;
 
       const mutation = `
@@ -262,9 +258,14 @@ export class LiveGithubProvider implements IGithubProvider {
         singleSelectOptionId: targetOption.id,
       });
 
-      console.log(`✅ GitHub Project v2 Issue #${issueNumber} status updated to "${targetStatusName}"`);
+      console.log(
+        `✅ GitHub Project v2 Issue #${issueNumber} status updated to "${targetStatusName}"`
+      );
     } catch (err: any) {
-      console.warn(`⚠️ Warning updating Project v2 status for issue #${issueNumber}:`, err.message || err);
+      console.warn(
+        `⚠️ Warning updating Project v2 status for issue #${issueNumber}:`,
+        err.message || err
+      );
     }
   }
 

@@ -7,8 +7,11 @@ describe('EditorProxyService', () => {
       findById: vi.fn().mockResolvedValue(null),
     };
     const mockTasksRepo: any = { findById: vi.fn() };
-    const mockWorkspacesRepo: any = { upsertWorkspace: vi.fn() };
-    const mockK8sPodManager: any = { claimPodForProject: vi.fn() };
+    const mockWorkspacesRepo: any = {
+      upsertWorkspace: vi.fn(),
+      getTaskWorkspacePath: vi.fn().mockReturnValue('/tmp/test-workspace'),
+    };
+    const mockK8sPodManager: any = { claimPodForTask: vi.fn() };
 
     const service = new EditorProxyService(
       mockProjectsRepo,
@@ -21,6 +24,7 @@ describe('EditorProxyService', () => {
       service.prepareWorkspaceSession({
         projectId: 'invalido',
         userId: 'u1',
+        taskId: 't1',
       })
     ).rejects.toThrow('PROJECT_NOT_FOUND');
   });
@@ -45,10 +49,11 @@ describe('EditorProxyService', () => {
     };
     const mockWorkspacesRepo: any = {
       upsertWorkspace: vi.fn().mockResolvedValue({ id: 'w1', status: 'PROVISIONING' }),
+      getTaskWorkspacePath: vi.fn().mockReturnValue('/tmp/test-workspace-p1-u1-t1'),
     };
     const mockK8sPodManager: any = {
-      claimPodForProject: vi.fn().mockResolvedValue({
-        podName: 'workspace-p1-u1',
+      claimPodForTask: vi.fn().mockResolvedValue({
+        podName: 'workspace-p1-u1-t1',
         codeServerUrl: 'http://localhost:30080',
       }),
     };
@@ -60,9 +65,8 @@ describe('EditorProxyService', () => {
       mockK8sPodManager
     );
 
-    // Mock das chamadas internas de E/S, Git e HTTP para evitar operações reais no filesystem e timeout
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200 }));
-    vi.spyOn(service, 'ensureGitRepositoryWorkspace').mockImplementation(async () => {});
+    vi.spyOn(service, 'ensureTaskWorkspace').mockImplementation(async () => '/tmp/test-workspace');
     vi.spyOn(service, 'ensureTeXTemplateFiles').mockImplementation(async () => {});
 
     const result = await service.prepareWorkspaceSession({
@@ -74,13 +78,13 @@ describe('EditorProxyService', () => {
 
     expect(result.project).toBe(mockProject);
     expect(result.targetBranch).toBe('task/secao-introducao-123456');
-    expect(mockK8sPodManager.claimPodForProject).toHaveBeenCalledWith('p1', 'u1');
+    expect(mockK8sPodManager.claimPodForTask).toHaveBeenCalledWith('p1', 'u1', 't1');
     expect(mockWorkspacesRepo.upsertWorkspace).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: 'p1',
         userId: 'u1',
         taskId: 't1',
-        podName: 'workspace-p1-u1',
+        podName: 'workspace-p1-u1-t1',
       })
     );
   });

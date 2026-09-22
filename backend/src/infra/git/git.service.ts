@@ -47,6 +47,19 @@ export const DEFAULT_PULL_REQUEST_TEMPLATE = `## 📝 Resumo das Alterações
 <!-- Dúvidas, notas adicionais ou pontos específicos para a revisão -->
 `;
 
+export interface RawFileDiffFact {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+  additions: number;
+  deletions: number;
+}
+
+export interface TaskRawDiffFactsResult {
+  lastSavedAt?: string;
+  lastSavedAuthor?: string;
+  files: RawFileDiffFact[];
+}
+
 export class GitService {
   private baseStoragePath: string;
   private cachedOwner?: string;
@@ -385,9 +398,15 @@ export class GitService {
       });
 
       await execAsync(`git add -A`, { cwd: tempDir });
-      await execAsync(`git commit -m "${data.commitMessage.replaceAll('"', '')}"`, {
-        cwd: tempDir,
-      });
+      const statusRes = await execAsync(`git status --porcelain`, { cwd: tempDir }).catch(() => ({
+        stdout: '',
+      }));
+      const sanitizedMsg = data.commitMessage.replace(/"/g, '\\"');
+      if (statusRes.stdout.trim() !== '') {
+        await execAsync(`git commit -m "${sanitizedMsg}"`, { cwd: tempDir });
+      } else {
+        await execAsync(`git commit --allow-empty -m "${sanitizedMsg}"`, { cwd: tempDir });
+      }
       await execAsync(`git ${gitFlags} push origin ${data.branchName}`, { cwd: tempDir });
 
       // Sincroniza o commit no repositório Git local do usuário para que o VS Code limpe as marcas de Untracked ("U") e Modified ("M")
@@ -415,7 +434,7 @@ export class GitService {
         await fs.access(localGitDir);
         await execAsync(`git -C "${localWorkspace}" add -A`).catch(() => {});
         await execAsync(
-          `git -C "${localWorkspace}" commit -m "${data.commitMessage.replaceAll('"', '')}" --allow-empty`
+          `git -C "${localWorkspace}" commit -m "${sanitizedMsg}" --allow-empty`
         ).catch(() => {});
       } catch {
         // Ignora se o workspace local não for um repositório git
@@ -505,6 +524,154 @@ export class GitService {
         dirtyFiles: [],
       };
     }
+  }
+
+  // Obtém os fatos brutos de modificação no repositório isolado da tarefa e metadados do último salvamento
+  async getTaskRawDiffFacts(
+    projectId: string,
+    userId: string,
+    taskId: string
+  ): Promise<TaskRawDiffFactsResult> {
+    const targetDir = path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      projectId,
+      'users',
+      userId,
+      'tasks',
+      taskId
+    );
+
+    let lastSavedAuthor: string | undefined;
+    let lastSavedAt: string | undefined;
+
+    try {
+      const logRes = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" log -1 --format="%an|%ad" --date=iso-strict',
+        { cwd: targetDir }
+      ).catch(() => null);
+
+      if (logRes?.stdout?.trim()) {
+        const [author, dateStr] = logRes.stdout.trim().split('|');
+        lastSavedAuthor = author || undefined;
+        lastSavedAt = dateStr || undefined;
+      }
+    } catch {
+      // Ignora erro de leitura de log
+    }
+
+    const filesMap = new Map<string, RawFileDiffFact>();
+
+    const isIgnoredFile = (file: string) => {
+      const normalized = file.replaceAll('\\', '/');
+      const fileName = path.basename(normalized);
+      const ignoredExtensions = [
+        '.aux',
+        '.log',
+        '.fdb_latexmk',
+        '.fls',
+        '.synctex.gz',
+        '.toc',
+        '.out',
+        '.nav',
+        '.snm',
+        '.bbl',
+        '.blg',
+        '.vrb',
+        '.pdf',
+      ];
+      return (
+        normalized.startsWith('users/') ||
+        normalized.startsWith('.vscode/') ||
+        normalized === '.gitignore' ||
+        fileName === 'indent.log' ||
+        ignoredExtensions.some((ext) => fileName.endsWith(ext))
+      );
+    };
+
+    try {
+      const statusRes = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" -c core.fileMode=false status --porcelain',
+        { cwd: targetDir }
+      );
+
+      const statusLines = statusRes.stdout
+        .split('\n')
+        .map((l) => l.trimEnd())
+        .filter((l) => l.length >= 4);
+
+      for (const line of statusLines) {
+        const code = line.slice(0, 2).trim();
+        const filePath = line.slice(3).trim();
+        if (isIgnoredFile(filePath)) continue;
+
+        let status: 'added' | 'modified' | 'deleted' = 'modified';
+        if (code.includes('A') || code === '??') {
+          status = 'added';
+        } else if (code.includes('D')) {
+          status = 'deleted';
+        }
+
+        filesMap.set(filePath, {
+          path: filePath,
+          status,
+          additions: 0,
+          deletions: 0,
+        });
+      }
+
+      const numstatRes = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" diff --numstat HEAD',
+        { cwd: targetDir }
+      ).catch(() => null);
+
+      if (numstatRes?.stdout) {
+        const numstatLines = numstatRes.stdout.split('\n');
+        for (const line of numstatLines) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 3) {
+            const additions = Number.parseInt(parts[0], 10) || 0;
+            const deletions = Number.parseInt(parts[1], 10) || 0;
+            const filePath = parts.slice(2).join(' ');
+            if (isIgnoredFile(filePath)) continue;
+
+            const existing = filesMap.get(filePath);
+            if (existing) {
+              existing.additions = additions;
+              existing.deletions = deletions;
+            } else {
+              filesMap.set(filePath, {
+                path: filePath,
+                status: 'modified',
+                additions,
+                deletions,
+              });
+            }
+          }
+        }
+      }
+
+      // Preenche a contagem de linhas para arquivos novos adicionados que ainda não estão no index do HEAD
+      for (const fact of filesMap.values()) {
+        if (fact.status === 'added' && fact.additions === 0) {
+          try {
+            const fullPath = path.join(targetDir, fact.path);
+            const content = await fs.readFile(fullPath, 'utf-8');
+            fact.additions = content.split('\n').length;
+          } catch {
+            // Ignora falha de leitura
+          }
+        }
+      }
+    } catch {
+      // Ignora erro de diff no repositório local
+    }
+
+    return {
+      lastSavedAt,
+      lastSavedAuthor,
+      files: Array.from(filesMap.values()),
+    };
   }
 
   // Realiza a fusão (git merge) de uma branch de origem (ex: task/intro-a1b2c3d4) em uma branch alvo (ex: dev ou main)
@@ -721,12 +888,14 @@ export class GitService {
       prBody = `${prBody}\n\n${issueRef}`;
     }
 
+    const cleanTitle = data.title.replace(/^\[?DRAFT\]?:?\s*/i, '').trim() || data.title;
+
     try {
       const octokit = this.getOctokit();
       const res = await octokit.rest.pulls.create({
         owner,
         repo: repoName,
-        title: data.title,
+        title: cleanTitle,
         body: prBody,
         head: data.headBranch,
         base: baseBranch,

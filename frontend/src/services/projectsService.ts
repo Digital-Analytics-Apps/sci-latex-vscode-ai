@@ -81,8 +81,16 @@ export const projectsService = {
     const response = await api.post(
       `${PROJETCT_URL}/${projectId}/tasks/${taskId}/commit`,
       {
-        commitMessage: commitMessage || "Progress update: LaTeX content edit",
+        commitMessage,
       },
+    );
+    return response.data;
+  },
+
+  // Obter Resumo Acadêmico de Alterações do Rascunho (Desde o último salvamento)
+  async getTaskDiffSummary(projectId: string, taskId: string) {
+    const response = await api.get(
+      `${PROJETCT_URL}/${projectId}/tasks/${taskId}/diff-summary`,
     );
     return response.data;
   },

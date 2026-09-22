@@ -50,14 +50,15 @@ O módulo `editor-proxy` é responsável por gerenciar o ciclo de vida da sessã
 - Quando a requisição informa `taskId`, o serviço consulta o banco de dados e obtém a `task.branchName`.
 - Se nenhuma branch for informada, o padrão fallback é `dev`.
 
-### 2. Sincronização de Repositório Git por Usuário
-- O repositório base reside em `STORAGE_PATH/projects/:projectId`.
-- O workspace do usuário reside isoladamente em `STORAGE_PATH/projects/:projectId/users/:userId`.
+### 2. Sincronização de Repositório Git e Workspace Isolado por Tarefa (User + Article + Task)
+- O repositório base do artigo reside em `STORAGE_PATH/projects/:projectId`.
+- O workspace físico de cada tarefa reside exclusivamente em `STORAGE_PATH/projects/:projectId/users/:userId/tasks/:taskId`.
 - O serviço garante:
-  - Inicialização/clonagem do repositório Git local e busca de referências remotas (`git fetch --all`).
-  - Checkout e sincronização da `targetBranch` no workspace do usuário.
+  - **Isolamento Físico de Working Tree**: Cada tarefa possui seu próprio repositório e diretório de arquivos disjunto. Nenhuma tarefa compartilha o diretório físico com outra.
+  - **Identidade Composta no Banco**: A sessão é gerenciada no PostgreSQL pela chave única `@@unique([projectId, userId, taskId])`.
+  - **Checkout e Validação de Branch**: O workspace de tarefa nasce e é validado estritamente na branch da tarefa (`task.branchName`), criada a partir da HEAD da branch `dev` do repositório base.
   - Sincronização de arquivos TeX ignorando artefatos de compilação TeX (`*.aux`, `*.log`, `*.pdf`, `*.fdb_latexmk`, `*.synctex.gz`, etc.) e a pasta `.git`/`users/`.
-  - Garantia de commit Git válido inicial na árvore do usuário para evitar marcação desnecessária de untracked (`"U"`).
+  - Garantia de commit Git válido inicial na árvore da tarefa para evitar marcação desnecessária de untracked (`"U"`).
 
 ### 3. Semeadura de Arquivos TeX Base (`ensureTeXTemplateFiles`)
 Garante a presença da estrutura inicial de artigo acadêmico caso os arquivos ainda não existam:
@@ -70,12 +71,13 @@ Garante a presença da estrutura inicial de artigo acadêmico caso os arquivos a
 - `IEEEtran.cls` copiado da pasta de templates docker.
 - `.gitignore` configurado para ignorar artefatos efêmeros da compilação TeX Live.
 
-### 4. Provisionamento & Health Check no Kubernetes
-- Invoca `K8sPodManagerService.claimPodForProject(projectId, userId)` para obter/reivindicar um Pod Kubernetes com o ambiente `code-server` + TeX Live.
+### 4. Provisionamento & Health Check no Kubernetes por Tarefa
+- Invoca `K8sPodManagerService.claimPodForTask(projectId, userId, taskId)` para obter/reivindicar um Pod Kubernetes atômico com o ambiente `code-server` + TeX Live montando o subcaminho exclusivo da tarefa (`projects/:projectId/users/:userId/tasks/:taskId`).
 - Executa verificações de disponibilidade (HTTP GET com timeout de 600ms) nas URLs do `code-server` (porta `30080` ou URL de Pod configurada).
 - Registra a sessão na tabela `Workspace` do banco de dados com estado:
   - `READY`: Container pronto e respondendo.
   - `PROVISIONING`: Container ainda subindo ou em processo de inicialização.
+  - `ERROR`: Falha no provisionamento do Pod, preservando o workspace e a branch para retries idempotentes.
 
 ### 5. Resposta HTTP & Redirecionamento
 - Se `isCodeServerUp === true`: Retorna HTTP 302 Redirection para `/api/v1/editor-proxy/app/?folder=/home/coder/project&token=...`.

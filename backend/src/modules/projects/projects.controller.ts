@@ -63,6 +63,14 @@ export class ProjectsController {
       const project = await this.projectsService.createProject(userId, body);
       return reply.status(201).send({ project });
     } catch (err: any) {
+      if (err.message?.includes('USER_NOT_FOUND')) {
+        return reply.status(401).send({
+          statusCode: 401,
+          error: 'Unauthorized',
+          message:
+            'O seu usuário não foi encontrado no banco de dados. Sua sessão pode ter expirado ou o banco foi reiniciado. Por favor, faça login novamente.',
+        });
+      }
       if (err.message?.includes('GITHUB_TOKEN_REQUIRED')) {
         return reply.status(400).send({
           statusCode: 400,
@@ -329,6 +337,26 @@ startxref
           error: 'Bad Gateway',
           message: `Falha ao efetuar commit no GitHub: ${err.message}`,
         });
+      }
+      throw err;
+    }
+  }
+
+  async getTaskDiffSummary(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+      taskId: z.string(),
+    });
+
+    const { id, taskId } = paramsSchema.parse(request.params);
+    const userId = request.user.sub;
+
+    try {
+      const summary = await this.projectsService.getTaskDiffSummary(id, taskId, userId);
+      return reply.send(summary);
+    } catch (err: any) {
+      if (err.message === 'PROJECT_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Project not found' });
       }
       throw err;
     }

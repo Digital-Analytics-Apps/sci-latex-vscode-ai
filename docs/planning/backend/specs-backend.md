@@ -1,7 +1,7 @@
 # Especificação Técnica do Backend (Fastify + Prisma + TypeScript)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-15  
+**Última Atualização:** 2026-09-22  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -64,11 +64,18 @@ src/
   * **Eventos Emitidos:** `PDF_COMPILED`, `PR_REVIEWED`, `NIT_STATUS_UPDATED`, `MERGE_UNLOCKED`, `DEADLINE_ALERT`.
   * **Monitoramento de Presença & Ciclo de Vida de Pods K8s:** Quando o parâmetro `projectId` é fornecido na query string, o backend contabiliza os clientes ativos na workspace. Ao zerar as conexões SSE de um projeto (navegador fechado/saída do usuário), o backend aciona um **Grace Period de 1 minuto (`60.000 ms`)**. Se o usuário der F5/reconectar dentro de 1 minuto, a destruição é cancelada. Expirado o prazo sem reconexão, a rotina dispara `releasePodForProject(projectId)`, deletando o Pod no cluster KinD/K8s para liberar instantaneamente a memória RAM e CPU.
 
-### 3.3 Módulo `projects` (Papers)
+### 3.3 Módulo `projects` & `tasks` (Papers e Tarefas de Escrita)
 * `POST /api/v1/projects`
 * `GET /api/v1/projects`
 * `GET /api/v1/projects/:id`
 * `PATCH /api/v1/projects/:id/post-submission`
+* `GET /api/v1/projects/:id/tasks/:taskId/diff-summary`
+  * **Permissão:** Integrante do Projeto (`AUTHOR`, `REVIEWER`, `COORDINATOR`).
+  * **Descrição:** Retorna os fatos Git puros (`path`, `status`, `additions`, `deletions`), metadados temporais (`lastSavedAt`, `lastSavedAuthor`) e itens traduzidos de domínio (`category`, `label`, `isTaskScope`) calculados contra o `HEAD` da branch da tarefa.
+* `POST /api/v1/projects/:id/tasks/:taskId/commit`
+  * **Permissão:** Autor atribuído à Tarefa.
+  * **Input Opcional:** `{ "commitMessage": "Descrição manual opcional" }`
+  * **Comportamento:** Executa o commit na branch da tarefa. Caso `commitMessage` seja omitido ou em branco, aciona o `ProgressDescriptionService` para sintetizar a mensagem descritiva padronizada em Português. Atualiza/cria o Draft PR correspondente no GitHub.
 
 ### 3.4 Módulo `compiler` (PDF Oficial de PRs e Artigo Consolidado)
 * `POST /api/v1/projects/:id/compile-master`
@@ -155,13 +162,17 @@ src/
 ## 4. Especificação de Serviços de Segundo Plano & Eventos (Sem Broker / Ultra-Leve)
 
 1. **Serviço de Operações Git (`GitService`):**
-   * Executa operações de commit, criação de repositórios e merge diretamente via SDK Octokit e comandos Git seguros (`http.extraHeader`).
-2. **Serviço de Compilação TeX (`CompilerService`):**
+   * Executa operações de commit, criação de repositórios, extração de fatos diff (`getTaskRawDiffFacts`) contra o `HEAD` da branch da tarefa e merge via Octokit SDK e Git CLI seguro (`http.extraHeader`).
+2. **Serviço de Classificação Acadêmica (`ClassificationService`):**
+   * Traduz caminhos de arquivos Git (`sections/*.tex`, `*.bib`, `figures/*`, `tables/*`, etc.) em categorias de domínio e rótulos amigáveis do vocabulário do escritor científico ("Seção Introdução", "Referências Bibliográficas", "Figuras e Ilustrações").
+3. **Serviço de Descrição de Progresso (`ProgressDescriptionService`):**
+   * Sintetiza mensagens descritivas padronizadas em Português com base nos arquivos alterados quando o escritor não fornece uma mensagem manual ao salvar o progresso.
+4. **Serviço de Compilação TeX (`CompilerService`):**
    * Dispara container descartável Docker TeX Live (`texlive/texlive:latest`) com parâmetros `--network none --cpus=2 -m 2g`.
    * Retorna o arquivo PDF oficial gerado e salva em `/storage/pdf/<project_id>/`. Emite evento `PDF_COMPILED` via SSE.
-3. **Monitor de Prazos (`DeadlinesChecker`):**
+5. **Monitor de Prazos (`DeadlinesChecker`):**
    * Rotina periódica que verifica seções com vencimento próximo (48h) ou atrasadas. Emite evento `DEADLINE_ALERT` via SSE.
-4. **Notificações em Tempo Real (`EventsStream`):**
+6. **Notificações em Tempo Real (`EventsStream`):**
    * Transmite eventos de negócio diretamente na rota de stream SSE (`/api/v1/events/stream`).
 
 ---

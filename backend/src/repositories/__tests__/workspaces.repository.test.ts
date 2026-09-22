@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PrismaWorkspacesRepository } from '../workspaces.repository';
 import { prisma } from '../../db/prisma';
+import { PrismaWorkspacesRepository } from '../workspaces.repository';
 
 vi.mock('../../db/prisma', () => ({
   prisma: {
@@ -21,7 +21,7 @@ describe('PrismaWorkspacesRepository', () => {
     repository = new PrismaWorkspacesRepository();
   });
 
-  it('should upsert a workspace session record', async () => {
+  it('should upsert a workspace session record with projectId, userId, and taskId', async () => {
     const mockWorkspace = {
       id: 'ws-1',
       projectId: 'proj-1',
@@ -45,7 +45,7 @@ describe('PrismaWorkspacesRepository', () => {
 
     expect(prisma.workspace.upsert).toHaveBeenCalledWith({
       where: {
-        projectId_userId: { projectId: 'proj-1', userId: 'user-1' },
+        projectId_userId_taskId: { projectId: 'proj-1', userId: 'user-1', taskId: 'task-1' },
       },
       create: {
         projectId: 'proj-1',
@@ -55,7 +55,6 @@ describe('PrismaWorkspacesRepository', () => {
         status: 'READY',
       },
       update: {
-        taskId: 'task-1',
         podName: 'workspace-pod-1',
         status: 'READY',
         updatedAt: expect.any(Date),
@@ -75,12 +74,12 @@ describe('PrismaWorkspacesRepository', () => {
     });
   });
 
-  it('should find workspace by projectId and userId', async () => {
+  it('should find workspace by projectId, userId and taskId', async () => {
     const mockWorkspace = {
       id: 'ws-1',
       projectId: 'proj-1',
       userId: 'user-1',
-      taskId: null,
+      taskId: 'task-1',
       podName: 'pod-1',
       status: 'READY',
       createdAt: new Date(),
@@ -89,11 +88,11 @@ describe('PrismaWorkspacesRepository', () => {
 
     vi.mocked(prisma.workspace.findUnique).mockResolvedValue(mockWorkspace as any);
 
-    const result = await repository.findByProjectIdAndUserId('proj-1', 'user-1');
+    const result = await repository.findByProjectIdUserIdAndTaskId('proj-1', 'user-1', 'task-1');
 
     expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
       where: {
-        projectId_userId: { projectId: 'proj-1', userId: 'user-1' },
+        projectId_userId_taskId: { projectId: 'proj-1', userId: 'user-1', taskId: 'task-1' },
       },
     });
 

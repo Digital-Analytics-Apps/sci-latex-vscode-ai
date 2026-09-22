@@ -167,12 +167,14 @@ export class EditorProxyService {
   }
 
   // Garantia do repositório Git local e por usuário com sincronização da branch
-  async ensureGitRepositoryWorkspace(
-    projectId: string,
-    gitRepoPath?: string,
-    targetBranch?: string,
-    userId?: string
-  ) {
+  async ensureTaskWorkspace(params: {
+    projectId: string;
+    userId: string;
+    taskId: string;
+    branchName: string;
+    gitRepoPath?: string;
+  }): Promise<string> {
+    const { projectId, userId, taskId, branchName, gitRepoPath } = params;
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
     await fs.mkdir(projectDir, { recursive: true, mode: 0o777 });
 
@@ -209,140 +211,107 @@ export class EditorProxyService {
 
     await execAsync(`git -C "${projectDir}" config core.fileMode false`).catch(() => {});
 
-    if (hasGit && hostGitPath) {
-      try {
-        await fs.access(hostGitPath);
-        await execAsync(`git -C "${projectDir}" fetch --all`).catch(() => {});
-      } catch {
-        // Ignora erro de fetch no host
+    // Caminho físico exclusivo do Workspace da Task: projects/${projectId}/users/${userId}/tasks/${taskId}
+    const taskWorkspaceDir = this.workspacesRepository.getTaskWorkspacePath(
+      projectId,
+      userId,
+      taskId
+    );
+    await fs.mkdir(taskWorkspaceDir, { recursive: true, mode: 0o777 });
+
+    const taskGitDir = path.join(taskWorkspaceDir, '.git');
+    let taskHasGit = false;
+    try {
+      await fs.access(taskGitDir);
+      taskHasGit = true;
+    } catch {
+      taskHasGit = false;
+    }
+
+    if (!taskHasGit) {
+      const entries = await fs.readdir(projectDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === 'users' || entry.name === 'tasks' || entry.name === '.git') continue;
+        const srcPath = path.join(projectDir, entry.name);
+        const destPath = path.join(taskWorkspaceDir, entry.name);
+        await fs.cp(srcPath, destPath, { recursive: true }).catch(() => {});
       }
     }
 
-    if (targetBranch) {
-      try {
-        await execAsync(`git -C "${projectDir}" checkout "${targetBranch}"`);
-        await execAsync(`git -C "${projectDir}" pull origin "${targetBranch}"`).catch(() => {});
-      } catch {
-        await execAsync(
-          `git -C "${projectDir}" checkout -b "${targetBranch}" origin/"${targetBranch}"`
-        ).catch(async () => {
-          await execAsync(`git -C "${projectDir}" checkout -b "${targetBranch}"`).catch(() => {});
-        });
-      }
+    await execAsync(`chmod -R 777 "${taskWorkspaceDir}"`).catch(() => {});
+    await execAsync(`git -C "${taskWorkspaceDir}" config core.fileMode false`).catch(() => {});
+    await execAsync(`git -C "${taskWorkspaceDir}" config safe.directory "*"`).catch(() => {});
+    await execAsync(`git -C "${taskWorkspaceDir}" config user.name "Usuario"`).catch(() => {});
+    await execAsync(`git -C "${taskWorkspaceDir}" config user.email "user@sci-latex.com"`).catch(
+      () => {}
+    );
+
+    try {
+      await execAsync(
+        `git -C "${taskWorkspaceDir}" fetch "${projectDir}" "+refs/heads/*:refs/remotes/origin/*"`
+      ).catch(() => {});
+      await execAsync(`git -C "${taskWorkspaceDir}" fetch --all`).catch(() => {});
+    } catch {
+      // Ignora erro de fetch
     }
 
-    if (userId) {
-      const userWorkspaceDir = path.resolve(
-        env.STORAGE_PATH,
-        'projects',
-        projectId,
-        'users',
-        userId
-      );
-      await fs.mkdir(userWorkspaceDir, { recursive: true, mode: 0o777 });
-
-      const userGitDir = path.join(userWorkspaceDir, '.git');
-      let userHasGit = false;
-      try {
-        await fs.access(userGitDir);
-        userHasGit = true;
-      } catch {
-        userHasGit = false;
-      }
-
-      if (!userHasGit) {
-        // Copia arquivos do projeto base (incluindo .git) ignorando a pasta 'users' para evitar recursão
-        const entries = await fs.readdir(projectDir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.name === 'users') continue;
-          const srcPath = path.join(projectDir, entry.name);
-          const destPath = path.join(userWorkspaceDir, entry.name);
-          await fs.cp(srcPath, destPath, { recursive: true }).catch(() => {});
-        }
-      }
-
-      await execAsync(`chmod -R 777 "${userWorkspaceDir}"`).catch(() => {});
-      await execAsync(`git -C "${userWorkspaceDir}" config core.fileMode false`).catch(() => {});
-      await execAsync(`git -C "${userWorkspaceDir}" config safe.directory "*"`).catch(() => {});
-      await execAsync(`git -C "${userWorkspaceDir}" config user.name "Usuario"`).catch(() => {});
-      await execAsync(`git -C "${userWorkspaceDir}" config user.email "user@sci-latex.com"`).catch(
-        () => {}
-      );
-
-      // Sincroniza os refs do Git do projeto base com o workspace do usuário
-      try {
-        await execAsync(
-          `git -C "${userWorkspaceDir}" fetch "${projectDir}" "+refs/heads/*:refs/remotes/origin/*"`
-        ).catch(() => {});
-        await execAsync(`git -C "${userWorkspaceDir}" fetch --all`).catch(() => {});
-      } catch {
-        // Ignora erro de fetch
-      }
-
-      if (targetBranch) {
-        try {
-          await execAsync(`git -C "${userWorkspaceDir}" checkout "${targetBranch}"`);
-          await execAsync(
-            `git -C "${userWorkspaceDir}" reset --hard origin/"${targetBranch}"`
-          ).catch(() => {});
-        } catch {
-          await execAsync(
-            `git -C "${userWorkspaceDir}" checkout -b "${targetBranch}" origin/"${targetBranch}"`
-          ).catch(async () => {
-            await execAsync(`git -C "${userWorkspaceDir}" checkout -b "${targetBranch}"`).catch(
+    try {
+      await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`);
+    } catch {
+      await execAsync(
+        `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
+      ).catch(async () => {
+        await execAsync(`git -C "${taskWorkspaceDir}" checkout -b "${branchName}" dev`).catch(
+          async () => {
+            await execAsync(`git -C "${taskWorkspaceDir}" checkout -b "${branchName}"`).catch(
               () => {}
             );
-          });
-        }
-      }
-
-      // Copia arquivos TeX atualizados do projeto base para o workspace do usuário (se não for build artifact)
-      const isIgnoredBuildArtifact = (srcPath: string) => {
-        const normalized = srcPath.replaceAll('\\', '/');
-        const fileName = path.basename(normalized);
-        const ignoredExtensions = [
-          '.aux',
-          '.log',
-          '.fdb_latexmk',
-          '.fls',
-          '.synctex.gz',
-          '.toc',
-          '.out',
-          '.nav',
-          '.snm',
-          '.bbl',
-          '.blg',
-          '.vrb',
-          '.pdf',
-        ];
-        return (
-          normalized.includes('/.git') ||
-          normalized.includes('/.vscode') ||
-          normalized.includes('/users/') ||
-          normalized.endsWith('/users') ||
-          fileName === 'indent.log' ||
-          ignoredExtensions.some((ext) => fileName.endsWith(ext))
+          }
         );
-      };
+      });
+    }
 
-      try {
-        await fs.cp(projectDir, userWorkspaceDir, {
-          recursive: true,
-          filter: (src) => !isIgnoredBuildArtifact(src),
-        });
-      } catch {
-        // Ignora erro se falhar a cópia complementar
+    // Invariante 4: Validação de Branch (Garante que HEAD pertence exclusivamente à branchName da tarefa)
+    try {
+      const currentHeadRes = await execAsync(
+        `git -C "${taskWorkspaceDir}" rev-parse --abbrev-ref HEAD`
+      );
+      const currentHead = currentHeadRes.stdout.trim();
+      if (currentHead !== branchName && currentHead !== 'HEAD') {
+        await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`).catch(() => {});
       }
+    } catch {
+      // Ignora falha de verificação
+    }
 
-      // Garante que o repositório Git do workspace do usuário possua um commit válido
-      try {
-        await execAsync(`git -C "${userWorkspaceDir}" rev-parse HEAD`);
-      } catch {
-        await execAsync(`git -C "${userWorkspaceDir}" add -A`).catch(() => {});
-        await execAsync(`git -C "${userWorkspaceDir}" commit -m "Initial workspace commit"`).catch(
-          () => {}
-        );
-      }
+    try {
+      await execAsync(`git -C "${taskWorkspaceDir}" rev-parse HEAD`);
+    } catch {
+      await execAsync(`git -C "${taskWorkspaceDir}" add -A`).catch(() => {});
+      await execAsync(
+        `git -C "${taskWorkspaceDir}" commit -m "Initial task workspace commit"`
+      ).catch(() => {});
+    }
+
+    await this.ensureTeXTemplateFiles(taskWorkspaceDir, 'Artigo SCI-LaTeX');
+
+    return taskWorkspaceDir;
+  }
+
+  async ensureGitRepositoryWorkspace(
+    projectId: string,
+    gitRepoPath?: string,
+    targetBranch?: string,
+    userId?: string
+  ) {
+    if (userId) {
+      await this.ensureTaskWorkspace({
+        projectId,
+        userId,
+        taskId: 'default-task',
+        branchName: targetBranch || 'dev',
+        gitRepoPath,
+      });
     }
   }
 
@@ -354,62 +323,93 @@ export class EditorProxyService {
     if (!project) {
       throw new Error('PROJECT_NOT_FOUND');
     }
+    let taskId = params.taskId || 'default-task';
+    const userId = params.userId;
 
-    // 1. Determina a branch de destino no Git priorizando taskId / branchName
-    let targetBranch = 'dev';
-    if (params.branchName) {
-      targetBranch = params.branchName;
-    } else if (params.taskId) {
-      // 1a. Consulta primeiramente se o ID/número corresponde a um Work Item do GitHub (GithubIssueProjection)
-      const parsedBigInt = BigInt(params.taskId.replaceAll(/\D/g, '') || '-1');
-      const issueProj = await prisma.githubIssueProjection
-        .findFirst({
-          where: {
-            OR: [
-              { githubIssueId: parsedBigInt },
-              { issueNumber: Number.parseInt(params.taskId, 10) || -1 },
-            ],
-          },
-        })
-        .catch(() => null);
+    // 1. Determina a branch de destino no Git e resolve canonical taskId
+    let targetBranch = params.branchName || 'dev';
 
-      if (issueProj) {
-        const slug = issueProj.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
-          .slice(0, 30);
-        targetBranch = `task/${issueProj.issueNumber}-${slug}`;
-      } else {
-        const task = await this.tasksRepository.findById(params.taskId).catch(() => null);
-        if (task?.branchName) {
+    if (params.taskId && params.taskId !== 'default-task') {
+      let task = await this.tasksRepository.findById(params.taskId).catch(() => null);
+
+      if (!task && params.taskId.startsWith('github-issue-')) {
+        const issueIdStr = params.taskId.replace('github-issue-', '');
+        try {
+          const issueProjection = await prisma.githubIssueProjection.findUnique({
+            where: { githubIssueId: BigInt(issueIdStr) },
+          });
+
+          if (issueProjection) {
+            const slug = issueProjection.title
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9\s-]/g, '')
+              .replace(/[\s_]+/g, '-')
+              .replace(/-+/g, '-')
+              .slice(0, 30);
+            const branchName = `task/${issueProjection.issueNumber}-${slug || 'item'}`;
+
+            const localTasks = await this.tasksRepository.findMany({ projectId: params.projectId });
+            const existing = localTasks.find((t) => t.branchName === branchName);
+
+            if (existing) {
+              task = existing;
+            } else {
+              task = await this.tasksRepository.create({
+                projectId: params.projectId,
+                assignedToId: userId,
+                title: issueProjection.title,
+                branchName,
+                status: 'NOT_STARTED',
+              });
+            }
+          }
+        } catch {
+          // Ignora falha de resolução de virtual issue
+        }
+      }
+
+      if (task) {
+        taskId = task.id;
+        if (!params.branchName && task.branchName) {
           targetBranch = task.branchName;
+        }
+      } else if (!params.branchName) {
+        const parsedBigInt = BigInt(params.taskId.replaceAll(/\D/g, '') || '-1');
+        const issueProj = await prisma.githubIssueProjection
+          .findFirst({
+            where: {
+              OR: [
+                { githubIssueId: parsedBigInt },
+                { issueNumber: Number.parseInt(params.taskId, 10) || -1 },
+              ],
+            },
+          })
+          .catch(() => null);
+
+        if (issueProj) {
+          const slug = issueProj.title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 30);
+          targetBranch = `task/${issueProj.issueNumber}-${slug}`;
         }
       }
     }
 
-    const projectDir = path.resolve(env.STORAGE_PATH, 'projects', params.projectId);
-    await this.ensureGitRepositoryWorkspace(
-      params.projectId,
-      project.gitRepoPath,
-      targetBranch,
-      params.userId
-    );
-    await this.ensureTeXTemplateFiles(projectDir, project.name);
+    await this.ensureTaskWorkspace({
+      projectId: params.projectId,
+      userId,
+      taskId,
+      branchName: targetBranch,
+      gitRepoPath: project.gitRepoPath,
+    });
 
-    if (params.userId) {
-      const userWorkspaceDir = path.resolve(
-        env.STORAGE_PATH,
-        'projects',
-        params.projectId,
-        'users',
-        params.userId
-      );
-      await this.ensureTeXTemplateFiles(userWorkspaceDir, project.name);
-    }
-
-    // 2. Reivindica/Cria o Pod isolado do projeto no K8s
-    const podResult = await this.k8sPodManager.claimPodForProject(params.projectId, params.userId);
+    // 2. Reivindica o Pod isolado da Task do projeto no K8s
+    const podResult = await this.k8sPodManager.claimPodForTask(params.projectId, userId, taskId);
 
     const codeServerUrl = env.CODE_SERVER_URL;
     let isCodeServerUp = false;
@@ -443,12 +443,12 @@ export class EditorProxyService {
       }
     }
 
-    // Grava a sessão ativa na tabela Workspace com status sincronizado (READY se respondendo, PROVISIONING se subindo)
+    // Grava a sessão ativa na tabela Workspace com a tríade (projectId, userId, taskId)
     await this.workspacesRepository
       .upsertWorkspace({
         projectId: params.projectId,
         userId: params.userId,
-        taskId: params.taskId || null,
+        taskId,
         podName: podResult.podName,
         status: isCodeServerUp ? 'READY' : 'PROVISIONING',
       })

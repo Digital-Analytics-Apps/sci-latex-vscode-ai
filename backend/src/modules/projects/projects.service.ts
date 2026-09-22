@@ -1,17 +1,20 @@
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
 import { Role } from '@prisma/client';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
+import { GitService } from '../../infra/git/git.service';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
 import { ITeamsRepository } from '../../repositories/teams.repository';
+import { PrismaWorkspacesRepository } from '../../repositories/workspaces.repository';
 import { logAudit } from '../../utils/audit';
-import { GitService } from '../../infra/git/git.service';
 import {
   getGithubProvider,
   githubIntegrationService,
 } from '../github-integration/github-integration.service';
+import { classificationService } from './services/classification.service';
+import { progressDescriptionService } from './services/progress-description.service';
 
 export interface CreateProjectDTO {
   name: string;
@@ -65,6 +68,13 @@ export class ProjectsService {
 
   // Criar um novo projeto/artigo e provisionar seu repositório Git/GitHub
   async createProject(userId: string, data: CreateProjectDTO) {
+    if (process.env.NODE_ENV !== 'test') {
+      const creatorUser = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+      if (!creatorUser) {
+        throw new Error('USER_NOT_FOUND');
+      }
+    }
+
     let targetTeamId = data.teamId;
 
     if (!targetTeamId) {
@@ -331,6 +341,42 @@ export class ProjectsService {
     return updated;
   }
 
+  // Retorna o resumo acadêmico de alterações no rascunho e metadados de último salvamento
+  async getTaskDiffSummary(projectId: string, taskId: string, userId: string) {
+    const project = await this.projectsRepository.findById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    const task = await prisma.task.findUnique({ where: { id: taskId } }).catch(() => null);
+
+    const rawFacts = await this.gitService.getTaskRawDiffFacts(projectId, userId, taskId);
+
+    const { classifiedFiles, hasChangesInOtherFiles } = classificationService.classifyDiffFacts(
+      rawFacts.files,
+      task?.title
+    );
+
+    const generatedProgressDescription = progressDescriptionService.generateDefaultDescription(
+      classifiedFiles,
+      task?.title
+    );
+
+    const totalAdditions = classifiedFiles.reduce((acc, f) => acc + f.additions, 0);
+    const totalDeletions = classifiedFiles.reduce((acc, f) => acc + f.deletions, 0);
+
+    return {
+      lastSavedAt: rawFacts.lastSavedAt,
+      lastSavedAuthor: rawFacts.lastSavedAuthor,
+      summary: {
+        filesChanged: classifiedFiles.length,
+        additions: totalAdditions,
+        deletions: totalDeletions,
+      },
+      files: classifiedFiles,
+      hasChangesInOtherFiles,
+      generatedProgressDescription,
+    };
+  }
+
   // Realiza o commit silencioso do progresso de uma tarefa no GitHub via Service Token e garante a existência do Draft PR
   async commitTaskProgress(
     projectId: string,
@@ -349,17 +395,35 @@ export class ProjectsService {
     const branchName = task?.branchName || `task/${taskId.slice(0, 8)}`;
     const filePath = 'main.tex';
 
+    const workspacesRepo = new PrismaWorkspacesRepository();
+    const userTaskWorkspaceDir = workspacesRepo.getTaskWorkspacePath(projectId, userId, taskId);
+    const userTaskFilePath = path.join(userTaskWorkspaceDir, filePath);
+
+    const userWorkspaceDir = path.resolve(env.STORAGE_PATH, 'projects', projectId, 'users', userId);
+    const legacyUserFilePath = path.join(userWorkspaceDir, filePath);
     const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
-    const fullFilePath = path.join(projectDir, filePath);
+    const baseFilePath = path.join(projectDir, filePath);
 
     let fileContent = '';
     try {
-      fileContent = await fs.readFile(fullFilePath, 'utf-8');
+      fileContent = await fs.readFile(userTaskFilePath, 'utf-8');
     } catch {
-      fileContent = `% Progress update for task ${taskId}\n`;
+      try {
+        fileContent = await fs.readFile(legacyUserFilePath, 'utf-8');
+      } catch {
+        try {
+          fileContent = await fs.readFile(baseFilePath, 'utf-8');
+        } catch {
+          fileContent = `% Progress update for task ${taskId}\n`;
+        }
+      }
     }
 
-    const msg = commitMessage || `Progress update: task ${taskId} edit`;
+    let msg = commitMessage?.trim();
+    if (!msg) {
+      const diffSummary = await this.getTaskDiffSummary(projectId, taskId, userId);
+      msg = diffSummary.generatedProgressDescription;
+    }
 
     let commitHash = `commit-${Date.now().toString(36)}`;
     try {
@@ -418,7 +482,7 @@ export class ProjectsService {
         pr = await prisma.pullRequest
           .create({
             data: {
-              title: `[DRAFT] Revisão da Tarefa: ${task?.title || taskId}`,
+              title: `Revisão da Tarefa: ${task?.title || taskId}`,
               description: `Progresso salvo pelo autor em ${new Date().toLocaleDateString('pt-BR')}`,
               status: 'DRAFT',
               projectId,
@@ -435,7 +499,7 @@ export class ProjectsService {
           projectId,
           headBranch: branchName,
           baseBranch: 'dev',
-          title: `[DRAFT] Revisão da Tarefa: ${task?.title || taskId}`,
+          title: `Revisão da Tarefa: ${task?.title || taskId}`,
           body: `Draft Pull Request criado automaticamente ao salvar o progresso da tarefa.`,
           projectTitle: project.name,
           repoUrl: project.gitRepoPath,
@@ -501,6 +565,7 @@ export class ProjectsService {
     return {
       message: 'Progresso salvo e Draft PR mantido/criado no GitHub com sucesso!',
       commitHash,
+      commitMessage: msg,
       taskId,
       projectId,
       pullRequest: pr,

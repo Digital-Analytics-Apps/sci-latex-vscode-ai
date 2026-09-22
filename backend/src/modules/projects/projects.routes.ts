@@ -269,6 +269,25 @@ export async function projectsRoutes(app: FastifyInstance) {
     (req, reply) => controller.commitTaskProgress(req, reply)
   );
 
+  // GET /api/v1/projects/:id/tasks/:taskId/diff-summary - Obter resumo acadêmico de alterações do rascunho
+  app.get(
+    '/:id/tasks/:taskId/diff-summary',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter resumo acadêmico de alterações do rascunho da tarefa',
+        description:
+          'Compara o workspace isolado da tarefa com o último checkpoint salvo (HEAD) e retorna a lista categorizada de modificações TeX, referências e imagens.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+          taskId: z.string(),
+        }),
+      },
+    },
+    (req, reply) => controller.getTaskDiffSummary(req, reply)
+  );
+
   // GET /api/v1/projects/:id/git-status - Checar alterações pendentes (hasUncommittedChanges)
   app.get(
     '/:id/git-status',

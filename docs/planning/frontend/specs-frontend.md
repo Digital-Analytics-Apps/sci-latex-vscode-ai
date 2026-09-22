@@ -1,7 +1,7 @@
 # Especificação Técnica do Frontend (ReactJS + Redux Toolkit + TanStack Query)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-15  
+**Última Atualização:** 2026-09-22  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -86,6 +86,13 @@ export function useSSEEventSource() {
   - *Enviar p/ Revisão*: Ativo quando houver rascunho salvo e transiciona para `UNDER_REVIEW`.
   - *Realizar Merge*: Ativo quando o PR estiver aprovado (`APPROVED`).
   - *Sondagem de Dirty State Desativada*: O frontend não faz polling em rotas de sistema de arquivos local (`/git-status`), garantindo performance e ausência de falsos bloqueios.
+
+### 4.2 Modal "Salvar Progresso" & Tradução de Diffs Acadêmicos (`SaveProgressModal.tsx`)
+* **Consumo de API (`useQuery`)**: Ao abrir o modal, o frontend consome a rota `GET /api/v1/projects/:id/tasks/:taskId/diff-summary`.
+* **Visualização Acadêmica Traduzida**: Exibe lista formatada de arquivos alterados organizados por rótulos amigáveis de domínio ("Seção Introdução", "Referências Bibliográficas", "Figuras e Ilustrações", "Estrutura Principal do Artigo", etc.).
+* **Linha do Tempo Contextual**: Exibe o cabeçalho temporal dinâmico: *"Desde o último salvamento em [data/hora] por [autor]"* (ou *"Nenhum salvamento anterior nesta tarefa"* no primeiro checkpoint).
+* **Campo de Descrição Opcional**: Fornece um campo de texto opcional para o escritor descrever a evolução. Se deixado em branco, utiliza a descrição sintetizada pelo backend sem falhas de estado no React (sem chamadas síncronas de `setState` em efeitos).
+* **Informativo de Alterações Fora de Escopo**: Apresenta banner informativo factual quando `hasChangesInOtherFiles` for `true`, mantendo o botão "Salvar Progresso" 100% ativo e desobstruído.
 
 ---
 

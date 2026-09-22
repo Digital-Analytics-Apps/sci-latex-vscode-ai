@@ -1,8 +1,8 @@
 # Especificação Técnica e Arquitetural (Specs)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-15  
-**Status:** Especificação Completa (KinD Kubernetes Cluster Local, Warm Standby Pool, Pods sob Demanda, PVC por Projeto, Limpeza Inteligente de PVCs, Estrutura Modular TeX, SDK Octokit, Stream SSE, Interface Zen Mode Distraction-Free, Topbar Guiada a Estado de Domínio)
+**Última Atualização:** 2026-09-22  
+**Status:** Especificação Completa (KinD Kubernetes Cluster Local, Warm Standby Pool, Pods sob Demanda, PVC por Projeto, Limpeza Inteligente de PVCs, Estrutura Modular TeX, SDK Octokit, Stream SSE, Interface Zen Mode Distraction-Free, Topbar Guiada a Estado de Domínio, UX Acadêmica de Salvar Progresso e Tradução de Diffs)
 
 ---
 
@@ -124,6 +124,7 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
 
 1. **Salvar Progresso (`DRAFT` / `CHANGES_REQUESTED`)**:
    - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da tarefa (`task/<slug>-<shortHash>`) e gera/mantém o **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
+   - **Título Limpo sem Prefixos Manuais**: O título do PR rascunho no GitHub não contém a string `"DRAFT"` no texto (ex: `Task: Escrever Introdução`), utilizando o atributo nativo `draft: true` da API do GitHub para representar a condição de rascunho.
    - **Vinculação Automática com Issue & Project v2**: O corpo do PR inclui a instrução `Resolves #<issueNumber>`, vinculando automaticamente o PR à Issue na seção *Development* do GitHub. Adicionalmente, executa a mutation `addProjectV2ItemById` (vinculando o PR ao quadro Project v2) e `updateProjectV2ItemFieldValue` (garantindo que o status no quadro esteja como `In Progress`).
    - **Materialização Sob Demanda**: Ao iniciar um workspace para uma projeção sintética (`github-issue-*`), o backend materializa dinamicamente a entidade `Task` no PostgreSQL, mantendo consistência relacional com a tabela `Workspace`.
    - **Resiliência a Falhas de API (`502 Bad Gateway`)**: Erros de comunicação com a API do GitHub são mapeados para HTTP 502 (Bad Gateway), evitando que interceptores de autenticação no frontend confundam falhas de integração com expiracão de token (`401 Unauthorized`).
@@ -146,6 +147,33 @@ Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo
    - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev`, remove a branch temporária da seção do GitHub (`deleteBranch`), e em seguida aciona a liberação do Pod K8s (`releasePodForProject`), destruição do PVC temporário (`cleanProjectPVC`) e marca a entrada do banco de dados na tabela `Workspace` como `TERMINATED`.
    - **Fluxo Frontend & UX**: O botão "Salvar Progresso" é bloqueado quando o PR é aprovado pelo Revisor ou concluído. Após a confirmação do merge com sucesso, o frontend redireciona automaticamente o usuário para a página de tarefas (`/`), onde a tarefa passa a ser exibida com a badge `Concluída (Merged)` e o botão de acesso ao workspace é desabilitado.
    - **Regra de Habilitação**: Habilitado exclusivamente quando o PR é aprovado pelo Revisor (`status === APPROVED`).
+
+---
+
+### 3.5 Arquitetura Decoupled de UX Acadêmica para Salvar Progresso
+
+Para transformar o modelo mental do escritor científico e evitar exposição direta de complexidades do Git:
+
+1. **Separação entre Fatos Git e Interpretação Acadêmica**:
+   - **Backend Factual (`GitService`)**: Extrai os fatos puros do sistema de arquivos Git (`git diff HEAD` na working tree da task), retornando `path`, `status` (`added`, `modified`, `deleted`), `additions` e `deletions`, além de metadados temporais (`lastSavedAt`, `lastSavedAuthor`).
+   - **Classificação Acadêmica de Domínio (`ClassificationService`)**: Mapeia caminhos de arquivos para o vocabulário do escritor científico:
+     - `sections/*.tex` $\rightarrow$ Categoria `section` ("Seção [Nome]")
+     - `main.tex` $\rightarrow$ Categoria `main_structure` ("Estrutura Principal do Artigo")
+     - `*.bib` $\rightarrow$ Categoria `references` ("Referências Bibliográficas")
+     - `figures/*`, `images/*`, `*.png`, `*.jpg`, `*.svg` $\rightarrow$ Categoria `figures` ("Figuras e Ilustrações")
+     - `tables/*`, `*.csv` $\rightarrow$ Categoria `tables` ("Tabelas e Dados")
+     - `appendices/*` $\rightarrow$ Categoria `appendices` ("Anexos e Apêndices")
+     - `*.cls`, `*.sty` $\rightarrow$ Categoria `style` ("Estilos e Formatadores")
+
+2. **Diff Relativo ao HEAD da Branch da Tarefa**:
+   - A linha de base para cálculo do diff de progresso é **`git diff HEAD`** no repositório individual da tarefa (`task/<slug>-<shortHash>`).
+   - Isso garante que o modal "Salvar Progresso" exiba unicamente o trabalho realizado desde o último salvamento (último commit salvo) naquela tarefa específica.
+
+3. **Geração Determinística de Mensagem Fallback (`ProgressDescriptionService`)**:
+   - Caso o escritor prefira salvar o progresso sem digitar uma mensagem manual (ou envie string em branco), o backend sintetiza automaticamente uma descrição acadêmica clara e padronizada baseada nas categorias dos arquivos alterados (ex: `"Atualizações na Seção Introdução e Referências Bibliográficas"`).
+
+4. **Informativo Factual Não-Bloqueante (`hasChangesInOtherFiles`)**:
+   - Se o autor alterar arquivos fora do escopo primário da tarefa (ex: editou a bibliografia durante a escrita da Introdução), o sistema detecta o fato (`hasChangesInOtherFiles: true`) e apresenta um informativo transparente na interface, **sem jamais bloquear a ação de salvamento**. O autor mantém autonomia total para salvar seu progresso.
 
 ---
 

@@ -138,6 +138,16 @@ class MockGitService extends GitService {
   async commitFile(_params?: any): Promise<string> {
     return 'a1b2c3d4e5f678901234567890abcdef12345678';
   }
+  async getTaskRawDiffFacts(_projectId: string, _userId: string, _taskId: string): Promise<any> {
+    return {
+      lastSavedAt: '2026-09-22T02:00:00.000Z',
+      lastSavedAuthor: 'João Autor',
+      files: [
+        { path: 'sections/01-introduction.tex', status: 'modified', additions: 15, deletions: 3 },
+        { path: 'references.bib', status: 'modified', additions: 2, deletions: 0 },
+      ],
+    };
+  }
 }
 
 describe('ProjectsService', () => {
@@ -235,5 +245,34 @@ describe('ProjectsService', () => {
     expect(result.taskId).toBe('task-1');
     expect(result.projectId).toBe(created.id);
     expect(result.commitHash).toBeDefined();
+  });
+
+  it('should get task diff summary with classified academic categories and generated description', async () => {
+    const created = await projectsService.createProject('user-1', {
+      name: 'Artigo de Teste Diff Summary',
+      teamId: 'team-1',
+    });
+
+    const summary = await projectsService.getTaskDiffSummary(created.id, 'task-1', 'user-1');
+
+    expect(summary).toBeDefined();
+    expect(summary.lastSavedAuthor).toBe('João Autor');
+    expect(summary.summary.filesChanged).toBe(2);
+    expect(summary.files).toHaveLength(2);
+    expect(summary.files[0].category).toBe('section');
+    expect(summary.files[1].category).toBe('bibliography');
+    expect(summary.generatedProgressDescription).toContain('Introdução');
+  });
+
+  it('should use generatedProgressDescription when commitMessage is omitted in commitTaskProgress', async () => {
+    const created = await projectsService.createProject('user-1', {
+      name: 'Artigo de Teste Fallback Description',
+      teamId: 'team-1',
+    });
+
+    const result = await projectsService.commitTaskProgress(created.id, 'task-1', 'user-1');
+
+    expect(result).toBeDefined();
+    expect(result.commitMessage).toContain('Introdução');
   });
 });
