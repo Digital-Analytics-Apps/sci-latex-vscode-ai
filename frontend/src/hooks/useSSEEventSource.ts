@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { RootState } from "../store";
 import { showNotification } from "../store/slices/notificationSlice";
 
-export function useSSEEventSource(projectId?: string) {
+export function useSSEEventSource(projectId?: string, taskId?: string) {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const token = useSelector((state: RootState) => state.auth.token);
@@ -17,13 +17,85 @@ export function useSSEEventSource(projectId?: string) {
     const baseUrl =
       import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
 
-    const url = projectId
-      ? `${baseUrl}/events/stream?projectId=${projectId}`
+    const params = new URLSearchParams();
+    if (projectId) params.append("projectId", projectId);
+    if (taskId) params.append("taskId", taskId);
+
+    const queryString = params.toString();
+    const streamUrl = queryString
+      ? `${baseUrl}/events/stream?${queryString}`
       : `${baseUrl}/events/stream`;
+
+    // Função auxiliar para enviar o batimento HTTP que renova o Redis e cancela destruição de Pod
+    async function sendHeartbeatPing() {
+      if (!projectId) return;
+      try {
+        const heartbeatUrl = queryString
+          ? `${baseUrl}/events/heartbeat?${queryString}`
+          : `${baseUrl}/events/heartbeat`;
+        await fetch(heartbeatUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } catch {
+        // Ignora falhas temporárias de ping
+      }
+    }
+
+    // Criar Web Worker dedicado para batimentos em segundo plano (Web Workers NÃO são desacelerados pelos navegadores quando a aba perde o foco)
+    let pingWorker: Worker | null = null;
+    let workerUrl = "";
+    try {
+      const workerBlob = new Blob(
+        [
+          `
+          let timer = null;
+          self.onmessage = function(e) {
+            if (e.data === 'start') {
+              if (timer) clearInterval(timer);
+              timer = setInterval(function() {
+                self.postMessage('ping');
+              }, 20000); // Envia ping a cada 20s em segundo plano
+            } else if (e.data === 'stop') {
+              if (timer) clearInterval(timer);
+              timer = null;
+            }
+          };
+        `,
+        ],
+        { type: "application/javascript" }
+      );
+      workerUrl = URL.createObjectURL(workerBlob);
+      pingWorker = new Worker(workerUrl);
+      pingWorker.onmessage = (e) => {
+        if (e.data === "ping") {
+          sendHeartbeatPing();
+        }
+      };
+      pingWorker.postMessage("start");
+    } catch {
+      // Fallback para setInterval se Web Workers forem bloqueados por CSP
+      const fallbackInterval = setInterval(() => {
+        sendHeartbeatPing();
+      }, 20000);
+      controller.signal.addEventListener("abort", () => {
+        clearInterval(fallbackInterval);
+      });
+    }
+
+    // Escuta a volta do foco da aba para enviar batimento e reconectar o SSE imediatamente
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        sendHeartbeatPing();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     async function connectSSE() {
       try {
-        const response = await fetch(url, {
+        const response = await fetch(streamUrl, {
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "text/event-stream",
@@ -119,9 +191,17 @@ export function useSSEEventSource(projectId?: string) {
 
     return () => {
       controller.abort();
+      if (pingWorker) {
+        pingWorker.postMessage("stop");
+        pingWorker.terminate();
+      }
+      if (workerUrl) {
+        URL.revokeObjectURL(workerUrl);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       setIsConnected(false);
     };
-  }, [token, projectId, dispatch, queryClient]);
+  }, [token, projectId, taskId, dispatch, queryClient]);
 
   return { isConnected: Boolean(token) && isConnected };
 }

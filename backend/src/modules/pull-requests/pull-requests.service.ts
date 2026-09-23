@@ -1,4 +1,6 @@
+import path from 'node:path';
 import { NITStatus, PRStatus } from '@prisma/client';
+import { env } from '../../config/env';
 import {
   CreatePRData,
   PrismaPullRequestsRepository,
@@ -8,6 +10,7 @@ import { logAudit } from '../../utils/audit';
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { prisma } from '../../db/prisma';
+import { classificationService } from '../projects/services/classification.service';
 
 export class PullRequestsService {
   constructor(
@@ -76,6 +79,43 @@ export class PullRequestsService {
         reviewerId: cleanReviewerId,
         authorId,
       });
+    }
+
+    // 2.5 Congelamento da ReviewRound e captura imutável dos SHAs no momento da submissão
+    try {
+      const taskWorkspaceDir = data.taskId
+        ? path.resolve(env.STORAGE_PATH, 'projects', data.projectId, 'users', authorId, 'tasks', data.taskId)
+        : path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      const projectDir = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+
+      const submittedCommitHash = this.gitService
+        ? (await this.gitService.getCommitSha(taskWorkspaceDir, 'HEAD')) || 'HEAD'
+        : 'HEAD';
+      const baseCommitHash = this.gitService
+        ? (await this.gitService.getCommitSha(projectDir, 'dev')) || 'dev'
+        : 'dev';
+
+      const existingRounds = await prisma.reviewRound.findMany({
+        where: { pullRequestId: pr.id },
+        orderBy: { roundNumber: 'asc' },
+      });
+
+      const roundNumber = existingRounds.length + 1;
+      const previousSubmittedCommitHash = existingRounds.length > 0
+        ? existingRounds[existingRounds.length - 1].submittedCommitHash
+        : undefined;
+
+      await prisma.reviewRound.create({
+        data: {
+          pullRequestId: pr.id,
+          roundNumber,
+          baseCommitHash,
+          submittedCommitHash,
+          previousSubmittedCommitHash,
+        },
+      });
+    } catch (err: any) {
+      console.warn('⚠️ Warning creating ReviewRound record:', err?.message || err);
     }
 
     // 3. Atualizar o status da Task associada para UNDER_REVIEW
@@ -185,10 +225,16 @@ export class PullRequestsService {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
 
-    // Se houver comentário, grava na tabela de comentários do PR
+    // Se houver comentário, grava na tabela de comentários do PR vinculando à última ReviewRound
     if (comment && comment.trim() !== '') {
+      const latestRound = await prisma.reviewRound.findFirst({
+        where: { pullRequestId: prId },
+        orderBy: { roundNumber: 'desc' },
+      });
+
       await this.prRepository.addComment({
         pullRequestId: prId,
+        reviewRoundId: latestRound?.id,
         userId: reviewerId,
         lineNumer,
         comment,
@@ -455,5 +501,74 @@ export class PullRequestsService {
     });
 
     return { message: 'Artigo mesclado com sucesso na branch main para submissão final.' };
+  }
+
+  // Obter a estrutura desacoplada de ReviewDiff (overview e roundChanges)
+  async getPRReviewDiff(prId: string) {
+    const pr = await prisma.pullRequest.findUnique({
+      where: { id: prId },
+      include: {
+        rounds: { orderBy: { roundNumber: 'asc' } },
+        task: true,
+      },
+    });
+
+    if (!pr) throw new Error('PR_NOT_FOUND');
+
+    const projectDir = path.resolve(env.STORAGE_PATH, 'projects', pr.projectId);
+    const rounds = pr.rounds || [];
+    const latestRound = rounds.length > 0 ? rounds[rounds.length - 1] : null;
+
+    const baseSha = latestRound?.baseCommitHash || 'dev';
+    const submittedSha = latestRound?.submittedCommitHash || 'HEAD';
+    const previousSha = latestRound?.previousSubmittedCommitHash || undefined;
+
+    const overviewFacts = this.gitService
+      ? await this.gitService.getDiffFactsBetweenRefs(projectDir, baseSha, submittedSha)
+      : [];
+
+    const overviewClassification = classificationService.classifyDiffFacts(
+      overviewFacts,
+      pr.title
+    );
+
+    let roundChangesClassification: any = null;
+    if (previousSha && this.gitService) {
+      const roundFacts = await this.gitService.getDiffFactsBetweenRefs(
+        projectDir,
+        previousSha,
+        submittedSha
+      );
+      roundChangesClassification = classificationService.classifyDiffFacts(
+        roundFacts,
+        pr.title
+      );
+    }
+
+    return {
+      pullRequestId: pr.id,
+      roundNumber: latestRound?.roundNumber || 1,
+      overview: {
+        baseCommitHash: baseSha,
+        targetCommitHash: submittedSha,
+        ...overviewClassification,
+      },
+      roundChanges: previousSha
+        ? {
+            previousSubmittedCommitHash: previousSha,
+            currentSubmittedCommitHash: submittedSha,
+            ...roundChangesClassification,
+          }
+        : null,
+      roundsCount: rounds.length,
+      rounds: rounds.map((r) => ({
+        id: r.id,
+        roundNumber: r.roundNumber,
+        baseCommitHash: r.baseCommitHash,
+        submittedCommitHash: r.submittedCommitHash,
+        previousSubmittedCommitHash: r.previousSubmittedCommitHash,
+        createdAt: r.createdAt,
+      })),
+    };
   }
 }

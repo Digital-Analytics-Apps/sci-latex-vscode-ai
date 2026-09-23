@@ -94,6 +94,9 @@ describe('TasksService (Unit Tests)', () => {
       projectId: 'proj-1',
       assignedToId: undefined,
     });
-    expect(result).toEqual(mockTasks);
+    expect(result).toEqual([
+      { id: 'task-1', title: 'Task 1', projectId: 'proj-1', isOccupied: false, occupiedBy: null },
+      { id: 'task-2', title: 'Task 2', projectId: 'proj-1', isOccupied: false, occupiedBy: null },
+    ]);
   });
 });

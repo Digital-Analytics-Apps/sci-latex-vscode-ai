@@ -3,7 +3,14 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import CommentIcon from "@mui/icons-material/Comment";
+import DescriptionIcon from "@mui/icons-material/Description";
+import DifferenceIcon from "@mui/icons-material/Difference";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ImageIcon from "@mui/icons-material/Image";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SendIcon from "@mui/icons-material/Send";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
   Alert,
   Badge,
@@ -11,6 +18,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -18,6 +26,8 @@ import {
   Paper,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -27,6 +37,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { NITStatus, PRStatus } from "../../constants/status";
 import {
   usePRDetails,
+  usePRDiffQuery,
   useReviewPRMutation,
 } from "../../hooks/useReviewQueries";
 import { showNotification } from "../../store/slices/notificationSlice";
@@ -39,12 +50,30 @@ export const ReviewDetailPage = () => {
   const dispatch = useDispatch();
 
   const { data: prDetails, isLoading, error } = usePRDetails(prId);
+  const { data: diffData } = usePRDiffQuery(prId);
   const reviewMutation = useReviewPRMutation(prId);
 
   const [isNITModalOpen, setIsNITModalOpen] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isDiffSummaryOpen, setIsDiffSummaryOpen] = useState<boolean>(true);
+  const [diffPerspective, setDiffPerspective] = useState<"overview" | "roundChanges">("overview");
   const [commentText, setCommentText] = useState<string>("");
   const [lineNumber, setLineNumber] = useState<string>("");
+
+  const handleNavigateToLocation = (filePath: string, line?: number) => {
+    // Comunicação desacoplada via postMessage orientado a intenção de domínio
+    const iframeWindow = document.querySelector<HTMLIFrameElement>("iframe")?.contentWindow;
+    if (iframeWindow) {
+      iframeWindow.postMessage(
+        {
+          type: "go-to-location",
+          file: filePath,
+          line: line || 1,
+        },
+        "*"
+      );
+    }
+  };
 
   const handleReview = async (
     status?: typeof PRStatus.APPROVED | typeof PRStatus.CHANGES_REQUESTED,
@@ -273,6 +302,144 @@ export const ReviewDetailPage = () => {
         </Box>
       </Paper>
 
+      {/* Banner de Resumo Factual Acadêmico (Smart Diff Summary) com Suporte a Review Rounds */}
+      {diffData && (
+        <Paper
+          square
+          variant="outlined"
+          sx={{
+            px: 2,
+            py: 1,
+            bgcolor: "#0d1117",
+            color: "#e6edf3",
+            borderColor: "divider",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+              <Chip
+                label={`REVISÃO #${diffData.roundNumber}`}
+                size="small"
+                color="primary"
+                sx={{ fontWeight: 700 }}
+              />
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "#58a6ff" }}>
+                Resumo das Alterações Submetidas
+              </Typography>
+
+              {/* Seletor de Perspectiva: Visão Geral vs Correções Desta Rodada */}
+              <ToggleButtonGroup
+                value={diffPerspective}
+                exclusive
+                onChange={(_, val) => val && setDiffPerspective(val)}
+                size="small"
+                sx={{ height: 28, bgcolor: "#161b22" }}
+              >
+                <ToggleButton
+                  value="overview"
+                  sx={{
+                    px: 1.5,
+                    py: 0,
+                    fontSize: 11,
+                    textTransform: "none",
+                    color: diffPerspective === "overview" ? "#58a6ff" : "#8b949e",
+                    "&.Mui-selected": { bgcolor: "#1f242c", color: "#58a6ff" },
+                  }}
+                >
+                  Visão Geral (dev → {diffData.overview?.targetCommitHash.slice(0, 7)})
+                </ToggleButton>
+                {diffData.roundChanges && (
+                  <ToggleButton
+                    value="roundChanges"
+                    sx={{
+                      px: 1.5,
+                      py: 0,
+                      fontSize: 11,
+                      textTransform: "none",
+                      color: diffPerspective === "roundChanges" ? "#3fb950" : "#8b949e",
+                      "&.Mui-selected": { bgcolor: "#1f242c", color: "#3fb950" },
+                    }}
+                  >
+                    Correções Desta Rodada (Rodada #{diffData.roundNumber - 1} → #{diffData.roundNumber})
+                  </ToggleButton>
+                )}
+              </ToggleButtonGroup>
+            </Box>
+
+            <IconButton
+              size="small"
+              onClick={() => setIsDiffSummaryOpen(!isDiffSummaryOpen)}
+              sx={{ color: "#8b949e" }}
+            >
+              {isDiffSummaryOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
+          </Box>
+
+          <Collapse in={isDiffSummaryOpen}>
+            <Box sx={{ pt: 1, display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+              {(() => {
+                const currentDiff =
+                  diffPerspective === "roundChanges" && diffData.roundChanges
+                    ? diffData.roundChanges
+                    : diffData.overview;
+
+                return (
+                  <>
+                    {currentDiff.classifiedFiles.map((file) => (
+                      <Chip
+                        key={file.path}
+                        icon={
+                          file.category === "section" ? (
+                            <DescriptionIcon style={{ fontSize: 14, color: "#58a6ff" }} />
+                          ) : file.category === "bibliography" ? (
+                            <MenuBookIcon style={{ fontSize: 14, color: "#d2a8ff" }} />
+                          ) : file.category === "figure" ? (
+                            <ImageIcon style={{ fontSize: 14, color: "#7ee787" }} />
+                          ) : (
+                            <DifferenceIcon style={{ fontSize: 14, color: "#8b949e" }} />
+                          )
+                        }
+                        label={`${file.label}: +${file.additions} / -${file.deletions}`}
+                        size="small"
+                        onClick={() => handleNavigateToLocation(file.path)}
+                        sx={{
+                          bgcolor: "#161b22",
+                          color: "#c9d1d9",
+                          borderColor: "#30363d",
+                          fontSize: 12,
+                          cursor: "pointer",
+                          "&:hover": { bgcolor: "#21262d" },
+                        }}
+                        variant="outlined"
+                      />
+                    ))}
+
+                    {currentDiff.hasChangesInOtherFiles && (
+                      <Tooltip title="Existem alterações em arquivos fora do escopo da seção primária da tarefa.">
+                        <Chip
+                          icon={<WarningAmberIcon style={{ fontSize: 14, color: "#d29922" }} />}
+                          label="⚠️ Alterações em outros arquivos"
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          sx={{ fontSize: 11, height: 24 }}
+                        />
+                      </Tooltip>
+                    )}
+                  </>
+                );
+              })()}
+            </Box>
+          </Collapse>
+        </Paper>
+      )}
+
       {/* Workspace do VS Code Web com suporte a Branch de Seção e Modo de Revisão */}
       <Box
         sx={{
@@ -331,7 +498,19 @@ export const ReviewDetailPage = () => {
                 <Paper
                   key={item.id}
                   variant="outlined"
-                  sx={{ p: 1.5, mb: 1.5, borderColor: "divider" }}
+                  onClick={() =>
+                    handleNavigateToLocation(
+                      prDetails.task?.branchName ? `sections/01-introduction.tex` : "main.tex",
+                      item.lineNumer
+                    )
+                  }
+                  sx={{
+                    p: 1.5,
+                    mb: 1.5,
+                    borderColor: "divider",
+                    cursor: item.lineNumer ? "pointer" : "default",
+                    "&:hover": item.lineNumer ? { bgcolor: "action.hover" } : {},
+                  }}
                 >
                   <Box
                     sx={{

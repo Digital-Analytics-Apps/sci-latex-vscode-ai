@@ -99,3 +99,50 @@ export function useSubmitNITParecerMutation(prId: string) {
     },
   });
 }
+
+export interface ClassifiedFileDiff {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+  additions: number;
+  deletions: number;
+  category: 'section' | 'bibliography' | 'figure' | 'other';
+  label: string;
+}
+
+export interface ReviewDiffData {
+  pullRequestId: string;
+  roundNumber: number;
+  overview: {
+    baseCommitHash: string;
+    targetCommitHash: string;
+    classifiedFiles: ClassifiedFileDiff[];
+    hasChangesInOtherFiles: boolean;
+  };
+  roundChanges?: {
+    previousSubmittedCommitHash: string;
+    currentSubmittedCommitHash: string;
+    classifiedFiles: ClassifiedFileDiff[];
+    hasChangesInOtherFiles: boolean;
+  } | null;
+  roundsCount: number;
+  rounds?: Array<{
+    id: string;
+    roundNumber: number;
+    baseCommitHash: string;
+    submittedCommitHash: string;
+    previousSubmittedCommitHash?: string;
+    createdAt: string;
+  }>;
+}
+
+// Hook para buscar a estrutura de diffs da revisão (ReviewDiff)
+export function usePRDiffQuery(prId: string) {
+  return useQuery<ReviewDiffData>({
+    queryKey: ["pull-request-diff", prId],
+    queryFn: async () => {
+      const response = await api.get(`/pull-requests/${prId}/diff`);
+      return response.data;
+    },
+    enabled: Boolean(prId),
+  });
+}

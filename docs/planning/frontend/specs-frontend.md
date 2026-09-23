@@ -48,30 +48,18 @@ src/
 
 ---
 
-## 3. Integração em Tempo Real via Server-Sent Events (SSE)
+## 3. Integração em Tempo Real via Server-Sent Events (SSE) & Heartbeat via Web Worker
 
 ### Hook `useSSEEventSource`
-Notificações enviadas pelo servidor (como conclusão de PDF, aprovação do NIT, liberação do botão de Merge) são escutadas nativamente pelo navegador:
+Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, liberação do botão de Merge) são escutadas nativamente via `EventSource`. Além disso, o hook gerencia o batimento cardíaco (Heartbeat) da workspace ativa:
 
-```ts
-// src/hooks/useSSEEventSource.ts
-export function useSSEEventSource() {
-  const dispatch = useDispatch();
+1. **Batimento Resiliente via Web Worker (Blob inline)**:
+   - Para contornar o estrangulamento/suspensão de timers (`setInterval`) imposto por navegadores quando a aba perde o foco, o hook instancia um **Blob Web Worker** executando em uma thread separada.
+   - O worker dispara requisições HTTP `POST /api/v1/events/heartbeat` a cada 20 segundos fornecendo a tríade `{ projectId, userId, taskId }`.
+   - Como o Web Worker roda em thread própria, o heartbeat continua ativo sem interrupções mesmo quando o usuário navega para outras abas.
 
-  useEffect(() => {
-    const eventSource = new EventSource('/api/v1/events/stream', {
-      withCredentials: true,
-    });
-
-    eventSource.addEventListener('MERGE_UNLOCKED', (event) => {
-      const data = JSON.parse(event.data);
-      dispatch(showNotification({ message: 'Merge liberado!', type: 'success' }));
-    });
-
-    return () => eventSource.close();
-  }, []);
-}
-```
+2. **Reativação por Foco na Janela (`visibilitychange`)**:
+   - Escuta eventos `visibilitychange` no objeto `document`. Ao recuperar o foco (`visibilityState === 'visible'`), dispara imediatamente um heartbeat síncrono no backend para garantir renovação imediata do TTL no Redis.
 
 ---
 
@@ -93,6 +81,11 @@ export function useSSEEventSource() {
 * **Linha do Tempo Contextual**: Exibe o cabeçalho temporal dinâmico: *"Desde o último salvamento em [data/hora] por [autor]"* (ou *"Nenhum salvamento anterior nesta tarefa"* no primeiro checkpoint).
 * **Campo de Descrição Opcional**: Fornece um campo de texto opcional para o escritor descrever a evolução. Se deixado em branco, utiliza a descrição sintetizada pelo backend sem falhas de estado no React (sem chamadas síncronas de `setState` em efeitos).
 * **Informativo de Alterações Fora de Escopo**: Apresenta banner informativo factual quando `hasChangesInOtherFiles` for `true`, mantendo o botão "Salvar Progresso" 100% ativo e desobstruído.
+
+### 4.3 Indicadores de Ocupação & Trava Visual no Card de Tarefas
+* **Consumo de Presença**: Ao consultar a lista de tarefas do artigo (`useTasksQuery`), o frontend recebe os metadados de presença ativa `isOccupied: boolean` e `occupiedBy: { id, name }`.
+* **Badge de Ocupação**: Se a tarefa possuir uma sessão ativa com outro usuário, exibe a badge informativa `🔒 Ocupada por [Nome]`.
+* **Bloqueio do Botão de Workspace**: Se a tarefa estiver ocupada por outro usuário (`occupiedBy.id !== currentUser.id`), o botão de acionamento do workspace é desativado exibindo o rótulo `🔒 Em uso por [Nome]`, prevenindo concorrência na mesma branch Git.
 
 ---
 

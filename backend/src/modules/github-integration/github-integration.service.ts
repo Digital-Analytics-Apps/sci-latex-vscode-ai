@@ -5,7 +5,7 @@ import { LiveGithubProvider } from './live-github.provider';
 import { MockGithubProvider } from './mock-github.provider';
 
 export function getGithubProvider(): IGithubProvider {
-  if (env.NODE_ENV === 'test' && !env.GITHUB_TOKEN) {
+  if (env.NODE_ENV === 'test') {
     return new MockGithubProvider();
   }
   if (!env.GITHUB_TOKEN) {

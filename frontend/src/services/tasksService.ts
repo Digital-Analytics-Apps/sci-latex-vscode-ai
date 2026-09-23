@@ -13,6 +13,8 @@ export interface TaskItem {
   dueDate: string;
   assignee: string;
   assignedToId?: string;
+  isOccupied?: boolean;
+  occupiedBy?: { id: string; name: string } | null;
 }
 
 export interface CreateTaskInput {

@@ -5,6 +5,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LaunchIcon from "@mui/icons-material/Launch";
+import LockIcon from "@mui/icons-material/Lock";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import {
@@ -559,25 +560,36 @@ export const DashboardPage = () => {
                                 >
                                   {task.title}
                                 </Typography>
-                                <Chip
-                                  label={
-                                    task.status === TaskStatus.MERGED
-                                      ? "Concluída (Merged)"
-                                      : task.status
-                                  }
-                                  size="small"
-                                  color={
-                                    task.status === TaskStatus.MERGED
-                                      ? "success"
-                                      : task.status === TaskStatus.IN_PROGRESS
-                                        ? "primary"
-                                        : task.status ===
-                                            TaskStatus.CHANGES_REQUESTED
-                                          ? "warning"
-                                          : "info"
-                                  }
-                                  sx={{ fontWeight: 700 }}
-                                />
+                                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                                  {task.isOccupied && task.occupiedBy ? (
+                                    <Chip
+                                      label={`🔒 Ocupada por ${task.occupiedBy.name}`}
+                                      size="small"
+                                      color="warning"
+                                      variant="outlined"
+                                      sx={{ fontWeight: 700 }}
+                                    />
+                                  ) : null}
+                                  <Chip
+                                    label={
+                                      task.status === TaskStatus.MERGED
+                                        ? "Concluída (Merged)"
+                                        : task.status
+                                    }
+                                    size="small"
+                                    color={
+                                      task.status === TaskStatus.MERGED
+                                        ? "success"
+                                        : task.status === TaskStatus.IN_PROGRESS
+                                          ? "primary"
+                                          : task.status ===
+                                              TaskStatus.CHANGES_REQUESTED
+                                            ? "warning"
+                                            : "info"
+                                    }
+                                    sx={{ fontWeight: 700 }}
+                                  />
+                                </Box>
                               </Box>
 
                               <Typography
@@ -623,42 +635,59 @@ export const DashboardPage = () => {
                                       : task.assignee || "Não atribuído"}
                                   </strong>
                                 </Typography>
-                                <Button
-                                  variant={
-                                    task.status === TaskStatus.MERGED
-                                      ? "outlined"
-                                      : "contained"
-                                  }
-                                  color={
-                                    task.status === TaskStatus.MERGED
-                                      ? "inherit"
-                                      : "primary"
-                                  }
-                                  size="small"
-                                  disabled={
-                                    task.status === TaskStatus.MERGED ||
-                                    provisioningTaskId === task.id
-                                  }
-                                  startIcon={
-                                    provisioningTaskId === task.id ? (
-                                      <CircularProgress
-                                        size={14}
-                                        color="inherit"
-                                      />
-                                    ) : task.status === TaskStatus.MERGED ? (
-                                      <CheckCircleIcon fontSize="small" />
-                                    ) : (
-                                      <LaunchIcon />
-                                    )
-                                  }
-                                  onClick={() => handleStartWorkspace(task)}
-                                >
-                                  {task.status === TaskStatus.MERGED
-                                    ? "Tarefa Concluída"
-                                    : provisioningTaskId === task.id
-                                      ? "⚡ Provisionando..."
-                                      : "🚀 Iniciar Workspace"}
-                                </Button>
+
+                                {(() => {
+                                  const isOccupiedByOther =
+                                    task.isOccupied &&
+                                    task.occupiedBy &&
+                                    task.occupiedBy.id !== user?.id;
+
+                                  return (
+                                    <Button
+                                      variant={
+                                        task.status === TaskStatus.MERGED
+                                          ? "outlined"
+                                          : "contained"
+                                      }
+                                      color={
+                                        isOccupiedByOther
+                                          ? "warning"
+                                          : task.status === TaskStatus.MERGED
+                                            ? "inherit"
+                                            : "primary"
+                                      }
+                                      size="small"
+                                      disabled={
+                                        task.status === TaskStatus.MERGED ||
+                                        provisioningTaskId === task.id ||
+                                        Boolean(isOccupiedByOther)
+                                      }
+                                      startIcon={
+                                        provisioningTaskId === task.id ? (
+                                          <CircularProgress
+                                            size={14}
+                                            color="inherit"
+                                          />
+                                        ) : isOccupiedByOther ? (
+                                          <LockIcon fontSize="small" />
+                                        ) : task.status === TaskStatus.MERGED ? (
+                                          <CheckCircleIcon fontSize="small" />
+                                        ) : (
+                                          <LaunchIcon />
+                                        )
+                                      }
+                                      onClick={() => handleStartWorkspace(task)}
+                                    >
+                                      {task.status === TaskStatus.MERGED
+                                        ? "Tarefa Concluída"
+                                        : isOccupiedByOther
+                                          ? `🔒 Em uso por ${task.occupiedBy?.name}`
+                                          : provisioningTaskId === task.id
+                                            ? "⚡ Provisionando..."
+                                            : "🚀 Iniciar Workspace"}
+                                    </Button>
+                                  );
+                                })()}
                               </Box>
                             </CardContent>
                           </Card>

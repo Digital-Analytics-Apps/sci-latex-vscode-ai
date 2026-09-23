@@ -109,7 +109,7 @@ export class GitService {
     if (this.cachedOwner) {
       return this.cachedOwner;
     }
-    if (!env.GITHUB_TOKEN) {
+    if (env.NODE_ENV === 'test' || !env.GITHUB_TOKEN) {
       return 'user';
     }
     try {
@@ -288,6 +288,7 @@ export class GitService {
     authorEmail: string;
     repoUrl?: string;
     userId?: string;
+    taskId?: string;
   }): Promise<string> {
     await this.ensureStorageDir();
     const gitFlags = this.getGitAuthFlags();
@@ -324,29 +325,50 @@ export class GitService {
         await execAsync(`git checkout -b ${data.branchName}`, { cwd: tempDir });
       }
 
-      // Copia o conteúdo atualizado da workspace do autor para o tempDir do commit (evitando pastas de usuários e artefatos TeX)
+      // Copia o conteúdo atualizado da workspace do autor para o tempDir do commit
       let sourceWorkspace = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
       if (data.userId) {
-        const userDir = path.resolve(
-          env.STORAGE_PATH,
-          'projects',
-          data.projectId,
-          'users',
-          data.userId
-        );
-        try {
-          const stats = await fs.stat(userDir);
-          if (stats.isDirectory()) {
-            sourceWorkspace = userDir;
+        if (data.taskId) {
+          const taskDir = path.resolve(
+            env.STORAGE_PATH,
+            'projects',
+            data.projectId,
+            'users',
+            data.userId,
+            'tasks',
+            data.taskId
+          );
+          try {
+            const stats = await fs.stat(taskDir);
+            if (stats.isDirectory()) {
+              sourceWorkspace = taskDir;
+            }
+          } catch {
+            // Ignora se não existir
           }
-        } catch {
-          // Ignora se a pasta por usuário não existir
+        }
+        if (sourceWorkspace === path.resolve(env.STORAGE_PATH, 'projects', data.projectId)) {
+          const userDir = path.resolve(
+            env.STORAGE_PATH,
+            'projects',
+            data.projectId,
+            'users',
+            data.userId
+          );
+          try {
+            const stats = await fs.stat(userDir);
+            if (stats.isDirectory()) {
+              sourceWorkspace = userDir;
+            }
+          } catch {
+            // Ignora se a pasta por usuário não existir
+          }
         }
       }
 
       const isIgnoredBuildArtifact = (srcPath: string) => {
-        const normalized = srcPath.replaceAll('\\', '/');
-        const fileName = path.basename(normalized);
+        const relativePath = path.relative(sourceWorkspace, srcPath).replaceAll('\\', '/');
+        const fileName = path.basename(srcPath);
         const ignoredExtensions = [
           '.aux',
           '.log',
@@ -362,14 +384,18 @@ export class GitService {
           '.vrb',
           '.pdf',
         ];
-        return (
-          normalized.includes('/.git') ||
-          normalized.includes('/.vscode') ||
-          normalized.includes('/users/') ||
-          normalized.endsWith('/users') ||
-          fileName === 'indent.log' ||
-          ignoredExtensions.some((ext) => fileName.endsWith(ext))
-        );
+
+        if (
+          relativePath === '.git' || relativePath.startsWith('.git/') ||
+          relativePath === '.vscode' || relativePath.startsWith('.vscode/') ||
+          relativePath === 'users' || relativePath.startsWith('users/') ||
+          relativePath === 'tasks' || relativePath.startsWith('tasks/')
+        ) {
+          return true;
+        }
+
+        if (fileName === 'indent.log') return true;
+        return ignoredExtensions.some((ext) => fileName.endsWith(ext));
       };
 
       try {
@@ -839,7 +865,7 @@ export class GitService {
     authorEmail?: string;
     authorRole?: string;
   }): Promise<{ number: number; htmlUrl: string; nodeId?: string }> {
-    const isTestMode = env.NODE_ENV === 'test' && !env.GITHUB_TOKEN;
+    const isTestMode = env.NODE_ENV === 'test';
     const baseBranch = data.baseBranch || 'dev';
 
     if (isTestMode) {
@@ -1094,5 +1120,88 @@ export class GitService {
     }
 
     return true;
+  }
+
+  // Obtém o SHA imutável de um commit/ref em um diretório de repositório
+  async getCommitSha(targetDir: string, ref: string = 'HEAD'): Promise<string> {
+    try {
+      const { stdout } = await execAsync(
+        `GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" rev-parse ${ref}`,
+        { cwd: targetDir }
+      );
+      return stdout.trim();
+    } catch {
+      return '';
+    }
+  }
+
+  // Obtém os fatos de diff numstat entre duas referências de commit (baseRef..targetRef)
+  async getDiffFactsBetweenRefs(
+    targetDir: string,
+    baseRef: string,
+    targetRef: string
+  ): Promise<RawFileDiffFact[]> {
+    try {
+      const numstatRes = await execAsync(
+        `GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" diff --numstat ${baseRef}..${targetRef}`,
+        { cwd: targetDir }
+      ).catch(() => null);
+
+      if (!numstatRes?.stdout) {
+        return [];
+      }
+
+      const files: RawFileDiffFact[] = [];
+      const numstatLines = numstatRes.stdout.split('\n');
+
+      const isIgnoredFile = (file: string) => {
+        const normalized = file.replaceAll('\\', '/');
+        const fileName = path.basename(normalized);
+        const ignoredExtensions = [
+          '.aux',
+          '.log',
+          '.fdb_latexmk',
+          '.fls',
+          '.synctex.gz',
+          '.toc',
+          '.out',
+          '.nav',
+          '.snm',
+          '.bbl',
+          '.blg',
+          '.vrb',
+          '.pdf',
+        ];
+        return (
+          normalized.startsWith('users/') ||
+          normalized.startsWith('.vscode/') ||
+          normalized === '.gitignore' ||
+          fileName === 'indent.log' ||
+          ignoredExtensions.some((ext) => fileName.endsWith(ext))
+        );
+      };
+
+      for (const line of numstatLines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 3) {
+          const additions = Number.parseInt(parts[0], 10) || 0;
+          const deletions = Number.parseInt(parts[1], 10) || 0;
+          const filePath = parts.slice(2).join(' ');
+
+          if (isIgnoredFile(filePath)) continue;
+
+          files.push({
+            path: filePath,
+            status: additions > 0 && deletions === 0 ? 'added' : 'modified',
+            additions,
+            deletions,
+          });
+        }
+      }
+
+      return files;
+    } catch {
+      return [];
+    }
   }
 }

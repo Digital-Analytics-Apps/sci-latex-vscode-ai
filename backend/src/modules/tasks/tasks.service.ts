@@ -12,6 +12,8 @@ import {
   githubIntegrationService,
 } from '../github-integration/github-integration.service';
 
+import { redisService } from '../../infra/redis/redis.service';
+
 const execAsync = promisify(exec);
 
 export interface CreateTaskDTO {
@@ -200,11 +202,49 @@ export class TasksService {
       }
     }
 
-    return localTasks;
+    const presenceMap = await redisService.getTaskPresenceMap(projectId);
+    const activeUserIds = Array.from(new Set(Array.from(presenceMap.values())));
+    const activeUsersMap = new Map<string, { id: string; name: string }>();
+
+    if (activeUserIds.length > 0) {
+      const dbUsers = await prisma.user
+        .findMany({
+          where: { id: { in: activeUserIds } },
+          select: { id: true, name: true },
+        })
+        .catch(() => []);
+      for (const u of dbUsers) {
+        activeUsersMap.set(u.id, u);
+      }
+    }
+
+    return localTasks.map((t) => {
+      const activeUserId = presenceMap.get(t.id);
+      const activeUser = activeUserId ? activeUsersMap.get(activeUserId) : null;
+      return {
+        ...t,
+        isOccupied: Boolean(activeUserId),
+        occupiedBy: activeUser ? { id: activeUser.id, name: activeUser.name } : null,
+      };
+    });
   }
 
   // 3. Ativar/Iniciar o Workspace orientado a uma Task
   async startTaskWorkspace(projectId: string, taskId: string, userId: string) {
+    const activeUserId = await redisService.findActiveUserForTask(projectId, taskId);
+    if (activeUserId && activeUserId !== userId) {
+      const activeUser = await prisma.user
+        .findUnique({
+          where: { id: activeUserId },
+          select: { name: true },
+        })
+        .catch(() => null);
+      const activeName = activeUser?.name || 'outro usuário';
+      throw new Error(
+        `TASK_WORKSPACE_OCCUPIED: Esta tarefa está sendo editada por ${activeName} no momento.`
+      );
+    }
+
     let task = await this.tasksRepository.findById(taskId);
 
     if (!task && taskId.startsWith('github-issue-')) {

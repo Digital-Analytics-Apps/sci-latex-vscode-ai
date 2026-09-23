@@ -105,14 +105,16 @@ export class ProjectsService {
     });
 
     // 2a. Automação GitHub-Native: Provisiona o repositório TeX, Project v2 e Work Items (Issues)
-    await githubIntegrationService
-      .setupArticleGithubIntegration(projectId, data.name)
-      .catch((err) => {
-        console.warn(
-          `⚠️ Warning initializing GitHub Project v2 integration for ${projectId}:`,
-          err
-        );
-      });
+    if (process.env.NODE_ENV !== 'test') {
+      await githubIntegrationService
+        .setupArticleGithubIntegration(projectId, data.name)
+        .catch((err) => {
+          console.warn(
+            `⚠️ Warning initializing GitHub Project v2 integration for ${projectId}:`,
+            err
+          );
+        });
+    }
 
     // 2b. Adicionar o criador do projeto como membro (Autor)
     await this.projectsRepository.addMember(projectId, userId, Role.AUTHOR).catch(() => {});

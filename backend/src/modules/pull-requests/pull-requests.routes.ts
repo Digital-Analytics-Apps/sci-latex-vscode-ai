@@ -75,6 +75,24 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
     (req, reply) => controller.getById(req, reply)
   );
 
+  // GET /api/v1/pull-requests/:id/diff - Obter estrutura de diffs da revisão (overview e roundChanges)
+  app.get(
+    '/:id/diff',
+    {
+      schema: {
+        tags: ['PullRequests'],
+        summary: 'Obter resumo de diffs da revisão (ReviewDiff)',
+        description:
+          'Retorna as perspectivas de diff desacopladas (overview dev->v3 e roundChanges v2->v3) categorizadas por seções TeX.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    (req, reply) => controller.getDiff(req, reply)
+  );
+
   // POST /api/v1/pull-requests/:id/review - Avaliação pelo Revisor
   app.post(
     '/:id/review',

@@ -17,6 +17,8 @@ import {
 
 const execAsync = promisify(exec);
 
+import { redisService } from '../../infra/redis/redis.service';
+
 export interface PrepareWorkspaceSessionParams {
   projectId: string;
   userId: string;
@@ -201,11 +203,11 @@ export class EditorProxyService {
         await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
         hasGit = true;
       } catch {
-        await execAsync(`git init "${projectDir}"`);
+        await execAsync(`git init "${projectDir}"`).catch(() => {});
         await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
       }
     } else if (!hasGit) {
-      await execAsync(`git init "${projectDir}"`);
+      await execAsync(`git init "${projectDir}"`).catch(() => {});
       await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
     }
 
@@ -257,6 +259,9 @@ export class EditorProxyService {
 
     try {
       await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`);
+      await execAsync(`git -C "${taskWorkspaceDir}" reset --hard origin/"${branchName}"`).catch(
+        () => {}
+      );
     } catch {
       await execAsync(
         `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
@@ -325,6 +330,22 @@ export class EditorProxyService {
     }
     let taskId = params.taskId || 'default-task';
     const userId = params.userId;
+
+    if (params.taskId && params.taskId !== 'default-task') {
+      const activeUserId = await redisService.findActiveUserForTask(params.projectId, params.taskId);
+      if (activeUserId && activeUserId !== userId) {
+        const activeUser = await prisma.user
+          .findUnique({
+            where: { id: activeUserId },
+            select: { name: true },
+          })
+          .catch(() => null);
+        const activeName = activeUser?.name || 'outro usuário';
+        throw new Error(
+          `TASK_WORKSPACE_OCCUPIED: Esta tarefa está sendo editada por ${activeName} no momento.`
+        );
+      }
+    }
 
     // 1. Determina a branch de destino no Git e resolve canonical taskId
     let targetBranch = params.branchName || 'dev';

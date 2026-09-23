@@ -41,9 +41,6 @@ export const WorkspacePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Conecta ao canal SSE do projeto para monitorar a presença e alertas em tempo real
-  useSSEEventSource(projectId);
-
   const { data: project, isLoading, refetch } = useProjectDetails(projectId);
   const { data: tasksList = [] } = useTasksQuery(projectId);
   const { data: pullRequests = [] } = usePullRequestsList(projectId);
@@ -56,6 +53,10 @@ export const WorkspacePage = () => {
     tasksList[0];
 
   const targetTaskId = taskId || activeTask?.id;
+
+  // Conecta ao canal SSE do projeto/tarefa para monitorar a presença e renovar o Redis TTL
+  useSSEEventSource(projectId, targetTaskId);
+
   const shouldProvision = Boolean(projectId && targetTaskId);
   const [isProvisioning, setIsProvisioning] =
     useState<boolean>(shouldProvision);

@@ -24,6 +24,7 @@ export interface CreatePRData {
 
 export interface AddCommentData {
   pullRequestId: string;
+  reviewRoundId?: string;
   userId: string;
   lineNumer?: number;
   comment: string;

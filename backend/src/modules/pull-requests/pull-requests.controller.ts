@@ -179,4 +179,22 @@ export class PullRequestsController {
       throw err;
     }
   }
+
+  async getDiff(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+
+    try {
+      const reviewDiff = await this.prService.getPRReviewDiff(id);
+      return reply.send(reviewDiff);
+    } catch (err: any) {
+      if (err.message === 'PR_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Pull Request not found' });
+      }
+      throw err;
+    }
+  }
 }

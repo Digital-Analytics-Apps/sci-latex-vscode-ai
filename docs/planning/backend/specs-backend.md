@@ -58,24 +58,49 @@ src/
 * `POST /api/v1/auth/logout`
   * Revoga o Refresh Token na tabela `Session`.
 
-### 3.2 Módulo `events` (Server-Sent Events - SSE Stream & Monitoramento de Presença de Pods)
-* `GET /api/v1/events/stream?projectId=<optional-uuid>`
-  * **Headers:** `Accept: text/event-stream`, `Authorization: Bearer <JWT>`
-  * **Eventos Emitidos:** `PDF_COMPILED`, `PR_REVIEWED`, `NIT_STATUS_UPDATED`, `MERGE_UNLOCKED`, `DEADLINE_ALERT`.
-  * **Monitoramento de Presença & Ciclo de Vida de Pods K8s:** Quando o parâmetro `projectId` é fornecido na query string, o backend contabiliza os clientes ativos na workspace. Ao zerar as conexões SSE de um projeto (navegador fechado/saída do usuário), o backend aciona um **Grace Period de 1 minuto (`60.000 ms`)**. Se o usuário der F5/reconectar dentro de 1 minuto, a destruição é cancelada. Expirado o prazo sem reconexão, a rotina dispara `releasePodForProject(projectId)`, deletando o Pod no cluster KinD/K8s para liberar instantaneamente a memória RAM e CPU.
+### 3.2 Módulo `events` (Server-Sent Events & Presença Distribuída com Redis)
+- **Localização:** `src/modules/events/` (`events.controller.ts`, `events.manager.ts`, `events.routes.ts`) e `src/infra/redis/` (`redis.service.ts`)
+- **Responsabilidade:** Gerenciar a comunicação em tempo real unidirecional (Server-Sent Events) entre o backend e os navegadores, e manter a presença atômica do usuário por workspace no Redis (`sci_latex_redis`).
+- **Endpoints:**
+  * `GET /api/v1/events/stream?projectId=<optional-uuid>`
+    * **Headers:** `Accept: text/event-stream`, `Authorization: Bearer <JWT>`
+    * **Eventos Emitidos:** `PDF_COMPILED`, `PR_REVIEWED`, `NIT_STATUS_UPDATED`, `MERGE_UNLOCKED`, `WORK_ITEM_UPDATED`, `PROJECT_ITEM_UPDATED`.
+  * `POST /api/v1/events/heartbeat`
+    * **Headers:** `Authorization: Bearer <JWT>`
+    * **Input:** `{ "projectId": "string", "userId": "string", "taskId": "string" }`
+    * **Comportamento:** Atualiza a presença no Redis chamando `RedisService.setWorkspaceActive(projectId, userId, taskId, 180)` com TTL de 180s.
+- **Regras de Funcionamento:**
+  * **Pings periódicos (SSE Ping):** Envia um sinal `: ping\n\n` a cada 30 segundos em conexões SSE ativas.
+  * **Tratamento de Falha de Envio:** Se uma escrita (`write`) falhar no SSE, o cliente é removido imediatamente da lista de receptores.
+  * **Controle de Presença Atômica (Redis TTL):** Presença renovada a cada heartbeat HTTP do frontend (Web Worker). Chaves seguem a estrutura estrita `workspace:active:<projectId>:<userId>:<taskId>`.
+
+### 3.2.1 Módulo `infra/k8s` (Orquestração & Ciclo de Vida de Pods Kubernetes)
+- **Localização:** `src/infra/k8s/` (`k8s-pod-manager.service.ts`)
+- **Responsabilidade:** Camada de infraestrutura pura (stateless) responsável por interagir diretamente com a API do Kubernetes (via `@kubernetes/client-node`) para provisionamento, alocação e destruição física de containers `code-server` e volumes isolados.
+- **Principais Métodos e Funções:**
+  * `ensureWarmPool(targetWarmPods = 1)`: Mantém exatamente 1 Pod de reserva em standby (`role=warm-standby`) para garantir aceleração no provisionamento.
+  * `claimPodForTask(projectId, userId, taskId)`: Aloca um Pod exclusivo para a tríade da tarefa. Reivindica do Warm Pool ou cria um Pod sob demanda (`role=user-workspace`), montando o volume isolado `projects/${projectId}/users/${userId}/tasks/${taskId}`.
+  * `releasePodForTask(projectId, userId, taskId)`: Conecta na API do K8s e executa `deleteNamespacedPod` para destruir o container e liberar memória RAM e CPU do nó. Respeita `GRACE_PERIOD_MS = 120_000` (2 minutos em desenvolvimento).
+  * `cleanProjectPVC(projectId)`: Exclui o PersistentVolumeClaim do projeto após confirmação no GitHub ou exclusão.
+  * `updateServiceSelector(...)`: Atualiza dinamicamente o seletor do `code-server-service` no K8s para redirecionar o tráfego do proxy ao Pod correto.
+  * `reconcileOrphanPods()` (Sweeper / Garbage Collector): Rotina agendada no boot e a cada 60s que lista os Pods `user-workspace` no K8s e deleta qualquer Pod cujo registro de presença no Redis (`workspace:active:<projectId>:<userId>:<taskId>`) tenha expirado.
+
 
 ### 3.3 Módulo `projects` & `tasks` (Papers e Tarefas de Escrita)
 * `POST /api/v1/projects`
 * `GET /api/v1/projects`
 * `GET /api/v1/projects/:id`
-* `PATCH /api/v1/projects/:id/post-submission`
+* `GET /api/v1/projects/:projectId/tasks`
+  * **Descrição:** Retorna a lista de tarefas do projeto enriquecidas com os campos de presença ativa do Redis: `isOccupied: boolean` e `occupiedBy: { id, name } | null`.
+* `POST /api/v1/projects/:projectId/tasks/:taskId/workspace`
+  * **Comportamento & Trava de Ocupação:** Se a tarefa possuir uma sessão ativa no Redis com outro usuário, rejeita a solicitação com **HTTP 409 Conflict** (`TASK_WORKSPACE_OCCUPIED`). Caso livre, provisiona a workspace e atualiza/sincroniza a branch com `origin/<branchName>`.
 * `GET /api/v1/projects/:id/tasks/:taskId/diff-summary`
   * **Permissão:** Integrante do Projeto (`AUTHOR`, `REVIEWER`, `COORDINATOR`).
   * **Descrição:** Retorna os fatos Git puros (`path`, `status`, `additions`, `deletions`), metadados temporais (`lastSavedAt`, `lastSavedAuthor`) e itens traduzidos de domínio (`category`, `label`, `isTaskScope`) calculados contra o `HEAD` da branch da tarefa.
 * `POST /api/v1/projects/:id/tasks/:taskId/commit`
   * **Permissão:** Autor atribuído à Tarefa.
   * **Input Opcional:** `{ "commitMessage": "Descrição manual opcional" }`
-  * **Comportamento:** Executa o commit na branch da tarefa. Caso `commitMessage` seja omitido ou em branco, aciona o `ProgressDescriptionService` para sintetizar a mensagem descritiva padronizada em Português. Atualiza/cria o Draft PR correspondente no GitHub.
+  * **Comportamento:** Copia os arquivos atualizados da workspace `projects/:projectId/users/:userId/tasks/:taskId` (aplicando o filtro relativo sem ignorar pastas `/users/`), executa o commit na branch da tarefa e realiza `git push origin <branchName>`. Atualiza/cria o Draft PR correspondente no GitHub.
 
 ### 3.4 Módulo `compiler` (PDF Oficial de PRs e Artigo Consolidado)
 * `POST /api/v1/projects/:id/compile-master`

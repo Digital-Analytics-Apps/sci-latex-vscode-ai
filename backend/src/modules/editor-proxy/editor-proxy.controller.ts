@@ -42,6 +42,14 @@ export class EditorProxyController {
         });
       }
 
+      if (err.message?.includes('TASK_WORKSPACE_OCCUPIED')) {
+        return reply.status(409).send({
+          statusCode: 409,
+          error: 'Conflict',
+          message: err.message.replace('TASK_WORKSPACE_OCCUPIED: ', ''),
+        });
+      }
+
       return reply.status(500).send({
         statusCode: 500,
         error: 'Internal Server Error',

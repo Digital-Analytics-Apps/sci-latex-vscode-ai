@@ -186,17 +186,33 @@ model PullRequest {
   reviewer   User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
   project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   comments   ReviewComment[]
+  rounds     ReviewRound[]
+}
+
+model ReviewRound {
+  id                          String          @id @default(uuid())
+  pullRequestId               String
+  roundNumber                 Int
+  baseCommitHash              String
+  submittedCommitHash         String
+  previousSubmittedCommitHash String?
+  createdAt                   DateTime        @default(now())
+
+  pullRequest                 PullRequest     @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  comments                    ReviewComment[]
 }
 
 model ReviewComment {
-  id            String      @id @default(uuid())
+  id            String       @id @default(uuid())
   pullRequestId String
+  reviewRoundId String?
   userId        String
   lineNumer     Int?
   comment       String
-  createdAt     DateTime    @default(now())
-  pullRequest   PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  user          User        @relation(fields: [userId], references: [id])
+  createdAt     DateTime     @default(now())
+  pullRequest   PullRequest  @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  reviewRound   ReviewRound? @relation(fields: [reviewRoundId], references: [id], onDelete: SetNull)
+  user          User         @relation(fields: [userId], references: [id])
 }
 
 model AuditLog {

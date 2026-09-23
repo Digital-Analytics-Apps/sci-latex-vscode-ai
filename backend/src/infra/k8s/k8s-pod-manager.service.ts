@@ -1,5 +1,8 @@
+import fs from 'node:fs';
 import * as k8s from '@kubernetes/client-node';
 import { env } from '../../config/env';
+import { redisService } from '../redis/redis.service';
+import { prisma } from '../../db/prisma';
 
 export interface PodClaimResult {
   podName: string;
@@ -14,7 +17,7 @@ export class K8sPodManagerService {
   private readonly namespace = 'default';
 
   private getK8sApiClient(): k8s.CoreV1Api | null {
-    if (env.NODE_ENV === 'test') {
+    if (env.NODE_ENV === 'test' || process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
       this.isK8sAvailable = false;
       return null;
     }
@@ -24,7 +27,8 @@ export class K8sPodManagerService {
       kc.loadFromDefault();
 
       const cluster = kc.getCurrentCluster();
-      if (cluster) {
+      const inContainer = fs.existsSync('/.dockerenv') || process.env.DOCKER_CONTAINER === 'true';
+      if (cluster && inContainer) {
         // Quando executando no container Docker, conecta diretamente ao control-plane na rede docker 'kind'
         (cluster as any).server = 'https://sci-latex-kind-control-plane:6443';
         (cluster as any).skipTLSVerify = true;
@@ -426,5 +430,60 @@ export class K8sPodManagerService {
     } catch (err: any) {
       console.warn(`⚠️ Error cleaning PVC ${pvcName}:`, err.message || err);
     }
+  }
+
+  // 6. Varredura e Reconciliação de Pods Órfãos baseada nas chaves TTL do Redis
+  async reconcileOrphanPods(): Promise<number> {
+    const k8sApi = this.getK8sApiClient();
+    if (!k8sApi) return 0;
+
+    let cleanedCount = 0;
+    try {
+      // Buscar todos os Pods de workspace do usuário no K8s
+      const podsRes = await k8sApi.listNamespacedPod(
+        this.namespace,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'app.kubernetes.io/part-of=sci-latex-vscode,role=user-workspace'
+      );
+
+      const userPods = podsRes.body.items || [];
+      for (const pod of userPods) {
+        const podName = pod.metadata?.name;
+        const labels = pod.metadata?.labels || {};
+        const projectId = labels.projectId;
+        const userId = labels.claimedBy;
+        const taskId = labels.taskId || 'default-task';
+
+        if (!podName || !projectId || !userId) continue;
+
+        // Se o Redis não considerar essa workspace ativa (chave expirou por passar > 3 min sem heartbeat):
+        const isActive = await redisService.isWorkspaceActive(projectId, userId, taskId);
+        if (!isActive) {
+          console.log(
+            `🧹 Varredura: Pod órfão ${podName} (Projeto: ${projectId}, Task: ${taskId}) expirou no Redis. Excluindo Pod...`
+          );
+          await k8sApi.deleteNamespacedPod(podName, this.namespace).catch(() => {});
+          cleanedCount++;
+
+          // Atualiza o status no banco de dados para TERMINATED
+          await prisma.workspace
+            .updateMany({
+              where: { projectId, userId, taskId },
+              data: { status: 'TERMINATED', podName: null, updatedAt: new Date() },
+            })
+            .catch(() => {});
+        }
+      }
+
+      // Garante a existência do Pod de reserva Warm Standby se necessário
+      await this.ensureWarmPool(1);
+    } catch (err: any) {
+      console.warn('⚠️ Error during orphan pods reconciliation sweep:', err.message || err);
+    }
+
+    return cleanedCount;
   }
 }
