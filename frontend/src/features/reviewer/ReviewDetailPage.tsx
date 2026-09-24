@@ -60,13 +60,16 @@ export const ReviewDetailPage = () => {
   const [isNITModalOpen, setIsNITModalOpen] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [isDiffSummaryOpen, setIsDiffSummaryOpen] = useState<boolean>(true);
-  const [diffPerspective, setDiffPerspective] = useState<"overview" | "roundChanges">("overview");
+  const [diffPerspective, setDiffPerspective] = useState<
+    "overview" | "roundChanges"
+  >("overview");
   const [commentText, setCommentText] = useState<string>("");
   const [lineNumber, setLineNumber] = useState<string>("");
 
   const handleNavigateToLocation = (filePath: string, line?: number) => {
     // Comunicação desacoplada via postMessage orientado a intenção de domínio
-    const iframeWindow = document.querySelector<HTMLIFrameElement>("iframe")?.contentWindow;
+    const iframeWindow =
+      document.querySelector<HTMLIFrameElement>("iframe")?.contentWindow;
     if (iframeWindow) {
       iframeWindow.postMessage(
         {
@@ -74,7 +77,7 @@ export const ReviewDetailPage = () => {
           file: filePath,
           line: line || 1,
         },
-        "*"
+        "*",
       );
     }
   };
@@ -115,6 +118,14 @@ export const ReviewDetailPage = () => {
 
       setCommentText("");
       setLineNumber("");
+
+      if (
+        status === PRStatus.APPROVED ||
+        status === PRStatus.CHANGES_REQUESTED
+      ) {
+        setIsDrawerOpen(false);
+        navigate("/");
+      }
     } catch (err: any) {
       dispatch(
         showNotification({
@@ -326,14 +337,24 @@ export const ReviewDetailPage = () => {
               justifyContent: "space-between",
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                flexWrap: "wrap",
+              }}
+            >
               <Chip
                 label={`REVISÃO #${diffData.roundNumber}`}
                 size="small"
                 color="primary"
                 sx={{ fontWeight: 700 }}
               />
-              <Typography variant="body2" sx={{ fontWeight: 600, color: "#58a6ff" }}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#58a6ff" }}
+              >
                 Resumo das Alterações Submetidas
               </Typography>
 
@@ -352,11 +373,13 @@ export const ReviewDetailPage = () => {
                     py: 0,
                     fontSize: 11,
                     textTransform: "none",
-                    color: diffPerspective === "overview" ? "#58a6ff" : "#8b949e",
+                    color:
+                      diffPerspective === "overview" ? "#58a6ff" : "#8b949e",
                     "&.Mui-selected": { bgcolor: "#1f242c", color: "#58a6ff" },
                   }}
                 >
-                  Visão Geral (dev → {diffData.overview?.targetCommitHash.slice(0, 7)})
+                  Visão Geral (dev →{" "}
+                  {diffData.overview?.targetCommitHash.slice(0, 7)})
                 </ToggleButton>
                 {diffData.roundChanges && (
                   <ToggleButton
@@ -366,11 +389,18 @@ export const ReviewDetailPage = () => {
                       py: 0,
                       fontSize: 11,
                       textTransform: "none",
-                      color: diffPerspective === "roundChanges" ? "#3fb950" : "#8b949e",
-                      "&.Mui-selected": { bgcolor: "#1f242c", color: "#3fb950" },
+                      color:
+                        diffPerspective === "roundChanges"
+                          ? "#3fb950"
+                          : "#8b949e",
+                      "&.Mui-selected": {
+                        bgcolor: "#1f242c",
+                        color: "#3fb950",
+                      },
                     }}
                   >
-                    Correções Desta Rodada (Rodada #{diffData.roundNumber - 1} → #{diffData.roundNumber})
+                    Correções Desta Rodada (Rodada #{diffData.roundNumber - 1} →
+                    #{diffData.roundNumber})
                   </ToggleButton>
                 )}
               </ToggleButtonGroup>
@@ -381,12 +411,24 @@ export const ReviewDetailPage = () => {
               onClick={() => setIsDiffSummaryOpen(!isDiffSummaryOpen)}
               sx={{ color: "#8b949e" }}
             >
-              {isDiffSummaryOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              {isDiffSummaryOpen ? (
+                <ExpandLessIcon fontSize="small" />
+              ) : (
+                <ExpandMoreIcon fontSize="small" />
+              )}
             </IconButton>
           </Box>
 
           <Collapse in={isDiffSummaryOpen}>
-            <Box sx={{ pt: 1, display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+            <Box
+              sx={{
+                pt: 1,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1,
+                alignItems: "center",
+              }}
+            >
               {(() => {
                 const currentDiff =
                   diffPerspective === "roundChanges" && diffData.roundChanges
@@ -400,13 +442,21 @@ export const ReviewDetailPage = () => {
                         key={file.path}
                         icon={
                           file.category === "section" ? (
-                            <DescriptionIcon style={{ fontSize: 14, color: "#58a6ff" }} />
+                            <DescriptionIcon
+                              style={{ fontSize: 14, color: "#58a6ff" }}
+                            />
                           ) : file.category === "bibliography" ? (
-                            <MenuBookIcon style={{ fontSize: 14, color: "#d2a8ff" }} />
+                            <MenuBookIcon
+                              style={{ fontSize: 14, color: "#d2a8ff" }}
+                            />
                           ) : file.category === "figure" ? (
-                            <ImageIcon style={{ fontSize: 14, color: "#7ee787" }} />
+                            <ImageIcon
+                              style={{ fontSize: 14, color: "#7ee787" }}
+                            />
                           ) : (
-                            <DifferenceIcon style={{ fontSize: 14, color: "#8b949e" }} />
+                            <DifferenceIcon
+                              style={{ fontSize: 14, color: "#8b949e" }}
+                            />
                           )
                         }
                         label={`${file.label}: +${file.additions} / -${file.deletions}`}
@@ -427,7 +477,11 @@ export const ReviewDetailPage = () => {
                     {currentDiff.hasChangesInOtherFiles && (
                       <Tooltip title="Existem alterações em arquivos fora do escopo da seção primária da tarefa.">
                         <Chip
-                          icon={<WarningAmberIcon style={{ fontSize: 14, color: "#d29922" }} />}
+                          icon={
+                            <WarningAmberIcon
+                              style={{ fontSize: 14, color: "#d29922" }}
+                            />
+                          }
                           label="⚠️ Alterações em outros arquivos"
                           size="small"
                           color="warning"
@@ -504,8 +558,10 @@ export const ReviewDetailPage = () => {
                   variant="outlined"
                   onClick={() =>
                     handleNavigateToLocation(
-                      prDetails.task?.branchName ? `sections/01-introduction.tex` : "main.tex",
-                      item.lineNumer
+                      prDetails.task?.branchName
+                        ? `sections/01-introduction.tex`
+                        : "main.tex",
+                      item.lineNumer,
                     )
                   }
                   sx={{
@@ -513,7 +569,9 @@ export const ReviewDetailPage = () => {
                     mb: 1.5,
                     borderColor: "divider",
                     cursor: item.lineNumer ? "pointer" : "default",
-                    "&:hover": item.lineNumer ? { bgcolor: "action.hover" } : {},
+                    "&:hover": item.lineNumer
+                      ? { bgcolor: "action.hover" }
+                      : {},
                   }}
                 >
                   <Box

@@ -291,17 +291,33 @@ export class PullRequestsService {
       status !== pr.status
     ) {
       updatedPR = await this.prRepository.updateStatus(prId, status as PRStatus);
+
+      if (pr.taskId) {
+        await prisma.task
+          .update({
+            where: { id: pr.taskId },
+            data: { status: status as any },
+          })
+          .catch((err) => console.warn('⚠️ Warning updating task status on review:', err));
+      }
+
       await logAudit({
         userId: reviewerId,
         action: `PR_${status}`,
         entityType: 'PullRequest',
         entityId: prId,
-        details: { status, comment, lineNumer },
+        details: { status, comment, lineNumer, taskId: pr.taskId },
       });
       eventsManager.broadcastToUser(pr.authorId, 'PR_REVIEWED', {
         pullRequestId: prId,
         status,
+        taskId: pr.taskId,
+        projectId: pr.projectId,
         reviewerId,
+      });
+      eventsManager.broadcastToProject(pr.projectId, 'TASK_STATUS_UPDATED', {
+        taskId: pr.taskId,
+        status,
       });
     }
 
