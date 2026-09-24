@@ -17,6 +17,7 @@ import {
 
 const execAsync = promisify(exec);
 
+import { GitService } from '../../infra/git/git.service';
 import { redisService } from '../../infra/redis/redis.service';
 
 export interface PrepareWorkspaceSessionParams {
@@ -25,6 +26,7 @@ export interface PrepareWorkspaceSessionParams {
   taskId?: string;
   branchName?: string;
   token?: string;
+  mode?: string;
 }
 
 export interface PrepareWorkspaceSessionResult {
@@ -40,7 +42,8 @@ export class EditorProxyService {
     private readonly projectsRepository: IProjectsRepository = new PrismaProjectsRepository(),
     private readonly tasksRepository: ITasksRepository = new PrismaTasksRepository(),
     private readonly workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository(),
-    private readonly k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
+    private readonly k8sPodManager: K8sPodManagerService = new K8sPodManagerService(),
+    private readonly gitService: GitService = new GitService()
   ) {}
 
   // Semeadura inicial da estrutura TeX (main.tex, seções, IEEEtran.cls, .gitignore)
@@ -168,52 +171,41 @@ export class EditorProxyService {
     await execAsync(`chmod -R 777 "${targetDir}"`).catch(() => {});
   }
 
-  // Garantia do repositório Git local e por usuário com sincronização da branch
+  // Garantia do repositório Git por usuário/task via clone/fetch direto do GitHub (Zero arquivos estáticos fs.cp)
   async ensureTaskWorkspace(params: {
     projectId: string;
     userId: string;
     taskId: string;
     branchName: string;
+    targetCommitHash?: string;
     gitRepoPath?: string;
   }): Promise<string> {
-    const { projectId, userId, taskId, branchName, gitRepoPath } = params;
-    const projectDir = path.resolve(env.STORAGE_PATH, 'projects', projectId);
-    await fs.mkdir(projectDir, { recursive: true, mode: 0o777 });
+    const { projectId, userId, taskId, branchName, targetCommitHash, gitRepoPath } = params;
 
-    let hostGitPath = gitRepoPath;
-    if (gitRepoPath && !path.isAbsolute(gitRepoPath)) {
-      hostGitPath = path.resolve(env.STORAGE_PATH, 'git', gitRepoPath);
-    } else if (!gitRepoPath) {
-      hostGitPath = path.resolve(env.STORAGE_PATH, 'git', `${projectId}.git`);
-    }
+    // 1. Resolver a URL remota do GitHub ou o diretório host local
+    let remoteUrl: string | undefined = undefined;
+    let hostGitPath: string | undefined = undefined;
 
-    const gitDir = path.join(projectDir, '.git');
-    let hasGit = false;
-    try {
-      await fs.access(gitDir);
-      hasGit = true;
-    } catch {
-      hasGit = false;
-    }
-
-    if (!hasGit && hostGitPath) {
-      try {
-        await fs.access(hostGitPath);
-        await execAsync(`git clone "${hostGitPath}" "${projectDir}"`);
-        await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
-        hasGit = true;
-      } catch {
-        await execAsync(`git init "${projectDir}"`).catch(() => {});
-        await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
+    if (gitRepoPath) {
+      if (
+        gitRepoPath.startsWith('http://') ||
+        gitRepoPath.startsWith('https://') ||
+        gitRepoPath.startsWith('git@')
+      ) {
+        remoteUrl = this.gitService.cleanRepoUrl(gitRepoPath);
+      } else if (path.isAbsolute(gitRepoPath)) {
+        hostGitPath = gitRepoPath;
+      } else {
+        hostGitPath = path.resolve(env.STORAGE_PATH, 'git', gitRepoPath);
       }
-    } else if (!hasGit) {
-      await execAsync(`git init "${projectDir}"`).catch(() => {});
-      await execAsync(`chmod -R 777 "${projectDir}"`).catch(() => {});
+    } else {
+      remoteUrl = this.gitService.getRepoPath(projectId);
     }
 
-    await execAsync(`git -C "${projectDir}" config core.fileMode false`).catch(() => {});
+    const gitFlags = this.gitService.getGitAuthFlags();
+    const repoTarget = remoteUrl || hostGitPath || this.gitService.getRepoPath(projectId);
 
-    // Caminho físico exclusivo do Workspace da Task: projects/${projectId}/users/${userId}/tasks/${taskId}
+    // 2. Resolver o caminho físico exclusivo do Workspace da Task: projects/${projectId}/users/${userId}/tasks/${taskId}
     const taskWorkspaceDir = this.workspacesRepository.getTaskWorkspacePath(
       projectId,
       userId,
@@ -230,16 +222,23 @@ export class EditorProxyService {
       taskHasGit = false;
     }
 
+    // 3. Se o workspace não possui .git, efetuar git clone diretamente do repositório remoto/host do GitHub (Zero fs.cp)
     if (!taskHasGit) {
-      const entries = await fs.readdir(projectDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.name === 'users' || entry.name === 'tasks' || entry.name === '.git') continue;
-        const srcPath = path.join(projectDir, entry.name);
-        const destPath = path.join(taskWorkspaceDir, entry.name);
-        await fs.cp(srcPath, destPath, { recursive: true }).catch(() => {});
+      try {
+        if (remoteUrl) {
+          await execAsync(`git ${gitFlags} clone "${remoteUrl}" "${taskWorkspaceDir}"`);
+        } else if (hostGitPath) {
+          await execAsync(`git clone "${hostGitPath}" "${taskWorkspaceDir}"`);
+        } else {
+          await execAsync(`git init "${taskWorkspaceDir}"`);
+        }
+      } catch {
+        // Fallback: se o clone falhar (ex: repositório remoto sem commits ou ambiente de teste sem rede), inicializa git init
+        await execAsync(`git init "${taskWorkspaceDir}"`).catch(() => {});
       }
     }
 
+    // Configura permissões e metadados do repositório Git local
     await execAsync(`chmod -R 777 "${taskWorkspaceDir}"`).catch(() => {});
     await execAsync(`git -C "${taskWorkspaceDir}" config core.fileMode false`).catch(() => {});
     await execAsync(`git -C "${taskWorkspaceDir}" config safe.directory "*"`).catch(() => {});
@@ -248,21 +247,48 @@ export class EditorProxyService {
       () => {}
     );
 
+    // 4. Efetuar fetch das atualizações mais recentes do remoto do GitHub para o workspace
     try {
-      await execAsync(
-        `git -C "${taskWorkspaceDir}" fetch "${projectDir}" "+refs/heads/*:refs/remotes/origin/*"`
-      ).catch(() => {});
-      await execAsync(`git -C "${taskWorkspaceDir}" fetch --all`).catch(() => {});
+      if (remoteUrl) {
+        await execAsync(`git -C "${taskWorkspaceDir}" ${gitFlags} fetch origin`).catch(() => {});
+        await execAsync(`git -C "${taskWorkspaceDir}" ${gitFlags} fetch --all`).catch(() => {});
+      } else if (hostGitPath) {
+        await execAsync(
+          `git -C "${taskWorkspaceDir}" fetch "${hostGitPath}" "+refs/heads/*:refs/remotes/origin/*"`
+        ).catch(() => {});
+      }
     } catch {
-      // Ignora erro de fetch
+      // Ignora falhas de fetch offline
     }
 
+    // 5. Checkout da branch ou do commit imutável da submissão (submittedCommitHash)
     try {
-      await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`);
-      await execAsync(`git -C "${taskWorkspaceDir}" reset --hard origin/"${branchName}"`).catch(
-        () => {}
-      );
+      if (targetCommitHash) {
+        // Modo Revisão: checkout direto no SHA exato do commit da submissão enviado pelo autor ao GitHub
+        await execAsync(`git -C "${taskWorkspaceDir}" checkout "${targetCommitHash}"`).catch(
+          async () => {
+            await execAsync(
+              `git -C "${taskWorkspaceDir}" reset --hard "${targetCommitHash}"`
+            ).catch(() => {});
+          }
+        );
+      } else {
+        // Modo Autor: checkout na branch da tarefa (ex: task/123-secao)
+        await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`).catch(async () => {
+          await execAsync(
+            `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
+          );
+        });
+        await execAsync(`git -C "${taskWorkspaceDir}" reset --hard origin/"${branchName}"`).catch(
+          async () => {
+            await execAsync(`git -C "${taskWorkspaceDir}" reset --hard "${branchName}"`).catch(
+              () => {}
+            );
+          }
+        );
+      }
     } catch {
+      // Fallback em caso de nova tarefa ou branch ainda não existente no remoto
       await execAsync(
         `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
       ).catch(async () => {
@@ -276,13 +302,13 @@ export class EditorProxyService {
       });
     }
 
-    // Invariante 4: Validação de Branch (Garante que HEAD pertence exclusivamente à branchName da tarefa)
+    // 6. Invariante: Validação de Head
     try {
       const currentHeadRes = await execAsync(
         `git -C "${taskWorkspaceDir}" rev-parse --abbrev-ref HEAD`
       );
       const currentHead = currentHeadRes.stdout.trim();
-      if (currentHead !== branchName && currentHead !== 'HEAD') {
+      if (!targetCommitHash && currentHead !== branchName && currentHead !== 'HEAD') {
         await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`).catch(() => {});
       }
     } catch {
@@ -331,8 +357,11 @@ export class EditorProxyService {
     let taskId = params.taskId || 'default-task';
     const userId = params.userId;
 
-    if (params.taskId && params.taskId !== 'default-task') {
-      const activeUserId = await redisService.findActiveUserForTask(params.projectId, params.taskId);
+    if (params.taskId && params.taskId !== 'default-task' && params.mode !== 'review') {
+      const activeUserId = await redisService.findActiveUserForTask(
+        params.projectId,
+        params.taskId
+      );
       if (activeUserId && activeUserId !== userId) {
         const activeUser = await prisma.user
           .findUnique({
@@ -421,11 +450,26 @@ export class EditorProxyService {
       }
     }
 
+    let targetCommitHash: string | undefined = undefined;
+    if (params.mode === 'review') {
+      const pr = await prisma.pullRequest
+        .findFirst({
+          where: { projectId: params.projectId, taskId },
+          include: { rounds: { orderBy: { roundNumber: 'desc' }, take: 1 } },
+        })
+        .catch(() => null);
+
+      if (pr?.rounds?.[0]?.submittedCommitHash) {
+        targetCommitHash = pr.rounds[0].submittedCommitHash;
+      }
+    }
+
     await this.ensureTaskWorkspace({
       projectId: params.projectId,
       userId,
       taskId,
       branchName: targetBranch,
+      targetCommitHash,
       gitRepoPath: project.gitRepoPath,
     });
 

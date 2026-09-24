@@ -29,15 +29,15 @@ export class EventsManagerService {
   }
 
   // Adiciona novo cliente à lista de conexões ativas e renova chave no Redis
-  addClient(userId: string, reply: FastifyReply, projectId?: string, taskId?: string) {
+  addClient(userId: string, reply: FastifyReply, projectId?: string, taskId?: string, mode: string = 'editor') {
     this.clients.push({ userId, projectId, taskId, reply });
 
     if (projectId) {
       const current = this.activeProjectConnections.get(projectId) || 0;
       this.activeProjectConnections.set(projectId, current + 1);
 
-      // Renova presença ativa no Redis por 180 segundos (3 minutos)
-      redisService.setWorkspaceActive(projectId, userId, taskId || 'default-task', 180);
+      // Renova presença ativa no Redis por 180 segundos (3 minutos) com escopo de modo (editor vs review)
+      redisService.setWorkspaceActive(projectId, userId, taskId || 'default-task', 180, mode);
 
       // Inicia o monitoramento de arquivo por sistema operacional para este projeto
       workspaceWatcher.watchProject(projectId, userId);
@@ -54,9 +54,9 @@ export class EventsManagerService {
   }
 
   // Renova batimento cardíaco da workspace no Redis e cancela destruição pendente
-  refreshHeartbeat(userId: string, projectId?: string, taskId?: string) {
+  refreshHeartbeat(userId: string, projectId?: string, taskId?: string, mode: string = 'editor') {
     if (projectId) {
-      redisService.setWorkspaceActive(projectId, userId, taskId || 'default-task', 180);
+      redisService.setWorkspaceActive(projectId, userId, taskId || 'default-task', 180, mode);
       if (this.releaseTimers.has(projectId)) {
         clearTimeout(this.releaseTimers.get(projectId));
         this.releaseTimers.delete(projectId);

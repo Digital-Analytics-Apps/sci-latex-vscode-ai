@@ -46,8 +46,8 @@ export class RedisService {
     return this.isConnected && this.client !== null;
   }
 
-  private buildKey(projectId: string, userId: string, taskId: string): string {
-    return `workspace:active:${projectId}:${userId}:${taskId}`;
+  private buildKey(projectId: string, userId: string, taskId: string, mode = 'editor'): string {
+    return `workspace:active:${mode}:${projectId}:${userId}:${taskId}`;
   }
 
   /**
@@ -57,11 +57,12 @@ export class RedisService {
     projectId: string,
     userId: string,
     taskId: string = 'default-task',
-    ttlSeconds = 180
+    ttlSeconds = 180,
+    mode = 'editor'
   ): Promise<void> {
     if (!this.client || !this.isConnected) return;
     try {
-      const key = this.buildKey(projectId, userId, taskId);
+      const key = this.buildKey(projectId, userId, taskId, mode);
       await this.client.set(key, 'true', 'EX', ttlSeconds);
     } catch (err: any) {
       console.warn('⚠️ Error setting active workspace in Redis:', err.message || err);
@@ -78,9 +79,8 @@ export class RedisService {
   ): Promise<boolean> {
     if (!this.client || !this.isConnected) return true; // Fallback permissivo apenas se Redis indisponível
     try {
-      const exactKey = this.buildKey(projectId, userId, taskId);
-      const exactExists = await this.client.exists(exactKey);
-      return exactExists === 1;
+      const keys = await this.client.keys(`workspace:active:*:${projectId}:${userId}:${taskId}`);
+      return keys.length > 0;
     } catch {
       return true;
     }
@@ -96,8 +96,10 @@ export class RedisService {
   ): Promise<void> {
     if (!this.client || !this.isConnected) return;
     try {
-      const key = this.buildKey(projectId, userId, taskId);
-      await this.client.del(key);
+      const keys = await this.client.keys(`workspace:active:*:${projectId}:${userId}:${taskId}`);
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+      }
     } catch (err: any) {
       console.warn('⚠️ Error removing active workspace key from Redis:', err.message || err);
     }
@@ -111,11 +113,11 @@ export class RedisService {
     try {
       const keys = await this.client.keys('workspace:active:*');
       return keys.map((key) => {
-        const parts = key.split(':'); // workspace:active:<projectId>:<userId>:<taskId>
+        const parts = key.split(':'); // workspace:active:<mode>:<projectId>:<userId>:<taskId>
         return {
-          projectId: parts[2] || '',
-          userId: parts[3] || '',
-          taskId: parts[4] || 'default-task',
+          projectId: parts[3] || '',
+          userId: parts[4] || '',
+          taskId: parts[5] || 'default-task',
         };
       });
     } catch {
@@ -124,15 +126,15 @@ export class RedisService {
   }
 
   /**
-   * Encontra o ID do usuário que atualmente possui uma sessão ativa na tarefa (se houver)
+   * Encontra o ID do usuário que atualmente possui uma sessão ativa de EDIÇÃO na tarefa (se houver)
    */
   async findActiveUserForTask(projectId: string, taskId: string): Promise<string | null> {
     if (!this.client || !this.isConnected) return null;
     try {
-      const keys = await this.client.keys(`workspace:active:${projectId}:*:${taskId}`);
+      const keys = await this.client.keys(`workspace:active:editor:${projectId}:*:${taskId}`);
       if (keys.length > 0) {
-        const parts = keys[0].split(':');
-        return parts[3] || null;
+        const parts = keys[0].split(':'); // workspace:active:editor:<projectId>:<userId>:<taskId>
+        return parts[4] || null;
       }
       return null;
     } catch {
@@ -141,17 +143,17 @@ export class RedisService {
   }
 
   /**
-   * Retorna um Map (taskId -> userId) com a presença ativa de todas as tarefas de um projeto
+   * Retorna um Map (taskId -> userId) com a presença ativa de EDITORES de todas as tarefas de um projeto
    */
   async getTaskPresenceMap(projectId: string): Promise<Map<string, string>> {
     const presenceMap = new Map<string, string>();
     if (!this.client || !this.isConnected) return presenceMap;
     try {
-      const keys = await this.client.keys(`workspace:active:${projectId}:*:*`);
+      const keys = await this.client.keys(`workspace:active:editor:${projectId}:*:*`);
       for (const key of keys) {
-        const parts = key.split(':'); // workspace:active:<projectId>:<userId>:<taskId>
-        const userId = parts[3];
-        const taskId = parts[4];
+        const parts = key.split(':'); // workspace:active:editor:<projectId>:<userId>:<taskId>
+        const userId = parts[4];
+        const taskId = parts[5];
         if (userId && taskId) {
           presenceMap.set(taskId, userId);
         }

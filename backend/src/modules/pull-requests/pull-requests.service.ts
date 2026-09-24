@@ -83,8 +83,40 @@ export class PullRequestsService {
 
     // 2.5 Congelamento da ReviewRound e captura imutável dos SHAs no momento da submissão
     try {
+      const authorUser = await prisma.user
+        .findUnique({ where: { id: authorId } })
+        .catch(() => null);
+      const project = await prisma.project
+        .findUnique({ where: { id: data.projectId } })
+        .catch(() => null);
+
+      if (this.gitService && data.taskId) {
+        await this.gitService
+          .commitWorkspaceProgress({
+            projectId: data.projectId,
+            userId: authorId,
+            taskId: data.taskId,
+            branchName: headBranchName,
+            commitMessage: `Submissão de Revisão do Autor: ${pr.title}`,
+            authorName: authorUser?.name || 'SCI-LaTeX Author',
+            authorEmail: authorUser?.email || 'author@sci-latex.org',
+            repoUrl: project?.gitRepoPath,
+          })
+          .catch((err) =>
+            console.warn('⚠️ Warning auto-committing workspace progress on PR creation:', err)
+          );
+      }
+
       const taskWorkspaceDir = data.taskId
-        ? path.resolve(env.STORAGE_PATH, 'projects', data.projectId, 'users', authorId, 'tasks', data.taskId)
+        ? path.resolve(
+            env.STORAGE_PATH,
+            'projects',
+            data.projectId,
+            'users',
+            authorId,
+            'tasks',
+            data.taskId
+          )
         : path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
       const projectDir = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
 
@@ -101,9 +133,8 @@ export class PullRequestsService {
       });
 
       const roundNumber = existingRounds.length + 1;
-      const previousSubmittedCommitHash = existingRounds.length > 0
-        ? existingRounds[existingRounds.length - 1].submittedCommitHash
-        : undefined;
+      const previousSubmittedCommitHash =
+        existingRounds.length > 0 ? existingRounds.at(-1)?.submittedCommitHash : undefined;
 
       await prisma.reviewRound.create({
         data: {
@@ -114,6 +145,18 @@ export class PullRequestsService {
           previousSubmittedCommitHash,
         },
       });
+
+      if (this.gitService && submittedCommitHash && submittedCommitHash !== 'HEAD') {
+        await this.gitService
+          .createReviewTag({
+            projectId: data.projectId,
+            prId: pr.id,
+            roundNumber,
+            commitSha: submittedCommitHash,
+            repoUrl: project?.gitRepoPath,
+          })
+          .catch((tagErr) => console.warn('⚠️ Warning creating review tag:', tagErr));
+      }
     } catch (err: any) {
       console.warn('⚠️ Warning creating ReviewRound record:', err?.message || err);
     }
@@ -527,10 +570,7 @@ export class PullRequestsService {
       ? await this.gitService.getDiffFactsBetweenRefs(projectDir, baseSha, submittedSha)
       : [];
 
-    const overviewClassification = classificationService.classifyDiffFacts(
-      overviewFacts,
-      pr.title
-    );
+    const overviewClassification = classificationService.classifyDiffFacts(overviewFacts, pr.title);
 
     let roundChangesClassification: any = null;
     if (previousSha && this.gitService) {
@@ -539,10 +579,7 @@ export class PullRequestsService {
         previousSha,
         submittedSha
       );
-      roundChangesClassification = classificationService.classifyDiffFacts(
-        roundFacts,
-        pr.title
-      );
+      roundChangesClassification = classificationService.classifyDiffFacts(roundFacts, pr.title);
     }
 
     return {

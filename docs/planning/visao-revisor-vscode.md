@@ -1,7 +1,7 @@
 # Especificação Arquitetural e de Produto: Visão do Revisor no VS Code (`sci-latex-vscode`)
 
-**Data da Última Atualização:** 22 de Setembro de 2026  
-**Status:** Diretriz Arquitetural Aprovada (Modelo de Domínio & Diffs Consolidados)  
+**Data da Última Atualização:** 23 de Setembro de 2026  
+**Status:** Diretriz Arquitetural Aprovada (Modelo de Domínio, Diffs Consolidados, Isolamento do Revisor & Resiliência SSE com Redis/Web Worker)  
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)
 
 ---
@@ -125,6 +125,31 @@ export interface ReviewDiff {
 
 ---
 
+### 4.1 Isolamento de Ambiente & Desbloqueio da Visão do Revisor (`mode=review`)
+
+1. **Desobstrução do Acesso do Revisor**:
+   - A trava de concorrência entre editores (`TASK_WORKSPACE_OCCUPIED`) impede unicamente que dois **Autores** trabalhem e escrevam na mesma tarefa/branch simultaneamente.
+   - Quando uma requisição de sessão carrega o parâmetro **`mode=review`** (ou provém do papel `Role.REVIEWER` / rota de revisão `/reviews/:prId`), o backend (`EditorProxyService.prepareWorkspaceSession`) ignora a verificação de ocupação do Autor.
+
+2. **Ambiente Físico Desacoplado por Usuário e Papel**:
+   - O workspace do Revisor é montado em um subcaminho isolado (`projects/${projectId}/users/${reviewerUserId}/tasks/${taskId}`), fisicamente disjunto do workspace do Autor (`projects/${projectId}/users/${authorUserId}/tasks/${taskId}`).
+   - O repositório local do Revisor faz checkout automático da branch/commit da submissão enviada sem interferir na árvore de arquivos não salvos do Autor.
+
+---
+
+### 4.2 Resiliência de Pods K8s, Monitoramento Redis & SSE com Web Worker & Heartbeat na Tela de Revisão
+
+1. **Problema do Desligamento do Pod por Perda de Foco**:
+   - Navegadores modernos suspendem/desaceleram timers de JavaScript (`setInterval`) e streams HTTP quando a aba do navegador perde o foco ou fica em segundo plano.
+   - Sem o envio de sinal ativo, o monitoramento no Redis e o gerenciador de eventos (`EventsManagerService`) interpretavam a perda de foco como término de sessão, acionando o *Grace Period* e destruindo o Pod do K8s, resultando na mensagem `"Disconnected. Attempting to reconnect..."` no iframe do VS Code.
+
+2. **Arquitetura de Batimento por Web Worker e Eventos de Visibilidade**:
+   - **`useSSEEventSource` na Tela do Revisor (`ReviewDetailPage.tsx`)**: A visão do Revisor invoca o hook `useSSEEventSource` passando o `projectId` e `taskId` do PR em avaliação.
+   - **Web Worker Dedicado para Heartbeats**: O hook instancia um Web Worker em background (`pingWorker`) que executa um loop de 20 segundos chamando `POST /api/v1/events/heartbeat`. Como Web Workers funcionam em uma thread separada do sistema operacional, o navegador **NÃO** desativa o batimento quando a aba perde o foco.
+   - **Gatilho de Visibilidade (`visibilitychange`)**: Sempre que o Revisor alterna de aba ou volta o foco para a aplicação/iframe, o evento `visibilitychange` dispara um ping instantâneo de reconexão, renovando a presença no Redis por 180 segundos e cancelando qualquer timer de limpeza do Pod.
+
+---
+
 ### Contrato Desacoplado de Comunicação (`postMessage`)
 
 ```typescript
@@ -159,6 +184,8 @@ type EditorMessage =
 | **Comentários ancorados a Commit/Rodada** | ✅ Aprovado | Preserva o histórico mesmo quando o arquivo é totalmente reestruturado em rodadas futuras. |
 | **Visualização Dual (`overview` vs `roundChanges`)** | ✅ Aprovado | Permite validar correções pontuais da rodada sem precisar reler o artigo inteiro. |
 | **Comunicação React $\leftrightarrow$ VS Code** | ✅ Aprovado | `postMessage` orientado a intenção de domínio (`EditorMessage`). |
+| **Isolamento do Revisor (`mode=review`)** | ✅ Aprovado | Revisor acessa workspace em diretório/Pod isolado sem ser bloqueado por trava de concorrência do Autor. |
+| **Resiliência SSE via Web Worker & Heartbeat** | ✅ Aprovado | `useSSEEventSource` integrado em `ReviewDetailPage.tsx` com pings em background e listener de `visibilitychange` renovando Redis TTL (180s). |
 | **Backlog Futuro (Fases Posteriores)** | ⏳ Trancado | `latexdiff`, síntese generativa por IA e comentários nativos no VS Code deliberadamente adiados. |
 
 ---

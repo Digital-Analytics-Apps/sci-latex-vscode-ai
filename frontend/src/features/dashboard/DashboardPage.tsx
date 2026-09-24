@@ -18,12 +18,6 @@ import {
   CircularProgress,
   Grid,
   LinearProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
@@ -33,11 +27,11 @@ import {
   useProjectDetails,
   useProjectsList,
 } from "../../hooks/useProjectQueries";
-import { usePendingReviews } from "../../hooks/useReviewQueries";
 import {
   useActivateTaskWorkspaceMutation,
   useTasksQuery,
 } from "../../hooks/useTaskQueries";
+import { ReviewsListPage } from "../reviewer/ReviewsListPage";
 import type { RootState } from "../../store";
 import {
   clearSelectedArticle,
@@ -50,7 +44,7 @@ import { CreateTaskModal } from "../workspace/CreateTaskModal";
 import { ReleaseCandidatesModal } from "../workspace/ReleaseCandidatesModal";
 
 import { Role } from "../../constants/roles";
-import { NITStatus, TaskStatus } from "../../constants/status";
+import { TaskStatus } from "../../constants/status";
 import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
 
 export const DashboardPage = () => {
@@ -118,7 +112,6 @@ export const DashboardPage = () => {
 
   const { data: projects, isLoading } = useProjectsList();
   const { data: articles = [] } = useUserArticlesQuery();
-  const { data: pendingReviews } = usePendingReviews();
 
   const activeProjectId = effectiveSelectedArticleId || projects?.[0]?.id || "";
 
@@ -703,98 +696,7 @@ export const DashboardPage = () => {
       )}
 
       {/* Visão Adaptativa para REVISOR */}
-      {user?.role === "REVIEWER" && (
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12 }}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
-                  Solicitações de Revisão Pendentes (Pull Requests)
-                </Typography>
-                <Paper variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>PR ID</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>
-                          Artigo / Seção
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Autor</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>
-                          Status NIT
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>
-                          Ações
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {pendingReviews && pendingReviews.length > 0 ? (
-                        pendingReviews.map((pr) => (
-                          <TableRow key={pr.id} hover>
-                            <TableCell sx={{ fontWeight: 600 }}>
-                              #{pr.id.slice(0, 8)}
-                            </TableCell>
-                            <TableCell>
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 600 }}
-                              >
-                                {pr.title}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {pr.task?.title || pr.taskId || "Tarefa"}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              {pr.author?.name || pr.author?.email || "Autor"}
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={pr.nitStatus}
-                                color={
-                                  pr.nitStatus === NITStatus.APPROVED_NIT
-                                    ? "success"
-                                    : pr.nitStatus === NITStatus.REJECTED_NIT
-                                      ? "error"
-                                      : "warning"
-                                }
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <Button
-                                variant="contained"
-                                size="small"
-                                color="primary"
-                                onClick={() => navigate(`/reviews/${pr.id}`)}
-                              >
-                                Avaliar Diff & PDF
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Nenhum Pull Request pendente para revisão no
-                              momento.
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </Paper>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
+      {user?.role === "REVIEWER" && <ReviewsListPage />}
 
       {/* Visão Adaptativa para COORDENADOR e GERENTE */}
       {(user?.role === "COORDINATOR" ||

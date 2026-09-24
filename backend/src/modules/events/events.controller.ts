@@ -6,7 +6,13 @@ export class EventsController {
 
   async streamEvents(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub;
-    const { projectId, taskId } = request.query as { projectId?: string; taskId?: string };
+    const { projectId, taskId, mode: queryMode } = request.query as {
+      projectId?: string;
+      taskId?: string;
+      mode?: string;
+    };
+    const userRole = (request.user as any)?.role;
+    const effectiveMode = queryMode || (userRole === 'REVIEWER' ? 'review' : 'editor');
 
     // Configura cabeçalhos CORS e HTTP padrão para SSE (Server-Sent Events)
     const origin = (request.headers.origin as string) || '*';
@@ -22,13 +28,13 @@ export class EventsController {
     // Envia mensagem inicial de confirmação de conexão
     reply.raw.write(`: connected\n\n`);
 
-    this.manager.addClient(userId, reply, projectId, taskId);
+    this.manager.addClient(userId, reply, projectId, taskId, effectiveMode);
 
     // Heartbeat a cada 30 segundos para manter a conexão viva e renovar presença no Redis
     const keepAliveInterval = setInterval(() => {
       try {
         reply.raw.write(`: ping\n\n`);
-        this.manager.refreshHeartbeat(userId, projectId, taskId);
+        this.manager.refreshHeartbeat(userId, projectId, taskId, effectiveMode);
       } catch {
         clearInterval(keepAliveInterval);
         this.manager.removeClient(userId, reply, projectId, taskId);
@@ -44,10 +50,16 @@ export class EventsController {
 
   async sendHeartbeat(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub;
-    const { projectId, taskId } = (request.query || {}) as { projectId?: string; taskId?: string };
+    const { projectId, taskId, mode: queryMode } = (request.query || {}) as {
+      projectId?: string;
+      taskId?: string;
+      mode?: string;
+    };
+    const userRole = (request.user as any)?.role;
+    const effectiveMode = queryMode || (userRole === 'REVIEWER' ? 'review' : 'editor');
 
     if (projectId) {
-      this.manager.refreshHeartbeat(userId, projectId, taskId);
+      this.manager.refreshHeartbeat(userId, projectId, taskId, effectiveMode);
     }
 
     return reply.send({ status: 'ok', timestamp: new Date().toISOString() });

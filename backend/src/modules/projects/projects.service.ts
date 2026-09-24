@@ -429,13 +429,11 @@ export class ProjectsService {
 
     let commitHash = `commit-${Date.now().toString(36)}`;
     try {
-      commitHash = await this.gitService.commitFile({
+      commitHash = await this.gitService.commitWorkspaceProgress({
         projectId,
         userId,
         taskId,
         branchName,
-        filePath,
-        content: fileContent,
         commitMessage: msg,
         authorName,
         authorEmail,

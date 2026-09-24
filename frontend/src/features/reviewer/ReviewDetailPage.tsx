@@ -40,6 +40,7 @@ import {
   usePRDiffQuery,
   useReviewPRMutation,
 } from "../../hooks/useReviewQueries";
+import { useSSEEventSource } from "../../hooks/useSSEEventSource";
 import { showNotification } from "../../store/slices/notificationSlice";
 import { CodeServerIframe } from "../workspace/CodeServerIframe";
 import { NITParecerModal } from "./NITParecerModal";
@@ -52,6 +53,9 @@ export const ReviewDetailPage = () => {
   const { data: prDetails, isLoading, error } = usePRDetails(prId);
   const { data: diffData } = usePRDiffQuery(prId);
   const reviewMutation = useReviewPRMutation(prId);
+
+  // Ativa o SSE e batimento cardíaco em segundo plano (Web Worker) para o Revisor manter a workspace viva
+  useSSEEventSource(prDetails?.projectId, prDetails?.taskId);
 
   const [isNITModalOpen, setIsNITModalOpen] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);

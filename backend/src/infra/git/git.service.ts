@@ -84,7 +84,7 @@ export class GitService {
   }
 
   // Retorna a flag -c http.extraHeader para autenticar comandos Git CLI via cabeçalho HTTP efêmero em memória
-  private getGitAuthFlags(): string {
+  getGitAuthFlags(): string {
     const safeDir = '-c safe.directory="*"';
     if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
       const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
@@ -386,10 +386,14 @@ export class GitService {
         ];
 
         if (
-          relativePath === '.git' || relativePath.startsWith('.git/') ||
-          relativePath === '.vscode' || relativePath.startsWith('.vscode/') ||
-          relativePath === 'users' || relativePath.startsWith('users/') ||
-          relativePath === 'tasks' || relativePath.startsWith('tasks/')
+          relativePath === '.git' ||
+          relativePath.startsWith('.git/') ||
+          relativePath === '.vscode' ||
+          relativePath.startsWith('.vscode/') ||
+          relativePath === 'users' ||
+          relativePath.startsWith('users/') ||
+          relativePath === 'tasks' ||
+          relativePath.startsWith('tasks/')
         ) {
           return true;
         }
@@ -472,6 +476,123 @@ export class GitService {
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
+  }
+
+  // Realiza o commit e push de TODOS os arquivos modificados (incluindo subpastas de seções) do workspace da tarefa para o GitHub
+  async commitWorkspaceProgress(data: {
+    projectId: string;
+    userId: string;
+    taskId: string;
+    branchName: string;
+    commitMessage: string;
+    authorName: string;
+    authorEmail: string;
+    repoUrl?: string;
+  }): Promise<string> {
+    const gitFlags = this.getGitAuthFlags();
+    const taskWorkspaceDir = path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      data.projectId,
+      'users',
+      data.userId,
+      'tasks',
+      data.taskId
+    );
+
+    let workspaceToUse = taskWorkspaceDir;
+    try {
+      const stats = await fs.stat(taskWorkspaceDir);
+      if (!stats.isDirectory()) {
+        workspaceToUse = path.resolve(
+          env.STORAGE_PATH,
+          'projects',
+          data.projectId,
+          'users',
+          data.userId
+        );
+      }
+    } catch {
+      workspaceToUse = path.resolve(
+        env.STORAGE_PATH,
+        'projects',
+        data.projectId,
+        'users',
+        data.userId
+      );
+    }
+
+    try {
+      const stats = await fs.stat(workspaceToUse);
+      if (!stats.isDirectory()) {
+        workspaceToUse = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      }
+    } catch {
+      workspaceToUse = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+    }
+
+    // Se o workspace não possui .git, inicializa
+    const gitDir = path.join(workspaceToUse, '.git');
+    const hasGit = await fs
+      .access(gitDir)
+      .then(() => true)
+      .catch(() => false);
+
+    if (!hasGit) {
+      await execAsync(`git init "${workspaceToUse}"`).catch(() => {});
+      if (data.repoUrl) {
+        const cleanUrl = this.cleanRepoUrl(data.repoUrl);
+        await execAsync(`git -C "${workspaceToUse}" remote add origin "${cleanUrl}"`).catch(
+          () => {}
+        );
+      }
+    }
+
+    const sanitizedAuthor = data.authorName.replace(/"/g, '');
+    const sanitizedEmail = data.authorEmail.replace(/"/g, '');
+    const sanitizedMsg = data.commitMessage.replace(/"/g, '\\"');
+
+    await execAsync(`git -C "${workspaceToUse}" config user.name "${sanitizedAuthor}"`).catch(
+      () => {}
+    );
+    await execAsync(`git -C "${workspaceToUse}" config user.email "${sanitizedEmail}"`).catch(
+      () => {}
+    );
+    await execAsync(`git -C "${workspaceToUse}" config core.fileMode false`).catch(() => {});
+    await execAsync(`git -C "${workspaceToUse}" config safe.directory "*"`).catch(() => {});
+
+    await execAsync(`git -C "${workspaceToUse}" add -A`).catch(() => {});
+    const statusRes = await execAsync(`git -C "${workspaceToUse}" status --porcelain`).catch(
+      () => ({
+        stdout: '',
+      })
+    );
+
+    if (statusRes.stdout.trim() !== '') {
+      await execAsync(`git -C "${workspaceToUse}" commit -m "${sanitizedMsg}"`).catch(() => {});
+    } else {
+      await execAsync(`git -C "${workspaceToUse}" commit --allow-empty -m "${sanitizedMsg}"`).catch(
+        () => {}
+      );
+    }
+
+    // Push para o repositório remoto no GitHub
+    if (data.repoUrl || env.GITHUB_TOKEN) {
+      const remoteTarget = data.repoUrl
+        ? this.cleanRepoUrl(data.repoUrl)
+        : this.getRepoPath(data.projectId);
+      await execAsync(
+        `git -C "${workspaceToUse}" ${gitFlags} push "${remoteTarget}" HEAD:refs/heads/${data.branchName} --force`
+      ).catch(async (pushErr) => {
+        console.warn(
+          `⚠️ Error pushing branch ${data.branchName} to remote:`,
+          pushErr.message || pushErr
+        );
+      });
+    }
+
+    const { stdout } = await execAsync(`git -C "${workspaceToUse}" rev-parse HEAD`);
+    return stdout.trim();
   }
 
   // Verifica se há rascunhos/modificações pendentes de commit no workspace do projeto ou do usuário
@@ -852,7 +973,7 @@ export class GitService {
     }
   }
 
-  // Cria um Draft Pull Request no GitHub via Octokit REST API
+  // Cria um Draft Pull Request no GitHub via Octokit REST API e retorna os SHAs imutáveis da base e do head
   async createDraftPullRequest(data: {
     projectId: string;
     headBranch: string;
@@ -864,7 +985,13 @@ export class GitService {
     authorName?: string;
     authorEmail?: string;
     authorRole?: string;
-  }): Promise<{ number: number; htmlUrl: string; nodeId?: string }> {
+  }): Promise<{
+    number: number;
+    htmlUrl: string;
+    nodeId?: string;
+    baseCommitHash?: string;
+    submittedCommitHash?: string;
+  }> {
     const isTestMode = env.NODE_ENV === 'test';
     const baseBranch = data.baseBranch || 'dev';
 
@@ -872,6 +999,8 @@ export class GitService {
       return {
         number: 1,
         htmlUrl: `http://localhost/mock-pr/${data.headBranch}`,
+        baseCommitHash: 'dev-sha-mock',
+        submittedCommitHash: 'head-sha-mock',
       };
     }
 
@@ -932,6 +1061,8 @@ export class GitService {
         number: res.data.number,
         htmlUrl: res.data.html_url,
         nodeId: res.data.node_id,
+        baseCommitHash: res.data.base?.sha,
+        submittedCommitHash: res.data.head?.sha,
       };
     } catch (error: any) {
       if (error.status === 422 || error.message?.includes('already exists')) {
@@ -944,10 +1075,13 @@ export class GitService {
             state: 'all',
           });
           if (listRes.data.length > 0) {
+            const prItem = listRes.data[0];
             return {
-              number: listRes.data[0].number,
-              htmlUrl: listRes.data[0].html_url,
-              nodeId: listRes.data[0].node_id,
+              number: prItem.number,
+              htmlUrl: prItem.html_url,
+              nodeId: prItem.node_id,
+              baseCommitHash: prItem.base?.sha,
+              submittedCommitHash: prItem.head?.sha,
             };
           }
         } catch {
@@ -960,6 +1094,34 @@ export class GitService {
         htmlUrl: `https://github.com/${owner}/${repoName}/pulls`,
       };
     }
+  }
+
+  // Cria uma tag remota/local de infraestrutura para ancorar o commit imutável de uma ReviewRound
+  async createReviewTag(data: {
+    projectId: string;
+    prId: string;
+    roundNumber: number;
+    commitSha: string;
+    repoUrl?: string;
+  }): Promise<string> {
+    const tagName = `review/pr-${data.prId.slice(0, 8)}-round-${data.roundNumber}`;
+    const gitFlags = this.getGitAuthFlags();
+    const cleanRepoLocation = this.cleanRepoUrl(data.repoUrl || this.getRepoPath(data.projectId));
+    const tempDir = path.join(this.baseStoragePath, `temp-tag-${data.projectId}-${Date.now()}`);
+
+    try {
+      await execAsync(`git ${gitFlags} clone --bare "${cleanRepoLocation}" "${tempDir}"`, {
+        cwd: this.baseStoragePath,
+      });
+      await execAsync(`git -C "${tempDir}" tag "${tagName}" "${data.commitSha}"`).catch(() => {});
+      await execAsync(`git -C "${tempDir}" ${gitFlags} push origin "${tagName}"`).catch(() => {});
+    } catch (err: any) {
+      console.warn(`⚠️ Warning creating review tag ${tagName}:`, err.message || err);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+
+    return tagName;
   }
 
   // Transiciona um Draft Pull Request para Ready for Review no GitHub via Octokit GraphQL API
