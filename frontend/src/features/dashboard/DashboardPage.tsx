@@ -165,20 +165,11 @@ export const DashboardPage = () => {
             Olá, {user?.name || "Pesquisador"} 👋
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Seja bem-vindo à Plataforma de Escrita Científica. Seu perfil atual
-            é <strong>{user?.role}</strong>.
+            Seja bem-vindo à Plataforma de Escrita Científica.
           </Typography>
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Chip
-            icon={<ArticleIcon fontSize="small" />}
-            label={`Perfil Ativo: ${user?.role}`}
-            color="primary"
-            variant="outlined"
-            sx={{ fontWeight: 700 }}
-          />
-
           {(user?.role === Role.AUTHOR ||
             user?.role === Role.COORDINATOR ||
             user?.role === Role.ADMIN) && (

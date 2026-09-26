@@ -1,3 +1,4 @@
+import ArticleIcon from "@mui/icons-material/Article";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -11,6 +12,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Stack,
   Toolbar,
   Tooltip,
   Typography,
@@ -128,12 +130,22 @@ export const ReviewerLayout: React.FC<{ children: React.ReactNode }> = ({
               transformOrigin={{ horizontal: "right", vertical: "top" }}
               anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
             >
-              <Box sx={{ px: 2, py: 1 }}>
+              <Stack sx={{ px: 2, py: 1, gap: 1 }}>
                 <Typography variant="subtitle2">{user?.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Perfil: {user?.role}
-                </Typography>
-              </Box>
+                <Stack
+                  direction={"row"}
+                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                >
+                  <Typography variant="subtitle2">Perfil Ativo:</Typography>
+                  <Chip
+                    icon={<ArticleIcon fontSize="small" />}
+                    label={`${user?.role}`}
+                    color="primary"
+                    variant="outlined"
+                    sx={{ fontWeight: 700 }}
+                  />
+                </Stack>
+              </Stack>
               <MenuItem
                 onClick={handleLogout}
                 sx={{ gap: 1, color: "error.main" }}

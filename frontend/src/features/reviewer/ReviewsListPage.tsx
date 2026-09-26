@@ -2,14 +2,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import GavelIcon from "@mui/icons-material/Gavel";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import RateReviewIcon from "@mui/icons-material/RateReview";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
   Button,
   Card,
   CardContent,
-  Chip,
   FormControl,
   InputAdornment,
   InputLabel,
@@ -298,19 +296,13 @@ export const ReviewsListPage = () => {
             component="h1"
             sx={{ fontWeight: 700, mb: 0.5 }}
           >
-            Painel de Revisão & Pareceres NIT
+            Painel de Revisão
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Avalie as seções dos artigos científicos submetidos pelos Autores,
-            inspecione diffs TeX e emita o parecer formal do NIT.
+            inspecione diffs TeX.
           </Typography>
         </Box>
-        <Chip
-          icon={<RateReviewIcon fontSize="small" />}
-          label={`${totalCount} Solicitações Registradas`}
-          color="primary"
-          sx={{ fontWeight: 700, py: 2, px: 1, fontSize: "0.9rem" }}
-        />
       </Box>
 
       {/* Cards de Métricas (KPIs) */}
