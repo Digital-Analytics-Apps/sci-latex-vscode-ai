@@ -13,10 +13,19 @@
 
 ### 🔍 Estado Atual da Aplicação
 * **Última Implementação Finalizada:**
-  * **Fases 1 a 4 (Vertical Slice GitHub-Native):** Banco de dados com projeções locais (`GithubIssueProjection`, `GithubProjectItemProjection`), Inbox de Webhook idempotente (`GithubWebhookEvent`), serviço de eventos SSE (`eventsManager`), sincronização de Work Items no `TasksService` e revalidação reativa no React Query via `useSSEEventSource`.
-  * **Refatoração do Frontend:** Encapsulamento centralizado de rotas em `src/services/` (`projectsService`, `managementService`, `tasksService`, `releasesService`, `articlesService`), padronização de constantes (`status.ts`, `roles.ts`) e eliminação total de enums TypeScript/erros de compilação.
+  * **Robustez e Normalização nos Filtros da Tabela de Revisões:**
+    * Atualizada a página [`ReviewsListPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/reviewer/ReviewsListPage.tsx) para tratar de forma robusta todos os campos de filtro (`projectId`, `status`, `nitStatus` e `search`):
+      * **Filtro de Projetos:** Adicionada verificação dinâmica de fallback (`Projeto (ID...)`) caso o `projectId` na URL ainda não exista no mapa de projetos disponíveis, garantindo que o MUI Select nunca fique em branco.
+      * **Filtros de Status do PR e Parecer NIT:** Incluídos todos os enums válidos do domínio (`DRAFT`, `CANCELLED`, `NOT_REQUIRED`) nas opções de `<MenuItem>` e adicionada normalização de caixa (case-insensitivity) com fallback automático para valores desconhecidos.
+      * **Eliminação de Piscadas na Tela (Zero-Flicker Filtering):** Adicionado `placeholderData: keepPreviousData` no hook [`usePendingReviews`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/hooks/useReviewQueries.ts) e removido o bloco de unmount completo da página em `ReviewsListPage.tsx`. Agora, ao digitar ou alterar filtros, o layout (cabeçalho, métricas e formulário de busca) permanece 100% montado e o foco do teclado não é perdido; apenas o indicador interno de carregamento do DataGrid é acionado (`loading={isLoading || isFetching}`).
+      * **Ajuste de Estado no Render (React 19 / Anti-Cascading Render):** Substituído o `useEffect` síncrono de atualização do `searchTerm` pelo padrão oficial do React ("Adjusting state during render" com `prevUrlSearch`), eliminando avisos de renderização em cascata e mantendo 100% de conformidade com as diretrizes do React.
+      * **Botão "Limpar Filtros":** Adicionada ação visual para redefinir rapidamente todos os parâmetros de filtro para os valores padrões usando `resetFilters()`.
+  * **Uso da Prop Nativa `renderProp` no `<AutoSizer>`:**
+    * Atualizada a página [`ReviewsListPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/reviewer/ReviewsListPage.tsx) para utilizar a prop nativa `renderProp={({ height, width }) => ...}` do `<AutoSizer>`.
+  * **Tabela Genérica MUI DataGrid (`<GenericDataGrid<T> />`) & Hook de URL Genérico:**
+    * Componente [`GenericDataGrid.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/components/common/GenericDataGrid.tsx) desacoplado + utilitários genéricos em [`urlParamsUtils.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/utils/urlParamsUtils.ts) e [`useUrlFilters.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/hooks/useUrlFilters.ts).
 * **Ambiente Ativo:** `docker compose up` ativo.
-* **Status dos Testes:** Backend com 15 arquivos de testes e 46 suítes passando (100% ok). Typescript no backend e frontend com 0 erros (`npx tsc --noEmit`).
+* **Status dos Testes & Build:** Backend com 16 arquivos e 51 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc --noEmit`). Build de produção do frontend compilado com **sucesso** (`npm run build`).
 
 ---
 

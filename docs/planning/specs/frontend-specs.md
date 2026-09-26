@@ -13,23 +13,23 @@ O frontend é desenvolvido em **ReactJS + TypeScript**, utilizando **Redux Toolk
 ```
 src/
 ├── assets/                 # Logotipos, ícones e fontes
-├── components/             # Componentes genéricos e reutilizáveis de UI (Button, Modal, Badge, Card, Table)
-│   └── common/             # Selectors e Cards modularizados (ReviewerSelector, ReviewTypeSelector, ActiveTaskCard)
+├── components/             # Componentes genéricos e reutilizáveis de UI
+│   └── common/             # GenericDataGrid (AutoSizer), StatusChips (PR/NIT/Deadline), Selectors e Cards
 ├── constants/              # Fontes únicas da verdade para tipos/enumerações (status.ts, roles.ts)
 ├── features/               # Módulos Funcionais e Telas por Domínio
 │   ├── auth/               # Página de Login e componente de Proteção de Rota (RBAC)
 │   ├── dashboard/          # Dashboard principal unificado com navegação por persona e seletor de projetos
 │   ├── workspace/          # Workspace do Autor: Iframe code-server + Topbar de Ações + Status de Prazo + Modais
-│   ├── reviewer/           # Dashboard do Revisor + Comparador Side-by-Side (Diff LaTeX + PDF Viewer) + Modal NIT
+│   ├── reviewer/           # Dashboard do Revisor (ReviewDataGridCells) + Comparador Side-by-Side (Diff LaTeX + PDF Viewer) + Modal NIT
 │   ├── coordinator/        # Dashboard do Coordenador: Matriz de Prazos da Equipe + Gestão de Cronograma
 │   ├── manager/            # Dashboard do Gerente: Filtro de Período Acadêmico + Métricas Globais
 │   └── post-submission/    # Modais Pós-Submissão: DOI/Links Camera-Ready & Seleção v2 (Backup/Novo Congresso)
-├── hooks/                  # Hooks customizados (useAuth, useSSEEventSource, useProjectQueries, useManagementQueries)
+├── hooks/                  # Hooks customizados (useAuth, useUrlFilters, useSSEEventSource, useProjectQueries, useManagementQueries)
 ├── layouts/                # Layouts principais (DashboardLayout, WorkspaceLayout, AuthLayout, RoleLayoutResolver)
 ├── routes/                 # Definição de rotas do React Router DOM
 ├── services/               # Serviços REST centralizados (api, projectsService, managementService, tasksService, releasesService, articlesService)
 ├── store/                  # Redux Store Toolkit (slices: auth, ui, workspace, notifications)
-├── utils/                  # Utilitários puros (memberUtils)
+├── utils/                  # Utilitários puros (urlParamsUtils, dateUtils, memberUtils)
 └── styles/                 # Estilos globais (Vanilla CSS / Design System Tokens)
 ```
 
@@ -120,3 +120,15 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
 - [x] **Camada de Serviços HTTP (`src/services/`)**: Centralização de `projectsService`, `managementService`, `tasksService`, `releasesService` e `articlesService`.
 - [x] **Constantes Globais (`src/constants/`)**: `status.ts` e `roles.ts` estruturados com `as const` (compatível com `erasableSyntaxOnly`).
 - [x] **Regras de Qualidade**: 0 warnings no ESLint e 0 erros no TypeScript. Componentes funcionais sem `React.FC` ou exportações barril (`index.ts`).
+- [x] **MUI DataGrid & Paginação Nativa (`@mui/x-data-grid`)**: Migração de tabelas legadas para `<DataGrid />` com internacionalização em Português (`ptBR`), paginação embutida (5, 10, 25 linhas) e integração com painéis de filtros externos.
+
+---
+
+## 6. Padronização de Tabelas com MUI DataGrid (`@mui/x-data-grid`)
+
+### 6.1 Diretrizes de Implementação
+* **Zero Contaminação de Filtros Internos**: O DataGrid recebe o conjunto de dados filtrados (`rows`) diretamente de seletores e inputs externos (`searchQuery`, `selectedProjectId`, `selectedPRStatus`, etc.), mantendo os filtros externos superiores.
+* **Paginação Nativa**: Todas as instâncias utilizam a prop `pageSizeOptions={[5, 10, 25]}` com modelo inicial configurado em `initialState.pagination.paginationModel`.
+* **Internacionalização**: Importação nativa de `ptBR` do pacote `@mui/x-data-grid` para textos de controle de página e rodapés em Português.
+* **Renderização Customizada de Células (`renderCell`)**: Utilização de renderizadores fortemente tipados via `GridColDef[]` para exibição de Avatares, Chips de status (`PRStatus`, `NITStatus`), badges de branch e botões de ação contextuais.
+

@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.repository';
-import { PullRequestsService } from './pull-requests.service';
 import { PullRequestsController } from './pull-requests.controller';
+import { PullRequestsService } from './pull-requests.service';
 
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
@@ -51,6 +51,11 @@ export async function pullRequestsRoutes(app: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         querystring: z.object({
           projectId: z.string().optional(),
+          status: z.string().optional(),
+          nitStatus: z.string().optional(),
+          search: z.string().optional(),
+          page: z.string().optional(),
+          limit: z.string().optional(),
         }),
       },
     },

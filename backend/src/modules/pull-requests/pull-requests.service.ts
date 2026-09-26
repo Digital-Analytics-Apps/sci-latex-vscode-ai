@@ -1,15 +1,16 @@
-import path from 'node:path';
 import { NITStatus, PRStatus } from '@prisma/client';
+import path from 'node:path';
 import { env } from '../../config/env';
-import {
-  CreatePRData,
-  PrismaPullRequestsRepository,
-} from '../../repositories/pull-requests.repository';
-import { eventsManager } from '../events/events.manager';
-import { logAudit } from '../../utils/audit';
+import { prisma } from '../../db/prisma';
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { prisma } from '../../db/prisma';
+import {
+  CreatePRData,
+  ListPRFilters,
+  PrismaPullRequestsRepository,
+} from '../../repositories/pull-requests.repository';
+import { logAudit } from '../../utils/audit';
+import { eventsManager } from '../events/events.manager';
 import { classificationService } from '../projects/services/classification.service';
 
 export class PullRequestsService {
@@ -252,9 +253,12 @@ export class PullRequestsService {
     return pr;
   }
 
-  // Listar PRs de um projeto
-  async listPRs(projectId?: string) {
-    return this.prRepository.findAll(projectId);
+  // Listar PRs de um projeto com suporte a filtros e paginação
+  async listPRs(filters?: string | ListPRFilters) {
+    if (typeof filters === 'string') {
+      return this.prRepository.findAll({ projectId: filters });
+    }
+    return this.prRepository.findAll(filters);
   }
 
   // Avaliação pelo Revisor (Aprovar, Solicitar Ajustes ou Adicionar Comentários)

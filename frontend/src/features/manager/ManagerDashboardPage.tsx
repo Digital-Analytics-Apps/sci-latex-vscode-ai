@@ -12,15 +12,12 @@ import {
   FormControl,
   Grid,
   MenuItem,
-  Paper,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
+import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useManagerMetrics } from "../../hooks/useManagementQueries";
@@ -49,6 +46,96 @@ export const ManagerDashboardPage: React.FC = () => {
       }),
     );
   };
+
+  const teamRows = React.useMemo(
+    () => [
+      {
+        id: "team-1",
+        teamName: "Inteligência Artificial & ML",
+        coordinatorEmail: "coordinator@sci-latex.org",
+        completedCount: 7,
+        inProgressCount: 3,
+        onTimeRate: 94,
+      },
+      {
+        id: "team-2",
+        teamName: "Engenharia de Software Self-Hosted",
+        coordinatorEmail: "coord.eng@sci-latex.org",
+        completedCount: 5,
+        inProgressCount: 3,
+        onTimeRate: 86,
+      },
+    ],
+    [],
+  );
+
+  const columns = React.useMemo<GridColDef[]>(
+    () => [
+      {
+        field: "teamName",
+        headerName: "Equipe",
+        flex: 1.5,
+        minWidth: 220,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: "coordinatorEmail",
+        headerName: "Coordenador Responsável",
+        flex: 1.5,
+        minWidth: 200,
+      },
+      {
+        field: "completedCount",
+        headerName: "Artigos Concluídos",
+        flex: 1.2,
+        minWidth: 160,
+        renderCell: (params) => (
+          <Chip
+            label={`${params.value} Publicados`}
+            size="small"
+            color="success"
+            variant="filled"
+            sx={{ fontWeight: 600 }}
+          />
+        ),
+      },
+      {
+        field: "inProgressCount",
+        headerName: "Em Andamento",
+        flex: 1,
+        minWidth: 140,
+        renderCell: (params) => (
+          <Chip
+            label={`${params.value} Em Andamento`}
+            size="small"
+            color="info"
+            variant="outlined"
+            sx={{ fontWeight: 600 }}
+          />
+        ),
+      },
+      {
+        field: "onTimeRate",
+        headerName: "Taxa de Cumprimento de Prazos",
+        flex: 1.3,
+        minWidth: 200,
+        renderCell: (params) => (
+          <Chip
+            label={`${params.value}% No Prazo`}
+            size="small"
+            color={params.value >= 90 ? "success" : "warning"}
+            variant="filled"
+            sx={{ fontWeight: 700 }}
+          />
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -193,7 +280,7 @@ export const ManagerDashboardPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Tabela de Resumo de Produção por Equipe */}
+      {/* Tabela de Resumo de Produção por Equipe com MUI DataGrid */}
       <Card variant="outlined">
         <CardContent sx={{ p: 0 }}>
           <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
@@ -201,53 +288,35 @@ export const ManagerDashboardPage: React.FC = () => {
               Resumo de Produção Científica por Equipe ({selectedPeriod})
             </Typography>
           </Box>
-          <Paper variant="outlined" sx={{ border: "none" }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Equipe</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    Coordenador Responsável
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    Artigos Concluídos
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Em Andamento</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    Taxa de Cumprimento de Prazos
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <TableRow hover>
-                  <TableCell sx={{ fontWeight: 600 }}>
-                    Inteligência Artificial & ML
-                  </TableCell>
-                  <TableCell>coordinator@sci-latex.org</TableCell>
-                  <TableCell>
-                    <Chip label="7 Publicados" size="small" color="success" />
-                  </TableCell>
-                  <TableCell>3 Artigos</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: "success.main" }}>
-                    94%
-                  </TableCell>
-                </TableRow>
-                <TableRow hover>
-                  <TableCell sx={{ fontWeight: 600 }}>
-                    Engenharia de Software Self-Hosted
-                  </TableCell>
-                  <TableCell>coord.eng@sci-latex.org</TableCell>
-                  <TableCell>
-                    <Chip label="5 Publicados" size="small" color="success" />
-                  </TableCell>
-                  <TableCell>3 Artigos</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: "warning.main" }}>
-                    86%
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </Paper>
+          <Box sx={{ width: "100%", minHeight: 280 }}>
+            <DataGrid
+              rows={teamRows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              rowHeight={56}
+              pageSizeOptions={[5, 10]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 5, page: 0 },
+                },
+              }}
+              disableRowSelectionOnClick
+              localeText={
+                ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
+              }
+              sx={{
+                border: "none",
+                "& .MuiDataGrid-columnHeaders": {
+                  bgcolor: "action.hover",
+                  fontWeight: 700,
+                },
+                "& .MuiDataGrid-cell": {
+                  display: "flex",
+                  alignItems: "center",
+                },
+              }}
+            />
+          </Box>
         </CardContent>
       </Card>
     </Box>

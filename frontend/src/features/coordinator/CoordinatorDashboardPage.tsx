@@ -11,20 +11,19 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
+import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useUpdateDeadlineMutation } from "../../hooks/useManagementQueries";
 import { showNotification } from "../../store/slices/notificationSlice";
+
+import { DeadlineStatusChip } from "../../components/common/StatusChips";
 
 export const CoordinatorDashboardPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -99,6 +98,82 @@ export const CoordinatorDashboardPage: React.FC = () => {
     }
   };
 
+  const columns = React.useMemo<GridColDef[]>(
+    () => [
+      {
+        field: "projectName",
+        headerName: "Projeto / Artigo",
+        flex: 1.5,
+        minWidth: 220,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: "taskTitle",
+        headerName: "Seção do LaTeX",
+        flex: 1.3,
+        minWidth: 180,
+      },
+      {
+        field: "authorName",
+        headerName: "Autor Responsável",
+        flex: 1.2,
+        minWidth: 180,
+      },
+      {
+        field: "dueDate",
+        headerName: "Data Limite",
+        flex: 1,
+        minWidth: 130,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: "status",
+        headerName: "Indicador de Prazo",
+        flex: 1,
+        minWidth: 150,
+        renderCell: (params) => <DeadlineStatusChip status={params.value} />,
+      },
+      {
+        field: "actions",
+        headerName: "Ação do Coordenador",
+        sortable: false,
+        filterable: false,
+        align: "right",
+        headerAlign: "right",
+        flex: 1.2,
+        minWidth: 160,
+        renderCell: (params) => (
+          <Tooltip title="Alterar Prazo da Tarefa">
+            <Button
+              variant="outlined"
+              size="small"
+              color="info"
+              startIcon={<EditCalendarIcon fontSize="small" />}
+              onClick={() =>
+                handleOpenEditModal({
+                  id: params.row.id,
+                  title: params.row.taskTitle,
+                  dueDate: params.row.dueDate,
+                })
+              }
+            >
+              Alterar Data
+            </Button>
+          </Tooltip>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       <Box
@@ -128,80 +203,35 @@ export const CoordinatorDashboardPage: React.FC = () => {
 
       <Card variant="outlined">
         <CardContent sx={{ p: 0 }}>
-          <Paper variant="outlined" sx={{ border: "none" }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    Projeto / Artigo
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Seção do LaTeX</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    Autor Responsável
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Data Limite</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    Indicador de Prazo
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    Ação do Coordenador
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {mockTeamMatrix.map((item) => (
-                  <TableRow key={item.id} hover>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      {item.projectName}
-                    </TableCell>
-                    <TableCell>{item.taskTitle}</TableCell>
-                    <TableCell>{item.authorName}</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      {item.dueDate}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={
-                          item.status === "ON_TIME"
-                            ? "🟢 No Prazo"
-                            : item.status === "WARNING_SOON"
-                              ? "🟡 Atenção"
-                              : "🔴 Atrasado"
-                        }
-                        size="small"
-                        color={
-                          item.status === "ON_TIME"
-                            ? "success"
-                            : item.status === "WARNING_SOON"
-                              ? "warning"
-                              : "error"
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Alterar Prazo da Tarefa">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="info"
-                          startIcon={<EditCalendarIcon fontSize="small" />}
-                          onClick={() =>
-                            handleOpenEditModal({
-                              id: item.id,
-                              title: item.taskTitle,
-                              dueDate: item.dueDate,
-                            })
-                          }
-                        >
-                          Alterar Data
-                        </Button>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
+          <Box sx={{ width: "100%", minHeight: 320 }}>
+            <DataGrid
+              rows={mockTeamMatrix}
+              columns={columns}
+              getRowId={(row) => row.id}
+              rowHeight={56}
+              pageSizeOptions={[5, 10, 25]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 5, page: 0 },
+                },
+              }}
+              disableRowSelectionOnClick
+              localeText={
+                ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
+              }
+              sx={{
+                border: "none",
+                "& .MuiDataGrid-columnHeaders": {
+                  bgcolor: "action.hover",
+                  fontWeight: 700,
+                },
+                "& .MuiDataGrid-cell": {
+                  display: "flex",
+                  alignItems: "center",
+                },
+              }}
+            />
+          </Box>
         </CardContent>
       </Card>
 

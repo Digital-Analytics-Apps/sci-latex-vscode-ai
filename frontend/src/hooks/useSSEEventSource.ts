@@ -65,7 +65,7 @@ export function useSSEEventSource(projectId?: string, taskId?: string) {
           };
         `,
         ],
-        { type: "application/javascript" }
+        { type: "application/javascript" },
       );
       workerUrl = URL.createObjectURL(workerBlob);
       pingWorker = new Worker(workerUrl);

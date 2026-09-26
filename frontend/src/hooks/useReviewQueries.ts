@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { NITStatus, PRStatus } from "../constants/status";
 import type { NITParecerFormData } from "../schemas/nit.schema";
 import { api } from "../services/api";
@@ -39,13 +44,17 @@ export interface PullRequestDetail {
 }
 
 // Hook para buscar a lista de PRs pendentes para o Revisor/Coordenador
-export function usePendingReviews() {
-  return useQuery<PullRequestDetail[]>({
-    queryKey: ["pull-requests", "pending"],
+export function usePendingReviews(params?: Record<string, string>) {
+  return useQuery<{ pullRequests: PullRequestDetail[]; total: number }>({
+    queryKey: ["pull-requests", params],
     queryFn: async () => {
-      const response = await api.get("/pull-requests");
-      return response.data.pullRequests || [];
+      const response = await api.get("/pull-requests", { params });
+      return {
+        pullRequests: response.data.pullRequests || [],
+        total: response.data.total ?? (response.data.pullRequests?.length || 0),
+      };
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -102,10 +111,10 @@ export function useSubmitNITParecerMutation(prId: string) {
 
 export interface ClassifiedFileDiff {
   path: string;
-  status: 'added' | 'modified' | 'deleted';
+  status: "added" | "modified" | "deleted";
   additions: number;
   deletions: number;
-  category: 'section' | 'bibliography' | 'figure' | 'other';
+  category: "section" | "bibliography" | "figure" | "other";
   label: string;
 }
 

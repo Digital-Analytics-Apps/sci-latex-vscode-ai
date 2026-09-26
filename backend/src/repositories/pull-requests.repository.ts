@@ -38,6 +38,15 @@ export interface UpdateNITData {
   nitApprovedAt?: Date | null;
 }
 
+export interface ListPRFilters {
+  projectId?: string;
+  status?: PRStatus | 'ALL' | string;
+  nitStatus?: NITStatus | 'ALL' | string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
 export class PrismaPullRequestsRepository {
   async create(data: CreatePRData): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.create({
@@ -70,12 +79,50 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async findAll(projectId?: string): Promise<PullRequestWithRelations[]> {
-    return prisma.pullRequest.findMany({
-      where: projectId ? { projectId } : undefined,
-      include: prInclude,
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(
+    filters?: ListPRFilters
+  ): Promise<{ pullRequests: PullRequestWithRelations[]; total: number }> {
+    const where: Prisma.PullRequestWhereInput = {};
+
+    if (filters?.projectId && filters.projectId !== 'all') {
+      where.projectId = filters.projectId;
+    }
+
+    if (filters?.status && (filters.status as string) !== 'ALL') {
+      where.status = filters.status as PRStatus;
+    }
+
+    if (filters?.nitStatus && (filters.nitStatus as string) !== 'ALL') {
+      where.nitStatus = filters.nitStatus as NITStatus;
+    }
+
+    if (filters?.search && filters.search.trim() !== '') {
+      const term = filters.search.trim();
+      where.OR = [
+        { title: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+        { author: { email: { contains: term, mode: 'insensitive' } } },
+        { author: { name: { contains: term, mode: 'insensitive' } } },
+        { project: { name: { contains: term, mode: 'insensitive' } } },
+      ];
+    }
+
+    const page = filters?.page && filters.page > 0 ? filters.page : 1;
+    const limit = filters?.limit && filters.limit > 0 ? filters.limit : 50;
+    const skip = (page - 1) * limit;
+
+    const [pullRequests, total] = await Promise.all([
+      prisma.pullRequest.findMany({
+        where,
+        include: prInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: filters?.limit ? skip : undefined,
+        take: filters?.limit ? limit : undefined,
+      }),
+      prisma.pullRequest.count({ where }),
+    ]);
+
+    return { pullRequests: pullRequests as unknown as PullRequestWithRelations[], total };
   }
 
   async updateStatus(id: string, status: PRStatus): Promise<PullRequestWithRelations> {

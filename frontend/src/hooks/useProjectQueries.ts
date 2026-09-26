@@ -30,7 +30,7 @@ export function useProjectDetails(projectId: string) {
 export function useTaskDiffSummary(
   projectId: string,
   taskId?: string,
-  enabled = true
+  enabled = true,
 ) {
   return useQuery({
     queryKey: ["task-diff-summary", projectId, taskId],

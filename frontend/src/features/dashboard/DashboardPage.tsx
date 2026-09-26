@@ -553,7 +553,13 @@ export const DashboardPage = () => {
                                 >
                                   {task.title}
                                 </Typography>
-                                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 1,
+                                    alignItems: "center",
+                                  }}
+                                >
                                   {task.isOccupied && task.occupiedBy ? (
                                     <Chip
                                       label={`🔒 Ocupada por ${task.occupiedBy.name}`}
@@ -663,7 +669,8 @@ export const DashboardPage = () => {
                                           />
                                         ) : isOccupiedByOther ? (
                                           <LockIcon fontSize="small" />
-                                        ) : task.status === TaskStatus.MERGED ? (
+                                        ) : task.status ===
+                                          TaskStatus.MERGED ? (
                                           <CheckCircleIcon fontSize="small" />
                                         ) : (
                                           <LaunchIcon />

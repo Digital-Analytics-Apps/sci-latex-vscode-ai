@@ -1,7 +1,7 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
-import { PullRequestsService } from './pull-requests.service';
-import { z } from 'zod';
 import { NITStatus } from '@prisma/client';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { PullRequestsService } from './pull-requests.service';
 
 export class PullRequestsController {
   constructor(private readonly prService: PullRequestsService) {}
@@ -36,11 +36,16 @@ export class PullRequestsController {
   async list(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
       projectId: z.string().optional(),
+      status: z.string().optional(),
+      nitStatus: z.string().optional(),
+      search: z.string().optional(),
+      page: z.coerce.number().optional(),
+      limit: z.coerce.number().optional(),
     });
 
-    const { projectId } = querySchema.parse(request.query);
-    const prs = await this.prService.listPRs(projectId);
-    return reply.send({ pullRequests: prs });
+    const filters = querySchema.parse(request.query);
+    const result = await this.prService.listPRs(filters as any);
+    return reply.send({ pullRequests: result.pullRequests, total: result.total });
   }
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
