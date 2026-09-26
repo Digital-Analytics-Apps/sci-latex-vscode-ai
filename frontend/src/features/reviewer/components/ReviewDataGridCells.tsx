@@ -1,7 +1,15 @@
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArticleIcon from "@mui/icons-material/Article";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { Avatar, Box, Button, Chip, Tooltip, Typography } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import type { PullRequestDetail } from "../../../hooks/useReviewQueries";
 import { formatDate } from "../../../utils/dateUtils";
 export const ProjectCell = ({ row }: { row: PullRequestDetail }) => (
@@ -46,23 +54,9 @@ export const SubmissionTitleCell = ({ row }: { row: PullRequestDetail }) => (
     <Typography variant="body2" sx={{ fontWeight: 700 }}>
       {row.title}
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      <Typography variant="caption" color="text.secondary">
-        Seção: {row.task?.title || row.taskId || "Seção TeX"}
-      </Typography>
-      {row.task?.branchName && (
-        <Chip
-          label={row.task.branchName}
-          size="small"
-          variant="outlined"
-          sx={{
-            height: 18,
-            fontSize: "0.65rem",
-            fontFamily: "monospace",
-          }}
-        />
-      )}
-    </Box>
+    <Typography variant="caption" color="text.secondary">
+      Seção: {row.task?.title || row.taskId || "Seção TeX"}
+    </Typography>
   </Box>
 );
 
@@ -77,40 +71,40 @@ export const AuthorCell = ({ row }: { row: PullRequestDetail }) => (
   >
     <Avatar
       sx={{
-        width: 32,
-        height: 32,
+        width: 20,
+        height: 20,
         fontSize: "0.8rem",
         bgcolor: "primary.main",
       }}
     >
       {row.author?.name?.charAt(0).toUpperCase() || "A"}
     </Avatar>
-    <Box>
+    <Stack>
       <Typography variant="body2" sx={{ fontWeight: 600 }}>
         {row.author?.name || "Autor Não Identificado"}
       </Typography>
       <Typography variant="caption" color="text.secondary">
         {row.author?.email || "autor@sci-latex.org"}
       </Typography>
-    </Box>
+    </Stack>
   </Box>
 );
 
 export const SentDateCell = ({ row }: { row: PullRequestDetail }) => (
   <Tooltip title={`Criado em: ${formatDate(row.createdAt)}`}>
-    <Box
+    <Stack
       sx={{
         display: "flex",
+        flexDirection: "row",
         alignItems: "center",
-        gap: 0.8,
-        height: "100%",
+        gap: 0.5,
       }}
     >
       <AccessTimeIcon fontSize="small" color="action" />
-      <Typography variant="body2" sx={{ fontSize: "0.85rem" }}>
+      <Typography variant="caption" sx={{ fontSize: "0.85rem" }}>
         {formatDate(row.sentToNitAt || row.createdAt)}
       </Typography>
-    </Box>
+    </Stack>
   </Tooltip>
 );
 
@@ -122,7 +116,7 @@ export const ReviewActionCell = ({
   onEvaluate: (id: string) => void;
 }) => (
   <Button
-    variant="contained"
+    variant="outlined"
     size="small"
     color="primary"
     startIcon={<VisibilityIcon fontSize="small" />}

@@ -14,7 +14,7 @@ export const PRStatusChip: React.FC<PRStatusChipProps> = ({ status }) => {
           label="Aprovado"
           size="small"
           color="success"
-          variant="filled"
+          variant="outlined"
           sx={{ fontWeight: 600 }}
         />
       );
@@ -24,7 +24,7 @@ export const PRStatusChip: React.FC<PRStatusChipProps> = ({ status }) => {
           label="Ajustes Solicitados"
           size="small"
           color="error"
-          variant="filled"
+          variant="outlined"
           sx={{ fontWeight: 600 }}
         />
       );
@@ -34,7 +34,7 @@ export const PRStatusChip: React.FC<PRStatusChipProps> = ({ status }) => {
           label="Em Avaliação"
           size="small"
           color="warning"
-          variant="filled"
+          variant="outlined"
           sx={{ fontWeight: 600 }}
         />
       );
@@ -44,7 +44,7 @@ export const PRStatusChip: React.FC<PRStatusChipProps> = ({ status }) => {
           label="Mesclado (Merged)"
           size="small"
           color="info"
-          variant="filled"
+          variant="outlined"
           sx={{ fontWeight: 600 }}
         />
       );

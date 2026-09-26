@@ -220,22 +220,22 @@ export const ReviewsListPage = () => {
       {
         field: "project",
         headerName: "Projeto & ID",
-        flex: 1.2,
-        minWidth: 200,
+        flex: 0.9,
+        minWidth: 150,
         renderCell: (params) => <ProjectCell row={params.row} />,
       },
       {
         field: "title",
         headerName: "Título da Submissão & Seção TeX",
-        flex: 1.8,
-        minWidth: 260,
+        flex: 3,
+        minWidth: 300,
         renderCell: (params) => <SubmissionTitleCell row={params.row} />,
       },
       {
         field: "author",
         headerName: "Autor Responsável",
         flex: 1.5,
-        minWidth: 220,
+        minWidth: 200,
         renderCell: (params) => <AuthorCell row={params.row} />,
       },
       {
