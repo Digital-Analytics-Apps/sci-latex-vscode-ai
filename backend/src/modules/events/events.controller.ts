@@ -6,7 +6,11 @@ export class EventsController {
 
   async streamEvents(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub;
-    const { projectId, taskId, mode: queryMode } = request.query as {
+    const {
+      projectId,
+      taskId,
+      mode: queryMode,
+    } = request.query as {
       projectId?: string;
       taskId?: string;
       mode?: string;
@@ -50,7 +54,11 @@ export class EventsController {
 
   async sendHeartbeat(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub;
-    const { projectId, taskId, mode: queryMode } = (request.query || {}) as {
+    const {
+      projectId,
+      taskId,
+      mode: queryMode,
+    } = (request.query || {}) as {
       projectId?: string;
       taskId?: string;
       mode?: string;

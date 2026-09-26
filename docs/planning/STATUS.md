@@ -13,6 +13,9 @@
 
 ### 🔍 Estado Atual da Aplicação
 * **Última Implementação Finalizada:**
+  * **Endpoint Único Cirúrgico de Métricas KPI por Perfil (`GET /api/v1/dashboard/summary`):**
+    * **Backend Desacoplado (Prisma & Fastify):** Criado o método `getSummary(userId, role, filters)` em [`DashboardService`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/dashboard/dashboard.service.ts) e a rota `GET /api/v1/dashboard/summary` em [`dashboard.routes.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/dashboard/dashboard.routes.ts). O endpoint detecta cirurgicamente a Role do usuário (`REVIEWER`, `COORDINATOR`, `MANAGER`, `AUTHOR`, `ADMIN`) a partir do token JWT e calcula as métricas agregadas diretamente no banco de dados Prisma.
+    * **Frontend Hook Reutilizável & Integração:** Criado o hook [`useDashboardSummaryQuery`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/hooks/useDashboardQueries.ts) e atualizada a página [`ReviewsListPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/reviewer/ReviewsListPage.tsx) para consumir as métricas diretamente do backend sem desacoplar ou duplicar código no cliente.
   * **Robustez e Normalização nos Filtros da Tabela de Revisões:**
     * Atualizada a página [`ReviewsListPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/reviewer/ReviewsListPage.tsx) para tratar de forma robusta todos os campos de filtro (`projectId`, `status`, `nitStatus` e `search`):
       * **Filtro de Projetos:** Adicionada verificação dinâmica de fallback (`Projeto (ID...)`) caso o `projectId` na URL ainda não exista no mapa de projetos disponíveis, garantindo que o MUI Select nunca fique em branco.

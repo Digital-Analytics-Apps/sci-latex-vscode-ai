@@ -122,6 +122,12 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
 - [x] **Regras de Qualidade**: 0 warnings no ESLint e 0 erros no TypeScript. Componentes funcionais sem `React.FC` ou exportações barril (`index.ts`).
 - [x] **MUI DataGrid & Paginação Nativa (`@mui/x-data-grid`)**: Migração de tabelas legadas para `<DataGrid />` com internacionalização em Português (`ptBR`), paginação embutida (5, 10, 25 linhas) e integração com painéis de filtros externos.
 
+### 6.2 Hook Reutilizável de Métricas de KPI do Dashboard (`useDashboardSummaryQuery`)
+* **Localização:** `src/hooks/useDashboardQueries.ts`
+* **Descrição:** Consome o endpoint único cirúrgico `GET /api/v1/dashboard/summary` e fornece métricas agregadas do banco de dados (Prisma) adaptadas dinamicamente à Role extraída do token JWT do usuário autenticado.
+* **Comportamento Anti-Piscadas:** Configurado com `placeholderData: keepPreviousData` para manter as métricas visíveis durante a transição de filtros de projetos ou equipes.
+* **Retorno:** `{ role: string, metrics: Record<string, any> }`
+
 ---
 
 ## 6. Padronização de Tabelas com MUI DataGrid (`@mui/x-data-grid`)

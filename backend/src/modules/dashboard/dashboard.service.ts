@@ -1,12 +1,125 @@
+import { NITStatus, Prisma, PRStatus, Role } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { deadlineService } from '../../utils/deadlines';
 
 export interface DashboardFilterDTO {
+  projectId?: string;
   academicPeriodId?: string;
   teamId?: string;
 }
 
 export class DashboardService {
+  async getSummary(userId: string, role: Role, filters?: DashboardFilterDTO) {
+    switch (role) {
+      case Role.REVIEWER:
+        return {
+          role,
+          metrics: await this.getReviewerMetrics(filters?.projectId),
+        };
+      case Role.COORDINATOR:
+        return {
+          role,
+          metrics: await this.getCoordinatorMetrics(userId, filters?.teamId, filters?.projectId),
+        };
+      case Role.MANAGER:
+      case Role.ADMIN:
+        return {
+          role,
+          metrics: await this.getManagerDashboard(filters),
+        };
+      case Role.AUTHOR:
+      default:
+        return {
+          role,
+          metrics: await this.getAuthorMetrics(userId, filters?.projectId),
+        };
+    }
+  }
+
+  async getReviewerMetrics(projectId?: string) {
+    const where: Prisma.PullRequestWhereInput = {};
+    if (projectId && projectId !== 'all') {
+      where.projectId = projectId;
+    }
+
+    const [pendingReview, waitingNIT, approved, changesRequested, total] = await Promise.all([
+      prisma.pullRequest.count({ where: { ...where, status: PRStatus.UNDER_REVIEW } }),
+      prisma.pullRequest.count({ where: { ...where, nitStatus: NITStatus.WAITING_NIT } }),
+      prisma.pullRequest.count({ where: { ...where, status: PRStatus.APPROVED } }),
+      prisma.pullRequest.count({ where: { ...where, status: PRStatus.CHANGES_REQUESTED } }),
+      prisma.pullRequest.count({ where }),
+    ]);
+
+    return {
+      pendingReview,
+      waitingNIT,
+      approved,
+      changesRequested,
+      total,
+    };
+  }
+
+  async getCoordinatorMetrics(userId: string, teamId?: string, projectId?: string) {
+    const where: Prisma.TaskWhereInput = {};
+    if (projectId && projectId !== 'all') {
+      where.projectId = projectId;
+    }
+    if (teamId) {
+      where.project = { teamId };
+    }
+
+    const tasks = await prisma.task.findMany({
+      where,
+      select: { dueDate: true, status: true },
+    });
+
+    let onTimeCount = 0;
+    let warningSoonCount = 0;
+    let overdueCount = 0;
+
+    for (const task of tasks) {
+      if (!task.dueDate) {
+        onTimeCount++;
+        continue;
+      }
+      const status = deadlineService.calculateStatus(task.dueDate);
+      if (status === 'OVERDUE') overdueCount++;
+      else if (status === 'WARNING_SOON') warningSoonCount++;
+      else onTimeCount++;
+    }
+
+    return {
+      onTimeTasks: onTimeCount,
+      warningSoonTasks: warningSoonCount,
+      overdueTasks: overdueCount,
+      totalTasks: tasks.length,
+    };
+  }
+
+  async getAuthorMetrics(userId: string, projectId?: string) {
+    const where: Prisma.TaskWhereInput = { assignedToId: userId };
+    if (projectId && projectId !== 'all') {
+      where.projectId = projectId;
+    }
+
+    const [activeArticlesCount, totalTasks, inProgressTasks, completedTasks] = await Promise.all([
+      prisma.project.count({
+        where: {
+          members: { some: { userId } },
+        },
+      }),
+      prisma.task.count({ where }),
+      prisma.task.count({ where: { ...where, status: 'IN_PROGRESS' } }),
+      prisma.task.count({ where: { ...where, status: 'MERGED' } }),
+    ]);
+
+    return {
+      activeArticles: activeArticlesCount,
+      totalTasks,
+      inProgressTasks,
+      completedTasks,
+    };
+  }
   async getManagerDashboard(filters?: DashboardFilterDTO) {
     const where: any = {};
 

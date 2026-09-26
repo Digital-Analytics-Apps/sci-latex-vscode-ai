@@ -226,4 +226,15 @@ src/
 - [X] Implementar rotas pós-submissão (Aceito + DOI, Pedido de Ajustes no mesmo congresso, Rejeitado + Decisão v2).
 - [X] Implementar verificação de prazos e alertas de cronograma (🟢/🟡/🔴).
 - [X] Implementar middleware e logger gravando na tabela `AuditLog`.
-- [X] Implementar rotas do dashboard do Gerente (filtros por `AcademicPeriod`).
+### 3.9 Módulo `dashboard` (Métricas de KPI Agregadas e Consolidadas por Perfil)
+* `GET /api/v1/dashboard/summary`
+  * **Headers:** `Authorization: Bearer <JWT>`
+  * **Querystring Opcional:** `projectId`, `academicPeriodId`, `teamId`
+  * **Descrição:** Retorna métricas de KPI agregadas diretamente do banco de dados (Prisma) sem duplicação de código. A Role (`REVIEWER`, `COORDINATOR`, `MANAGER`, `AUTHOR`, `ADMIN`) é extraída cirurgicamente do token JWT do usuário logado.
+  * **Output JSON:** `{ role: string, metrics: Record<string, any> }`
+* `GET /api/v1/dashboard/manager`
+  * **Descrição:** Dashboard executivo consolidado com status de submissões, produção científica e prazos da equipe para Gerentes e Admins.
+
+---
+
+## 4. Especificação de Serviços de Segundo Plano & Eventos (Sem Broker / Ultra-Leve)

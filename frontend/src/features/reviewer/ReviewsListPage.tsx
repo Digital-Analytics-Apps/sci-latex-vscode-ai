@@ -29,6 +29,7 @@ import {
   PRStatusChip,
 } from "../../components/common/StatusChips";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useDashboardSummaryQuery } from "../../hooks/useDashboardQueries";
 import { useProjectsList } from "../../hooks/useProjectQueries";
 import {
   NITStatus,
@@ -97,6 +98,11 @@ export const ReviewsListPage = () => {
   };
 
   const { data, isLoading, isFetching } = usePendingReviews(apiParams);
+
+  // Busca cirúrgica de métricas de KPI do Dashboard calculadas no backend (Prisma)
+  const { data: dashboardSummary } = useDashboardSummaryQuery({
+    projectId: filters.projectId,
+  });
 
   const { data: allProjects = [] } = useProjectsList();
 
@@ -182,23 +188,16 @@ export const ReviewsListPage = () => {
     );
   }, [filters, searchTerm]);
 
-  // Métricas (KPIs)
+  // Métricas de KPI obtidas de forma agregada e cirúrgica da API do backend
   const metrics = useMemo(() => {
-    const pendingReview = reviews.filter(
-      (r) => r.status === PRStatus.UNDER_REVIEW,
-    ).length;
-    const waitingNIT = reviews.filter(
-      (r) => r.nitStatus === NITStatus.WAITING_NIT,
-    ).length;
-    const approved = reviews.filter(
-      (r) => r.status === PRStatus.APPROVED,
-    ).length;
-    const changesRequested = reviews.filter(
-      (r) => r.status === PRStatus.CHANGES_REQUESTED,
-    ).length;
-
-    return { pendingReview, waitingNIT, approved, changesRequested };
-  }, [reviews]);
+    const m = dashboardSummary?.metrics || {};
+    return {
+      pendingReview: m.pendingReview ?? 0,
+      waitingNIT: m.waitingNIT ?? 0,
+      approved: m.approved ?? 0,
+      changesRequested: m.changesRequested ?? 0,
+    };
+  }, [dashboardSummary?.metrics]);
 
   // Modelo de Paginação conectado aos Filtros da URL
   const paginationModel = useMemo<GridPaginationModel>(() => {

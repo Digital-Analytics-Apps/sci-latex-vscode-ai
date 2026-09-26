@@ -17,7 +17,11 @@ export class K8sPodManagerService {
   private readonly namespace = 'default';
 
   private getK8sApiClient(): k8s.CoreV1Api | null {
-    if (env.NODE_ENV === 'test' || process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
+    if (
+      env.NODE_ENV === 'test' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true'
+    ) {
       this.isK8sAvailable = false;
       return null;
     }

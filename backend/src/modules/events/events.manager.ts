@@ -29,7 +29,13 @@ export class EventsManagerService {
   }
 
   // Adiciona novo cliente à lista de conexões ativas e renova chave no Redis
-  addClient(userId: string, reply: FastifyReply, projectId?: string, taskId?: string, mode: string = 'editor') {
+  addClient(
+    userId: string,
+    reply: FastifyReply,
+    projectId?: string,
+    taskId?: string,
+    mode: string = 'editor'
+  ) {
     this.clients.push({ userId, projectId, taskId, reply });
 
     if (projectId) {
@@ -96,10 +102,7 @@ export class EventsManagerService {
             taskId || 'default-task'
           );
 
-          if (
-            (this.activeProjectConnections.get(projectId) || 0) === 0 &&
-            !isStillActiveInRedis
-          ) {
+          if ((this.activeProjectConnections.get(projectId) || 0) === 0 && !isStillActiveInRedis) {
             console.log(
               `🧹 Grace Period de 3 minutos expirado para o projeto ${projectId}. Encerrando Pod no K8s e liberando RAM...`
             );
