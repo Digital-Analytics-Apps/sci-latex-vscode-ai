@@ -2,7 +2,7 @@
 
 Este documento estabelece as diretrizes técnicas, arquitetura de infraestrutura e a lógica de fluxo de trabalho (workflow) para o desenvolvimento da plataforma web de escrita de artigos científicos baseada em um ambiente VS Code embutido e seguro.
 
-Para especificações detalhadas do esquema de banco de dados, provisionamento Git por Token de Serviço, fluxo do NIT, auditoria (`AuditLog`), decisões pós-submissão e permissões, consulte o arquivo de especificações oficiais: [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/specs.md).
+Para especificações detalhadas do esquema de banco de dados, provisionamento Git por Token de Serviço, fluxo do NIT, auditoria (`AuditLog`), decisões pós-submissão e permissões, consulte o arquivo de especificações oficiais: [`system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md).
 
 ---
 

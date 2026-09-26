@@ -1,4 +1,4 @@
-# Workflow de Desenvolvimento & Integração Git/Jira/GitHub (`WORKFLOW_SKILL.md`)
+# Workflow de Desenvolvimento & Integração Git/Jira/GitHub (`WORKFLOW.md`)
 
 Este documento estabelece o fluxo de trabalho obrigatório para criação de branches, testes automatizados, verificação de qualidade, integração com Jira e abertura de Pull Requests via GitHub MCP Server no projeto **sci-latex-vscode**.
 
@@ -19,26 +19,28 @@ Este documento estabelece o fluxo de trabalho obrigatório para criação de bra
 ```mermaid
 graph TD
     A[1. Selecionar Tarefa / Issue Jira] --> B[2. Mover Jira p/ 'Fazendo' - ID 21]
-    B --> C[3. Criar Branch Git: feature/SLV-X]
+    B --> C[3. Criar Branch Git: feature/SLV-X e registrar em STATUS.md]
     C --> D[4. Escrever Código + Arquivos de Teste]
     D --> E[5. Executar Lint, Typecheck e npm test]
-    E --> F[6. Git Commit & Push da Branch]
-    F --> G[7. Criar PR via GitHub MCP Server]
-    G --> H[8. Atualizar Título e Descrição Jira com Problema e Solução Textual]
-    H --> I[9. Transicionar Jira p/ 'Feito' - ID 31 e atualizar task.md]
+    E --> F[6. Atualizar Specs em docs/planning/specs/]
+    F --> G[7. Git Commit & Push da Branch]
+    G --> H[8. Criar PR via GitHub MCP Server]
+    H --> I[9. Atualizar Título/Descrição Jira e Mover p/ 'Feito' - ID 31]
+    I --> J[10. Atualizar ROADMAP.md [x] e Gravar Checkpoint Final em STATUS.md]
 ```
 
 ---
 
 ## 3. Passo a Passo Detalhado para Cada Feature
 
-### Passo 1: Início no Jira & Branch Git
-1. Ao pegar uma task no Jira (ex: `SLV-X`), mover a issue para **`Fazendo`** (`transitionJiraIssue` com ID `21`).
-2. Criar e trocar para a nova branch de feature:
+### Passo 1: Contexto, Início no Jira & Branch Git
+1. **Consultar Checkpoint:** Verificar [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md) e [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) para confirmar a última implementação e contexto.
+2. Ao pegar uma task no Jira (ex: `SLV-X`), mover a issue para **`Fazendo`** (`transitionJiraIssue` com ID `21`).
+3. Criar e trocar para a nova branch de feature:
    ```bash
    git checkout -b feature/SLV-X-nome-da-feature
    ```
-3. Atualizar o item no `task.md` como em andamento `[/]`.
+4. Registar a nova tarefa em andamento no arquivo [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md).
 
 ### Passo 2: Implementação & Criar Arquivos de Teste
 1. Escrever o código da funcionalidade mantendo todos os identificadores em Inglês.
@@ -51,7 +53,10 @@ graph TD
 2. Rodar a suíte de testes: `npm test`.
 3. **Regra:** Não avançar se houver falhas em testes ou erros de compilação.
 
-### Passo 4: Commit, Push & Pull Request via GitHub MCP
+### Passo 4: Atualização Dinâmica de Especificações Técnicas (`specs/`)
+1. Se a implementação adicionou novas rotas, schemas Zod, modelos no Prisma ou componentes de UI, **atualize obrigatoriamente a especificação técnica correspondente** na pasta [`docs/planning/specs/`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/) (`system-specs.md`, `backend-specs.md` ou `frontend-specs.md`).
+
+### Passo 5: Commit, Push & Pull Request via GitHub MCP
 1. Commit das alterações:
    ```bash
    git add .
@@ -62,15 +67,16 @@ graph TD
    git push -u origin feature/SLV-X-nome-da-feature
    ```
 3. Abertura do Pull Request via **GitHub MCP Server**:
-   * Usar a ferramenta `create_pull_request` (ou equivalente no GitHub MCP).
+   * Usar a ferramenta `create_pull_request`.
    * **Title:** `[SLV-X] Nome da Feature`
    * **Base:** `main`
    * **Head:** `feature/SLV-X-nome-da-feature`
 
-### Passo 5: Atualização de Título e Descrição no Jira & Conclusão
+### Passo 6: Conclusão no Jira, ROADMAP & Gravar Checkpoint em STATUS.md
 1. **Melhorar o Título e a Descrição no Jira:** Atualizar a issue (`editJiraIssue`) refinando o Título (*summary*) e preenchendo detalhadamente a Descrição (*description*) contemplando **Problema** e **Solução** de forma estritamente textual (sem blocos de código).
 2. Mover o status da issue no Jira para **`Feito`** (`transitionJiraIssue` com ID `31`).
-3. Atualizar o item no `task.md` para concluído `[x]`.
+3. Marcar a tarefa como concluída `[x]` no [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md).
+4. Gravar o Checkpoint Final no [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md) descrevendo o que foi entregue, o status do ambiente/testes e o próximo passo exato para a próxima sessão.
 
 ---
 
