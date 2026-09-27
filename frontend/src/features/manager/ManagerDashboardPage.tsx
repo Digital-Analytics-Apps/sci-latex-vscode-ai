@@ -30,7 +30,7 @@ import {
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import {
   useAcademicPeriods,
@@ -72,39 +72,47 @@ export const ManagerDashboardPage = () => {
   const { data: rawProjects, isLoading: isLoadingProjects } = useProjectsList();
   const { data: rawTeams, isLoading: isLoadingTeams } = useTeamsQuery();
 
-  const periods = Array.isArray(rawPeriods) ? rawPeriods : [];
-  const allProjects = Array.isArray(rawProjects) ? rawProjects : [];
-  const allTeams = Array.isArray(rawTeams) ? rawTeams : [];
+  const periods = React.useMemo(
+    () => (Array.isArray(rawPeriods) ? rawPeriods : []),
+    [rawPeriods],
+  );
+  const allProjects = React.useMemo(
+    () => (Array.isArray(rawProjects) ? rawProjects : []),
+    [rawProjects],
+  );
+  const allTeams = React.useMemo(
+    () => (Array.isArray(rawTeams) ? rawTeams : []),
+    [rawTeams],
+  );
 
-  const handleDeleteTeam = async (teamId: string, teamName: string) => {
-    if (
-      !window.confirm(`Tem certeza que deseja excluir a equipe "${teamName}"?`)
-    ) {
-      return;
-    }
-    try {
-      await deleteTeamMutation.mutateAsync(teamId);
-      dispatch(
-        showNotification({
-          message: `Equipe "${teamName}" excluída com sucesso.`,
-          severity: "success",
-        }),
-      );
-    } catch {
-      dispatch(
-        showNotification({
-          message: `Erro ao excluir a equipe "${teamName}".`,
-          severity: "error",
-        }),
-      );
-    }
-  };
-
-  useEffect(() => {
-    if (periods && periods.length > 0 && !selectedPeriod) {
-      setSelectedPeriod(periods[0].id);
-    }
-  }, [periods, selectedPeriod]);
+  const handleDeleteTeam = React.useCallback(
+    async (teamId: string, teamName: string) => {
+      if (
+        !window.confirm(
+          `Tem certeza que deseja excluir a equipe "${teamName}"?`,
+        )
+      ) {
+        return;
+      }
+      try {
+        await deleteTeamMutation.mutateAsync(teamId);
+        dispatch(
+          showNotification({
+            message: `Equipe "${teamName}" excluída com sucesso.`,
+            severity: "success",
+          }),
+        );
+      } catch {
+        dispatch(
+          showNotification({
+            message: `Erro ao excluir a equipe "${teamName}".`,
+            severity: "error",
+          }),
+        );
+      }
+    },
+    [deleteTeamMutation, dispatch],
+  );
 
   const { data: dashboard, isLoading: isLoadingDashboard } =
     useManagerDashboardQuery({
@@ -158,10 +166,12 @@ export const ManagerDashboardPage = () => {
     );
   };
 
+  const dashboardTeams = dashboard?.teams;
+
   // Linhas para DataGrid 1: Produção Científica por Equipe
   const teamRows = React.useMemo(() => {
-    if (!dashboard?.teams) return [];
-    return dashboard.teams.map((team) => {
+    if (!dashboardTeams) return [];
+    return dashboardTeams.map((team) => {
       const inProgress = team.totalProjects - team.publishedCount;
       const onTimeRate =
         team.totalProjects > 0
@@ -173,12 +183,12 @@ export const ManagerDashboardPage = () => {
         teamName: team.teamName,
         coordinatorEmail: team.coordinator?.email || "Não atribuído",
         completedCount: team.publishedCount,
-        inProgressCount: inProgress < 0 ? 0 : inProgress,
+        inProgressCount: Math.max(inProgress, 0),
         totalProjects: team.totalProjects,
         onTimeRate,
       };
     });
-  }, [dashboard?.teams]);
+  }, [dashboardTeams]);
 
   // Linhas para DataGrid 2: Listagem Global de Artigos Institucionais
   const projectRows = React.useMemo(() => {
@@ -285,7 +295,9 @@ export const ManagerDashboardPage = () => {
               <IconButton
                 size="small"
                 color="error"
-                onClick={() => handleDeleteTeam(params.row.id, params.row.name)}
+                onClick={() =>
+                  handleDeleteTeam(params.row.id, params.row.name)
+                }
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -294,7 +306,7 @@ export const ManagerDashboardPage = () => {
         ),
       },
     ],
-    [],
+    [handleDeleteTeam],
   );
 
   // Colunas DataGrid 1: Equipes & Cotas

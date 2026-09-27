@@ -8,7 +8,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import type { SyntheticEvent } from "react";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useUpdateTeamMutation } from "../../../hooks/useTeamQueries";
 import { showNotification } from "../../../store/slices/notificationSlice";
@@ -24,17 +25,21 @@ export const EditTeamModal = ({ open, onClose, team }: EditTeamModalProps) => {
   const dispatch = useDispatch();
   const updateTeamMutation = useUpdateTeamMutation();
 
+  const [prevTeamId, setPrevTeamId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [coordinatorEmail, setCoordinatorEmail] = useState("");
 
-  useEffect(() => {
-    if (team) {
-      setName(team.name || "");
-      setCoordinatorEmail(team.coordinator?.email || "");
-    }
-  }, [team]);
+  if (team && team.id !== prevTeamId) {
+    setPrevTeamId(team.id);
+    setName(team.name || "");
+    setCoordinatorEmail(team.coordinator?.email || "");
+  } else if (!team && prevTeamId !== null) {
+    setPrevTeamId(null);
+    setName("");
+    setCoordinatorEmail("");
+  }
 
-  const handleSubmit = async (e: React.SyntheticEvent) => {
+  const handleSubmit = async (e: SyntheticEvent) => {
     e.preventDefault();
     if (!team || !name.trim()) return;
 
