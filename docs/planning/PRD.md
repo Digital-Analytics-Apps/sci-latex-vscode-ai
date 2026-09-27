@@ -36,10 +36,10 @@ graph LR
 
 | Persona | Atribuições & Responsabilidades |
 | :--- | :--- |
-| **Autor** | Cria o artigo, estabelece prazos/congressos, escreve no editor VS Code, submete para revisão, atua em correções (v2), executa o Merge e decide o fluxo pós-submissão. |
-| **Revisor** | Acessa workspace isolado de revisão, avalia o diff side-by-side (TeX/PDF), insere comentários por linha e registra o parecer institucional no NIT (`APPROVED_NIT`, `REJEITADO_NIT`). |
-| **Coordenador** | Visão macro das equipes e projetos, gerenciamento e alteração de prazos de etapas e resolução de gargalos. |
-| **Gerente** | Visão estratégica executiva por **Período Acadêmico** (ex: *2026/1*), taxa de aceitação em congressos alvos e backups, e papers finalizados com DOI. |
+| **Autor** | Cria o artigo, estabelece a timeline de etapas paralelas, escreve no editor VS Code, submete tarefas para revisão viva, atua em correções (v2), solicita análise do NIT (ao concluir 100% das etapas de escrita) e executa a submissão ao congresso. Pode colaborar em artigos de múltiplos times. |
+| **Revisor** | Acessa workspace isolado de revisão, avalia o diff side-by-side (TeX/PDF), insere apontamentos por linha e aprova PRs de tarefas. Caso escreva um artigo próprio (auto-escrita), atua com privilégios de Autor naquele projeto (abertura de NIT e datas). |
+| **Coordenador** | Coordena 1 ou mais Times (`1:N`). Gerencia cotas de artigos com a gerência, acompanha a régua de timeline de etapas paralelas e resolve gargalos das equipes. |
+| **Gerente** | Suporte a **Múltiplos Gerentes (`Role.MANAGER`)** por departamento/área. Visão estratégica executiva por **Ciclo Acadêmico** do seu setor, define a Meta Global da sua unidade, distribui cotas entre os times sob sua gestão (`TeamAcademicGoal`), acompanha indicadores de superação de metas (*over-achievement*) e análise de gargalos nas etapas. |
 
 ---
 
@@ -47,11 +47,11 @@ graph LR
 
 ```mermaid
 graph TD
-    F1[Fase 1: Cadastro & Prazos] --> F2[Fase 2: Escrita & Commits Silenciosos]
-    F2 --> F3[Fase 3: Revisão Acadêmica & Diff]
-    F3 --> F4[Fase 4: Validação Institucional NIT]
-    F4 --> F5[Fase 5: Merge pelo Autor na dev/main]
-    F5 --> F6[Fase 6: Submissão ao Congresso Target]
+    F1[Fase 1: Cadastro, Período Acadêmico & Timeline de Etapas] --> F2[Fase 2: Escrita Paralela & Commits Silenciosos]
+    F2 -->|Revisão Viva por Task| F3[Fase 3: Revisão Acadêmica Contínua]
+    F3 -->|100% Escrita Concluída| F4[Gatekeeper 1: Análise Institucional NIT]
+    F4 -->|Parecer Aprovado NIT| F5[Fase 5: Merge pelo Autor na dev/main]
+    F5 -->|Parecer Aprovado NIT| F6[Gatekeeper 2: Submissão ao Congresso Target]
     F6 --> F7[Fase 7: Pós-Submissão & Decisão dos Autores]
     
     F7 -->|Aceito| C1[Metadados Finais - DOI & Camera-Ready]
@@ -59,12 +59,12 @@ graph TD
     F7 -->|Rejeitado| C3[Submissão ao Congresso Backup / Novo]
 ```
 
-1. **Fase 1 (Cadastro & Prazos):** Definição de título, autores, congresso alvo, congressos backups e prazos das seções.
-2. **Fase 2 (Escrita & Commits):** Edição no VS Code embutido, auto-compilação em PDF e commits silenciosos na branch de trabalho (`task/SLV-X-...`).
-3. **Fase 3 (Revisão Acadêmica):** Abertura de PR, congelamento visual da tarefa, visualização side-by-side do diff LaTeX pelo Revisor e apontamentos por linha.
-4. **Fase 4 (Validação NIT):** Tramitação institucional e registro do parecer do Núcleo de Inovação Tecnológica.
-5. **Fase 5 (Merge pelo Autor):** O Autor realiza a mesclagem da branch de trabalho após aprovação; limpeza automática do Pod/PVC isolado no K8s.
-6. **Fase 6 (Submissão):** Envio oficial do artigo compilado para a conferência selecionada.
+1. **Fase 1 (Cadastro, Período Acadêmico & Timeline de Etapas):** Associação ao Ciclo Acadêmico ativo, definição de título, autores, congresso alvo, backups e cronograma de etapas preliminares (`ProjectStage`).
+2. **Fase 2 (Escrita Paralela & Commits):** Edição no VS Code embutido com execução paralela de seções/etapas, auto-compilação em PDF e commits silenciosos na branch de trabalho (`task/SLV-X-...`).
+3. **Fase 3 (Revisão Acadêmica Contínua):** Processo vivo transversal acionado em cada `Task`. Abertura de Draft PR, visualização side-by-side do diff LaTeX pelo Revisor e apontamentos por linha.
+4. **Fase 4 (Gatekeeper 1: Análise do NIT):** Trava sequencial estrita (`🔒 LOCKED`). Liberada para solicitação dos autores somente quando 100% das etapas de conteúdo de escrita estiverem concluídas.
+5. **Fase 5 (Merge pelo Autor):** O Autor realiza a mesclagem da branch de trabalho após aprovação do Revisor e do NIT; limpeza automática do Pod/PVC isolado no K8s.
+6. **Fase 6 (Gatekeeper 2: Submissão ao Congresso Target):** Trava sequencial estrita (`🔒 LOCKED`). Envio oficial do artigo compilado para a conferência selecionada após aprovação formal do NIT (`APPROVED_NIT`).
 7. **Fase 7 (Pós-Submissão & Decisão):** Atualização do resultado (Aceito, Revisão Solicitada, Rejeitado) com encaminhamento para metadados finais (DOI), correções v2 ou redirecionamento para congresso backup.
 
 ---

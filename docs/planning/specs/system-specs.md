@@ -537,3 +537,29 @@ model Release {
 ### 7.4 Busca de Usuários com Debounce
 - **`GET /api/v1/users/search?q=...`**:
   - Retorna lista filtrada por substring no nome ou e-mail com limite prudente de resultados, integrada ao frontend via busca debounced (300ms).
+
+---
+
+### 7.5 Governança de Personas, Ciclos Acadêmicos, Etapas Paralelas e Gatekeepers
+
+1. **Hierarquia e Personas (Arquitetura Multi-Gerente):**
+   - **Múltiplos Gerentes (`Role.MANAGER`):** O sistema suporta **múltiplos gerentes simultâneos**. Cada Gerente supervisiona seu portfólio individual de Times (`Team.managerId`), abre Ciclos Acadêmicos (`AcademicPeriod.managerId`) para seu setor, cadastra Coordenadores e aloca a Meta Global e cotas dos seus times.
+   - **Coordenador (`Role.COORDINATOR`):** Pode gerenciar múltiplos times simultaneamente (`1:N`). Cadastra membros nos seus times e ajusta cotas de artigos com seu Gerente.
+   - **Autores (`Role.AUTHOR`):** Membros podem colaborar como co-autores em artigos pertencentes a múltiplos times e departamentos.
+   - **Revisores (`Role.REVIEWER`):** Revisam múltiplos artigos. Ao escreverem um artigo próprio, atuam com privilégios de Autor naquele projeto específico.
+
+2. **Ciclos Acadêmicos & Cotas por Time (`TeamAcademicGoal`):**
+   - O Ciclo Acadêmico possui período delimitado (início e término), vínculo com o Gerente criador (`managerId`) e meta global de artigos da unidade.
+   - As cotas por time funcionam como guia de planejamento, sendo incentivada a superação da cota (`over-achievement`).
+
+3. **Etapas de Escrita Flexíveis (`ProjectStage`) & Paralelismo:**
+   - O sistema gera presets padrão (Rascunho, Desenvolvimento, Experimentos), mas os Autores possuem liberdade para adicionar, renomear e reordenar etapas customizadas.
+   - Todas as etapas de escrita de conteúdo **possuem execução paralela (`IN_PROGRESS` simultâneo)**.
+
+4. **Revisão de Pares como Processo Vivo:**
+   - A revisão de pares ocorre continuamente em cada tarefa (`Task`), através do fluxo vivo de Pull Requests (Draft $\rightarrow$ Ready for Review $\rightarrow$ Changes Requested $\rightarrow$ Approved/Merged).
+
+5. **Os Dois Gatekeepers Sequenciais:**
+   - **⚖️ Gatekeeper 1 - Análise do NIT:** Bloqueado (`🔒 LOCKED`) enquanto houver etapas/tarefas de conteúdo pendentes (< 100%). Liberado automaticamente quando 100% do conteúdo for mergeado. Solicitação exclusiva dos Autores do artigo.
+   - **🚀 Gatekeeper 2 - Submissão ao Congresso:** Bloqueado (`🔒 LOCKED`) até a emissão do parecer de aprovação do NIT (`APPROVED_NIT`).
+

@@ -191,6 +191,43 @@ A tela principal do Dashboard (`src/features/dashboard/DashboardPage.tsx`) funci
 3. **`ReviewsListPage.tsx`:** Componente responsável pela visão do Revisor de Pares (`Role.REVIEWER`).
 4. **Navegação Atômica e `{ replace: true }`:** Trocas de estado ou navegações a partir do Dashboard utilizam `{ replace: true }` no `useSearchParams` e no `navigate` para evitar empilhamento desnecessário no histórico do navegador.
 
+---
+
+### 6.6 Componentes de Timeline de Etapas Paralelas & Indicador Visual de Gatekeepers
+
+1. **Régua de Timeline Paralela (`<ArticleTimelineHeader />`):**
+   - Exibe visualmente as etapas de escrita de conteúdo rodando em paralelo, indicando a porcentagem de conclusão de cada uma baseada no progresso das tarefas agrupadas (`stageId`).
+2. **Badges de Trava Visual dos Gatekeepers (`<GatekeeperLockBadge />`):**
+   - Os botões de ação do **NIT** e da **Submissão ao Congresso** exibem a badge de trava visual enquanto houver conteúdo de escrita pendente:
+     - Estado Bloqueado: `🔒 Bloqueado (X etapas de escrita pendentes)`.
+     - Estado Liberado: `🔓 Liberado para Análise do NIT` (habilita o clique para Autores ou Revisor-Autor).
+3. **Modal de Atribuição de Tarefa a Etapa (`CreateTaskModal`):**
+   - Inclui o seletor de Etapa do Artigo (`stageId`), permitindo que cada nova tarefa seja vinculada a um marco específico da Timeline.
+
+---
+
+### 6.7 Padronização Visual Obrigatória de Cards e Tabelas DataGrid por Persona (`Persona DataGrid & Card Design Standard`)
+
+Em conformidade com as regras de UI/UX da plataforma, **100% das telas de listagem e acompanhamento das personas DEVEM seguir rigorosamente o Padrão de Cards e Tabelas DataGrid com Filtros via URL** ([`Seção 6.4`](#64-especificação-obrigatória-do-padrão-datagrid-com-filtros-de-url-datagrid-url-filter-pattern)):
+
+1. **Visão do Gerente (`Role.MANAGER`):**
+   - **Cards de Métricas:** `<Card variant="outlined">` para Meta Global do Ciclo, Cotas Totais e Pareceres NIT.
+   - **Tabela DataGrid de Cotas por Time (`<ManagerTeamsDataGrid />`):** Envelopada em `<AutoSizer>` + `useUrlFilters`, listando os times sob gestão, cotas atribuídas, artigos produzidos e a badge visual 🚀 `Over-achievement`.
+   - **Tabela DataGrid de Gargalos (`<ManagerBottlenecksDataGrid />`):** Envelopada em `<AutoSizer>` + `useUrlFilters`, listando artigos retidos em etapas específicas.
+
+2. **Visão do Coordenador (`Role.COORDINATOR`):**
+   - **Cards de Métricas:** Resumo dos times coordenados.
+   - **Tabela DataGrid de Artigos do Time (`<CoordinatorArticlesDataGrid />`):** Envelopada em `<AutoSizer>` + `useUrlFilters`, listando os artigos do time, etapas ativas, status de prazo (🟢/🟡/🔴) e indicação de trava dos Gatekeepers (`🔒 LOCKED`).
+
+3. **Visão do Revisor (`Role.REVIEWER`):**
+   - **Tabela DataGrid da Fila de Revisões (`<ReviewerQueueDataGrid />`):** Envelopada em `<AutoSizer>` + `useUrlFilters`, listando os PRs pendentes de parecer (`UNDER_REVIEW`), autor, branch e ação `"🔍 Avaliar Diff"`.
+
+4. **Visão do Autor (`Role.AUTHOR`):**
+   - **Nível 1:** Cards de Meus Artigos Científicos (`<Card variant="outlined">`).
+   - **Nível 2:** Painel do Artigo + Tabela DataGrid de Tarefas (`<AuthorTasksTable />`) utilizando `<GenericDataGrid>`, `<AutoSizer>`, `useUrlFilters` e botões relacionais de workspace.
+
+
+
 
 
 

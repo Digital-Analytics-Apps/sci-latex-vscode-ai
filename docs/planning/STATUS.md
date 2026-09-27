@@ -13,10 +13,21 @@
 
 ### 🔍 Estado Atual da Aplicação
 * **Últimas Implementações Finalizadas:**
+  * **Especificação do Modelo de Domínio, Ciclos Acadêmicos, Etapas Paralelas & Gatekeepers:**
+    * Atualizado o PRD do Produto em [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) (Personas, 7 Fases e Gatekeepers).
+    * Adicionado o **Bloco 6** de tarefas no Roadmap Master em [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md#L94).
+    * Criado o checklist de tarefas executáveis em [`task.md`](file:///home/gilson-russo/.gemini/antigravity-ide/brain/5973ea17-2718-4938-b79d-93c6547fd46d/task.md).
+    * Atualizado o plano de implementação em [`persona_workflow_specs_plan.md`](file:///home/gilson-russo/.gemini/antigravity-ide/brain/5973ea17-2718-4938-b79d-93c6547fd46d/persona_workflow_specs_plan.md).
+      * Arquitetura Multi-Gerente com isolamento de portfólio de times (`Team.managerId`) e Ciclos Acadêmicos por gerência (`AcademicPeriod.managerId`).
+      * Hierarquia multi-times de Coordenadores (1:N), Autores e Revisores com auto-escrita.
+      * Ciclo Acadêmico (`AcademicPeriod`) com Meta Global e divisão de cotas por time (`TeamAcademicGoal`) sem trava de over-achievement.
+      * Etapas de escrita de conteúdo flexíveis (`ProjectStage`) com execução paralela simultânea.
+      * Revisão de pares viva e contínua associada a cada `Task`.
+      * Gatekeepers sequenciais estritos: Análise do NIT (`🔒 LOCKED` até 100% de escrita) e Submissão ao Congresso (`🔒 LOCKED` até `APPROVED_NIT`).
+      * Especificada a Seção 6.7 em [`frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md#L207): Padronização de 100% das listagens e visões de persona utilizando MUI Cards (`<Card variant="outlined">`), `<GenericDataGrid>`, `<AutoSizer>` e `useUrlFilters`.
   * **Decomposição e Refatoração do Dashboard (`Dashboard Role-Based Architecture`):**
     * Criado [`AuthorDashboard.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/components/AuthorDashboard.tsx) (fluxo de 2 níveis do autor, membros e DataGrid) e [`ManagementDashboard.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/components/ManagementDashboard.tsx) (grid de KPIs para Coordenador/Gerente/Admin).
     * Refatorado [`DashboardPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/DashboardPage.tsx) de 683 para ~230 linhas, tornando-o um orquestrador top-level de rota, estado e modais.
-    * Registrada a especificação técnica Seção 6.5 em [`frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md#L185).
   * **Correção de Navegação e Filtros via URL (`{ replace: true }`):**
     * Corrigido [`useUrlFilters.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/hooks/useUrlFilters.ts) para aplicar `{ replace: true }` nas chamadas de `setSearchParams` em `setFilters` e `resetFilters`, impedindo acúmulo indesejado no histórico de navegação ao filtrar ou digitar.
     * Atualizado [`DashboardPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/DashboardPage.tsx) para usar navegação atômica sem delay em `handleClearArticle` (`dispatch` + `navigate` com `{ replace: true }`) e sincronização bi-direcional no `useEffect`.
