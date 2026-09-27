@@ -71,36 +71,34 @@ export function buildCleanApiParams<T extends Record<string, any>>(
 }
 
 /**
- * Serializes a filter object T into a clean URLSearchParams instance,
- * omitting default values and empty strings so shared URLs stay clean.
+ * Serializes a filter object T into a clean URLSearchParams instance.
+ * Preserves unmanaged existing parameters from baseParams (if provided),
+ * and sets or deletes managed keys based on defaultValues and clean value rules.
  */
 export function serializeToSearchParams<T extends Record<string, any>>(
   filters: T,
   defaultValues?: T,
+  baseParams?: URLSearchParams,
 ): URLSearchParams {
-  const searchParams = new URLSearchParams();
+  const searchParams = baseParams
+    ? new URLSearchParams(baseParams)
+    : new URLSearchParams();
 
   for (const [key, value] of Object.entries(filters)) {
-    if (value === null || value === undefined || value === "") continue;
-
-    // Omit default values from the URL query string
     if (
-      defaultValues &&
-      defaultValues[key] !== undefined &&
-      defaultValues[key] === value
+      value === null ||
+      value === undefined ||
+      value === "" ||
+      (typeof value === "string" &&
+        (value.toLowerCase() === "all" || value === "ALL")) ||
+      (defaultValues &&
+        defaultValues[key] !== undefined &&
+        defaultValues[key] === value)
     ) {
-      continue;
+      searchParams.delete(key);
+    } else {
+      searchParams.set(key, String(value));
     }
-
-    // Skip wildcard 'all' or 'ALL' strings
-    if (
-      typeof value === "string" &&
-      (value.toLowerCase() === "all" || value === "ALL")
-    ) {
-      continue;
-    }
-
-    searchParams.set(key, String(value));
   }
 
   return searchParams;

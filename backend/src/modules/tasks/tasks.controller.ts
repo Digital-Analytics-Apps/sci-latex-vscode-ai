@@ -28,10 +28,17 @@ export class TasksController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const { projectId } = request.params as { projectId: string };
-    const { assignedToId } = request.query as { assignedToId?: string };
+    const { assignedToId, status, search } = request.query as {
+      assignedToId?: string;
+      status?: string;
+      search?: string;
+    };
 
     try {
-      const tasks = await this.service.getTasksByProject(projectId, assignedToId);
+      const tasks = await this.service.getTasksByProject(projectId, assignedToId, {
+        status: status as any,
+        search,
+      });
       return reply.send({ tasks });
     } catch (err: any) {
       console.error('❌ GET /projects/:projectId/tasks error:', err);

@@ -25,9 +25,12 @@ export interface CreateTaskInput {
 
 export const tasksService = {
   // Buscar tarefas de um projeto diretamente da API REST real (/projects/:projectId/tasks)
-  async getTasksByProject(projectId: string): Promise<TaskItem[]> {
+  async getTasksByProject(
+    projectId: string,
+    params?: Record<string, any>,
+  ): Promise<TaskItem[]> {
     if (!projectId) return [];
-    const response = await api.get(`/projects/${projectId}/tasks`);
+    const response = await api.get(`/projects/${projectId}/tasks`, { params });
     return response.data.tasks || [];
   },
 

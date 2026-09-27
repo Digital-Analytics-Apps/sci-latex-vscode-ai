@@ -1,14 +1,7 @@
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArticleIcon from "@mui/icons-material/Article";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import {
-  Avatar,
-  Box,
-  Button,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Avatar, Box, Button, Stack, Tooltip, Typography } from "@mui/material";
 import type { PullRequestDetail } from "../../../hooks/useReviewQueries";
 import { formatDate } from "../../../utils/dateUtils";
 export const ProjectCell = ({ row }: { row: PullRequestDetail }) => (

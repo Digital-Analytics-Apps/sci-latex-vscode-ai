@@ -43,6 +43,8 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
         }),
         querystring: z.object({
           assignedToId: z.string().optional(),
+          status: z.string().optional(),
+          search: z.string().optional(),
         }),
       },
     },

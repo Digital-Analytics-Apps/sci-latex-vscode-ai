@@ -21,6 +21,8 @@ export interface UpdateTaskData {
 export interface TaskFilterOptions {
   projectId: string;
   assignedToId?: string;
+  status?: TaskStatus;
+  search?: string;
 }
 
 export interface ITasksRepository {
@@ -61,6 +63,16 @@ export class PrismaTasksRepository implements ITasksRepository {
     const where: any = { projectId: filters.projectId };
     if (filters.assignedToId) {
       where.assignedToId = filters.assignedToId;
+    }
+    if (filters.status && filters.status !== ('ALL' as any)) {
+      where.status = filters.status;
+    }
+    if (filters.search && filters.search.trim() !== '') {
+      const query = filters.search.trim();
+      where.OR = [
+        { title: { contains: query, mode: 'insensitive' } },
+        { branchName: { contains: query, mode: 'insensitive' } },
+      ];
     }
 
     return prisma.task.findMany({

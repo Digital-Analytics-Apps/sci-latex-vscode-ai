@@ -142,7 +142,7 @@ export const ReviewDetailPage = () => {
     await handleReview(
       undefined,
       commentText,
-      lineNumber ? parseInt(lineNumber, 10) : undefined,
+      lineNumber ? Number.parseInt(lineNumber, 10) : undefined,
     );
   };
 

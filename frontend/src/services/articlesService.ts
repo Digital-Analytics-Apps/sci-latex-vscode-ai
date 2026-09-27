@@ -3,7 +3,7 @@ import { api } from "./api";
 import type { TaskItem } from "./tasksService";
 
 export interface ArticleMember {
-  id: string;
+  id?: string;
   userId: string;
   role: string;
   user: {

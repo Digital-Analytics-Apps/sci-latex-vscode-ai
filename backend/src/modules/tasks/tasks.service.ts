@@ -105,8 +105,17 @@ export class TasksService {
   }
 
   // 2. Listar tarefas do projeto
-  async getTasksByProject(projectId: string, assignedToId?: string) {
-    const localTasks = await this.tasksRepository.findMany({ projectId, assignedToId });
+  async getTasksByProject(
+    projectId: string,
+    assignedToId?: string,
+    filters?: { status?: any; search?: string }
+  ) {
+    const localTasks = await this.tasksRepository.findMany({
+      projectId,
+      assignedToId,
+      status: filters?.status,
+      search: filters?.search,
+    });
 
     let integration = await prisma.githubIntegration.findFirst({
       where: { articleId: projectId },
@@ -182,22 +191,34 @@ export class TasksService {
             }
           }
 
-          localTasks.push({
-            id: `github-issue-${issue.githubIssueId.toString()}`,
-            projectId,
-            assignedToId: assignedToId || '',
-            title: issue.title,
-            branchName,
-            status,
-            dueDate: undefined as any,
-            createdAt: issue.updatedAt,
-            updatedAt: issue.updatedAt,
-            assignee: {
-              id: 'github-user',
-              name: issue.assigneeGithubUsername || 'Membro Atribuído',
-              email: 'assigned@scilatex.org',
-            } as any,
-          } as any);
+          // Aplica os mesmos filtros de status e busca sobre a issue projetada
+          const matchesStatus =
+            !filters?.status || filters.status === 'ALL' || status === filters.status;
+
+          const searchTerm = filters?.search?.trim().toLowerCase();
+          const matchesSearch =
+            !searchTerm ||
+            issue.title.toLowerCase().includes(searchTerm) ||
+            branchName.toLowerCase().includes(searchTerm);
+
+          if (matchesStatus && matchesSearch) {
+            localTasks.push({
+              id: `github-issue-${issue.githubIssueId.toString()}`,
+              projectId,
+              assignedToId: assignedToId || '',
+              title: issue.title,
+              branchName,
+              status,
+              dueDate: undefined as any,
+              createdAt: issue.updatedAt,
+              updatedAt: issue.updatedAt,
+              assignee: {
+                id: 'github-user',
+                name: issue.assigneeGithubUsername || 'Membro Atribuído',
+                email: 'assigned@scilatex.org',
+              } as any,
+            } as any);
+          }
         }
       }
     }

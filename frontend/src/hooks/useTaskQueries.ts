@@ -1,11 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { type CreateTaskInput, tasksService } from "../services/tasksService";
 
-export function useTasksQuery(projectId: string) {
+export function useTasksQuery(projectId: string, params?: Record<string, any>) {
   return useQuery({
-    queryKey: ["tasks", projectId],
-    queryFn: () => tasksService.getTasksByProject(projectId),
+    queryKey: ["tasks", projectId, params],
+    queryFn: () => tasksService.getTasksByProject(projectId, params),
     enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
   });
 }
 

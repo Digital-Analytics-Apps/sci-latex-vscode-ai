@@ -138,3 +138,59 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
 * **Internacionalização**: Importação nativa de `ptBR` do pacote `@mui/x-data-grid` para textos de controle de página e rodapés em Português.
 * **Renderização Customizada de Células (`renderCell`)**: Utilização de renderizadores fortemente tipados via `GridColDef[]` para exibição de Avatares, Chips de status (`PRStatus`, `NITStatus`), badges de branch e botões de ação contextuais.
 
+### 6.3 DataGrid de Tarefas do Autor (`<AuthorTasksTable />`)
+* **Localização:** `src/features/workspace/components/AuthorTasksTable.tsx` & `src/features/workspace/components/TaskDataGridCells.tsx`
+* **Descrição:** Tabela padronizada para a visão do Autor com `<GenericDataGrid<TaskItem>>` e `<AutoSizer>`.
+* **Filtros com Debounce & REST API:** Integração direta com `useUrlFilters` e `useDebounce` (400ms), repassando parâmetros filtrados (`search`, `status`) para a API REST sem realizar filtragem em memória no cliente.
+* **Células Especializadas:**
+  - `TaskTitleBranchCell`: Título em destaque e tag com a branch Git (`code`).
+  - `TaskAssigneeCell`: Nome e avatar do responsável pela tarefa.
+  - `TaskDueDateCell`: Prazo formatado em data pt-BR.
+  - `TaskStatusChip`: Status visual utilizando helper `getTaskStatusConfig` (cor MUI e rótulo) e indicador de bloqueio por outro autor (`🔒`).
+  - `TaskActionCell`: Botão contextual "🚀 Iniciar Workspace", "⚡ Provisionando...", "🔒 Em uso por X" ou "Tarefa Concluída".
+
+---
+
+### 6.4 Especificação Obrigatória do Padrão DataGrid com Filtros de URL (`DataGrid URL-Filter Pattern`)
+
+Todas as tabelas de listagem da plataforma que possuam filtros (busca textual, seletores de status, filtros por projeto) **DEVEM** seguir rigorosamente a especificação abaixo para garantir consistência visual, comportamento anti-piscadas e compartilhamento de links:
+
+1. **Sincronização de Filtros via URL (`useUrlFilters`):**
+   - Todos os parâmetros de filtro devem ser mantidos na Query String da URL utilizando o hook [`useUrlFilters`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/hooks/useUrlFilters.ts).
+   - O objeto `apiParams` gerado por `useUrlFilters` deve ser passado diretamente para o hook TanStack Query (ex: `useTasksQuery(projectId, apiParams)`).
+
+2. **Prevenção de Piscadas na Tela & Indicador de Re-busca (Zero-Flicker UX):**
+   - O hook TanStack Query correspondente **DEVE** declarar `placeholderData: keepPreviousData` e desestruturar `isFetching`.
+   - A prop `loading` da tabela DataGrid **DEVE** ser configurada como `loading={isLoading || isFetching}` para acionar a barra de progresso visual da MUI DataGrid enquanto novas requisições de filtro ocorrem em segundo plano.
+
+3. **Busca Textual com Debounce (400ms) & React 19 Render Sync:**
+   - O input de busca deve manter um estado local (`searchTerm`) que é atualizado instantaneamente ao digitar.
+   - O hook `useDebounce(searchTerm, 400)` dispara a atualização dos filtros na URL (`setFilters({ search: debouncedSearch })`).
+   - Para evitar avisos de *cascading render* no React 19, a sincronização entre a URL e o estado local deve ser feita durante a fase de render usando o padrão de comparação prévia (`prevUrlSearch`):
+     ```tsx
+     if (prevUrlSearch !== filters.search) {
+       setPrevUrlSearch(filters.search);
+       setSearchTerm(filters.search);
+     }
+     ```
+
+4. **Botão "Limpar Filtros":**
+   - Quando qualquer filtro estiver ativo (diferente do padrão), um botão "Limpar Filtros" deve ser exibido, disparando `resetFilters()` e limpando os estados locais de busca.
+
+5. **Responsividade com `<AutoSizer>`:**
+   - O container da tabela deve utilizar `<AutoSizer renderProp={({ height, width }) => <GenericDataGrid ... />}>` para ajuste fluido ao tamanho do viewport.
+
+---
+
+### 6.5 Arquitetura do Dashboard Adaptativo por Papel (`Dashboard Role-Based Architecture`)
+
+A tela principal do Dashboard (`src/features/dashboard/DashboardPage.tsx`) funciona exclusivamente como um **Container/Orquestrador Top-Level**, delegando a renderização visual das personas para componentes especializados em `src/features/dashboard/components/`:
+
+1. **`AuthorDashboard.tsx`:** Componente responsável pela visão do Autor (`Role.AUTHOR`), gerenciando a transição fluida entre Nível 1 (Galeria de Cards de Artigos) e Nível 2 (Painel Interno do Artigo Selecionado, Lista de Membros e `<AuthorTasksTable />`).
+2. **`ManagementDashboard.tsx`:** Componente responsável pela visão de Gestão (`Role.COORDINATOR`, `Role.MANAGER`, `Role.ADMIN`), gerenciando os cards de métricas e KPIs de submissão e pareceres.
+3. **`ReviewsListPage.tsx`:** Componente responsável pela visão do Revisor de Pares (`Role.REVIEWER`).
+4. **Navegação Atômica e `{ replace: true }`:** Trocas de estado ou navegações a partir do Dashboard utilizam `{ replace: true }` no `useSearchParams` e no `navigate` para evitar empilhamento desnecessário no histórico do navegador.
+
+
+
+
