@@ -17,10 +17,13 @@ import {
   CircularProgress,
   FormControl,
   Grid,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   MenuItem,
+  Paper,
   Select,
-  Tab,
-  Tabs,
   Typography,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
@@ -47,7 +50,7 @@ import { SetTeamGoalModal } from "./components/SetTeamGoalModal";
 export const ManagerDashboardPage = () => {
   const dispatch = useDispatch();
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<number>(0);
+  const [activeSection, setActiveSection] = useState<number>(0);
 
   // Modais de Criação e Gestão CRUD
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
@@ -189,7 +192,7 @@ export const ManagerDashboardPage = () => {
     }));
   }, [allTeams]);
 
-  // Colunas DataGrid 3: Gestão de Equipes (com Modal de Abas MUI)
+  // Colunas DataGrid 3: Gestão de Equipes
   const teamManagementColumns = React.useMemo<GridColDef[]>(
     () => [
       {
@@ -391,390 +394,557 @@ export const ManagerDashboardPage = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header Principal do Gerente com Ações Rápidas */}
-      <Box
+    <Box sx={{ display: "flex", gap: 3, minHeight: "calc(100vh - 120px)" }}>
+      {/* SIDEBAR LATERAL NATIVA DO GERENTE */}
+      <Paper
+        elevation={0}
+        variant="outlined"
         sx={{
-          mb: 3,
+          width: 250,
+          flexShrink: 0,
+          p: 2,
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 2,
+          flexDirection: "column",
+          borderRadius: 2,
+          bgcolor: "background.paper",
         }}
       >
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
-            Central de Gestão e Governança
-          </Typography>
-
-          <Typography variant="body2" color="text.secondary">
-            Visão consolidada de produção científica, cotas institucionais e
-            equipes de pesquisa.
-          </Typography>
-        </Box>
-
-        <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-          {/* Seletor de Ciclo Acadêmico */}
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <Select
-              value={selectedPeriod}
-              displayEmpty
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              sx={{ fontWeight: 600 }}
-            >
-              <MenuItem value="">Todos os Ciclos</MenuItem>
-              {periods?.map((period) => (
-                <MenuItem key={period.id} value={period.id}>
-                  {period.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Botões de Ação para o Gerente */}
-          <Button
-            variant="contained"
-            color="warning"
-            size="small"
-            startIcon={<CalendarTodayIcon fontSize="small" />}
-            onClick={() => setIsCreatePeriodOpen(true)}
-          >
-            Novo Ciclo
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="warning"
-            size="small"
-            startIcon={<GroupsIcon fontSize="small" />}
-            onClick={() => setIsCreateTeamOpen(true)}
-          >
-            {TEAM_MANAGEMENT_LABELS.NEW_TEAM_BUTTON}
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="info"
-            size="small"
-            startIcon={<PersonAddIcon fontSize="small" />}
-            onClick={() => setIsCreateUserOpen(true)}
-          >
-            {TEAM_MANAGEMENT_LABELS.NEW_USER_BUTTON}
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="secondary"
-            size="small"
-            startIcon={<FlagIcon fontSize="small" />}
-            onClick={() => setIsSetGoalOpen(true)}
-          >
-            Definir Cotas
-          </Button>
-
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<AddIcon fontSize="small" />}
-            onClick={() => setIsCreateProjectOpen(true)}
-          >
-            Novo Artigo
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            startIcon={<DownloadIcon fontSize="small" />}
-            onClick={handleExportReport}
-            disabled={!dashboard}
-          >
-            Exportar CSV
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Cards de KPIs Executivos de Governança Institucional */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
-              >
-                <ArticleIcon color="primary" />
-                <Typography variant="subtitle2" color="text.secondary">
-                  Total de Artigos Institucionais
-                </Typography>
-              </Box>
-              <Typography
-                variant="h2"
-                sx={{ fontWeight: 700, color: "primary.main" }}
-              >
-                {isLoadingDashboard ? (
-                  <CircularProgress size={28} />
-                ) : (
-                  overview.totalProjects
-                )}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {activePeriod
-                  ? `Meta Global: ${activePeriod.targetArticlesCount} artigos`
-                  : "Todos os Períodos"}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
-              >
-                <PublicIcon color="success" />
-                <Typography variant="subtitle2" color="text.secondary">
-                  Publicados com DOI
-                </Typography>
-              </Box>
-              <Typography
-                variant="h2"
-                sx={{ fontWeight: 700, color: "success.main" }}
-              >
-                {isLoadingDashboard ? (
-                  <CircularProgress size={28} />
-                ) : (
-                  overview.publishedProjects
-                )}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Concluídos e submetidos ao congresso
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
-              >
-                <AssessmentIcon color="warning" />
-                <Typography variant="subtitle2" color="text.secondary">
-                  Em Avaliação pelos Gatekeepers
-                </Typography>
-              </Box>
-              <Typography
-                variant="h2"
-                sx={{ fontWeight: 700, color: "warning.main" }}
-              >
-                {isLoadingDashboard ? (
-                  <CircularProgress size={28} />
-                ) : (
-                  overview.inReviewProjects + overview.submittedProjects
-                )}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Etapas NIT e submissões pendentes
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
-              >
-                <CheckCircleIcon color="info" />
-                <Typography variant="subtitle2" color="text.secondary">
-                  Laboratórios & Equipes Ativas
-                </Typography>
-              </Box>
-              <Typography
-                variant="h2"
-                sx={{ fontWeight: 700, color: "info.main" }}
-              >
-                {isLoadingTeams ? (
-                  <CircularProgress size={28} />
-                ) : (
-                  totalTeamsCount
-                )}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {totalMembersCount} pesquisadores vinculados
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Navegação entre Visões da Central de Comando (Abas) */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_, val) => setActiveTab(val)}
-          aria-label="Abas da Central de Comando"
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontWeight: 700, px: 2, py: 1, letterSpacing: 0.5 }}
         >
-          <Tab
-            icon={<AssessmentIcon fontSize="small" />}
-            iconPosition="start"
-            label="Cotas por Equipe"
-          />
-          <Tab
-            icon={<ArticleIcon fontSize="small" />}
-            iconPosition="start"
-            label="Artigos Institucionais"
-          />
-          <Tab
-            icon={<GroupsIcon fontSize="small" />}
-            iconPosition="start"
-            label={`Gestão de Equipes (${totalTeamsCount})`}
-          />
-        </Tabs>
-      </Box>
+          PAINEL DO GERENTE
+        </Typography>
 
-      {/* CONTEÚDO DA ABA 0: PRODUÇÃO CIENTÍFICA POR EQUIPE & COTAS */}
-      {activeTab === 0 && (
-        <Card variant="outlined">
-          <CardContent sx={{ p: 0 }}>
-            <Box sx={{ p: 2, bgcolor: "background.paper" }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Desempenho e Metas por Laboratório
-              </Typography>
+        <List component="nav" sx={{ pt: 1 }}>
+          <ListItemButton
+            selected={activeSection === 0}
+            onClick={() => setActiveSection(0)}
+            sx={{
+              borderRadius: 1.5,
+              mb: 1,
+              "&.Mui-selected": {
+                bgcolor: "warning.soft",
+                color: "warning.main",
+                fontWeight: 700,
+                borderLeft: "4px solid",
+                borderColor: "warning.main",
+              },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 36,
+                color: activeSection === 0 ? "warning.main" : "text.secondary",
+              }}
+            >
+              <AssessmentIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Home & Cotas"
+              slotProps={{
+                primary: {
+                  variant: "body2",
+                  sx: { fontWeight: activeSection === 0 ? 700 : 500 },
+                },
+              }}
+            />
+          </ListItemButton>
 
-              <Typography variant="body2" color="text.secondary">
-                Acompanhamento em tempo real da produção científica de cada
-                equipe.
-              </Typography>
+          <ListItemButton
+            selected={activeSection === 1}
+            onClick={() => setActiveSection(1)}
+            sx={{
+              borderRadius: 1.5,
+              mb: 1,
+              "&.Mui-selected": {
+                bgcolor: "primary.soft",
+                color: "primary.main",
+                fontWeight: 700,
+                borderLeft: "4px solid",
+                borderColor: "primary.main",
+              },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 36,
+                color: activeSection === 1 ? "primary.main" : "text.secondary",
+              }}
+            >
+              <ArticleIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Artigos"
+              slotProps={{
+                primary: {
+                  variant: "body2",
+                  sx: { fontWeight: activeSection === 1 ? 700 : 500 },
+                },
+              }}
+            />
+          </ListItemButton>
+
+          <ListItemButton
+            selected={activeSection === 2}
+            onClick={() => setActiveSection(2)}
+            sx={{
+              borderRadius: 1.5,
+              mb: 1,
+              "&.Mui-selected": {
+                bgcolor: "info.soft",
+                color: "info.main",
+                fontWeight: 700,
+                borderLeft: "4px solid",
+                borderColor: "info.main",
+              },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 36,
+                color: activeSection === 2 ? "info.main" : "text.secondary",
+              }}
+            >
+              <GroupsIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Gestão de Equipes"
+              slotProps={{
+                primary: {
+                  variant: "body2",
+                  sx: { fontWeight: activeSection === 2 ? 700 : 500 },
+                },
+              }}
+            />
+          </ListItemButton>
+        </List>
+      </Paper>
+
+      {/* ÁREA DE CONTEÚDO PRINCIPAL EXIBIDA DE ACORDO COM O ITEM DA SIDEBAR */}
+      <Box sx={{ flexGrow: 1 }}>
+        {/* SEÇÃO 0: HOME & COTAS (Métricas e Desempenho do Ciclo) */}
+        {activeSection === 0 && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {/* Cabeçalho da Seção Home */}
+            <Box
+              sx={{
+                display: "flex",
+                justify: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                  Home & Cotas Institucionais
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Acompanhamento de metas do ciclo acadêmico e desempenho dos
+                  laboratórios.
+                </Typography>
+              </Box>
+
+              {/* Ações contextualizadas da Seção Home (Sem botões redundantes) */}
+              <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <Select
+                    value={selectedPeriod}
+                    displayEmpty
+                    onChange={(e) => setSelectedPeriod(e.target.value)}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    <MenuItem value="">Todos os Ciclos</MenuItem>
+                    {periods?.map((period) => (
+                      <MenuItem key={period.id} value={period.id}>
+                        {period.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  color="warning"
+                  size="small"
+                  startIcon={<CalendarTodayIcon fontSize="small" />}
+                  onClick={() => setIsCreatePeriodOpen(true)}
+                >
+                  Novo Ciclo
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  startIcon={<FlagIcon fontSize="small" />}
+                  onClick={() => setIsSetGoalOpen(true)}
+                >
+                  Definir Cotas
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="small"
+                  startIcon={<DownloadIcon fontSize="small" />}
+                  onClick={handleExportReport}
+                  disabled={!dashboard}
+                >
+                  Exportar CSV
+                </Button>
+              </Box>
             </Box>
 
-            <Box sx={{ height: 420, width: "100%" }}>
-              <DataGrid
-                rows={teamRows}
-                columns={teamColumns}
-                loading={isLoadingDashboard}
-                pageSizeOptions={[5, 10, 25]}
-                initialState={{
-                  pagination: { paginationModel: { pageSize: 5 } },
-                }}
-                localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
-                disableRowSelectionOnClick
-                sx={{ border: "none" }}
-              />
-            </Box>
-          </CardContent>
-        </Card>
-      )}
+            {/* Cards de KPIs da Home */}
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                    >
+                      <ArticleIcon color="primary" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Total de Artigos
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="h2"
+                      sx={{ fontWeight: 700, color: "primary.main" }}
+                    >
+                      {isLoadingDashboard ? (
+                        <CircularProgress size={28} />
+                      ) : (
+                        overview.totalProjects
+                      )}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {activePeriod
+                        ? `Meta Global: ${activePeriod.targetArticlesCount} artigos`
+                        : "Todos os Períodos"}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
 
-      {/* CONTEÚDO DA ABA 1: LISTAGEM GLOBAL DE ARTIGOS INSTITUCIONAIS */}
-      {activeTab === 1 && (
-        <Card variant="outlined">
-          <CardContent sx={{ p: 0 }}>
-            <Box sx={{ p: 2, bgcolor: "background.paper" }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Listagem Geral de Artigos da Instituição
-              </Typography>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                    >
+                      <PublicIcon color="success" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Publicados com DOI
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="h2"
+                      sx={{ fontWeight: 700, color: "success.main" }}
+                    >
+                      {isLoadingDashboard ? (
+                        <CircularProgress size={28} />
+                      ) : (
+                        overview.publishedProjects
+                      )}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Concluídos e submetidos ao congresso
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
 
-              <Typography variant="body2" color="text.secondary">
-                Todos os artigos científicos cadastrados e seus respectivos
-                status de governança.
-              </Typography>
-            </Box>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                    >
+                      <AssessmentIcon color="warning" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Em Avaliação Gatekeeper
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="h2"
+                      sx={{ fontWeight: 700, color: "warning.main" }}
+                    >
+                      {isLoadingDashboard ? (
+                        <CircularProgress size={28} />
+                      ) : (
+                        overview.inReviewProjects + overview.submittedProjects
+                      )}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Etapas NIT e submissões pendentes
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
 
-            <Box sx={{ height: 420, width: "100%" }}>
-              <DataGrid
-                rows={projectRows}
-                columns={projectColumns}
-                loading={isLoadingProjects}
-                pageSizeOptions={[5, 10, 25]}
-                initialState={{
-                  pagination: { paginationModel: { pageSize: 5 } },
-                }}
-                localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
-                disableRowSelectionOnClick
-                sx={{ border: "none" }}
-              />
-            </Box>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* CONTEÚDO DA ABA 2: GESTÃO COMPLETA DE EQUIPES (CRUD) */}
-      {activeTab === 2 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {/* Cards de KPIs Dedicados de Equipes */}
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
-                <CardContent sx={{ py: 2 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    TOTAL DE EQUIPES
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: "primary.main" }}>
-                    {totalTeamsCount}
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                    >
+                      <CheckCircleIcon color="info" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Laboratórios Ativos
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="h2"
+                      sx={{ fontWeight: 700, color: "info.main" }}
+                    >
+                      {isLoadingTeams ? (
+                        <CircularProgress size={28} />
+                      ) : (
+                        totalTeamsCount
+                      )}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {totalMembersCount} pesquisadores vinculados
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
-                <CardContent sx={{ py: 2 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    PESQUISADORES VINCULADOS
+            {/* Tabela DataGrid de Desempenho por Equipe e Cotas */}
+            <Card variant="outlined">
+              <CardContent sx={{ p: 0 }}>
+                <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Desempenho e Cumprimento de Cotas por Laboratório
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: "info.main" }}>
-                    {totalMembersCount}
+                  <Typography variant="body2" color="text.secondary">
+                    Taxa de entrega e artigos concluídos por equipe de pesquisa.
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+                </Box>
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
-                <CardContent sx={{ py: 2 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    COBERTURA DE LIDERANÇA
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: "warning.main" }}>
-                    {teamsWithCoordinatorCount}/{totalTeamsCount}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+                <Box sx={{ height: 420, width: "100%" }}>
+                  <DataGrid
+                    rows={teamRows}
+                    columns={teamColumns}
+                    loading={isLoadingDashboard}
+                    pageSizeOptions={[5, 10, 25]}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 5 } },
+                    }}
+                    localeText={
+                      ptBR.components.MuiDataGrid.defaultProps.localeText
+                    }
+                    disableRowSelectionOnClick
+                    sx={{ border: "none" }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
-                <CardContent sx={{ py: 2 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    ARTIGOS EM ANDAMENTO
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: "success.main" }}>
-                    {activeProjectsInTeamsCount}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+        {/* SEÇÃO 1: ARTIGOS INSTITUCIONAIS */}
+        {activeSection === 1 && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justify: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                  Artigos Científicos Institucionais
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Visão abrangente de todos os artigos em andamento e submetidos.
+                </Typography>
+              </Box>
 
-          {/* Tabela DataGrid de Gestão de Equipes */}
-          <Card variant="outlined">
-            <CardContent sx={{ p: 0 }}>
-              <Box
-                sx={{
-                  p: 2,
-                  bgcolor: "background.paper",
-                  display: "flex",
-                  justify: "space-between",
-                  alignItems: "center",
-                }}
+              {/* Ação contextualizada da Seção Artigos (Novo Artigo) */}
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                startIcon={<AddIcon fontSize="small" />}
+                onClick={() => setIsCreateProjectOpen(true)}
               >
-                <Box>
+                Novo Artigo
+              </Button>
+            </Box>
+
+            <Card variant="outlined">
+              <CardContent sx={{ p: 0 }}>
+                <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Listagem Geral de Artigos Institucionais
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Artigos científicos e status de aprovação de governança.
+                  </Typography>
+                </Box>
+
+                <Box sx={{ height: 480, width: "100%" }}>
+                  <DataGrid
+                    rows={projectRows}
+                    columns={projectColumns}
+                    loading={isLoadingProjects}
+                    pageSizeOptions={[5, 10, 25]}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 10 } },
+                    }}
+                    localeText={
+                      ptBR.components.MuiDataGrid.defaultProps.localeText
+                    }
+                    disableRowSelectionOnClick
+                    sx={{ border: "none" }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
+        {/* SEÇÃO 2: GESTÃO DE EQUIPES */}
+        {activeSection === 2 && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justify: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                  Gestão de Equipes & Laboratórios
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Cadastre equipes, vincule pesquisadores e nomeie coordenadores.
+                </Typography>
+              </Box>
+
+              {/* Ações contextualizadas da Seção Gestão de Equipes */}
+              <Box sx={{ display: "flex", gap: 1.5 }}>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  size="small"
+                  startIcon={<GroupsIcon fontSize="small" />}
+                  onClick={() => setIsCreateTeamOpen(true)}
+                >
+                  {TEAM_MANAGEMENT_LABELS.NEW_TEAM_BUTTON}
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  startIcon={<PersonAddIcon fontSize="small" />}
+                  onClick={() => setIsCreateUserOpen(true)}
+                >
+                  {TEAM_MANAGEMENT_LABELS.NEW_USER_BUTTON}
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Cards de KPIs Dedicados de Equipes */}
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                  <CardContent sx={{ py: 2 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 700 }}
+                    >
+                      TOTAL DE EQUIPES
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{ fontWeight: 800, color: "primary.main" }}
+                    >
+                      {totalTeamsCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                  <CardContent sx={{ py: 2 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 700 }}
+                    >
+                      PESQUISADORES VINCULADOS
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{ fontWeight: 800, color: "info.main" }}
+                    >
+                      {totalMembersCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                  <CardContent sx={{ py: 2 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 700 }}
+                    >
+                      COBERTURA DE LIDERANÇA
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{ fontWeight: 800, color: "warning.main" }}
+                    >
+                      {teamsWithCoordinatorCount}/{totalTeamsCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                  <CardContent sx={{ py: 2 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 700 }}
+                    >
+                      ARTIGOS EM ANDAMENTO
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{ fontWeight: 800, color: "success.main" }}
+                    >
+                      {activeProjectsInTeamsCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Tabela DataGrid de Gestão de Equipes */}
+            <Card variant="outlined">
+              <CardContent sx={{ p: 0 }}>
+                <Box sx={{ p: 2, bgcolor: "background.paper" }}>
                   <Typography variant="h6" sx={{ fontWeight: 700 }}>
                     {TEAM_MANAGEMENT_LABELS.TITLE}
                   </Typography>
@@ -783,46 +953,27 @@ export const ManagerDashboardPage = () => {
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    color="warning"
-                    size="small"
-                    startIcon={<GroupsIcon fontSize="small" />}
-                    onClick={() => setIsCreateTeamOpen(true)}
-                  >
-                    {TEAM_MANAGEMENT_LABELS.NEW_TEAM_BUTTON}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="info"
-                    size="small"
-                    startIcon={<PersonAddIcon fontSize="small" />}
-                    onClick={() => setIsCreateUserOpen(true)}
-                  >
-                    {TEAM_MANAGEMENT_LABELS.NEW_USER_BUTTON}
-                  </Button>
+                <Box sx={{ height: 420, width: "100%" }}>
+                  <DataGrid
+                    rows={teamManagementRows}
+                    columns={teamManagementColumns}
+                    loading={isLoadingTeams}
+                    pageSizeOptions={[5, 10, 25]}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 5 } },
+                    }}
+                    localeText={
+                      ptBR.components.MuiDataGrid.defaultProps.localeText
+                    }
+                    disableRowSelectionOnClick
+                    sx={{ border: "none" }}
+                  />
                 </Box>
-              </Box>
-
-              <Box sx={{ height: 420, width: "100%" }}>
-                <DataGrid
-                  rows={teamManagementRows}
-                  columns={teamManagementColumns}
-                  loading={isLoadingTeams}
-                  pageSizeOptions={[5, 10, 25]}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 5 } },
-                  }}
-                  localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
-                  disableRowSelectionOnClick
-                  sx={{ border: "none" }}
-                />
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+      </Box>
 
       {/* Modais de Modificação & Gestão */}
       <CreateAcademicPeriodModal
