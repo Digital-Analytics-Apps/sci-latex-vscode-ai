@@ -4,7 +4,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { type CreateTaskInput, tasksService } from "../services/tasksService";
+import { tasksService } from "../services/tasksService";
+import type { CreateTaskInput } from "../types/task.types";
 
 export function useTasksQuery(projectId: string, params?: Record<string, any>) {
   return useQuery({

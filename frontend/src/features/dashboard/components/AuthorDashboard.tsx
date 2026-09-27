@@ -20,10 +20,10 @@ import { Role } from "../../../constants/roles";
 import { StageStatus } from "../../../constants/status";
 import type { ArticleItem } from "../../../services/articlesService";
 import { projectsService } from "../../../services/projectsService";
-import type { TaskItem } from "../../../services/tasksService";
 import { showNotification } from "../../../store/slices/notificationSlice";
 import { ArticleTimelineHeader } from "../../../components/common/ArticleTimelineHeader";
 import { AuthorTasksTable } from "../../workspace/components/AuthorTasksTable";
+import type { TaskItem } from "../../../types/task.types";
 
 interface AuthorDashboardProps {
   articles: ArticleItem[];
