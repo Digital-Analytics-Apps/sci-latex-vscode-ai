@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import {
   requireCoordinatorOrAbove,
@@ -129,7 +130,7 @@ export async function teamsRoutes(app: FastifyInstance) {
         }),
         body: z.object({
           userId: z.string().uuid(),
-          role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+          role: z.nativeEnum(Role),
         }),
       },
     },

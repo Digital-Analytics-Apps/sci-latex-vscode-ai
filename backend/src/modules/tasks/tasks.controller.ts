@@ -1,23 +1,45 @@
+import { TaskStatus } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { TasksService } from './tasks.service';
 
+export const taskParamsSchema = z.object({
+  projectId: z.string().min(1),
+});
+
+export const createTaskBodySchema = z.object({
+  assignedToId: z.string().min(1),
+  title: z.string().min(1),
+  dueDate: z.string().optional(),
+  stageId: z.string().optional(),
+});
+
+export const listTasksQuerySchema = z.object({
+  assignedToId: z.string().optional(),
+  status: z.union([z.nativeEnum(TaskStatus), z.literal('ALL')]).optional(),
+  search: z.string().optional(),
+  stageId: z.string().optional(),
+});
+
+export const taskWorkspaceParamsSchema = z.object({
+  projectId: z.string().min(1),
+  taskId: z.string().min(1),
+});
+
 export class TasksController {
-  constructor(private service: TasksService = new TasksService()) {}
+  constructor(private readonly service: TasksService = new TasksService()) {}
 
   async create(request: FastifyRequest, reply: FastifyReply) {
-    const { projectId } = request.params as { projectId: string };
-    const { assignedToId, title, dueDate } = request.body as {
-      assignedToId: string;
-      title: string;
-      dueDate?: string;
-    };
-
     try {
+      const { projectId } = taskParamsSchema.parse(request.params);
+      const { assignedToId, title, dueDate, stageId } = createTaskBodySchema.parse(request.body);
+
       const task = await this.service.createTask({
         projectId,
         assignedToId,
         title,
         dueDate,
+        stageId,
       });
 
       return reply.status(201).send(task);
@@ -27,17 +49,16 @@ export class TasksController {
   }
 
   async list(request: FastifyRequest, reply: FastifyReply) {
-    const { projectId } = request.params as { projectId: string };
-    const { assignedToId, status, search } = request.query as {
-      assignedToId?: string;
-      status?: string;
-      search?: string;
-    };
-
     try {
+      const { projectId } = taskParamsSchema.parse(request.params);
+      const { assignedToId, status, search, stageId } = listTasksQuerySchema.parse(
+        request.query || {}
+      );
+
       const tasks = await this.service.getTasksByProject(projectId, assignedToId, {
-        status: status as any,
+        status,
         search,
+        stageId,
       });
       return reply.send({ tasks });
     } catch (err: any) {
@@ -47,10 +68,10 @@ export class TasksController {
   }
 
   async startWorkspace(request: FastifyRequest, reply: FastifyReply) {
-    const { projectId, taskId } = request.params as { projectId: string; taskId: string };
-    const userId = request.user.sub;
-
     try {
+      const { projectId, taskId } = taskWorkspaceParamsSchema.parse(request.params);
+      const userId = request.user.sub;
+
       const result = await this.service.startTaskWorkspace(projectId, taskId, userId);
       return reply.send(result);
     } catch (err: any) {

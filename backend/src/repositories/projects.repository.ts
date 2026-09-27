@@ -67,10 +67,32 @@ export class PrismaProjectsRepository implements IProjectsRepository {
             role: Role.AUTHOR,
           },
         },
+        stages: {
+          create: [
+            { order: 1, title: 'Planejamento e Pesquisa', isGatekeeper: false },
+            { order: 2, title: 'Desenvolvimento e Experimentos', isGatekeeper: false },
+            { order: 3, title: 'Escrita da Versão Rascunho', isGatekeeper: false },
+            {
+              order: 4,
+              title: 'Parecer do NIT (Gatekeeper 1)',
+              isGatekeeper: true,
+              gatekeeperType: 'NIT',
+            },
+            {
+              order: 5,
+              title: 'Submissão ao Congresso Alvo (Gatekeeper 2)',
+              isGatekeeper: true,
+              gatekeeperType: 'TARGET_CONFERENCE',
+            },
+          ],
+        },
       },
       include: {
         team: true,
         academicPeriod: true,
+        stages: {
+          orderBy: { order: 'asc' },
+        },
         members: {
           include: {
             user: {
@@ -105,6 +127,19 @@ export class PrismaProjectsRepository implements IProjectsRepository {
       include: {
         team: true,
         academicPeriod: true,
+        stages: {
+          include: {
+            tasks: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                assignedToId: true,
+              },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
         members: {
           include: {
             user: {
@@ -176,6 +211,9 @@ export class PrismaProjectsRepository implements IProjectsRepository {
       include: {
         team: true,
         academicPeriod: true,
+        stages: {
+          orderBy: { order: 'asc' },
+        },
         members: {
           include: {
             user: {

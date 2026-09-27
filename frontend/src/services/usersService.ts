@@ -1,11 +1,8 @@
+import { Role } from "../constants/roles";
+import type { UserMemberItem } from "../types/user.types";
 import { api } from "./api";
 
-export interface UserMemberItem {
-  id: string;
-  name: string;
-  email: string;
-  role: "AUTHOR" | "REVIEWER" | "COORDINATOR" | "MANAGER" | "ADMIN";
-}
+export type { UserMemberItem } from "../types/user.types";
 
 export const usersService = {
   // Buscar lista de usuários com suporte a termo de busca (debounced) e papel (role)
@@ -30,11 +27,11 @@ export const usersService = {
 
   // Buscar lista de co-autores disponíveis na API REST real
   async getCoAuthors(): Promise<UserMemberItem[]> {
-    return this.searchUsers("", "AUTHOR");
+    return this.searchUsers("", Role.AUTHOR);
   },
 
   // Buscar lista de revisores técnicos disponíveis na API REST real
   async getReviewers(): Promise<UserMemberItem[]> {
-    return this.searchUsers("", "REVIEWER");
+    return this.searchUsers("", Role.REVIEWER);
   },
 };

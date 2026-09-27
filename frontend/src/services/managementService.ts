@@ -1,33 +1,16 @@
-import { DeadlineStatus } from "../constants/status";
+import type {
+  AcademicPeriod,
+  ManagerMetrics,
+  TeamAcademicGoal,
+} from "../types/academic-period.types";
 import { api } from "./api";
 
-export { DeadlineStatus };
-
-export interface AcademicPeriod {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-}
-
-export interface ManagerMetrics {
-  totalProjects: number;
-  publishedCount: number;
-  onTimeCount: number;
-  warningCount: number;
-  overdueCount: number;
-  targetSuccessRate: number;
-  nitApprovalRate: number;
-}
-
-export interface TeamDeadlineItem {
-  id: string;
-  projectName: string;
-  taskTitle: string;
-  authorName: string;
-  dueDate: string;
-  status: DeadlineStatus;
-}
+export type {
+  AcademicPeriod,
+  ManagerMetrics,
+  TeamAcademicGoal,
+  TeamDeadlineItem,
+} from "../types/academic-period.types";
 
 const ACADEMIC_PERIODS_URL = "/academic-periods";
 const MANAGER_REPORTS_URL = "/reports/manager";
@@ -35,8 +18,48 @@ const TASKS_URL = "/tasks";
 
 export const managementService = {
   // Buscar a lista de Períodos Acadêmicos (ex: Ciclo 2026/2027)
-  async getAcademicPeriods(): Promise<AcademicPeriod[]> {
-    const response = await api.get(ACADEMIC_PERIODS_URL);
+  async getAcademicPeriods(managerId?: string): Promise<AcademicPeriod[]> {
+    const response = await api.get(ACADEMIC_PERIODS_URL, {
+      params: { managerId },
+    });
+    return response.data;
+  },
+
+  // Criar novo ciclo acadêmico com meta global de artigos
+  async createAcademicPeriod(data: {
+    name: string;
+    startDate: string;
+    endDate: string;
+    targetArticlesCount?: number;
+    managerId?: string;
+  }): Promise<AcademicPeriod> {
+    const response = await api.post(ACADEMIC_PERIODS_URL, data);
+    return response.data;
+  },
+
+  // Definir ou atualizar cota/meta de artigos para um laboratório/time específico
+  async setTeamAcademicGoal(data: {
+    academicPeriodId: string;
+    teamId: string;
+    targetArticles: number;
+  }): Promise<TeamAcademicGoal> {
+    const response = await api.post(
+      `${ACADEMIC_PERIODS_URL}/${data.academicPeriodId}/goals`,
+      {
+        teamId: data.teamId,
+        targetArticles: data.targetArticles,
+      },
+    );
+    return response.data;
+  },
+
+  // Obter cotas distribuídas por time para um período acadêmico
+  async getTeamAcademicGoals(
+    academicPeriodId: string,
+  ): Promise<TeamAcademicGoal[]> {
+    const response = await api.get(
+      `${ACADEMIC_PERIODS_URL}/${academicPeriodId}/goals`,
+    );
     return response.data;
   },
 

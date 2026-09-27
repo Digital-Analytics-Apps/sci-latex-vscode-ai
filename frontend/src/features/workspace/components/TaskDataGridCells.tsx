@@ -12,7 +12,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { type TaskItem, TaskStatus } from "../../../services/tasksService";
+import { TaskStatus } from "../../../constants/status";
+import type { TaskItem } from "../../../types/task.types";
 import { formatDate } from "../../../utils/dateUtils";
 
 export const TaskTitleBranchCell = ({ row }: { row: TaskItem }) => (

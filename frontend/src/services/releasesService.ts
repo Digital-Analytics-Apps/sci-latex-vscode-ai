@@ -1,20 +1,13 @@
-import { RCStatus } from "../constants/status";
+import type {
+  CreateRCInput,
+  ReleaseCandidateItem,
+} from "../types/release-candidate.types";
 import { api } from "./api";
 
-export { RCStatus };
-
-export interface ReleaseCandidateItem {
-  id: string;
-  projectId: string;
-  versionTag: string;
-  status: RCStatus;
-  feedback?: string;
-  createdAt: string;
-}
-
-export interface CreateRCInput {
-  feedbackNotes?: string;
-}
+export type {
+  CreateRCInput,
+  ReleaseCandidateItem,
+} from "../types/release-candidate.types";
 
 export const releasesService = {
   // Buscar Release Candidates do projeto diretamente da API REST real

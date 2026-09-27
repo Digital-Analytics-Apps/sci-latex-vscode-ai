@@ -8,6 +8,7 @@ export interface CreateTaskData {
   branchName?: string;
   dueDate?: Date;
   status?: TaskStatus;
+  stageId?: string;
 }
 
 export interface UpdateTaskData {
@@ -16,6 +17,7 @@ export interface UpdateTaskData {
   dueDate?: Date;
   status?: TaskStatus;
   assignedToId?: string;
+  stageId?: string;
 }
 
 export interface TaskFilterOptions {
@@ -23,6 +25,7 @@ export interface TaskFilterOptions {
   assignedToId?: string;
   status?: TaskStatus;
   search?: string;
+  stageId?: string;
 }
 
 export interface ITasksRepository {
@@ -42,6 +45,11 @@ export class PrismaTasksRepository implements ITasksRepository {
         branchName: data.branchName || 'pending',
         dueDate: data.dueDate,
         status: data.status || 'NOT_STARTED',
+        stageId: data.stageId,
+      },
+      include: {
+        stage: true,
+        assignee: { select: { id: true, name: true, email: true, role: true } },
       },
     });
   }
@@ -50,12 +58,21 @@ export class PrismaTasksRepository implements ITasksRepository {
     return prisma.task.update({
       where: { id },
       data,
+      include: {
+        stage: true,
+        assignee: { select: { id: true, name: true, email: true, role: true } },
+      },
     });
   }
 
   async findById(id: string): Promise<Task | null> {
     return prisma.task.findUnique({
       where: { id },
+      include: {
+        stage: true,
+        assignee: { select: { id: true, name: true, email: true, role: true } },
+        pullRequests: true,
+      },
     });
   }
 
@@ -63,6 +80,9 @@ export class PrismaTasksRepository implements ITasksRepository {
     const where: any = { projectId: filters.projectId };
     if (filters.assignedToId) {
       where.assignedToId = filters.assignedToId;
+    }
+    if (filters.stageId) {
+      where.stageId = filters.stageId;
     }
     if (filters.status && filters.status !== ('ALL' as any)) {
       where.status = filters.status;
@@ -78,6 +98,7 @@ export class PrismaTasksRepository implements ITasksRepository {
     return prisma.task.findMany({
       where,
       include: {
+        stage: true,
         assignee: { select: { id: true, name: true, email: true, role: true } },
         pullRequests: true,
       },

@@ -14,9 +14,15 @@ import {
   LinearProgress,
   Typography,
 } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { useDispatch } from "react-redux";
 import { Role } from "../../../constants/roles";
+import { StageStatus } from "../../../constants/status";
 import type { ArticleItem } from "../../../services/articlesService";
+import { projectsService } from "../../../services/projectsService";
 import type { TaskItem } from "../../../services/tasksService";
+import { showNotification } from "../../../store/slices/notificationSlice";
+import { ArticleTimelineHeader } from "../../../components/common/ArticleTimelineHeader";
 import { AuthorTasksTable } from "../../workspace/components/AuthorTasksTable";
 
 interface AuthorDashboardProps {
@@ -46,7 +52,38 @@ export const AuthorDashboard = ({
   onOpenRCModal,
   onOpenAddMember,
 }: AuthorDashboardProps) => {
+  const dispatch = useDispatch();
   const currentMembers = selectedArticle?.members || [];
+
+  const { data: stages = [], refetch: refetchStages } = useQuery({
+    queryKey: ["project-stages", activeProjectId],
+    queryFn: () => projectsService.getProjectStages(activeProjectId),
+    enabled: Boolean(activeProjectId && !activeProjectId.startsWith("demo-")),
+  });
+
+  const handleUpdateStageStatus = async (
+    stageId: string,
+    status: StageStatus,
+  ) => {
+    try {
+      await projectsService.updateProjectStage(activeProjectId, stageId, {
+        status,
+      });
+      refetchStages();
+      dispatch(
+        showNotification({
+          message: "Status da etapa de escrita atualizado com sucesso!",
+          severity: "success",
+        }),
+      );
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        "Erro ao atualizar etapa.";
+      dispatch(showNotification({ message: msg, severity: "error" }));
+    }
+  };
 
   return (
     <Box>
@@ -352,6 +389,14 @@ export const AuthorDashboard = ({
               </Box>
             </CardContent>
           </Card>
+
+          {/* RÉGUA DE TIMELINE E GATEKEEPERS DA ETAPA DE ESCRITA */}
+          {stages.length > 0 && (
+            <ArticleTimelineHeader
+              stages={stages}
+              onUpdateStageStatus={handleUpdateStageStatus}
+            />
+          )}
 
           {/* LISTA DE TAREFAS EM DATAGRID DO ARTIGO SELECIONADO */}
           <AuthorTasksTable

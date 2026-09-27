@@ -221,7 +221,7 @@ startxref
     });
     const bodySchema = z.object({
       userId: z.string().uuid(),
-      role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+      role: z.nativeEnum(Role),
     });
 
     const { id } = paramsSchema.parse(request.params);

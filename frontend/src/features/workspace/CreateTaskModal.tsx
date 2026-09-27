@@ -54,10 +54,15 @@ export const CreateTaskModal = ({
 
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [stageId, setStageId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Se houver membros no artigo, inicializa o responsável pelo primeiro membro do artigo
   const [assignedToId, setAssignedToId] = useState<string>("");
+
+  const projectStages = useMemo(() => {
+    return projectDetails?.stages || [];
+  }, [projectDetails?.stages]);
 
   // Mantém busca global com debounce como fallback caso o usuário queira procurar fora dos membros do artigo
   const [assigneeSearchText, setAssigneeSearchText] = useState("");
@@ -67,7 +72,7 @@ export const CreateTaskModal = ({
   const [selectedGlobalAssignee, setSelectedGlobalAssignee] =
     useState<UserMemberItem | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       dispatch(
@@ -97,6 +102,7 @@ export const CreateTaskModal = ({
           title,
           assignedToId: finalAssignedToId,
           dueDate: dueDate || undefined,
+          stageId: stageId || undefined,
         });
       }
 
@@ -123,6 +129,7 @@ export const CreateTaskModal = ({
 
       setTitle("");
       setAssignedToId("");
+      setStageId("");
       setSelectedGlobalAssignee(null);
       setAssigneeSearchText("");
       if (onTaskCreated) onTaskCreated();
@@ -267,6 +274,29 @@ export const CreateTaskModal = ({
                 </Box>
               )}
             />
+          )}
+
+          {/* Seleção da Etapa de Escrita Associada */}
+          {projectStages.length > 0 && (
+            <FormControl fullWidth size="small">
+              <InputLabel>Etapa de Escrita Associada (Opcional)</InputLabel>
+              <Select
+                value={stageId}
+                label="Etapa de Escrita Associada (Opcional)"
+                onChange={(e) => setStageId(e.target.value)}
+              >
+                <MenuItem value="">
+                  <em>Nenhuma (Geral do Artigo)</em>
+                </MenuItem>
+                {projectStages
+                  .filter((s: any) => !s.isGatekeeper)
+                  .map((s: any) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      Etapa {s.order}: {s.title}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
           )}
 
           <TextField

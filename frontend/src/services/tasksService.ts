@@ -1,27 +1,5 @@
-import { TaskStatus } from "../constants/status";
+import type { CreateTaskInput, TaskItem } from "../types/task.types";
 import { api } from "./api";
-
-export { TaskStatus };
-
-export interface TaskItem {
-  id: string;
-  projectId: string;
-  projectName?: string;
-  title: string;
-  branchName: string;
-  status: TaskStatus;
-  dueDate: string;
-  assignee: string;
-  assignedToId?: string;
-  isOccupied?: boolean;
-  occupiedBy?: { id: string; name: string } | null;
-}
-
-export interface CreateTaskInput {
-  title: string;
-  assignedToId: string;
-  dueDate?: string;
-}
 
 export const tasksService = {
   // Buscar tarefas de um projeto diretamente da API REST real (/projects/:projectId/tasks)

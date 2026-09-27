@@ -1,31 +1,9 @@
 import { Role } from "../constants/roles";
+import type { ArticleItem } from "../types/project.types";
 import { api } from "./api";
-import type { TaskItem } from "./tasksService";
 
-export interface ArticleMember {
-  id?: string;
-  userId: string;
-  role: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role?: string;
-  };
-}
-
-export interface ArticleItem {
-  id: string;
-  projectId: string;
-  title: string;
-  conference: string;
-  repo: string;
-  role: "Autor" | "Revisor de Par";
-  status: string;
-  progress: number;
-  tasks: TaskItem[];
-  members: ArticleMember[];
-}
+export type { ArticleItem } from "../types/project.types";
+export type { ProjectMember as ArticleMember } from "../types/user.types";
 
 export const articlesService = {
   // Buscar artigos científicos do usuário diretamente da API REST real (/projects)
@@ -38,11 +16,11 @@ export const articlesService = {
       id: proj.id,
       projectId: proj.id,
       title: proj.name,
-      conference: proj.targetConferenceName || "Conferência TeX",
-      repo: proj.gitRepoPath || `github.com/org/${proj.id.slice(0, 8)}`,
+      conference: proj.targetConferenceName,
+      repo: proj.gitRepoPath,
       role:
         proj.members?.[0]?.role === Role.REVIEWER ? "Revisor de Par" : "Autor",
-      status: proj.submissionStatus || "RC-1 em Andamento",
+      status: proj.submissionStatus,
       progress: proj.progress || 0,
       tasks: proj.tasks || [],
       members: proj.members || [],

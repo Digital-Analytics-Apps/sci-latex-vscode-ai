@@ -2,6 +2,7 @@ import { exec } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { TaskStatus } from '@prisma/client';
 import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
@@ -21,12 +22,13 @@ export interface CreateTaskDTO {
   assignedToId: string;
   title: string;
   dueDate?: string;
+  stageId?: string;
 }
 
 export class TasksService {
   constructor(
-    private tasksRepository: ITasksRepository = new PrismaTasksRepository(),
-    private k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
+    private readonly tasksRepository: ITasksRepository = new PrismaTasksRepository(),
+    private readonly k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
   ) {}
 
   // Gera o nome amigável da branch da task: task/<slug>-<uuid>
@@ -81,7 +83,8 @@ export class TasksService {
       title: dto.title,
       branchName,
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-      status: 'NOT_STARTED',
+      status: TaskStatus.NOT_STARTED,
+      stageId: dto.stageId,
     });
 
     if (integration) {
@@ -108,13 +111,14 @@ export class TasksService {
   async getTasksByProject(
     projectId: string,
     assignedToId?: string,
-    filters?: { status?: any; search?: string }
+    filters?: { status?: any; search?: string; stageId?: string }
   ) {
     const localTasks = await this.tasksRepository.findMany({
       projectId,
       assignedToId,
       status: filters?.status,
       search: filters?.search,
+      stageId: filters?.stageId,
     });
 
     let integration = await prisma.githubIntegration.findFirst({
@@ -166,28 +170,28 @@ export class TasksService {
         );
 
         if (!existing) {
-          let status: any = 'NOT_STARTED';
+          let status: TaskStatus = TaskStatus.NOT_STARTED;
           if (issue.state === 'closed') {
-            status = 'MERGED';
+            status = TaskStatus.MERGED;
           } else {
             const itemStatus = itemStatusMap.get(issue.githubIssueId.toString());
             if (itemStatus) {
               const lower = itemStatus.toLowerCase();
               if (lower.includes('progress') || lower.includes('andamento')) {
-                status = 'IN_PROGRESS';
+                status = TaskStatus.IN_PROGRESS;
               } else if (
                 lower.includes('done') ||
                 lower.includes('concluid') ||
                 lower.includes('merged')
               ) {
-                status = 'MERGED';
+                status = TaskStatus.MERGED;
               } else if (lower.includes('review')) {
-                status = 'UNDER_REVIEW';
+                status = TaskStatus.UNDER_REVIEW;
               } else {
-                status = 'NOT_STARTED';
+                status = TaskStatus.NOT_STARTED;
               }
             } else {
-              status = 'NOT_STARTED';
+              status = TaskStatus.NOT_STARTED;
             }
           }
 
@@ -298,7 +302,7 @@ export class TasksService {
               assignedToId: userId,
               title: issueProjection.title,
               branchName,
-              status: 'NOT_STARTED',
+              status: TaskStatus.NOT_STARTED,
             });
           }
         }
@@ -389,9 +393,9 @@ export class TasksService {
     });
 
     // Se o status da task ainda era NOT_STARTED, avança para IN_PROGRESS
-    if (task.status === 'NOT_STARTED') {
+    if (task.status === TaskStatus.NOT_STARTED) {
       task = await this.tasksRepository.update(task.id, {
-        status: 'IN_PROGRESS',
+        status: TaskStatus.IN_PROGRESS,
       });
     }
 

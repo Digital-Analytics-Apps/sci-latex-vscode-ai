@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
-**Última Atualização:** 26 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 Fases 1 a 4 (GitHub-Native & Refatoração Frontend) Concluídas com Sucesso. Próxima etapa: **Bloco 4 (Live Admin Dashboard)** ou **Refinamentos de UX (`analisar.md`)**.
+**Última Atualização:** 27 de Setembro de 2026  
+**Status Geral do Projeto:** 🟢 **Bloco 6 (Governança de Domínio, Ciclos Acadêmicos & Gatekeepers)** Concluído com Sucesso. 100% dos testes passando e 0 erros de compilação.
 
 ---
 
@@ -12,35 +12,25 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-* **Últimas Implementações Finalizadas:**
-  * **Especificação do Modelo de Domínio, Ciclos Acadêmicos, Etapas Paralelas & Gatekeepers:**
-    * Atualizado o PRD do Produto em [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) (Personas, 7 Fases e Gatekeepers).
-    * Adicionado o **Bloco 6** de tarefas no Roadmap Master em [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md#L94).
-    * Criado o checklist de tarefas executáveis em [`task.md`](file:///home/gilson-russo/.gemini/antigravity-ide/brain/5973ea17-2718-4938-b79d-93c6547fd46d/task.md).
-    * Atualizado o plano de implementação em [`persona_workflow_specs_plan.md`](file:///home/gilson-russo/.gemini/antigravity-ide/brain/5973ea17-2718-4938-b79d-93c6547fd46d/persona_workflow_specs_plan.md).
-      * Arquitetura Multi-Gerente com isolamento de portfólio de times (`Team.managerId`) e Ciclos Acadêmicos por gerência (`AcademicPeriod.managerId`).
-      * Hierarquia multi-times de Coordenadores (1:N), Autores e Revisores com auto-escrita.
-      * Ciclo Acadêmico (`AcademicPeriod`) com Meta Global e divisão de cotas por time (`TeamAcademicGoal`) sem trava de over-achievement.
-      * Etapas de escrita de conteúdo flexíveis (`ProjectStage`) com execução paralela simultânea.
-      * Revisão de pares viva e contínua associada a cada `Task`.
-      * Gatekeepers sequenciais estritos: Análise do NIT (`🔒 LOCKED` até 100% de escrita) e Submissão ao Congresso (`🔒 LOCKED` até `APPROVED_NIT`).
-      * Especificada a Seção 6.7 em [`frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md#L207): Padronização de 100% das listagens e visões de persona utilizando MUI Cards (`<Card variant="outlined">`), `<GenericDataGrid>`, `<AutoSizer>` e `useUrlFilters`.
-  * **Decomposição e Refatoração do Dashboard (`Dashboard Role-Based Architecture`):**
-    * Criado [`AuthorDashboard.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/components/AuthorDashboard.tsx) (fluxo de 2 níveis do autor, membros e DataGrid) e [`ManagementDashboard.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/components/ManagementDashboard.tsx) (grid de KPIs para Coordenador/Gerente/Admin).
-    * Refatorado [`DashboardPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/DashboardPage.tsx) de 683 para ~230 linhas, tornando-o um orquestrador top-level de rota, estado e modais.
-  * **Correção de Navegação e Filtros via URL (`{ replace: true }`):**
-    * Corrigido [`useUrlFilters.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/hooks/useUrlFilters.ts) para aplicar `{ replace: true }` nas chamadas de `setSearchParams` em `setFilters` e `resetFilters`, impedindo acúmulo indesejado no histórico de navegação ao filtrar ou digitar.
-    * Atualizado [`DashboardPage.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/dashboard/DashboardPage.tsx) para usar navegação atômica sem delay em `handleClearArticle` (`dispatch` + `navigate` com `{ replace: true }`) e sincronização bi-direcional no `useEffect`.
-  * **Padrão Obrigatório DataGrid com Filtros via URL (`DataGrid URL-Filter Pattern`):**
-    * **Especificação Técnica no Frontend (`frontend-specs.md#6.4`):** Formalizado a especificação obrigatória (Seção 6.4) que determina a arquitetura unificada de tabelas utilizando `useUrlFilters` para gravação de query params na URL, `placeholderData: keepPreviousData` para UX anti-piscadas (zero-flicker), `useDebounce` (400ms) para busca textual e o padrão de sincronização do React 19 durante a fase de render sem avisos de cascading render.
-    * **Suporte a Filtros no Backend REST (`GET /api/v1/projects/:projectId/tasks`):**
-      * Atualizados [`tasks.repository.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/repositories/tasks.repository.ts), [`tasks.service.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/tasks/tasks.service.ts) e [`tasks.controller.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/tasks/tasks.controller.ts) para aceitar os parâmetros de busca `status` e `search`, aplicando a filtragem no Prisma e nas projeções de Issues do GitHub.
-    * **Integração na Tabela do Autor (`<AuthorTasksTable />`):**
-      * Refatorado [`AuthorTasksTable.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/workspace/components/AuthorTasksTable.tsx) para consumir `useUrlFilters` e repassar os parâmetros limpos para `useTasksQuery(projectId, apiParams)`.
-  * **Otimização do Componente de Status (`TaskStatusChip`):**
-    * Refatorado [`TaskDataGridCells.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/workspace/components/TaskDataGridCells.tsx) utilizando a função auxiliar `getTaskStatusConfig(status)` (padrão equivalente a `getStatusColor` de `ReviewDetailPage.tsx`), eliminando duplicação de JSX.
-* **Ambiente Ativo:** `docker compose up` ativo.
-* **Status dos Testes & Build:** Backend com 16 arquivos e 51 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc --noEmit`). Build de produção do frontend compilado com **sucesso** (`npm run build`).
+* **Últimas Implementações Finalizadas (Bloco 6 Complete):**
+  * **Modelo de Banco de Dados Prisma (`schema.prisma`):**
+    * Adicionados campos `targetArticlesCount`, `status`, `managerId` em `AcademicPeriod`.
+    * Criados os modelos `TeamAcademicGoal` (cotas por laboratório/equipe) e `ProjectStage` (etapas flexíveis de escrita com suporte a travas de `isGatekeeper` e `gatekeeperType`: NIT e TARGET_CONFERENCE).
+    * Adicionada a relação `stageId` no modelo `Task`.
+    * Executada a migração do banco com `npx prisma db push` e `npx prisma generate`.
+  * **REST APIs no Backend (`backend/src/modules/`):**
+    * **Períodos Acadêmicos & Cotas:** Implementados endpoints `POST /api/v1/academic-periods/:id/goals` e `GET /api/v1/academic-periods/:id/goals` com suporte a filtro por `managerId`.
+    * **Etapas Flexíveis de Projeto:** Implementados endpoints `GET/POST/PATCH/DELETE /api/v1/projects/:projectId/stages` em `ProjectStagesController` e `ProjectStagesService`.
+    * **Validação Estrita de Gatekeepers:**
+      * Gatekeeper 1 (NIT): Bloqueia ativação/aprovação do NIT se houver etapas de conteúdo pendentes (`< 100%`).
+      * Gatekeeper 2 (Congresso Alvo): Bloqueia submissão ao congresso se o parecer do NIT não estiver aprovado (`COMPLETED`).
+    * **Testes de Integração & Unidade:** Criados `project-stages.service.test.ts` e `academic-periods.service.test.ts` (18/18 arquivos de teste aprovados, 61/61 suítes de testes passando no backend).
+  * **Interface ReactJS no Frontend (`frontend/src/`):**
+    * **Régua de Timeline Paralela (`<ArticleTimelineHeader />`):** Exibe a barra horizontal de progresso paralelo de etapas e gatekeepers com badges de status e botões de ação ("Concluir", "Iniciar").
+    * **Badges de Trava de Governança (`<GatekeeperLockBadge />`):** Exibe o status das travas do NIT (`🔒 NIT: Trava Ativa`, `⏳ Em Análise`, `✅ Parecer Favorável`) e do Congresso Alvo com tooltips explicativos.
+    * **Atribuição de Etapa em Tarefas (`CreateTaskModal.tsx`):** Adicionado o campo `<Select>` para o autor associar a nova tarefa a uma etapa específica do artigo.
+    * **Métricas do Gerente (`ManagementDashboard.tsx`):** Adicionado o card de progresso de Metas do Ciclo Acadêmico (artigos concluídos/submetidos vs meta global).
+  * **Status dos Testes & Build:** Backend com 18/18 arquivos e 61 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc -b`). Build de produção do frontend compilado com **sucesso** (`npm run build`). Padronização completa de enums (`PeriodStatus`, `StageStatus`, `TaskStatus`, `Role`) e tipos compartilhados em `frontend/src/types/`.
 
 ---
 

@@ -125,7 +125,7 @@ export const ManagementDashboard = ({ userRole }: ManagementDashboardProps) => {
             <Box sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
               <ScheduleIcon color="warning" />
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                Submissões no Alvo
+                Meta do Ciclo Acadêmico
               </Typography>
             </Box>
             <Typography
@@ -133,10 +133,10 @@ export const ManagementDashboard = ({ userRole }: ManagementDashboardProps) => {
               color="warning.main"
               sx={{ fontWeight: 700 }}
             >
-              95%
+              12 / 15
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Ciclo Acadêmico 2026/2027
+              80% da Meta Global Atingida (Ciclo 2026/2027)
             </Typography>
           </CardContent>
         </Card>

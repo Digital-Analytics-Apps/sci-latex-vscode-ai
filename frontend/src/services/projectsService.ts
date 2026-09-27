@@ -1,57 +1,20 @@
 import type { CreatePRFormData } from "../schemas/pr.schema";
+import type { StageStatus } from "../constants/status";
+import type {
+  CreateProjectInput,
+  ProjectDetails,
+  ProjectListItem,
+} from "../types/project.types";
+import type { ProjectStage } from "../types/stage.types";
 import { api } from "./api";
 
-export interface ProjectMember {
-  id?: string;
-  userId?: string;
-  role?: string;
-  user?: {
-    id?: string;
-    name?: string;
-    email?: string;
-    role?: string;
-  };
-}
-
-export interface ProjectDetails {
-  id: string;
-  name: string;
-  description?: string;
-  gitRepoPath: string;
-  teamId: string;
-  submissionStatus: string;
-  tasks?: Array<{
-    id: string;
-    title: string;
-    branchName: string;
-    status: string;
-  }>;
-  members: ProjectMember[];
-}
-
-export interface ProjectListItem {
-  id: string;
-  name: string;
-  description?: string | null;
-  submissionStatus: string;
-  targetConferenceName?: string | null;
-  targetConferenceDate?: string | null;
-  backupConferenceName?: string | null;
-  backupConferenceDate?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  team?: { id: string; name: string };
-  _count?: { tasks: number; members: number };
-}
-
-export interface CreateProjectInput {
-  name: string;
-  targetConferenceName?: string;
-  targetConferenceDate?: string;
-  teamId?: string;
-  coAuthorIds?: string[];
-  reviewerId?: string;
-}
+export type { ProjectMember } from "../types/user.types";
+export type { ProjectStage } from "../types/stage.types";
+export type {
+  CreateProjectInput,
+  ProjectDetails,
+  ProjectListItem,
+} from "../types/project.types";
 
 const PROJETCT_URL = "/projects";
 const PULL_REQUESTS_URL = "/pull-requests";
@@ -124,5 +87,41 @@ export const projectsService = {
   async createProject(data: CreateProjectInput) {
     const response = await api.post(PROJETCT_URL, data);
     return response.data;
+  },
+
+  // Obter etapas de escrita do artigo
+  async getProjectStages(projectId: string): Promise<ProjectStage[]> {
+    const response = await api.get(`${PROJETCT_URL}/${projectId}/stages`);
+    return response.data;
+  },
+
+  // Criar nova etapa customizada de escrita
+  async createProjectStage(
+    projectId: string,
+    data: { title: string; order?: number; description?: string },
+  ): Promise<ProjectStage> {
+    const response = await api.post(
+      `${PROJETCT_URL}/${projectId}/stages`,
+      data,
+    );
+    return response.data;
+  },
+
+  // Atualizar status ou metadados de uma etapa de escrita (com trava de Gatekeepers)
+  async updateProjectStage(
+    projectId: string,
+    stageId: string,
+    data: { title?: string; order?: number; status?: StageStatus },
+  ): Promise<ProjectStage> {
+    const response = await api.patch(
+      `${PROJETCT_URL}/${projectId}/stages/${stageId}`,
+      data,
+    );
+    return response.data;
+  },
+
+  // Excluir etapa de escrita customizada (Etapas Gatekeeper são protegidas)
+  async deleteProjectStage(projectId: string, stageId: string): Promise<void> {
+    await api.delete(`${PROJETCT_URL}/${projectId}/stages/${stageId}`);
   },
 };

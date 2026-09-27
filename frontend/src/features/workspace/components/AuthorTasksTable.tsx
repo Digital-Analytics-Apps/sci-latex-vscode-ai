@@ -20,7 +20,8 @@ import { GenericDataGrid } from "../../../components/common/GenericDataGrid";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { useTasksQuery } from "../../../hooks/useTaskQueries";
 import { useUrlFilters } from "../../../hooks/useUrlFilters";
-import { type TaskItem, TaskStatus } from "../../../services/tasksService";
+import { TaskStatus } from "../../../constants/status";
+import type { TaskItem } from "../../../types/task.types";
 import {
   TaskActionCell,
   TaskAssigneeCell,

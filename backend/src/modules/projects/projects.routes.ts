@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
@@ -13,6 +14,10 @@ import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.r
 import { PullRequestsService } from '../pull-requests/pull-requests.service';
 import { PullRequestsController } from '../pull-requests/pull-requests.controller';
 
+import { PrismaProjectStagesRepository } from '../../repositories/project-stages.repository';
+import { ProjectStagesService } from './project-stages.service';
+import { ProjectStagesController } from './project-stages.controller';
+
 export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
   const teamsRepository = new PrismaTeamsRepository();
@@ -24,6 +29,10 @@ export async function projectsRoutes(app: FastifyInstance) {
   const prRepository = new PrismaPullRequestsRepository();
   const prService = new PullRequestsService(prRepository, gitService, k8sPodManager);
   const prController = new PullRequestsController(prService);
+
+  const stagesRepository = new PrismaProjectStagesRepository();
+  const stagesService = new ProjectStagesService(stagesRepository);
+  const stagesController = new ProjectStagesController(stagesService);
 
   // Exige autenticação JWT para todas as rotas de projetos
   app.addHook('onRequest', verifyJwt);
@@ -166,7 +175,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         }),
         body: z.object({
           userId: z.string(),
-          role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+          role: z.nativeEnum(Role),
         }),
       },
     },
@@ -346,5 +355,82 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
     },
     (req: any, reply) => prController.merge(req, reply)
+  );
+
+  // GET /api/v1/projects/:projectId/stages - Listar etapas do artigo
+  app.get(
+    '/:projectId/stages',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Listar etapas de escrita e gatekeepers do artigo',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.list(req, reply)
+  );
+
+  // POST /api/v1/projects/:projectId/stages - Criar nova etapa customizada de escrita
+  app.post(
+    '/:projectId/stages',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Criar nova etapa customizada de escrita',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+        body: z.object({
+          title: z.string().min(2),
+          description: z.string().optional(),
+          order: z.number().optional(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.create(req, reply)
+  );
+
+  // PATCH /api/v1/projects/:projectId/stages/:stageId - Atualizar status ou dados da etapa
+  app.patch(
+    '/:projectId/stages/:stageId',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Atualizar status ou dados da etapa de escrita',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+          stageId: z.string(),
+        }),
+        body: z.object({
+          title: z.string().optional(),
+          description: z.string().optional(),
+          order: z.number().optional(),
+          status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']).optional(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.update(req, reply)
+  );
+
+  // DELETE /api/v1/projects/:projectId/stages/:stageId - Excluir etapa customizada
+  app.delete(
+    '/:projectId/stages/:stageId',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Excluir etapa customizada (Etapas Gatekeeper são protegidas)',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+          stageId: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.delete(req, reply)
   );
 }
