@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 27 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Visão do Gerente & Gestão Completa de Equipes (CRUD de Equipes, Membros e Cotas)** Concluído com Sucesso. 100% dos testes passando e 0 erros de compilação.
+**Status Geral do Projeto:** 🟢 **Central de Gestão de Equipes & Usuários (Modal com Abas MUI, KPIs Executivos e Cadastro com Roles)** Concluído com Sucesso. 100% dos testes passando e 0 erros de compilação.
 
 ---
 
@@ -12,27 +12,19 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-* **Últimas Implementações Finalizadas (Gestão do Gerente / Manager Persona Complete):**
-  * **Tipagem Centralizada (`frontend/src/types/`):**
-    * Criado `team.types.ts` (`TeamItem`, `TeamMemberItem`, `CreateTeamInput`, `UpdateTeamInput`).
-    * Refatorado `academic-period.types.ts` substituindo objetos inline por `UserSimple` centralizado.
-    * Garantida eliminação total de anotações `React.FC` em todos os componentes React.
-  * **Serviços & Hooks de Equipe (`frontend/src/services/` e `frontend/src/hooks/`):**
-    * Atualizado `teamsService.ts` com métodos CRUD completos (`getTeams`, `getTeamById`, `createTeam`, `updateTeam`, `deleteTeam`, `addMember`, `removeMember`).
-    * Criado hook `useTeamQueries.ts` com React Query mutations para criação, atualização, exclusão e gerenciamento de membros com invalidação automática de cache.
-    * Corrigida desserialização de `managementService.ts` para desempacotar `academicPeriods` com fallback seguro.
-  * **Componentes & Modais da Persona Gerente (`frontend/src/features/manager/`):**
-    * Criado modal de criação de ciclos acadêmicos (`CreateAcademicPeriodModal.tsx`).
-    * Criado modal de criação de equipes (`CreateTeamModal.tsx`).
-    * Criado modal de edição de equipes (`EditTeamModal.tsx`).
-    * Criado modal de definição de cotas por equipe (`SetTeamGoalModal.tsx`).
-    * Criada gaveta lateral de gestão de pesquisadores/membros (`TeamMembersDrawer.tsx`) com busca em tempo real e adição/remoção de integrantes.
-    * Reformulado `ManagerDashboardPage.tsx` em uma Central de Comando Multi-Aba:
-      * **Aba 1 (Equipes & Cotas):** Métricas operacionais e taxa de cumprimento por laboratório.
-      * **Aba 2 (Artigos Institucionais):** Visão global de artigos científicos e status de governança.
-      * **Aba 3 (Gestão de Equipes):** Tabela DataGrid com CRUD completo (Editar, Excluir, Adicionar Membros) e ações rápidas no cabeçalho.
-    * Atualizado `DashboardPage.tsx` para rotear diretamente `MANAGER` e `ADMIN` para a visão do gerente (`ManagerDashboardPage`).
-  * **Status dos Testes & Build:** Backend com 18/18 arquivos e 61 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc -b`). Build de produção do frontend compilado com **sucesso** (`npm run build`). Padronização completa com Prettier (`npm run format`).
+* **Últimas Implementações Finalizadas (Gestão do Gerente & Equipes Complete):**
+  * **Constantes Centralizadas (`frontend/src/constants/teams.ts`):**
+    * Adicionados mapeamentos `MEMBER_ROLE_LABELS`, `MEMBER_ROLE_COLORS` e rótulos de interface.
+  * **Modal de Cadastro de Membros/Usuários (`CreateUserModal.tsx`):**
+    * Implementado cadastro de usuários com Nome, E-mail, Senha e Papel (`AUTHOR`, `REVIEWER`, `COORDINATOR`, `MANAGER`).
+    * Hook `useCreateUserMutation` adicionado em `useUserQueries.ts` e endpoint `createUser` em `usersService.ts`.
+  * **Modal Unificado com Abas MUI (`ManageTeamModal.tsx`):**
+    * **Aba 1 (Dados Gerais):** Edição de Nome do Laboratório, E-mail do Coordenador e Exclusão de Equipe.
+    * **Aba 2 (Integrantes & Funções):** Busca de pesquisadores em tempo real, seleção de função na adição (`AUTHOR`, `REVIEWER`, `COORDINATOR`), lista de integrantes com avatares e chips de papel, e ação de promoção a Coordenador Responsável.
+  * **Central de Gestão de Equipes (`ManagerDashboardPage.tsx`):**
+    * Adicionados Cards de Indicadores (KPIs): Total de Equipes, Pesquisadores Vinculados, Cobertura de Liderança e Artigos em Andamento.
+    * Tabela DataGrid com botão **"Gerenciar Equipe"** acionando o modal tabulado.
+  * **Status dos Testes & Build:** Backend com 18/18 arquivos e 61 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc -b`). Build de produção do frontend compilado com **sucesso** em 1.83s (`npm run build`). Linter com **0 erros/0 avisos** (`npm run lint:fix`).
 
 ---
 

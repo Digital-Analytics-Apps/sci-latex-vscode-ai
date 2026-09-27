@@ -3,9 +3,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
-import EditIcon from "@mui/icons-material/Edit";
 import FlagIcon from "@mui/icons-material/Flag";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -19,12 +17,10 @@ import {
   CircularProgress,
   FormControl,
   Grid,
-  IconButton,
   MenuItem,
   Select,
   Tab,
   Tabs,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
@@ -32,43 +28,38 @@ import type { GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
+import { TEAM_MANAGEMENT_LABELS } from "../../constants/teams";
 import {
   useAcademicPeriods,
   useManagerDashboardQuery,
 } from "../../hooks/useManagementQueries";
 import { useProjectsList } from "../../hooks/useProjectQueries";
-import {
-  useDeleteTeamMutation,
-  useTeamsQuery,
-} from "../../hooks/useTeamQueries";
+import { useTeamsQuery } from "../../hooks/useTeamQueries";
 import { showNotification } from "../../store/slices/notificationSlice";
 import type { TeamItem } from "../../types/team.types";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateAcademicPeriodModal } from "./components/CreateAcademicPeriodModal";
 import { CreateTeamModal } from "./components/CreateTeamModal";
-import { EditTeamModal } from "./components/EditTeamModal";
+import { CreateUserModal } from "./components/CreateUserModal";
+import { ManageTeamModal } from "./components/ManageTeamModal";
 import { SetTeamGoalModal } from "./components/SetTeamGoalModal";
-import { TeamMembersDrawer } from "./components/TeamMembersDrawer";
 
 export const ManagerDashboardPage = () => {
   const dispatch = useDispatch();
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
   const [activeTab, setActiveTab] = useState<number>(0);
 
-  // Modais e Drawers de Criação e Gestão CRUD
+  // Modais de Criação e Gestão CRUD
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
   const [isSetGoalOpen, setIsSetGoalOpen] = useState(false);
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
-  // Estado para Edição de Equipe e Gestão de Membros
-  const [editingTeam, setEditingTeam] = useState<TeamItem | null>(null);
-  const [membersTeam, setMembersTeam] = useState<TeamItem | null>(null);
+  // Estado para Modal Unificado com Abas MUI
+  const [managingTeam, setManagingTeam] = useState<TeamItem | null>(null);
 
-  const deleteTeamMutation = useDeleteTeamMutation();
-
-  const { data: rawPeriods, isLoading: isLoadingPeriods } =
-    useAcademicPeriods();
+  const { data: rawPeriods } = useAcademicPeriods();
   const { data: rawProjects, isLoading: isLoadingProjects } = useProjectsList();
   const { data: rawTeams, isLoading: isLoadingTeams } = useTeamsQuery();
 
@@ -85,35 +76,6 @@ export const ManagerDashboardPage = () => {
     [rawTeams],
   );
 
-  const handleDeleteTeam = React.useCallback(
-    async (teamId: string, teamName: string) => {
-      if (
-        !window.confirm(
-          `Tem certeza que deseja excluir a equipe "${teamName}"?`,
-        )
-      ) {
-        return;
-      }
-      try {
-        await deleteTeamMutation.mutateAsync(teamId);
-        dispatch(
-          showNotification({
-            message: `Equipe "${teamName}" excluída com sucesso.`,
-            severity: "success",
-          }),
-        );
-      } catch {
-        dispatch(
-          showNotification({
-            message: `Erro ao excluir a equipe "${teamName}".`,
-            severity: "error",
-          }),
-        );
-      }
-    },
-    [deleteTeamMutation, dispatch],
-  );
-
   const { data: dashboard, isLoading: isLoadingDashboard } =
     useManagerDashboardQuery({
       academicPeriodId: selectedPeriod || undefined,
@@ -127,13 +89,22 @@ export const ManagerDashboardPage = () => {
     rejectedProjects: 0,
   };
 
-  const deadlines = dashboard?.deadlines || {
-    onTimeCount: 0,
-    warningSoonCount: 0,
-    overdueCount: 0,
-  };
-
   const activePeriod = periods.find((p) => p.id === selectedPeriod);
+
+  // Métricas Calculadas de Gestão de Equipes
+  const totalTeamsCount = allTeams.length;
+  const totalMembersCount = React.useMemo(
+    () => allTeams.reduce((acc, t) => acc + (t._count?.members || 0), 0),
+    [allTeams],
+  );
+  const teamsWithCoordinatorCount = React.useMemo(
+    () => allTeams.filter((t) => !!t.coordinator?.email).length,
+    [allTeams],
+  );
+  const activeProjectsInTeamsCount = React.useMemo(
+    () => allTeams.reduce((acc, t) => acc + (t._count?.projects || 0), 0),
+    [allTeams],
+  );
 
   const handleExportReport = () => {
     if (!dashboard) return;
@@ -218,7 +189,7 @@ export const ManagerDashboardPage = () => {
     }));
   }, [allTeams]);
 
-  // Colunas DataGrid 3: Gestão de Equipes (com CRUD)
+  // Colunas DataGrid 3: Gestão de Equipes (com Modal de Abas MUI)
   const teamManagementColumns = React.useMemo<GridColDef[]>(
     () => [
       {
@@ -237,6 +208,15 @@ export const ManagerDashboardPage = () => {
         headerName: "Coordenador Atribuído",
         flex: 1.5,
         minWidth: 200,
+        renderCell: (params) => (
+          <Chip
+            label={params.value}
+            size="small"
+            color={params.value === "Sem Coordenador" ? "default" : "warning"}
+            variant="outlined"
+            sx={{ fontWeight: 600 }}
+          />
+        ),
       },
       {
         field: "projectCount",
@@ -270,43 +250,19 @@ export const ManagerDashboardPage = () => {
         flex: 1.5,
         minWidth: 180,
         renderCell: (params) => (
-          <Box sx={{ display: "flex", gap: 0.5 }}>
-            <Tooltip title="Gerenciar Membros da Equipe">
-              <IconButton
-                size="small"
-                color="info"
-                onClick={() => setMembersTeam(params.row.originalTeam)}
-              >
-                <PersonAddIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Editar Equipe">
-              <IconButton
-                size="small"
-                color="warning"
-                onClick={() => setEditingTeam(params.row.originalTeam)}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Excluir Equipe">
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() =>
-                  handleDeleteTeam(params.row.id, params.row.name)
-                }
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
+          <Button
+            size="small"
+            variant="outlined"
+            color="warning"
+            startIcon={<GroupsIcon fontSize="small" />}
+            onClick={() => setManagingTeam(params.row.originalTeam)}
+          >
+            Gerenciar Equipe
+          </Button>
         ),
       },
     ],
-    [handleDeleteTeam],
+    [],
   );
 
   // Colunas DataGrid 1: Equipes & Cotas
@@ -448,23 +404,18 @@ export const ManagerDashboardPage = () => {
         }}
       >
         <Box>
-          <Typography variant="h2" component="h1" sx={{ fontWeight: 700 }}>
-            Centro de Comando & Governança Acadêmica
+          <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+            Central de Gestão e Governança
           </Typography>
+
           <Typography variant="body2" color="text.secondary">
-            Gestão de Ciclos Acadêmicos, alocação de cotas, equipes de pesquisa
-            e monitoramento de artigos.
+            Visão consolidada de produção científica, cotas institucionais e
+            equipes de pesquisa.
           </Typography>
         </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            flexWrap: "wrap",
-          }}
-        >
+        <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+          {/* Seletor de Ciclo Acadêmico */}
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <Select
               value={selectedPeriod}
@@ -481,7 +432,7 @@ export const ManagerDashboardPage = () => {
             </Select>
           </FormControl>
 
-          {/* Botões de Ação de Criação para o Gerente */}
+          {/* Botões de Ação para o Gerente */}
           <Button
             variant="contained"
             color="warning"
@@ -499,12 +450,22 @@ export const ManagerDashboardPage = () => {
             startIcon={<GroupsIcon fontSize="small" />}
             onClick={() => setIsCreateTeamOpen(true)}
           >
-            Nova Equipe
+            {TEAM_MANAGEMENT_LABELS.NEW_TEAM_BUTTON}
           </Button>
 
           <Button
             variant="outlined"
             color="info"
+            size="small"
+            startIcon={<PersonAddIcon fontSize="small" />}
+            onClick={() => setIsCreateUserOpen(true)}
+          >
+            {TEAM_MANAGEMENT_LABELS.NEW_USER_BUTTON}
+          </Button>
+
+          <Button
+            variant="outlined"
+            color="secondary"
             size="small"
             startIcon={<FlagIcon fontSize="small" />}
             onClick={() => setIsSetGoalOpen(true)}
@@ -524,7 +485,7 @@ export const ManagerDashboardPage = () => {
 
           <Button
             variant="outlined"
-            color="secondary"
+            color="inherit"
             size="small"
             startIcon={<DownloadIcon fontSize="small" />}
             onClick={handleExportReport}
@@ -535,7 +496,7 @@ export const ManagerDashboardPage = () => {
         </Box>
       </Box>
 
-      {/* Cards de KPIs Executivos */}
+      {/* Cards de KPIs Executivos de Governança Institucional */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, md: 3 }}>
           <Card variant="outlined">
@@ -583,13 +544,13 @@ export const ManagerDashboardPage = () => {
                 sx={{ fontWeight: 700, color: "success.main" }}
               >
                 {isLoadingDashboard ? (
-                  <CircularProgress size={28} color="success" />
+                  <CircularProgress size={28} />
                 ) : (
                   overview.publishedProjects
                 )}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Finalizados & Registrados
+                Concluídos e submetidos ao congresso
               </Typography>
             </CardContent>
           </Card>
@@ -603,7 +564,7 @@ export const ManagerDashboardPage = () => {
               >
                 <AssessmentIcon color="warning" />
                 <Typography variant="subtitle2" color="text.secondary">
-                  Em Revisão / Submetidos
+                  Em Avaliação pelos Gatekeepers
                 </Typography>
               </Box>
               <Typography
@@ -611,14 +572,13 @@ export const ManagerDashboardPage = () => {
                 sx={{ fontWeight: 700, color: "warning.main" }}
               >
                 {isLoadingDashboard ? (
-                  <CircularProgress size={28} color="warning" />
+                  <CircularProgress size={28} />
                 ) : (
                   overview.inReviewProjects + overview.submittedProjects
                 )}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {overview.submittedProjects} Submetidos /{" "}
-                {overview.inReviewProjects} Em Revisão
+                Etapas NIT e submissões pendentes
               </Typography>
             </CardContent>
           </Card>
@@ -632,159 +592,252 @@ export const ManagerDashboardPage = () => {
               >
                 <CheckCircleIcon color="info" />
                 <Typography variant="subtitle2" color="text.secondary">
-                  Indicadores de Prazo
+                  Laboratórios & Equipes Ativas
                 </Typography>
               </Box>
               <Typography
                 variant="h2"
                 sx={{ fontWeight: 700, color: "info.main" }}
               >
-                {isLoadingDashboard ? (
-                  <CircularProgress size={28} color="info" />
+                {isLoadingTeams ? (
+                  <CircularProgress size={28} />
                 ) : (
-                  deadlines.onTimeCount
+                  totalTeamsCount
                 )}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {deadlines.onTimeCount} No Prazo / {deadlines.warningSoonCount}{" "}
-                Atenção / {deadlines.overdueCount} Atrasados
+                {totalMembersCount} pesquisadores vinculados
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Navegação por Abas (Tabs): Cotas por Equipe | Todos os Artigos | Gestão de Equipes */}
-      <Card variant="outlined">
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-          <Tabs
-            value={activeTab}
-            onChange={(_, newValue) => setActiveTab(newValue)}
-            textColor="primary"
-            indicatorColor="primary"
-            sx={{ px: 2 }}
-          >
-            <Tab
-              label="Produção Científica & Cotas das Equipes"
-              sx={{ fontWeight: 700 }}
-            />
-            <Tab
-              label={`Listagem Global de Artigos (${allProjects?.length || 0})`}
-              sx={{ fontWeight: 700 }}
-            />
-            <Tab
-              label={`Gestão de Equipes (${allTeams?.length || 0})`}
-              sx={{ fontWeight: 700 }}
-            />
-          </Tabs>
-        </Box>
+      {/* Navegação entre Visões da Central de Comando (Abas) */}
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, val) => setActiveTab(val)}
+          aria-label="Abas da Central de Comando"
+        >
+          <Tab
+            icon={<AssessmentIcon fontSize="small" />}
+            iconPosition="start"
+            label="Cotas por Equipe"
+          />
+          <Tab
+            icon={<ArticleIcon fontSize="small" />}
+            iconPosition="start"
+            label="Artigos Institucionais"
+          />
+          <Tab
+            icon={<GroupsIcon fontSize="small" />}
+            iconPosition="start"
+            label={`Gestão de Equipes (${totalTeamsCount})`}
+          />
+        </Tabs>
+      </Box>
 
-        <CardContent sx={{ p: 0 }}>
-          {/* Aba 0: Produção Científica & Cotas */}
-          {activeTab === 0 && (
-            <Box sx={{ width: "100%", minHeight: 320 }}>
-              {isLoadingDashboard || isLoadingPeriods ? (
-                <Box sx={{ display: "flex", justifyContent: "center", p: 6 }}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                <DataGrid
-                  rows={teamRows}
-                  columns={teamColumns}
-                  getRowId={(row) => row.id}
-                  rowHeight={56}
-                  pageSizeOptions={[5, 10]}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 5, page: 0 } },
-                  }}
-                  disableRowSelectionOnClick
-                  localeText={
-                    ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
-                  }
-                  sx={{
-                    border: "none",
-                    "& .MuiDataGrid-columnHeaders": {
-                      bgcolor: "action.hover",
-                      fontWeight: 700,
-                    },
-                  }}
-                />
-              )}
+      {/* CONTEÚDO DA ABA 0: PRODUÇÃO CIENTÍFICA POR EQUIPE & COTAS */}
+      {activeTab === 0 && (
+        <Card variant="outlined">
+          <CardContent sx={{ p: 0 }}>
+            <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Desempenho e Metas por Laboratório
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                Acompanhamento em tempo real da produção científica de cada
+                equipe.
+              </Typography>
             </Box>
-          )}
 
-          {/* Aba 1: Listagem Global de Artigos da Instituição */}
-          {activeTab === 1 && (
-            <Box sx={{ width: "100%", minHeight: 320 }}>
-              {isLoadingProjects ? (
-                <Box sx={{ display: "flex", justifyContent: "center", p: 6 }}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                <DataGrid
-                  rows={projectRows}
-                  columns={projectColumns}
-                  getRowId={(row) => row.id}
-                  rowHeight={56}
-                  pageSizeOptions={[5, 10, 25]}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 10, page: 0 } },
-                  }}
-                  disableRowSelectionOnClick
-                  localeText={
-                    ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
-                  }
-                  sx={{
-                    border: "none",
-                    "& .MuiDataGrid-columnHeaders": {
-                      bgcolor: "action.hover",
-                      fontWeight: 700,
-                    },
-                  }}
-                />
-              )}
+            <Box sx={{ height: 420, width: "100%" }}>
+              <DataGrid
+                rows={teamRows}
+                columns={teamColumns}
+                loading={isLoadingDashboard}
+                pageSizeOptions={[5, 10, 25]}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 5 } },
+                }}
+                localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
+                disableRowSelectionOnClick
+                sx={{ border: "none" }}
+              />
             </Box>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Aba 2: Gestão de Equipes e Laboratórios */}
-          {activeTab === 2 && (
-            <Box sx={{ width: "100%", minHeight: 320 }}>
-              {isLoadingTeams ? (
-                <Box sx={{ display: "flex", justifyContent: "center", p: 6 }}>
-                  <CircularProgress />
+      {/* CONTEÚDO DA ABA 1: LISTAGEM GLOBAL DE ARTIGOS INSTITUCIONAIS */}
+      {activeTab === 1 && (
+        <Card variant="outlined">
+          <CardContent sx={{ p: 0 }}>
+            <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Listagem Geral de Artigos da Instituição
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                Todos os artigos científicos cadastrados e seus respectivos
+                status de governança.
+              </Typography>
+            </Box>
+
+            <Box sx={{ height: 420, width: "100%" }}>
+              <DataGrid
+                rows={projectRows}
+                columns={projectColumns}
+                loading={isLoadingProjects}
+                pageSizeOptions={[5, 10, 25]}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 5 } },
+                }}
+                localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
+                disableRowSelectionOnClick
+                sx={{ border: "none" }}
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* CONTEÚDO DA ABA 2: GESTÃO COMPLETA DE EQUIPES (CRUD) */}
+      {activeTab === 2 && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {/* Cards de KPIs Dedicados de Equipes */}
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                <CardContent sx={{ py: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    TOTAL DE EQUIPES
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: "primary.main" }}>
+                    {totalTeamsCount}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                <CardContent sx={{ py: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    PESQUISADORES VINCULADOS
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: "info.main" }}>
+                    {totalMembersCount}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                <CardContent sx={{ py: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    COBERTURA DE LIDERANÇA
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: "warning.main" }}>
+                    {teamsWithCoordinatorCount}/{totalTeamsCount}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+                <CardContent sx={{ py: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    ARTIGOS EM ANDAMENTO
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: "success.main" }}>
+                    {activeProjectsInTeamsCount}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Tabela DataGrid de Gestão de Equipes */}
+          <Card variant="outlined">
+            <CardContent sx={{ p: 0 }}>
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: "background.paper",
+                  display: "flex",
+                  justify: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {TEAM_MANAGEMENT_LABELS.TITLE}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {TEAM_MANAGEMENT_LABELS.SUBTITLE}
+                  </Typography>
                 </Box>
-              ) : (
+
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    size="small"
+                    startIcon={<GroupsIcon fontSize="small" />}
+                    onClick={() => setIsCreateTeamOpen(true)}
+                  >
+                    {TEAM_MANAGEMENT_LABELS.NEW_TEAM_BUTTON}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    startIcon={<PersonAddIcon fontSize="small" />}
+                    onClick={() => setIsCreateUserOpen(true)}
+                  >
+                    {TEAM_MANAGEMENT_LABELS.NEW_USER_BUTTON}
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box sx={{ height: 420, width: "100%" }}>
                 <DataGrid
                   rows={teamManagementRows}
                   columns={teamManagementColumns}
-                  getRowId={(row) => row.id}
-                  rowHeight={56}
-                  pageSizeOptions={[5, 10]}
+                  loading={isLoadingTeams}
+                  pageSizeOptions={[5, 10, 25]}
                   initialState={{
-                    pagination: { paginationModel: { pageSize: 5, page: 0 } },
+                    pagination: { paginationModel: { pageSize: 5 } },
                   }}
+                  localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
                   disableRowSelectionOnClick
-                  localeText={
-                    ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
-                  }
-                  sx={{
-                    border: "none",
-                    "& .MuiDataGrid-columnHeaders": {
-                      bgcolor: "action.hover",
-                      fontWeight: 700,
-                    },
-                  }}
+                  sx={{ border: "none" }}
                 />
-              )}
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
-      {/* Modais Globais de Gestão do Gerente */}
+      {/* Modais de Modificação & Gestão */}
       <CreateAcademicPeriodModal
         open={isCreatePeriodOpen}
         onClose={() => setIsCreatePeriodOpen(false)}
+      />
+
+      <CreateTeamModal
+        open={isCreateTeamOpen}
+        onClose={() => setIsCreateTeamOpen(false)}
+      />
+
+      <CreateUserModal
+        open={isCreateUserOpen}
+        onClose={() => setIsCreateUserOpen(false)}
       />
 
       <SetTeamGoalModal
@@ -793,26 +846,16 @@ export const ManagerDashboardPage = () => {
         defaultPeriodId={selectedPeriod}
       />
 
-      <CreateTeamModal
-        open={isCreateTeamOpen}
-        onClose={() => setIsCreateTeamOpen(false)}
-      />
-
       <CreateProjectModal
         open={isCreateProjectOpen}
         onClose={() => setIsCreateProjectOpen(false)}
       />
 
-      <EditTeamModal
-        open={Boolean(editingTeam)}
-        onClose={() => setEditingTeam(null)}
-        team={editingTeam}
-      />
-
-      <TeamMembersDrawer
-        open={Boolean(membersTeam)}
-        onClose={() => setMembersTeam(null)}
-        team={membersTeam}
+      {/* Modal Unificado com Abas MUI de Gestão de Equipe & Membros */}
+      <ManageTeamModal
+        open={Boolean(managingTeam)}
+        onClose={() => setManagingTeam(null)}
+        team={managingTeam}
       />
     </Box>
   );

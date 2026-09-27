@@ -34,4 +34,15 @@ export const usersService = {
   async getReviewers(): Promise<UserMemberItem[]> {
     return this.searchUsers("", Role.REVIEWER);
   },
+
+  // Cadastrar novo usuário/pesquisador no sistema
+  async createUser(data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: string;
+  }): Promise<UserMemberItem> {
+    const response = await api.post("/auth/register", data);
+    return response.data.user || response.data;
+  },
 };
