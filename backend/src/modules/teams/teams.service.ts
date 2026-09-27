@@ -5,13 +5,43 @@ import {
   UpdateTeamData,
 } from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';
+import { prisma } from '../../db/prisma';
+import { hashPassword } from '../../utils/hash';
 
 export class TeamsService {
-  constructor(private teamsRepository: PrismaTeamsRepository) {}
+  constructor(private readonly teamsRepository: PrismaTeamsRepository) {}
 
   // Criar uma nova Equipe (Requer papel MANAGER ou ADMIN)
   async createTeam(requesterId: string, data: CreateTeamData) {
-    const team = await this.teamsRepository.create(data);
+    let coordinatorId = data.coordinatorId;
+
+    if (!coordinatorId && data.coordinatorEmail) {
+      const email = data.coordinatorEmail.trim().toLowerCase();
+      let user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        const hashedPassword = await hashPassword('123456');
+        user = await prisma.user.create({
+          data: {
+            email,
+            name: email.split('@')[0],
+            passwordHash: hashedPassword,
+            role: Role.COORDINATOR,
+          },
+        });
+      }
+      coordinatorId = user.id;
+    }
+
+    if (!coordinatorId) {
+      coordinatorId = requesterId;
+    }
+
+    const team = await this.teamsRepository.create({
+      name: data.name,
+      description: data.description,
+      coordinatorId,
+      managerId: data.managerId || requesterId,
+    });
 
     await logAudit({
       userId: requesterId,
@@ -41,7 +71,33 @@ export class TeamsService {
     const existing = await this.teamsRepository.findById(id);
     if (!existing) throw new Error('TEAM_NOT_FOUND');
 
-    const updated = await this.teamsRepository.update(id, data);
+    let coordinatorId = data.coordinatorId;
+
+    if (!coordinatorId && data.coordinatorEmail) {
+      const email = data.coordinatorEmail.trim().toLowerCase();
+      let user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        const hashedPassword = await hashPassword('123456');
+        user = await prisma.user.create({
+          data: {
+            email,
+            name: email.split('@')[0],
+            passwordHash: hashedPassword,
+            role: Role.COORDINATOR,
+          },
+        });
+      }
+      coordinatorId = user.id;
+    }
+
+    const updatePayload: UpdateTeamData = {
+      name: data.name,
+      description: data.description,
+      managerId: data.managerId,
+      ...(coordinatorId ? { coordinatorId } : {}),
+    };
+
+    const updated = await this.teamsRepository.update(id, updatePayload);
 
     await logAudit({
       userId: requesterId,

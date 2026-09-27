@@ -30,7 +30,8 @@ export async function teamsRoutes(app: FastifyInstance) {
         body: z.object({
           name: z.string().min(2),
           description: z.string().optional(),
-          coordinatorId: z.string().uuid(),
+          coordinatorId: z.string().uuid().optional(),
+          coordinatorEmail: z.string().email().optional(),
           managerId: z.string().uuid().optional(),
         }),
       },
@@ -90,6 +91,7 @@ export async function teamsRoutes(app: FastifyInstance) {
           name: z.string().min(2).optional(),
           description: z.string().optional(),
           coordinatorId: z.string().uuid().optional(),
+          coordinatorEmail: z.string().email().optional(),
           managerId: z.string().uuid().optional(),
         }),
       },
@@ -130,7 +132,7 @@ export async function teamsRoutes(app: FastifyInstance) {
         }),
         body: z.object({
           userId: z.string().uuid(),
-          role: z.nativeEnum(Role),
+          role: z.nativeEnum(Role).optional().default(Role.AUTHOR),
         }),
       },
     },

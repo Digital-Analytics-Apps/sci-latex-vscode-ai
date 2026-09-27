@@ -1,10 +1,7 @@
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import {
-  Autocomplete,
   Box,
   Button,
-  Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,15 +10,13 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  TextField,
   Typography,
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { UserSearchAutocomplete } from "../../components/common/UserSearchAutocomplete";
 import { Role } from "../../constants/roles";
-import { useDebounce } from "../../hooks/useDebounce";
-import { useUserSearchQuery } from "../../hooks/useUserQueries";
 import { api } from "../../services/api";
 import { type UserMemberItem } from "../../services/usersService";
 import { showNotification } from "../../store/slices/notificationSlice";
@@ -45,14 +40,11 @@ export const AddMemberModal = ({
   const [role, setRole] = useState<Role>(Role.AUTHOR);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Busca de Usuários com Debounce
-  const [searchText, setSearchText] = useState("");
-  const debouncedSearch = useDebounce(searchText, 300);
-  const { data: usersList = [], isFetching } =
-    useUserSearchQuery(debouncedSearch);
+  // Busca de Usuários via UserSearchAutocomplete
+  const [selectedUserEmail, setSelectedUserEmail] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserMemberItem | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedUser) {
       dispatch(
@@ -96,7 +88,7 @@ export const AddMemberModal = ({
       queryClient.invalidateQueries({ queryKey: ["user-articles"] });
 
       setSelectedUser(null);
-      setSearchText("");
+      setSelectedUserEmail("");
       if (onMemberAdded) onMemberAdded();
       onClose();
     } catch (err: any) {
@@ -136,74 +128,17 @@ export const AddMemberModal = ({
           onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
         >
-          {/* Autocomplete de Usuários com Debounce */}
-          <Autocomplete
-            options={usersList}
-            value={selectedUser}
-            onChange={(_e, newValue) =>
-              setSelectedUser(newValue as UserMemberItem | null)
-            }
-            inputValue={searchText}
-            onInputChange={(_e, newInputValue) => setSearchText(newInputValue)}
-            getOptionLabel={(option) => option.name}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            loading={isFetching}
-            noOptionsText={
-              searchText.trim().length > 0 && searchText.trim().length < 3
-                ? "Digite pelo menos 3 letras para pesquisar..."
-                : "Nenhum usuário encontrado."
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                size="small"
-                label="Buscar Pesquisador (nome ou e-mail)"
-                placeholder="Digite para pesquisar..."
-                required
-                slotProps={{
-                  ...params.slotProps,
-                  input: {
-                    ...params.slotProps.input,
-                    endAdornment: (
-                      <>
-                        {isFetching ? (
-                          <CircularProgress color="inherit" size={18} />
-                        ) : null}
-                        {params.slotProps.input.endAdornment}
-                      </>
-                    ),
-                  },
-                }}
-              />
-            )}
-            renderOption={(props, option) => (
-              <Box
-                component="li"
-                {...props}
-                key={option.id}
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  py: 1,
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {option.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {option.email}
-                  </Typography>
-                </Box>
-                <Chip
-                  label={option.role}
-                  size="small"
-                  variant="outlined"
-                  color="primary"
-                />
-              </Box>
-            )}
+          {/* Componente Reutilizável de Busca de Usuários */}
+          <UserSearchAutocomplete
+            value={selectedUserEmail}
+            onChange={(email, user) => {
+              setSelectedUserEmail(email);
+              setSelectedUser(user || null);
+            }}
+            size="small"
+            label="Buscar Pesquisador (nome ou e-mail)"
+            placeholder="Digite para pesquisar..."
+            required
           />
 
           {/* Seleção do Papel no Artigo */}

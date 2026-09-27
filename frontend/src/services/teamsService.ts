@@ -43,8 +43,8 @@ export const teamsService = {
   },
 
   // Adicionar membro à equipe
-  async addMember(teamId: string, userId: string) {
-    const response = await api.post(`/teams/${teamId}/members`, { userId });
+  async addMember(teamId: string, userId: string, role: string = "AUTHOR") {
+    const response = await api.post(`/teams/${teamId}/members`, { userId, role });
     return response.data;
   },
 

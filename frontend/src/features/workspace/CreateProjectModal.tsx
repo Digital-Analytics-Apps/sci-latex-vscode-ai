@@ -4,10 +4,8 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import {
-  Autocomplete,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -29,8 +27,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch } from "react-redux";
 import { useCreateProjectMutation } from "../../hooks/useProjectQueries";
-import { useDebounce } from "../../hooks/useDebounce";
-import { useUserSearchQuery } from "../../hooks/useUserQueries";
+import { UserSearchAutocomplete } from "../../components/common/UserSearchAutocomplete";
 import { type UserMemberItem } from "../../services/usersService";
 import {
   type CreateProjectFormData,
@@ -54,20 +51,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   const [activeStep, setActiveStep] = useState(0);
 
-  // Busca debounced (3+ letras) para Co-Autores
-  const [coAuthorSearchText, setCoAuthorSearchText] = useState("");
-  const debouncedCoAuthorSearch = useDebounce(coAuthorSearchText, 300);
-  const { data: coAuthorsData = [], isFetching: isFetchingCoAuthors } =
-    useUserSearchQuery(debouncedCoAuthorSearch, "AUTHOR");
+  // Co-Autores
   const [selectedCoAuthors, setSelectedCoAuthors] = useState<UserMemberItem[]>(
     [],
   );
 
-  // Busca debounced (3+ letras) para Revisor Técnico
+  // Revisor Técnico
   const [reviewerSearchText, setReviewerSearchText] = useState("");
-  const debouncedReviewerSearch = useDebounce(reviewerSearchText, 300);
-  const { data: reviewersData = [], isFetching: isFetchingReviewers } =
-    useUserSearchQuery(debouncedReviewerSearch, "REVIEWER");
   const [selectedReviewer, setSelectedReviewer] =
     useState<UserMemberItem | null>(null);
 
@@ -282,78 +272,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   <GroupAddIcon color="primary" fontSize="small" />
                   Co-Autores Integrantes do Artigo:
                 </Typography>
-                <Autocomplete
+                <UserSearchAutocomplete
                   multiple
-                  options={coAuthorsData}
                   value={selectedCoAuthors}
-                  onChange={(_e, newValue) =>
-                    setSelectedCoAuthors(newValue as UserMemberItem[])
-                  }
-                  inputValue={coAuthorSearchText}
-                  onInputChange={(_e, newInputValue) =>
-                    setCoAuthorSearchText(newInputValue)
-                  }
-                  getOptionLabel={(option) => option.name}
-                  isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
-                  }
-                  loading={isFetchingCoAuthors}
-                  noOptionsText={
-                    coAuthorSearchText.trim().length > 0 &&
-                    coAuthorSearchText.trim().length < 3
-                      ? "Digite pelo menos 3 letras para pesquisar..."
-                      : "Nenhum co-autor encontrado."
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      label="Pesquisar Co-Autores (mín. 3 letras)"
-                      placeholder="Digite nome ou e-mail..."
-                      slotProps={{
-                        ...params.slotProps,
-                        input: {
-                          ...params.slotProps.input,
-                          endAdornment: (
-                            <>
-                              {isFetchingCoAuthors ? (
-                                <CircularProgress color="inherit" size={18} />
-                              ) : null}
-                              {params.slotProps.input.endAdornment}
-                            </>
-                          ),
-                        },
-                      }}
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <Box
-                      component="li"
-                      {...props}
-                      key={option.id}
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        py: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {option.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {option.email}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        label={option.role}
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                      />
-                    </Box>
-                  )}
+                  onChange={(_emails, users) => setSelectedCoAuthors(users)}
+                  allowedRoles={["AUTHOR"]}
+                  size="small"
+                  label="Pesquisar Co-Autores (mín. 3 letras)"
+                  placeholder="Digite nome ou e-mail..."
                 />
               </Box>
 
@@ -361,77 +287,16 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                   Revisor Técnico (Instância NIT):
                 </Typography>
-                <Autocomplete
-                  options={reviewersData}
-                  value={selectedReviewer}
-                  onChange={(_e, newValue) =>
-                    setSelectedReviewer(newValue as UserMemberItem | null)
-                  }
-                  inputValue={reviewerSearchText}
-                  onInputChange={(_e, newInputValue) =>
-                    setReviewerSearchText(newInputValue)
-                  }
-                  getOptionLabel={(option) => option.name}
-                  isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
-                  }
-                  loading={isFetchingReviewers}
-                  noOptionsText={
-                    reviewerSearchText.trim().length > 0 &&
-                    reviewerSearchText.trim().length < 3
-                      ? "Digite pelo menos 3 letras para pesquisar..."
-                      : "Nenhum revisor encontrado."
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      label="Pesquisar Revisor Técnico (mín. 3 letras)"
-                      placeholder="Digite nome ou e-mail..."
-                      slotProps={{
-                        ...params.slotProps,
-                        input: {
-                          ...params.slotProps.input,
-                          endAdornment: (
-                            <>
-                              {isFetchingReviewers ? (
-                                <CircularProgress color="inherit" size={18} />
-                              ) : null}
-                              {params.slotProps.input.endAdornment}
-                            </>
-                          ),
-                        },
-                      }}
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <Box
-                      component="li"
-                      {...props}
-                      key={option.id}
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        py: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {option.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {option.email}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        label={option.role}
-                        size="small"
-                        variant="outlined"
-                        color="secondary"
-                      />
-                    </Box>
-                  )}
+                <UserSearchAutocomplete
+                  value={reviewerSearchText}
+                  onChange={(email, user) => {
+                    setReviewerSearchText(email);
+                    setSelectedReviewer(user || null);
+                  }}
+                  allowedRoles={["REVIEWER"]}
+                  size="small"
+                  label="Pesquisar Revisor Técnico (mín. 3 letras)"
+                  placeholder="Digite nome ou e-mail..."
                 />
               </Box>
             </Box>

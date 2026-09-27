@@ -3,9 +3,8 @@ import ArticleIcon from "@mui/icons-material/Article";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import DownloadIcon from "@mui/icons-material/Download";
-import FlagIcon from "@mui/icons-material/Flag";
 import GroupsIcon from "@mui/icons-material/Groups";
+import HomeIcon from "@mui/icons-material/Home";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PublicIcon from "@mui/icons-material/Public";
 import {
@@ -15,22 +14,18 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  FormControl,
   Grid,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  MenuItem,
   Paper,
-  Select,
   Typography,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
 import { TEAM_MANAGEMENT_LABELS } from "../../constants/teams";
 import {
   useAcademicPeriods,
@@ -38,31 +33,27 @@ import {
 } from "../../hooks/useManagementQueries";
 import { useProjectsList } from "../../hooks/useProjectQueries";
 import { useTeamsQuery } from "../../hooks/useTeamQueries";
-import { showNotification } from "../../store/slices/notificationSlice";
 import type { TeamItem } from "../../types/team.types";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateAcademicPeriodModal } from "./components/CreateAcademicPeriodModal";
-import { CreateTeamModal } from "./components/CreateTeamModal";
 import { CreateUserModal } from "./components/CreateUserModal";
 import { ManageTeamModal } from "./components/ManageTeamModal";
-import { SetTeamGoalModal } from "./components/SetTeamGoalModal";
 
 export const ManagerDashboardPage = () => {
-  const dispatch = useDispatch();
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+  const [selectedPeriod] = useState<string>("");
   const [activeSection, setActiveSection] = useState<number>(0);
 
   // Modais de Criação e Gestão CRUD
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
-  const [isSetGoalOpen, setIsSetGoalOpen] = useState(false);
-  const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [isManageTeamOpen, setIsManageTeamOpen] = useState(false);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
-  // Estado para Modal Unificado com Abas MUI
+  // Estado para Modal Unificado de Gestão de Equipes (Abas: Dados, Integrantes, Cotas)
   const [managingTeam, setManagingTeam] = useState<TeamItem | null>(null);
 
-  const { data: rawPeriods } = useAcademicPeriods();
+  const { data: rawPeriods, isLoading: isLoadingPeriods } =
+    useAcademicPeriods();
   const { data: rawProjects, isLoading: isLoadingProjects } = useProjectsList();
   const { data: rawTeams, isLoading: isLoadingTeams } = useTeamsQuery();
 
@@ -108,61 +99,6 @@ export const ManagerDashboardPage = () => {
     () => allTeams.reduce((acc, t) => acc + (t._count?.projects || 0), 0),
     [allTeams],
   );
-
-  const handleExportReport = () => {
-    if (!dashboard) return;
-
-    const csvContent = [
-      "Equipe,Coordenador,Total de Artigos,Publicados,Em Andamento",
-      ...dashboard.teams.map(
-        (t) =>
-          `"${t.teamName}","${t.coordinator?.email || "Sem Coordenador"}",${t.totalProjects},${t.publishedCount},${t.totalProjects - t.publishedCount}`,
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `relatorio_gerencial_${activePeriod?.name || selectedPeriod || "consolidado"}.csv`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    dispatch(
-      showNotification({
-        message: `Relatório do Período Acadêmico exportado com sucesso!`,
-        severity: "success",
-      }),
-    );
-  };
-
-  const dashboardTeams = dashboard?.teams;
-
-  // Linhas para DataGrid 1: Produção Científica por Equipe
-  const teamRows = React.useMemo(() => {
-    if (!dashboardTeams) return [];
-    return dashboardTeams.map((team) => {
-      const inProgress = team.totalProjects - team.publishedCount;
-      const onTimeRate =
-        team.totalProjects > 0
-          ? Math.round((team.publishedCount / team.totalProjects) * 100)
-          : 0;
-
-      return {
-        id: team.teamId,
-        teamName: team.teamName,
-        coordinatorEmail: team.coordinator?.email || "Não atribuído",
-        completedCount: team.publishedCount,
-        inProgressCount: Math.max(inProgress, 0),
-        totalProjects: team.totalProjects,
-        onTimeRate,
-      };
-    });
-  }, [dashboardTeams]);
 
   // Linhas para DataGrid 2: Listagem Global de Artigos Institucionais
   const projectRows = React.useMemo(() => {
@@ -258,79 +194,13 @@ export const ManagerDashboardPage = () => {
             variant="outlined"
             color="warning"
             startIcon={<GroupsIcon fontSize="small" />}
-            onClick={() => setManagingTeam(params.row.originalTeam)}
+            onClick={() => {
+              setManagingTeam(params.row.originalTeam);
+              setIsManageTeamOpen(true);
+            }}
           >
             Gerenciar Equipe
           </Button>
-        ),
-      },
-    ],
-    [],
-  );
-
-  // Colunas DataGrid 1: Equipes & Cotas
-  const teamColumns = React.useMemo<GridColDef[]>(
-    () => [
-      {
-        field: "teamName",
-        headerName: "Equipe / Laboratório",
-        flex: 1.5,
-        minWidth: 220,
-        renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {params.value}
-          </Typography>
-        ),
-      },
-      {
-        field: "coordinatorEmail",
-        headerName: "Coordenador Responsável",
-        flex: 1.5,
-        minWidth: 200,
-      },
-      {
-        field: "completedCount",
-        headerName: "Artigos Concluídos",
-        flex: 1.2,
-        minWidth: 160,
-        renderCell: (params) => (
-          <Chip
-            label={`${params.value} Publicados`}
-            size="small"
-            color="success"
-            variant="filled"
-            sx={{ fontWeight: 600 }}
-          />
-        ),
-      },
-      {
-        field: "inProgressCount",
-        headerName: "Em Andamento",
-        flex: 1,
-        minWidth: 140,
-        renderCell: (params) => (
-          <Chip
-            label={`${params.value} Em Andamento`}
-            size="small"
-            color="info"
-            variant="outlined"
-            sx={{ fontWeight: 600 }}
-          />
-        ),
-      },
-      {
-        field: "onTimeRate",
-        headerName: "Taxa de Cumprimento de Prazos",
-        flex: 1.3,
-        minWidth: 200,
-        renderCell: (params) => (
-          <Chip
-            label={`${params.value}% Concluídos`}
-            size="small"
-            color={params.value >= 70 ? "success" : "warning"}
-            variant="filled"
-            sx={{ fontWeight: 700 }}
-          />
         ),
       },
     ],
@@ -425,24 +295,24 @@ export const ManagerDashboardPage = () => {
               borderRadius: 1.5,
               mb: 1,
               "&.Mui-selected": {
-                bgcolor: "warning.soft",
-                color: "warning.main",
+                bgcolor: "primary.soft",
+                color: "primary.main",
                 fontWeight: 700,
                 borderLeft: "4px solid",
-                borderColor: "warning.main",
+                borderColor: "primary.main",
               },
             }}
           >
             <ListItemIcon
               sx={{
                 minWidth: 36,
-                color: activeSection === 0 ? "warning.main" : "text.secondary",
+                color: activeSection === 0 ? "primary.main" : "text.secondary",
               }}
             >
-              <AssessmentIcon />
+              <HomeIcon />
             </ListItemIcon>
             <ListItemText
-              primary="Home & Cotas"
+              primary="Home / Visão Geral"
               slotProps={{
                 primary: {
                   variant: "body2",
@@ -459,24 +329,24 @@ export const ManagerDashboardPage = () => {
               borderRadius: 1.5,
               mb: 1,
               "&.Mui-selected": {
-                bgcolor: "primary.soft",
-                color: "primary.main",
+                bgcolor: "warning.soft",
+                color: "warning.main",
                 fontWeight: 700,
                 borderLeft: "4px solid",
-                borderColor: "primary.main",
+                borderColor: "warning.main",
               },
             }}
           >
             <ListItemIcon
               sx={{
                 minWidth: 36,
-                color: activeSection === 1 ? "primary.main" : "text.secondary",
+                color: activeSection === 1 ? "warning.main" : "text.secondary",
               }}
             >
-              <ArticleIcon />
+              <CalendarTodayIcon />
             </ListItemIcon>
             <ListItemText
-              primary="Artigos"
+              primary="Ciclos Acadêmicos"
               slotProps={{
                 primary: {
                   variant: "body2",
@@ -493,6 +363,40 @@ export const ManagerDashboardPage = () => {
               borderRadius: 1.5,
               mb: 1,
               "&.Mui-selected": {
+                bgcolor: "success.soft",
+                color: "success.main",
+                fontWeight: 700,
+                borderLeft: "4px solid",
+                borderColor: "success.main",
+              },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 36,
+                color: activeSection === 2 ? "success.main" : "text.secondary",
+              }}
+            >
+              <ArticleIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Artigos"
+              slotProps={{
+                primary: {
+                  variant: "body2",
+                  sx: { fontWeight: activeSection === 2 ? 700 : 500 },
+                },
+              }}
+            />
+          </ListItemButton>
+
+          <ListItemButton
+            selected={activeSection === 3}
+            onClick={() => setActiveSection(3)}
+            sx={{
+              borderRadius: 1.5,
+              mb: 1,
+              "&.Mui-selected": {
                 bgcolor: "info.soft",
                 color: "info.main",
                 fontWeight: 700,
@@ -504,7 +408,7 @@ export const ManagerDashboardPage = () => {
             <ListItemIcon
               sx={{
                 minWidth: 36,
-                color: activeSection === 2 ? "info.main" : "text.secondary",
+                color: activeSection === 3 ? "info.main" : "text.secondary",
               }}
             >
               <GroupsIcon />
@@ -514,7 +418,7 @@ export const ManagerDashboardPage = () => {
               slotProps={{
                 primary: {
                   variant: "body2",
-                  sx: { fontWeight: activeSection === 2 ? 700 : 500 },
+                  sx: { fontWeight: activeSection === 3 ? 700 : 500 },
                 },
               }}
             />
@@ -522,89 +426,32 @@ export const ManagerDashboardPage = () => {
         </List>
       </Paper>
 
-      {/* ÁREA DE CONTEÚDO PRINCIPAL EXIBIDA DE ACORDO COM O ITEM DA SIDEBAR */}
+      {/* ÁREA DE CONTEÚDO PRINCIPAL DAS SEÇÕES */}
       <Box sx={{ flexGrow: 1 }}>
-        {/* SEÇÃO 0: HOME & COTAS (Métricas e Desempenho do Ciclo) */}
+        {/* SEÇÃO 0: HOME / VISÃO GERAL (APENAS CARDS DE MÉTRICAS - SEM TABELA) */}
         {activeSection === 0 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {/* Cabeçalho da Seção Home */}
-            <Box
-              sx={{
-                display: "flex",
-                justify: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 2,
-              }}
-            >
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
-                  Home & Cotas Institucionais
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Acompanhamento de metas do ciclo acadêmico e desempenho dos
-                  laboratórios.
-                </Typography>
-              </Box>
-
-              {/* Ações contextualizadas da Seção Home (Sem botões redundantes) */}
-              <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <Select
-                    value={selectedPeriod}
-                    displayEmpty
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
-                    sx={{ fontWeight: 600 }}
-                  >
-                    <MenuItem value="">Todos os Ciclos</MenuItem>
-                    {periods?.map((period) => (
-                      <MenuItem key={period.id} value={period.id}>
-                        {period.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <Button
-                  variant="contained"
-                  color="warning"
-                  size="small"
-                  startIcon={<CalendarTodayIcon fontSize="small" />}
-                  onClick={() => setIsCreatePeriodOpen(true)}
-                >
-                  Novo Ciclo
-                </Button>
-
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  size="small"
-                  startIcon={<FlagIcon fontSize="small" />}
-                  onClick={() => setIsSetGoalOpen(true)}
-                >
-                  Definir Cotas
-                </Button>
-
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  size="small"
-                  startIcon={<DownloadIcon fontSize="small" />}
-                  onClick={handleExportReport}
-                  disabled={!dashboard}
-                >
-                  Exportar CSV
-                </Button>
-              </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                Visão Geral Institucional
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Painel consolidado com os principais indicadores de produção e
+                governança científica.
+              </Typography>
             </Box>
 
-            {/* Cards de KPIs da Home */}
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 3 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
                     >
                       <ArticleIcon color="primary" />
                       <Typography variant="subtitle2" color="text.secondary">
@@ -624,7 +471,7 @@ export const ManagerDashboardPage = () => {
                     <Typography variant="caption" color="text.secondary">
                       {activePeriod
                         ? `Meta Global: ${activePeriod.targetArticlesCount} artigos`
-                        : "Todos os Períodos"}
+                        : "Meta Consolidada do Período"}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -634,7 +481,12 @@ export const ManagerDashboardPage = () => {
                 <Card variant="outlined">
                   <CardContent>
                     <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
                     >
                       <PublicIcon color="success" />
                       <Typography variant="subtitle2" color="text.secondary">
@@ -652,7 +504,7 @@ export const ManagerDashboardPage = () => {
                       )}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Concluídos e submetidos ao congresso
+                      Concluídos e submetidos com aprovação
                     </Typography>
                   </CardContent>
                 </Card>
@@ -662,7 +514,12 @@ export const ManagerDashboardPage = () => {
                 <Card variant="outlined">
                   <CardContent>
                     <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
                     >
                       <AssessmentIcon color="warning" />
                       <Typography variant="subtitle2" color="text.secondary">
@@ -690,11 +547,16 @@ export const ManagerDashboardPage = () => {
                 <Card variant="outlined">
                   <CardContent>
                     <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
                     >
                       <CheckCircleIcon color="info" />
                       <Typography variant="subtitle2" color="text.secondary">
-                        Laboratórios Ativos
+                        Laboratórios & Equipes Ativas
                       </Typography>
                     </Box>
                     <Typography
@@ -708,48 +570,136 @@ export const ManagerDashboardPage = () => {
                       )}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {totalMembersCount} pesquisadores vinculados
+                      {totalMembersCount} pesquisadores cadastrados
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
             </Grid>
-
-            {/* Tabela DataGrid de Desempenho por Equipe e Cotas */}
-            <Card variant="outlined">
-              <CardContent sx={{ p: 0 }}>
-                <Box sx={{ p: 2, bgcolor: "background.paper" }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    Desempenho e Cumprimento de Cotas por Laboratório
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Taxa de entrega e artigos concluídos por equipe de pesquisa.
-                  </Typography>
-                </Box>
-
-                <Box sx={{ height: 420, width: "100%" }}>
-                  <DataGrid
-                    rows={teamRows}
-                    columns={teamColumns}
-                    loading={isLoadingDashboard}
-                    pageSizeOptions={[5, 10, 25]}
-                    initialState={{
-                      pagination: { paginationModel: { pageSize: 5 } },
-                    }}
-                    localeText={
-                      ptBR.components.MuiDataGrid.defaultProps.localeText
-                    }
-                    disableRowSelectionOnClick
-                    sx={{ border: "none" }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
           </Box>
         )}
 
-        {/* SEÇÃO 1: ARTIGOS INSTITUCIONAIS */}
+        {/* SEÇÃO 1: GESTÃO DO CICLO ACADÊMICO */}
         {activeSection === 1 && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justify: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                  Gestão dos Ciclos Acadêmicos
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Cadastre novos ciclos e acompanhe as metas institucionais de
+                  publicação.
+                </Typography>
+              </Box>
+
+              <Button
+                variant="contained"
+                color="warning"
+                size="small"
+                startIcon={<CalendarTodayIcon fontSize="small" />}
+                onClick={() => setIsCreatePeriodOpen(true)}
+              >
+                Novo Ciclo Acadêmico
+              </Button>
+            </Box>
+
+            {/* Listagem de Ciclos Acadêmicos Cadastrados */}
+            <Grid container spacing={3}>
+              {isLoadingPeriods ? (
+                <Box
+                  sx={{
+                    p: 4,
+                    display: "flex",
+                    justifyContent: "center",
+                    width: "100%",
+                  }}
+                >
+                  <CircularProgress size={32} />
+                </Box>
+              ) : periods.length === 0 ? (
+                <Grid size={{ xs: 12 }}>
+                  <Paper sx={{ p: 4, textAlign: "center" }} variant="outlined">
+                    <Typography variant="body1" color="text.secondary">
+                      Nenhum ciclo acadêmico cadastrado até o momento.
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ) : (
+                periods.map((p) => (
+                  <Grid key={p.id} size={{ xs: 12, md: 6 }}>
+                    <Card variant="outlined">
+                      <CardContent sx={{ p: 3 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 1.5,
+                          }}
+                        >
+                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                            {p.name}
+                          </Typography>
+                          <Chip
+                            label={p.status || "ATIVO"}
+                            color="success"
+                            size="small"
+                            sx={{ fontWeight: 700 }}
+                          />
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 2 }}
+                        >
+                          Período:{" "}
+                          {new Date(p.startDate).toLocaleDateString("pt-BR")}{" "}
+                          até {new Date(p.endDate).toLocaleDateString("pt-BR")}
+                        </Typography>
+                        <Box
+                          sx={{
+                            p: 2,
+                            bgcolor: "background.default",
+                            borderRadius: 1,
+                            display: "flex",
+                            justify: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontWeight: 700 }}
+                          >
+                            META GLOBAL DE ARTIGOS
+                          </Typography>
+                          <Typography
+                            variant="h6"
+                            color="warning.main"
+                            sx={{ fontWeight: 800 }}
+                          >
+                            {p.targetArticlesCount} Artigos Concluídos
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))
+              )}
+            </Grid>
+          </Box>
+        )}
+
+        {/* SEÇÃO 2: ARTIGOS INSTITUCIONAIS */}
+        {activeSection === 2 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             <Box
               sx={{
@@ -765,11 +715,11 @@ export const ManagerDashboardPage = () => {
                   Artigos Científicos Institucionais
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Visão abrangente de todos os artigos em andamento e submetidos.
+                  Visão abrangente de todos os artigos em andamento e
+                  submetidos.
                 </Typography>
               </Box>
 
-              {/* Ação contextualizada da Seção Artigos (Novo Artigo) */}
               <Button
                 variant="contained"
                 color="primary"
@@ -813,8 +763,8 @@ export const ManagerDashboardPage = () => {
           </Box>
         )}
 
-        {/* SEÇÃO 2: GESTÃO DE EQUIPES */}
-        {activeSection === 2 && (
+        {/* SEÇÃO 3: GESTÃO DE EQUIPES */}
+        {activeSection === 3 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             <Box
               sx={{
@@ -830,18 +780,21 @@ export const ManagerDashboardPage = () => {
                   Gestão de Equipes & Laboratórios
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Cadastre equipes, vincule pesquisadores e nomeie coordenadores.
+                  Cadastre equipes, atribua cotas de publicação, vincule
+                  pesquisadores e nomeie coordenadores.
                 </Typography>
               </Box>
 
-              {/* Ações contextualizadas da Seção Gestão de Equipes */}
               <Box sx={{ display: "flex", gap: 1.5 }}>
                 <Button
                   variant="contained"
                   color="warning"
                   size="small"
                   startIcon={<GroupsIcon fontSize="small" />}
-                  onClick={() => setIsCreateTeamOpen(true)}
+                  onClick={() => {
+                    setManagingTeam(null);
+                    setIsManageTeamOpen(true);
+                  }}
                 >
                   {TEAM_MANAGEMENT_LABELS.NEW_TEAM_BUTTON}
                 </Button>
@@ -981,20 +934,9 @@ export const ManagerDashboardPage = () => {
         onClose={() => setIsCreatePeriodOpen(false)}
       />
 
-      <CreateTeamModal
-        open={isCreateTeamOpen}
-        onClose={() => setIsCreateTeamOpen(false)}
-      />
-
       <CreateUserModal
         open={isCreateUserOpen}
         onClose={() => setIsCreateUserOpen(false)}
-      />
-
-      <SetTeamGoalModal
-        open={isSetGoalOpen}
-        onClose={() => setIsSetGoalOpen(false)}
-        defaultPeriodId={selectedPeriod}
       />
 
       <CreateProjectModal
@@ -1002,10 +944,13 @@ export const ManagerDashboardPage = () => {
         onClose={() => setIsCreateProjectOpen(false)}
       />
 
-      {/* Modal Unificado com Abas MUI de Gestão de Equipe & Membros */}
+      {/* Modal Unificado com Abas MUI de Gestão de Equipe (Criação & Edição) */}
       <ManageTeamModal
-        open={Boolean(managingTeam)}
-        onClose={() => setManagingTeam(null)}
+        open={isManageTeamOpen}
+        onClose={() => {
+          setIsManageTeamOpen(false);
+          setManagingTeam(null);
+        }}
         team={managingTeam}
       />
     </Box>

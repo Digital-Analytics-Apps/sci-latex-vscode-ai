@@ -4,7 +4,8 @@ import { prisma } from '../db/prisma';
 export interface CreateTeamData {
   name: string;
   description?: string;
-  coordinatorId: string;
+  coordinatorId?: string;
+  coordinatorEmail?: string;
   managerId?: string;
 }
 
@@ -12,6 +13,7 @@ export interface UpdateTeamData {
   name?: string;
   description?: string;
   coordinatorId?: string;
+  coordinatorEmail?: string;
   managerId?: string;
 }
 
@@ -29,15 +31,22 @@ export interface ITeamsRepository {
 
 export class PrismaTeamsRepository implements ITeamsRepository {
   async create(data: CreateTeamData): Promise<Team> {
+    const coordinatorId = data.coordinatorId;
+    if (!coordinatorId) {
+      throw new Error('COORDINATOR_ID_REQUIRED');
+    }
+
     return prisma.team.create({
       data: {
         name: data.name,
         description: data.description,
-        coordinatorId: data.coordinatorId,
-        managerId: data.managerId,
+        coordinator: {
+          connect: { id: coordinatorId },
+        },
+        ...(data.managerId ? { manager: { connect: { id: data.managerId } } } : {}),
         members: {
           create: {
-            userId: data.coordinatorId,
+            userId: coordinatorId,
             role: Role.COORDINATOR,
           },
         },

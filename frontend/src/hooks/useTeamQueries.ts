@@ -58,10 +58,16 @@ export function useDeleteTeamMutation() {
 export function useAddTeamMemberMutation(teamId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (userId: string) => teamsService.addMember(teamId, userId),
+    mutationFn: (payload: { userId: string; role?: string } | string) => {
+      if (typeof payload === "string") {
+        return teamsService.addMember(teamId, payload);
+      }
+      return teamsService.addMember(teamId, payload.userId, payload.role);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       queryClient.invalidateQueries({ queryKey: ["team", teamId] });
+      queryClient.invalidateQueries({ queryKey: ["manager-dashboard"] });
     },
   });
 }

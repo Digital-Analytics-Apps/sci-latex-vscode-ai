@@ -1,5 +1,6 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import FlagIcon from "@mui/icons-material/Flag";
 import GroupIcon from "@mui/icons-material/Group";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import StarIcon from "@mui/icons-material/Star";
@@ -30,13 +31,19 @@ import {
 import type { SyntheticEvent } from "react";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
 import { Role } from "../../../constants/roles";
 import {
   MEMBER_ROLE_COLORS,
   MEMBER_ROLE_LABELS,
 } from "../../../constants/teams";
 import {
+  useAcademicPeriods,
+  useSetTeamGoalMutation,
+} from "../../../hooks/useManagementQueries";
+import {
   useAddTeamMemberMutation,
+  useCreateTeamMutation,
   useDeleteTeamMutation,
   useRemoveTeamMemberMutation,
   useTeamDetailsQuery,
@@ -59,92 +66,157 @@ export const ManageTeamModal = ({
   team,
 }: ManageTeamModalProps) => {
   const dispatch = useDispatch();
-  const teamId = team?.id || "";
+
+  // Estado para equipe recém-criada (modo criação que transiciona para edição)
+  const [createdTeam, setCreatedTeam] = useState<TeamItem | null>(null);
+  const activeTeam = team || createdTeam;
+  const activeTeamId = activeTeam?.id || "";
+  const isEditMode = Boolean(activeTeam?.id);
 
   // React Query Hooks
   const { data: teamDetails, isLoading: isLoadingDetails } =
-    useTeamDetailsQuery(teamId);
+    useTeamDetailsQuery(activeTeamId);
+  const { data: periods } = useAcademicPeriods();
+  const createTeamMutation = useCreateTeamMutation();
   const updateTeamMutation = useUpdateTeamMutation();
   const deleteTeamMutation = useDeleteTeamMutation();
-  const addMemberMutation = useAddTeamMemberMutation(teamId);
-  const removeMemberMutation = useRemoveTeamMemberMutation(teamId);
+  const addMemberMutation = useAddTeamMemberMutation(activeTeamId);
+  const removeMemberMutation = useRemoveTeamMemberMutation(activeTeamId);
+  const setTeamGoalMutation = useSetTeamGoalMutation();
 
   // Tab State
   const [tabIndex, setTabIndex] = useState(0);
 
-  // Form State para Aba 0: Dados da Equipe
+  // Form State para Aba 0: Dados da Equipe (Unificado em um único estado)
   const [prevTeamId, setPrevTeamId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [coordinatorEmail, setCoordinatorEmail] = useState("");
+  const [teamForm, setTeamForm] = useState({
+    name: "",
+    coordinatorId: "",
+    coordinatorEmail: "",
+  });
 
   // Estado para Aba 1: Busca e Adição de Membros
   const [search, setSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>(Role.AUTHOR);
   const { data: searchResults } = useUserSearchQuery(search);
 
-  // Sincronização de estado derivada do time sem useEffect setState
-  const activeTeam = teamDetails || team;
+  // Estado para Aba 2: Cotas da Equipe
+  const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [targetArticles, setTargetArticles] = useState<number>(5);
+
+  // Sincronização de estado derivada do time prop
   if (team && team.id !== prevTeamId) {
     setPrevTeamId(team.id);
-    setName(team.name || "");
-    setCoordinatorEmail(team.coordinator?.email || "");
+    setCreatedTeam(null);
+    setTeamForm({
+      name: team.name || "",
+      coordinatorId: team.coordinator?.id || "",
+      coordinatorEmail: team.coordinator?.email || "",
+    });
   } else if (!team && prevTeamId !== null) {
     setPrevTeamId(null);
-    setName("");
-    setCoordinatorEmail("");
+    setCreatedTeam(null);
+    setTeamForm({
+      name: "",
+      coordinatorId: "",
+      coordinatorEmail: "",
+    });
+    setTabIndex(0);
   }
 
-  const currentMembers = activeTeam?.members || [];
+  const currentTeam = teamDetails || activeTeam;
+  const currentMembers = currentTeam?.members || [];
 
-  // Handler de Atualização da Equipe (Aba 0)
-  const handleUpdateTeam = async (e: SyntheticEvent) => {
+  // Reset local state ao fechar o modal
+  const handleCloseModal = () => {
+    setCreatedTeam(null);
+    setPrevTeamId(null);
+    setTeamForm({
+      name: "",
+      coordinatorId: "",
+      coordinatorEmail: "",
+    });
+    setTabIndex(0);
+    onClose();
+  };
+
+  // Handler de Criação / Atualização da Equipe (Aba 0)
+  const handleSaveTeam = async (e: SyntheticEvent) => {
     e.preventDefault();
-    if (!team || !name.trim()) return;
+    if (!teamForm.name.trim()) return;
 
-    try {
-      await updateTeamMutation.mutateAsync({
-        id: team.id,
-        data: {
-          name: name.trim(),
-          coordinatorEmail: coordinatorEmail.trim() || undefined,
-        },
-      });
-      dispatch(
-        showNotification({
-          message: `Dados da equipe "${name}" salvos com sucesso!`,
-          severity: "success",
-        }),
-      );
-    } catch {
-      dispatch(
-        showNotification({
-          message: "Erro ao atualizar dados da equipe.",
-          severity: "error",
-        }),
-      );
+    if (isEditMode && activeTeam) {
+      // Atualização de Equipe Existente
+      try {
+        await updateTeamMutation.mutateAsync({
+          id: activeTeam.id,
+          data: {
+            name: teamForm.name.trim(),
+            coordinatorId: teamForm.coordinatorId || undefined,
+            coordinatorEmail: teamForm.coordinatorEmail.trim() || undefined,
+          },
+        });
+        dispatch(
+          showNotification({
+            message: `Dados da equipe "${teamForm.name}" salvos com sucesso!`,
+            severity: "success",
+          }),
+        );
+      } catch {
+        dispatch(
+          showNotification({
+            message: "Erro ao atualizar dados da equipe.",
+            severity: "error",
+          }),
+        );
+      }
+    } else {
+      // Criação de Nova Equipe
+      try {
+        const newTeam = await createTeamMutation.mutateAsync({
+          name: teamForm.name.trim(),
+          coordinatorId: teamForm.coordinatorId || undefined,
+          coordinatorEmail: teamForm.coordinatorEmail.trim() || undefined,
+        });
+        setCreatedTeam(newTeam);
+        dispatch(
+          showNotification({
+            message: `Nova Equipe "${teamForm.name}" cadastrada com sucesso! Você já pode adicionar integrantes e definir cotas.`,
+            severity: "success",
+          }),
+        );
+        setTabIndex(1); // Auto avança para a Aba de Integrantes
+      } catch {
+        dispatch(
+          showNotification({
+            message: "Erro ao cadastrar equipe de pesquisa.",
+            severity: "error",
+          }),
+        );
+      }
     }
   };
 
   // Handler de Exclusão da Equipe (Aba 0)
   const handleDeleteTeam = async () => {
-    if (!team) return;
+    if (!activeTeam) return;
     if (
       !window.confirm(
-        `Tem certeza que deseja excluir a equipe "${team.name}"?`,
+        `Tem certeza que deseja excluir a equipe "${activeTeam.name}"?`,
       )
     ) {
       return;
     }
 
     try {
-      await deleteTeamMutation.mutateAsync(team.id);
+      await deleteTeamMutation.mutateAsync(activeTeam.id);
       dispatch(
         showNotification({
-          message: `Equipe "${team.name}" excluída com sucesso.`,
+          message: `Equipe "${activeTeam.name}" excluída com sucesso.`,
           severity: "success",
         }),
       );
-      onClose();
+      handleCloseModal();
     } catch {
       dispatch(
         showNotification({
@@ -157,12 +229,15 @@ export const ManageTeamModal = ({
 
   // Handler para Adicionar Membro com Função (Aba 1)
   const handleAddMember = async (user: UserMemberItem) => {
+    if (!activeTeamId) return;
     try {
-      await addMemberMutation.mutateAsync(user.id);
-      // Se for selecionado como Coordenador, atualiza a equipe também
-      if (selectedRole === Role.COORDINATOR && team) {
+      await addMemberMutation.mutateAsync({
+        userId: user.id,
+        role: selectedRole,
+      });
+      if (selectedRole === Role.COORDINATOR) {
         await updateTeamMutation.mutateAsync({
-          id: team.id,
+          id: activeTeamId,
           data: { coordinatorEmail: user.email },
         });
       }
@@ -186,11 +261,12 @@ export const ManageTeamModal = ({
 
   // Handler para Remover Membro (Aba 1)
   const handleRemoveMember = async (userId: string, userName: string) => {
+    if (!activeTeamId) return;
     try {
       await removeMemberMutation.mutateAsync(userId);
       dispatch(
         showNotification({
-          message: `${userName} removido(a) da equipe.`,
+          message: `${userName} foi removido(a) da equipe.`,
           severity: "info",
         }),
       );
@@ -204,25 +280,29 @@ export const ManageTeamModal = ({
     }
   };
 
-  // Handler para Promover Membro a Coordenador
-  const handlePromoteToCoordinator = async (userEmail: string, userName: string) => {
-    if (!team) return;
+  // Handler para Definir Cota da Equipe (Aba 2)
+  const handleSetTeamGoal = async (e: SyntheticEvent) => {
+    e.preventDefault();
+    if (!activeTeamId) return;
+    const activePeriodId = selectedPeriodId || periods?.[0]?.id;
+    if (!activePeriodId) return;
+
     try {
-      await updateTeamMutation.mutateAsync({
-        id: team.id,
-        data: { coordinatorEmail: userEmail },
+      await setTeamGoalMutation.mutateAsync({
+        academicPeriodId: activePeriodId,
+        teamId: activeTeamId,
+        targetArticles: Number(targetArticles),
       });
-      setCoordinatorEmail(userEmail);
       dispatch(
         showNotification({
-          message: `${userName} promovido(a) a Coordenador Responsável da equipe!`,
+          message: `Cota de ${targetArticles} artigos atribuída à equipe!`,
           severity: "success",
         }),
       );
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao promover coordenador.",
+          message: "Erro ao atribuir cota da equipe.",
           severity: "error",
         }),
       );
@@ -230,7 +310,7 @@ export const ManageTeamModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleCloseModal} maxWidth="sm" fullWidth>
       <DialogTitle
         sx={{
           pb: 1,
@@ -241,7 +321,9 @@ export const ManageTeamModal = ({
         }}
       >
         <GroupIcon color="warning" />
-        {activeTeam ? `Gerenciar: ${activeTeam.name}` : "Gerenciar Equipe"}
+        {isEditMode
+          ? `Gerenciar: ${currentTeam?.name || teamForm.name}`
+          : "Nova Equipe de Pesquisa"}
       </DialogTitle>
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
@@ -253,73 +335,108 @@ export const ManageTeamModal = ({
           <Tab
             icon={<EditIcon fontSize="small" />}
             iconPosition="start"
-            label="Dados Gerais"
+            label={isEditMode ? "Dados Gerais" : "Criar Equipe"}
           />
           <Tab
             icon={<PersonAddIcon fontSize="small" />}
             iconPosition="start"
-            label={`Integrantes (${currentMembers.length})`}
+            label={
+              isEditMode
+                ? `Integrantes (${currentMembers.length})`
+                : "Integrantes"
+            }
+            disabled={!isEditMode}
+          />
+          <Tab
+            icon={<FlagIcon fontSize="small" />}
+            iconPosition="start"
+            label="Cota da Equipe"
+            disabled={!isEditMode}
           />
         </Tabs>
       </Box>
 
       <DialogContent dividers sx={{ p: 3 }}>
-        {/* ABA 0: DADOS GERAIS DA EQUIPE */}
+        {/* ABA 0: DADOS GERAIS / CRIAÇÃO DA EQUIPE */}
         {tabIndex === 0 && (
-          <form id="update-team-form" onSubmit={handleUpdateTeam}>
+          <form id="save-team-form" onSubmit={handleSaveTeam}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
               <Typography variant="body2" color="text.secondary">
-                Atualize o nome do laboratório/equipe e o e-mail do
-                Coordenador responsável.
+                {isEditMode
+                  ? "Atualize o nome do laboratório/equipe e o Coordenador responsável."
+                  : "Cadastre uma nova equipe de pesquisa e atribua o Coordenador responsável."}
               </Typography>
 
               <TextField
                 required
                 fullWidth
                 label="Nome da Equipe / Laboratório"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Laboratório de Robótica & IA"
+                value={teamForm.name}
+                onChange={(e) =>
+                  setTeamForm((prev) => ({ ...prev, name: e.target.value }))
+                }
               />
 
-              <TextField
-                fullWidth
-                type="email"
-                label="E-mail do Coordenador Responsável"
-                value={coordinatorEmail}
-                onChange={(e) => setCoordinatorEmail(e.target.value)}
-                helperText="O Coordenador é o responsável pela aprovação interna e submissão dos artigos"
+              <UserSearchAutocomplete
+                value={teamForm.coordinatorEmail}
+                onChange={(email, user) => {
+                  setTeamForm((prev) => ({
+                    ...prev,
+                    coordinatorEmail: email,
+                    coordinatorId: user?.id || "",
+                  }));
+                }}
+                allowedRoles={["COORDINATOR", "MANAGER", "ADMIN"]}
+                label="Coordenador Responsável"
+                placeholder="Buscar por nome ou e-mail..."
+                helperText="Selecione um pesquisador cadastrado na lista de sugestões"
               />
+
+              {!isEditMode && (
+                <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600, mt: -1 }}>
+                  💡 Dica: Após cadastrar os dados iniciais, o modal liberará automaticamente as abas de Integrantes e Cotas.
+                </Typography>
+              )}
 
               <Box
                 sx={{
                   pt: 2,
                   display: "flex",
-                  justify: "space-between",
+                  justifyContent: isEditMode ? "space-between" : "flex-end",
                   alignItems: "center",
                   borderTop: "1px dashed",
                   borderColor: "divider",
                 }}
               >
-                <Button
-                  color="error"
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DeleteIcon fontSize="small" />}
-                  onClick={handleDeleteTeam}
-                  disabled={deleteTeamMutation.isPending}
-                >
-                  Excluir Equipe
-                </Button>
+                {isEditMode && (
+                  <Button
+                    color="error"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<DeleteIcon fontSize="small" />}
+                    onClick={handleDeleteTeam}
+                    disabled={deleteTeamMutation.isPending}
+                  >
+                    Excluir Equipe
+                  </Button>
+                )}
 
                 <Button
                   type="submit"
                   variant="contained"
                   color="warning"
-                  disabled={updateTeamMutation.isPending}
+                  disabled={
+                    updateTeamMutation.isPending || createTeamMutation.isPending
+                  }
                 >
-                  {updateTeamMutation.isPending
-                    ? "Salvando..."
-                    : "Salvar Alterações"}
+                  {isEditMode
+                    ? updateTeamMutation.isPending
+                      ? "Salvando..."
+                      : "Salvar Alterações"
+                    : createTeamMutation.isPending
+                      ? "Cadastrando..."
+                      : "Cadastrar Equipe & Avançar"}
                 </Button>
               </Box>
             </Box>
@@ -329,121 +446,160 @@ export const ManageTeamModal = ({
         {/* ABA 1: INTEGRANTES & FUNÇÕES */}
         {tabIndex === 1 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-              ADICIONAR PESQUISADOR À EQUIPE
+            <Typography variant="caption" color="text.secondary">
+              Vincule pesquisadores ao laboratório e defina seu papel (Autor, Revisor de Par ou Coordenador).
             </Typography>
 
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Buscar por nome ou e-mail (mín. 3 caracteres)..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            {/* Form de Adição de Membros */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: "action.hover",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Adicionar Integrante à Equipe
+              </Typography>
 
-              <FormControl size="small" sx={{ minWidth: 160 }}>
-                <InputLabel>Função</InputLabel>
-                <Select
-                  value={selectedRole}
-                  label="Função"
-                  onChange={(e) => setSelectedRole(e.target.value)}
+              <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <UserSearchAutocomplete
+                    value={search}
+                    onChange={(val) => setSearch(val)}
+                    size="small"
+                    label="Buscar pesquisador (nome ou e-mail)"
+                    placeholder="Digite pelo menos 3 letras..."
+                  />
+                </Box>
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Função no Time</InputLabel>
+                  <Select
+                    value={selectedRole}
+                    label="Função no Time"
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                  >
+                    <MenuItem value={Role.AUTHOR}>Autor</MenuItem>
+                    <MenuItem value={Role.REVIEWER}>Revisor</MenuItem>
+                    <MenuItem value={Role.COORDINATOR}>Coordenador</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {/* Resultado da Busca */}
+              {searchResults && searchResults.length > 0 && (
+                <List
+                  dense
+                  sx={{
+                    bgcolor: "background.paper",
+                    borderRadius: 1,
+                    maxHeight: 180,
+                    overflow: "auto",
+                  }}
                 >
-                  <MenuItem value={Role.AUTHOR}>
-                    {MEMBER_ROLE_LABELS.AUTHOR}
-                  </MenuItem>
-                  <MenuItem value={Role.REVIEWER}>
-                    {MEMBER_ROLE_LABELS.REVIEWER}
-                  </MenuItem>
-                  <MenuItem value={Role.COORDINATOR}>
-                    {MEMBER_ROLE_LABELS.COORDINATOR}
-                  </MenuItem>
-                </Select>
-              </FormControl>
+                  {searchResults.map((u) => {
+                    const isMember = currentMembers.some(
+                      (m) => (m.userId || m.id) === u.id,
+                    );
+                    return (
+                      <ListItem
+                        key={u.id}
+                        secondaryAction={
+                          <Button
+                            size="small"
+                            variant="contained"
+                            disabled={isMember || addMemberMutation.isPending}
+                            onClick={() => handleAddMember(u)}
+                          >
+                            {isMember ? "Já Vinculado" : "Adicionar"}
+                          </Button>
+                        }
+                      >
+                        <ListItemAvatar>
+                          <Avatar sx={{ width: 28, height: 28 }}>
+                            {u.name.charAt(0)}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={u.name}
+                          secondary={`${u.email} • ${u.role}`}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              )}
             </Box>
 
-            {/* Resultados da Busca em Tempo Real */}
-            {search.trim() && searchResults && searchResults.length > 0 && (
-              <List
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  maxHeight: 180,
-                  overflow: "auto",
-                  bgcolor: "background.paper",
-                }}
-              >
-                {searchResults.map((user: UserMemberItem) => (
-                  <ListItem
-                    key={user.id}
-                    secondaryAction={
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<PersonAddIcon fontSize="small" />}
-                        onClick={() => handleAddMember(user)}
-                      >
-                        Adicionar
-                      </Button>
-                    }
-                  >
-                    <ListItemAvatar>
-                      <Avatar sx={{ width: 28, height: 28, fontSize: "0.75rem" }}>
-                        {user.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={user.name}
-                      secondary={user.email}
-                      slotProps={{
-                        primary: { variant: "body2", sx: { fontWeight: 600 } },
-                        secondary: { variant: "caption" },
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            )}
-
-            {/* Lista de Membros Atuais */}
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mt: 1 }}>
-              INTEGRANTES DA EQUIPE ({currentMembers.length})
+            {/* Lista Atual de Integrantes da Equipe */}
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 700, mt: 1, mb: -1 }}
+            >
+              Integrantes Atuais ({currentMembers.length})
             </Typography>
 
             {isLoadingDetails ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-                <CircularProgress size={28} />
+                <CircularProgress size={24} />
               </Box>
+            ) : currentMembers.length === 0 ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontStyle: "italic", py: 2 }}
+              >
+                Nenhum integrante vinculado a esta equipe ainda.
+              </Typography>
             ) : (
-              <List sx={{ maxHeight: 260, overflow: "auto" }}>
+              <List dense sx={{ width: "100%" }}>
                 {currentMembers.map((m) => {
-                  const u = m.user;
+                  const u = m.user || (m as any);
+                  const memberRole = (m as any).role || u?.role;
                   const isCoordinator =
-                    u?.id === activeTeam?.coordinatorId ||
-                    u?.email === activeTeam?.coordinator?.email;
+                    currentTeam?.coordinator?.email === u?.email ||
+                    memberRole === Role.COORDINATOR;
+                  const roleLabel = isCoordinator
+                    ? "Coordenador"
+                    : MEMBER_ROLE_LABELS[
+                        memberRole as keyof typeof MEMBER_ROLE_LABELS
+                      ] || "Membro";
 
                   return (
                     <ListItem
-                      key={m.id || u?.id}
+                      key={m.id || u.id}
+                      divider
                       secondaryAction={
-                        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
-                          {!isCoordinator && u?.email && u?.name && (
-                            <Button
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          {!isCoordinator && (
+                            <IconButton
                               size="small"
+                              title="Promover a Coordenador"
                               color="warning"
-                              startIcon={<StarIcon fontSize="small" />}
-                              onClick={() =>
-                                handlePromoteToCoordinator(u.email!, u.name!)
-                              }
+                              onClick={async () => {
+                                if (!activeTeamId) return;
+                                await updateTeamMutation.mutateAsync({
+                                  id: activeTeamId,
+                                  data: { coordinatorEmail: u.email },
+                                });
+                                dispatch(
+                                  showNotification({
+                                    message: `${u.name} agora é o(a) Coordenador(a) responsável!`,
+                                    severity: "success",
+                                  }),
+                                );
+                              }}
                             >
-                              Coordenar
-                            </Button>
+                              <StarIcon fontSize="small" />
+                            </IconButton>
                           )}
                           {!isCoordinator && (
                             <IconButton
-                              edge="end"
                               size="small"
+                              title="Remover da Equipe"
                               color="error"
                               onClick={() =>
                                 handleRemoveMember(
@@ -466,37 +622,30 @@ export const ManageTeamModal = ({
                       <ListItemText
                         primary={
                           <Box
-                            sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
                           >
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 600 }}
+                            >
                               {u?.name}
                             </Typography>
-                            {isCoordinator ? (
-                              <Chip
-                                label="Coordenador"
-                                size="small"
-                                color={MEMBER_ROLE_COLORS.COORDINATOR}
-                                sx={{ height: 18, fontSize: 10, fontWeight: 700 }}
-                              />
-                            ) : (
-                              <Chip
-                                label={
-                                  MEMBER_ROLE_LABELS[
-                                    (u?.role as keyof typeof MEMBER_ROLE_LABELS) ||
-                                      "AUTHOR"
-                                  ]
-                                }
-                                size="small"
-                                color={
-                                  MEMBER_ROLE_COLORS[
-                                    (u?.role as keyof typeof MEMBER_ROLE_COLORS) ||
-                                      "AUTHOR"
-                                  ]
-                                }
-                                variant="outlined"
-                                sx={{ height: 18, fontSize: 10 }}
-                              />
-                            )}
+                            <Chip
+                              label={roleLabel}
+                              size="small"
+                              variant="outlined"
+                              color={
+                                isCoordinator
+                                  ? "warning"
+                                  : MEMBER_ROLE_COLORS[
+                                      memberRole as keyof typeof MEMBER_ROLE_COLORS
+                                    ] || "default"
+                              }
+                            />
                           </Box>
                         }
                         secondary={u?.email}
@@ -508,10 +657,61 @@ export const ManageTeamModal = ({
             )}
           </Box>
         )}
+
+        {/* ABA 2: COTAS DA EQUIPE */}
+        {tabIndex === 2 && (
+          <form id="team-goal-form" onSubmit={handleSetTeamGoal}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Defina a meta/cota de artigos científicos a serem produzidos por este laboratório no Ciclo Acadêmico ativo.
+              </Typography>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Ciclo Acadêmico</InputLabel>
+                <Select
+                  value={selectedPeriodId || periods?.[0]?.id || ""}
+                  label="Ciclo Acadêmico"
+                  onChange={(e) => setSelectedPeriodId(e.target.value)}
+                >
+                  {periods?.map((p) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      {p.name} ({new Date(p.startDate).getFullYear()})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                required
+                fullWidth
+                type="number"
+                label="Cota de Artigos Científicos"
+                placeholder="Ex: 8"
+                value={targetArticles}
+                onChange={(e) => setTargetArticles(Number(e.target.value))}
+                slotProps={{ htmlInput: { min: 1, max: 100 } }}
+                helperText="Meta de artigos a serem submetidos nesta vigência acadêmica"
+              />
+
+              <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 2 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="warning"
+                  disabled={setTeamGoalMutation.isPending}
+                >
+                  {setTeamGoalMutation.isPending
+                    ? "Atribuindo..."
+                    : "Atribuir Cota à Equipe"}
+                </Button>
+              </Box>
+            </Box>
+          </form>
+        )}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} variant="outlined">
+        <Button onClick={handleCloseModal} color="inherit">
           Concluir
         </Button>
       </DialogActions>
