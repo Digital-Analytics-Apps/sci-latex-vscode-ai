@@ -1,5 +1,6 @@
 import type {
   AcademicPeriod,
+  ManagerDashboardData,
   ManagerMetrics,
   TeamAcademicGoal,
 } from "../types/academic-period.types";
@@ -7,13 +8,14 @@ import { api } from "./api";
 
 export type {
   AcademicPeriod,
+  ManagerDashboardData,
+  ManagerDashboardTeamSummary,
   ManagerMetrics,
   TeamAcademicGoal,
-  TeamDeadlineItem,
 } from "../types/academic-period.types";
 
 const ACADEMIC_PERIODS_URL = "/academic-periods";
-const MANAGER_REPORTS_URL = "/reports/manager";
+const DASHBOARD_MANAGER_URL = "/dashboard/manager";
 const TASKS_URL = "/tasks";
 
 export const managementService = {
@@ -22,7 +24,7 @@ export const managementService = {
     const response = await api.get(ACADEMIC_PERIODS_URL, {
       params: { managerId },
     });
-    return response.data;
+    return response.data.academicPeriods || response.data || [];
   },
 
   // Criar novo ciclo acadêmico com meta global de artigos
@@ -34,7 +36,7 @@ export const managementService = {
     managerId?: string;
   }): Promise<AcademicPeriod> {
     const response = await api.post(ACADEMIC_PERIODS_URL, data);
-    return response.data;
+    return response.data.academicPeriod || response.data;
   },
 
   // Definir ou atualizar cota/meta de artigos para um laboratório/time específico
@@ -50,7 +52,7 @@ export const managementService = {
         targetArticles: data.targetArticles,
       },
     );
-    return response.data;
+    return response.data.teamGoal || response.data;
   },
 
   // Obter cotas distribuídas por time para um período acadêmico
@@ -60,13 +62,24 @@ export const managementService = {
     const response = await api.get(
       `${ACADEMIC_PERIODS_URL}/${academicPeriodId}/goals`,
     );
+    return response.data.teamGoals || response.data || [];
+  },
+
+  // Buscar o dashboard consolidado do Gerente no backend (Prisma)
+  async getManagerDashboard(filters?: {
+    academicPeriodId?: string;
+    teamId?: string;
+  }): Promise<ManagerDashboardData> {
+    const response = await api.get(DASHBOARD_MANAGER_URL, {
+      params: filters,
+    });
     return response.data;
   },
 
-  // Buscar as métricas do Gerente filtradas por Período Acadêmico
+  // Buscar as métricas do Gerente filtradas por Período Acadêmico (fallback/legacy)
   async getManagerMetrics(periodId?: string): Promise<ManagerMetrics> {
-    const response = await api.get(MANAGER_REPORTS_URL, {
-      params: { periodId },
+    const response = await api.get(DASHBOARD_MANAGER_URL, {
+      params: { academicPeriodId: periodId },
     });
     return response.data;
   },

@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -20,14 +21,15 @@ import type { GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { useUpdateDeadlineMutation } from "../../hooks/useManagementQueries";
-import { showNotification } from "../../store/slices/notificationSlice";
-
 import { DeadlineStatusChip } from "../../components/common/StatusChips";
+import { useUpdateDeadlineMutation } from "../../hooks/useManagementQueries";
+import { useProjectsList } from "../../hooks/useProjectQueries";
+import { showNotification } from "../../store/slices/notificationSlice";
 
 export const CoordinatorDashboardPage: React.FC = () => {
   const dispatch = useDispatch();
   const updateDeadlineMutation = useUpdateDeadlineMutation();
+  const { data: projects, isLoading } = useProjectsList();
 
   const [selectedTask, setSelectedTask] = useState<{
     id: string;
@@ -36,32 +38,33 @@ export const CoordinatorDashboardPage: React.FC = () => {
   } | null>(null);
   const [newDate, setNewDate] = useState<string>("");
 
-  const mockTeamMatrix = [
-    {
-      id: "task-1",
-      projectName: "Metodologia Científica em Redes Neutras",
-      taskTitle: "Tarefa 1 - Introdução",
-      authorName: "autor1@sci-latex.org",
-      dueDate: "2026-10-01",
-      status: "ON_TIME" as const,
-    },
-    {
-      id: "task-2",
-      projectName: "Metodologia Científica em Redes Neutras",
-      taskTitle: "Tarefa 2 - Resultados Experimentais",
-      authorName: "autor2@sci-latex.org",
-      dueDate: "2026-09-10",
-      status: "WARNING_SOON" as const,
-    },
-    {
-      id: "task-3",
-      projectName: "Otimização de Compiladores TeX isolados",
-      taskTitle: "Tarefa 3 - Arquitetura de Containers",
-      authorName: "autor3@sci-latex.org",
-      dueDate: "2026-09-01",
-      status: "OVERDUE" as const,
-    },
-  ];
+  const teamMatrixRows = React.useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+
+    const rows: Array<{
+      id: string;
+      projectName: string;
+      taskTitle: string;
+      authorName: string;
+      dueDate: string;
+      status: "ON_TIME" | "WARNING_SOON" | "OVERDUE";
+    }> = [];
+
+    projects.forEach((proj) => {
+      rows.push({
+        id: `proj-${proj.id}`,
+        projectName: proj.name || "Artigo Científico",
+        taskTitle: "Estrutura do LaTeX & Conteúdo",
+        authorName: proj.team?.name || "Equipe de Pesquisa",
+        dueDate: proj.targetConferenceDate
+          ? new Date(proj.targetConferenceDate).toISOString().split("T")[0]
+          : "2026-12-31",
+        status: "ON_TIME",
+      });
+    });
+
+    return rows;
+  }, [projects]);
 
   const handleOpenEditModal = (task: {
     id: string;
@@ -195,7 +198,7 @@ export const CoordinatorDashboardPage: React.FC = () => {
         </Box>
         <Chip
           icon={<GroupsIcon fontSize="small" />}
-          label="Equipe: Inteligência Artificial"
+          label="Painel de Coordenador"
           color="info"
           sx={{ fontWeight: 700 }}
         />
@@ -204,33 +207,46 @@ export const CoordinatorDashboardPage: React.FC = () => {
       <Card variant="outlined">
         <CardContent sx={{ p: 0 }}>
           <Box sx={{ width: "100%", minHeight: 320 }}>
-            <DataGrid
-              rows={mockTeamMatrix}
-              columns={columns}
-              getRowId={(row) => row.id}
-              rowHeight={56}
-              pageSizeOptions={[5, 10, 25]}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 5, page: 0 },
-                },
-              }}
-              disableRowSelectionOnClick
-              localeText={
-                ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
-              }
-              sx={{
-                border: "none",
-                "& .MuiDataGrid-columnHeaders": {
-                  bgcolor: "action.hover",
-                  fontWeight: 700,
-                },
-                "& .MuiDataGrid-cell": {
+            {isLoading ? (
+              <Box
+                sx={{
                   display: "flex",
+                  justifyContent: "center",
                   alignItems: "center",
-                },
-              }}
-            />
+                  p: 6,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : (
+              <DataGrid
+                rows={teamMatrixRows}
+                columns={columns}
+                getRowId={(row) => row.id}
+                rowHeight={56}
+                pageSizeOptions={[5, 10, 25]}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 5, page: 0 },
+                  },
+                }}
+                disableRowSelectionOnClick
+                localeText={
+                  ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
+                }
+                sx={{
+                  border: "none",
+                  "& .MuiDataGrid-columnHeaders": {
+                    bgcolor: "action.hover",
+                    fontWeight: 700,
+                  },
+                  "& .MuiDataGrid-cell": {
+                    display: "flex",
+                    alignItems: "center",
+                  },
+                }}
+              />
+            )}
           </Box>
         </CardContent>
       </Card>

@@ -21,6 +21,7 @@ import { AddMemberModal } from "../workspace/AddMemberModal";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateTaskModal } from "../workspace/CreateTaskModal";
 import { ReleaseCandidatesModal } from "../workspace/ReleaseCandidatesModal";
+import { ManagerDashboardPage } from "../manager/ManagerDashboardPage";
 import { AuthorDashboard } from "./components/AuthorDashboard";
 import { ManagementDashboard } from "./components/ManagementDashboard";
 
@@ -191,11 +192,14 @@ export const DashboardPage = () => {
       {/* Visão Adaptativa para REVISOR */}
       {user?.role === Role.REVIEWER && <ReviewsListPage />}
 
-      {/* Visão Adaptativa para COORDENADOR, GERENTE e ADMIN */}
-      {(user?.role === Role.COORDINATOR ||
-        user?.role === Role.MANAGER ||
-        user?.role === Role.ADMIN) && (
+      {/* Visão Adaptativa para COORDENADOR */}
+      {user?.role === Role.COORDINATOR && (
         <ManagementDashboard userRole={user?.role} />
+      )}
+
+      {/* Visão Adaptativa para GERENTE e ADMIN */}
+      {(user?.role === Role.MANAGER || user?.role === Role.ADMIN) && (
+        <ManagerDashboardPage />
       )}
 
       {/* Modais Globais de Gestão */}

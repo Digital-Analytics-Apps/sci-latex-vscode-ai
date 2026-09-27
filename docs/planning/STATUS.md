@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 27 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Bloco 6 (Governança de Domínio, Ciclos Acadêmicos & Gatekeepers)** Concluído com Sucesso. 100% dos testes passando e 0 erros de compilação.
+**Status Geral do Projeto:** 🟢 **Visão do Gerente & Gestão Completa de Equipes (CRUD de Equipes, Membros e Cotas)** Concluído com Sucesso. 100% dos testes passando e 0 erros de compilação.
 
 ---
 
@@ -12,25 +12,27 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-* **Últimas Implementações Finalizadas (Bloco 6 Complete):**
-  * **Modelo de Banco de Dados Prisma (`schema.prisma`):**
-    * Adicionados campos `targetArticlesCount`, `status`, `managerId` em `AcademicPeriod`.
-    * Criados os modelos `TeamAcademicGoal` (cotas por laboratório/equipe) e `ProjectStage` (etapas flexíveis de escrita com suporte a travas de `isGatekeeper` e `gatekeeperType`: NIT e TARGET_CONFERENCE).
-    * Adicionada a relação `stageId` no modelo `Task`.
-    * Executada a migração do banco com `npx prisma db push` e `npx prisma generate`.
-  * **REST APIs no Backend (`backend/src/modules/`):**
-    * **Períodos Acadêmicos & Cotas:** Implementados endpoints `POST /api/v1/academic-periods/:id/goals` e `GET /api/v1/academic-periods/:id/goals` com suporte a filtro por `managerId`.
-    * **Etapas Flexíveis de Projeto:** Implementados endpoints `GET/POST/PATCH/DELETE /api/v1/projects/:projectId/stages` em `ProjectStagesController` e `ProjectStagesService`.
-    * **Validação Estrita de Gatekeepers:**
-      * Gatekeeper 1 (NIT): Bloqueia ativação/aprovação do NIT se houver etapas de conteúdo pendentes (`< 100%`).
-      * Gatekeeper 2 (Congresso Alvo): Bloqueia submissão ao congresso se o parecer do NIT não estiver aprovado (`COMPLETED`).
-    * **Testes de Integração & Unidade:** Criados `project-stages.service.test.ts` e `academic-periods.service.test.ts` (18/18 arquivos de teste aprovados, 61/61 suítes de testes passando no backend).
-  * **Interface ReactJS no Frontend (`frontend/src/`):**
-    * **Régua de Timeline Paralela (`<ArticleTimelineHeader />`):** Exibe a barra horizontal de progresso paralelo de etapas e gatekeepers com badges de status e botões de ação ("Concluir", "Iniciar").
-    * **Badges de Trava de Governança (`<GatekeeperLockBadge />`):** Exibe o status das travas do NIT (`🔒 NIT: Trava Ativa`, `⏳ Em Análise`, `✅ Parecer Favorável`) e do Congresso Alvo com tooltips explicativos.
-    * **Atribuição de Etapa em Tarefas (`CreateTaskModal.tsx`):** Adicionado o campo `<Select>` para o autor associar a nova tarefa a uma etapa específica do artigo.
-    * **Métricas do Gerente (`ManagementDashboard.tsx`):** Adicionado o card de progresso de Metas do Ciclo Acadêmico (artigos concluídos/submetidos vs meta global).
-  * **Status dos Testes & Build:** Backend com 18/18 arquivos e 61 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc -b`). Build de produção do frontend compilado com **sucesso** (`npm run build`). Padronização completa de enums (`PeriodStatus`, `StageStatus`, `TaskStatus`, `Role`) e tipos compartilhados em `frontend/src/types/`.
+* **Últimas Implementações Finalizadas (Gestão do Gerente / Manager Persona Complete):**
+  * **Tipagem Centralizada (`frontend/src/types/`):**
+    * Criado `team.types.ts` (`TeamItem`, `TeamMemberItem`, `CreateTeamInput`, `UpdateTeamInput`).
+    * Refatorado `academic-period.types.ts` substituindo objetos inline por `UserSimple` centralizado.
+    * Garantida eliminação total de anotações `React.FC` em todos os componentes React.
+  * **Serviços & Hooks de Equipe (`frontend/src/services/` e `frontend/src/hooks/`):**
+    * Atualizado `teamsService.ts` com métodos CRUD completos (`getTeams`, `getTeamById`, `createTeam`, `updateTeam`, `deleteTeam`, `addMember`, `removeMember`).
+    * Criado hook `useTeamQueries.ts` com React Query mutations para criação, atualização, exclusão e gerenciamento de membros com invalidação automática de cache.
+    * Corrigida desserialização de `managementService.ts` para desempacotar `academicPeriods` com fallback seguro.
+  * **Componentes & Modais da Persona Gerente (`frontend/src/features/manager/`):**
+    * Criado modal de criação de ciclos acadêmicos (`CreateAcademicPeriodModal.tsx`).
+    * Criado modal de criação de equipes (`CreateTeamModal.tsx`).
+    * Criado modal de edição de equipes (`EditTeamModal.tsx`).
+    * Criado modal de definição de cotas por equipe (`SetTeamGoalModal.tsx`).
+    * Criada gaveta lateral de gestão de pesquisadores/membros (`TeamMembersDrawer.tsx`) com busca em tempo real e adição/remoção de integrantes.
+    * Reformulado `ManagerDashboardPage.tsx` em uma Central de Comando Multi-Aba:
+      * **Aba 1 (Equipes & Cotas):** Métricas operacionais e taxa de cumprimento por laboratório.
+      * **Aba 2 (Artigos Institucionais):** Visão global de artigos científicos e status de governança.
+      * **Aba 3 (Gestão de Equipes):** Tabela DataGrid com CRUD completo (Editar, Excluir, Adicionar Membros) e ações rápidas no cabeçalho.
+    * Atualizado `DashboardPage.tsx` para rotear diretamente `MANAGER` e `ADMIN` para a visão do gerente (`ManagerDashboardPage`).
+  * **Status dos Testes & Build:** Backend com 18/18 arquivos e 61 suítes de testes passando (100% ok). TypeScript no backend e frontend com **0 erros** (`npx tsc -b`). Build de produção do frontend compilado com **sucesso** (`npm run build`). Padronização completa com Prettier (`npm run format`).
 
 ---
 

@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -16,7 +17,13 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
+import {
+  useCreateRCMutation,
+  usePublishReleaseMutation,
+  useReleaseCandidatesQuery,
+} from "../../hooks/useReleaseQueries";
 import { showNotification } from "../../store/slices/notificationSlice";
+import type { ReleaseCandidateItem } from "../../types/release-candidate.types";
 
 interface ReleaseCandidatesModalProps {
   open: boolean;
@@ -27,41 +34,30 @@ interface ReleaseCandidatesModalProps {
 export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
   open,
   onClose,
-  projectId: _projectId,
+  projectId,
 }) => {
   const dispatch = useDispatch();
   const [feedbackNotes, setFeedbackNotes] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const mockRCs = [
-    {
-      id: "rc-1",
-      versionTag: "RC-1",
-      status: "CHANGES_REQUESTED",
-      feedback:
-        "Ajustar formato da Tabela 2 e adicionar mais 2 referências de 2026.",
-      createdAt: "2026-09-08",
-    },
-    {
-      id: "rc-2",
-      versionTag: "RC-2",
-      status: "APPROVED",
-      feedback: "Artigo aprovado pelo Revisor Técnico! Pronto para submissão.",
-      createdAt: "2026-09-10",
-    },
-  ];
+  const { data: releaseCandidates, isLoading } =
+    useReleaseCandidatesQuery(projectId);
+  const createRCMutation = useCreateRCMutation(projectId);
+  const publishReleaseMutation = usePublishReleaseMutation(projectId);
 
-  const handleCreateRC = () => {
-    setIsSubmitting(true);
+  const handleCreateRC = async () => {
     try {
+      await createRCMutation.mutateAsync({
+        feedbackNotes: feedbackNotes || undefined,
+      });
+
       dispatch(
         showNotification({
           message:
-            "Nova Release Candidate (RC-3) gerada e submetida ao Revisor Técnico!",
+            "Nova Release Candidate (RC) gerada e submetida ao Revisor Técnico!",
           severity: "success",
         }),
       );
-      onClose();
+      setFeedbackNotes("");
     } catch {
       dispatch(
         showNotification({
@@ -69,19 +65,27 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
           severity: "error",
         }),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handlePublishRelease = () => {
-    dispatch(
-      showNotification({
-        message: "Release Oficial v1.0 publicada na branch main com sucesso!",
-        severity: "success",
-      }),
-    );
-    onClose();
+  const handlePublishRelease = async () => {
+    try {
+      await publishReleaseMutation.mutateAsync();
+      dispatch(
+        showNotification({
+          message: "Release Oficial publicada com sucesso!",
+          severity: "success",
+        }),
+      );
+      onClose();
+    } catch {
+      dispatch(
+        showNotification({
+          message: "Erro ao publicar Release Oficial.",
+          severity: "error",
+        }),
+      );
+    }
   };
 
   return (
@@ -110,40 +114,54 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
               Histórico de Release Candidates (RCs)
             </Typography>
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-              {mockRCs.map((rc) => (
-                <Paper key={rc.id} variant="outlined" sx={{ p: 2 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: 1,
-                    }}
-                  >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      {rc.versionTag}
+            {isLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : !releaseCandidates || releaseCandidates.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                Nenhuma Release Candidate gerada para este artigo até o momento.
+              </Typography>
+            ) : (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                {releaseCandidates.map((rc: ReleaseCandidateItem) => (
+                  <Paper key={rc.id} variant="outlined" sx={{ p: 2 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mb: 1,
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {rc.versionTag}
+                      </Typography>
+                      <Chip
+                        label={rc.status}
+                        size="small"
+                        color={rc.status === "APPROVED" ? "success" : "warning"}
+
+                        sx={{ fontWeight: 600 }}
+                      />
+                    </Box>
+                    {rc.feedback && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1 }}
+                      >
+                        Parecer do Revisor: {rc.feedback}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      Submetido em:{" "}
+                      {new Date(rc.createdAt).toLocaleDateString("pt-BR")}
                     </Typography>
-                    <Chip
-                      label={rc.status}
-                      size="small"
-                      color={rc.status === "APPROVED" ? "success" : "warning"}
-                      sx={{ fontWeight: 600 }}
-                    />
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
-                  >
-                    Parecer do Revisor: {rc.feedback}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Submetido em: {rc.createdAt}
-                  </Typography>
-                </Paper>
-              ))}
-            </Box>
+                  </Paper>
+                ))}
+              </Box>
+            )}
           </Box>
 
           <Divider />
@@ -169,7 +187,7 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
               size="small"
               startIcon={<SendIcon />}
               onClick={handleCreateRC}
-              disabled={isSubmitting}
+              disabled={createRCMutation.isPending}
             >
               Gerar RC e Enviar ao Revisor
             </Button>
@@ -186,6 +204,7 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
           color="success"
           startIcon={<PublishIcon />}
           onClick={handlePublishRelease}
+          disabled={publishReleaseMutation.isPending}
         >
           Publicar Release Oficial (v1.0 na Main)
         </Button>

@@ -11,12 +11,12 @@ export interface UserMemberItem {
   id: string;
   name: string;
   email: string;
-  role: Role | string;
+  role: Role;
 }
 
 export interface ProjectMember {
   id?: string;
   userId?: string;
-  role?: Role | string;
+  role?: Role;
   user?: UserSimple;
 }

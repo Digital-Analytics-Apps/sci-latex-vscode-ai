@@ -1,4 +1,5 @@
-import type { DeadlineStatus, PeriodStatus } from "../constants/status";
+import type { PeriodStatus } from "../constants/status";
+import type { UserSimple } from "./user.types";
 
 export interface TeamAcademicGoal {
   id: string;
@@ -30,11 +31,33 @@ export interface ManagerMetrics {
   academicPeriodTargetCount?: number;
 }
 
-export interface TeamDeadlineItem {
-  id: string;
-  projectName: string;
-  taskTitle: string;
-  authorName: string;
-  dueDate: string;
-  status: DeadlineStatus;
+export interface ManagerDashboardTeamSummary {
+  teamId: string;
+  teamName: string;
+  coordinator: UserSimple | null;
+  totalProjects: number;
+  publishedCount: number;
+}
+
+export interface ManagerDashboardData {
+  overview: {
+    totalProjects: number;
+    publishedProjects: number;
+    inReviewProjects: number;
+    submittedProjects: number;
+    rejectedProjects: number;
+  };
+  deadlines: {
+    onTimeCount: number;
+    warningSoonCount: number;
+    overdueCount: number;
+  };
+  teams: ManagerDashboardTeamSummary[];
+  recentActivity: Array<{
+    id: string;
+    action: string;
+    timestamp: string;
+    user: UserSimple | null;
+    details?: unknown;
+  }>;
 }

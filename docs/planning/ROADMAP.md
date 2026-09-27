@@ -96,16 +96,16 @@
 
 ## 🔴 Bloco 6: Governança de Domínio, Ciclos Acadêmicos, Etapas Paralelas & Gatekeepers (NIT e Congresso)
 
-- [ ] **6.1 Atualização de Modelos Prisma (`schema.prisma`)**
+- [x] **6.1 Atualização de Modelos Prisma (`schema.prisma`)**
   - *Descrição*: Adicionar modelo `TeamAcademicGoal` (cotas por time), modelo `ProjectStage` (etapas flexíveis e gatekeepers) e relacionamento `Task -> stageId`. Executar migração do Prisma.
-- [ ] **6.2 Endpoints REST de Gestão do Ciclo Acadêmico e Cotas (`/api/v1/academic-periods`)**
+- [x] **6.2 Endpoints REST de Gestão do Ciclo Acadêmico e Cotas (`/api/v1/academic-periods`)**
   - *Descrição*: Criar endpoints para cadastro de Ciclo Acadêmico com Meta Global, atribuição de cotas aos times (`TeamAcademicGoal`) e consulta de progresso com over-achievement.
-- [ ] **6.3 Endpoints REST de Etapas do Artigo & Timeline (`/api/v1/projects/:id/stages`)**
+- [x] **6.3 Endpoints REST de Etapas do Artigo & Timeline (`/api/v1/projects/:id/stages`)**
   - *Descrição*: Criar endpoints para listagem, criação, edição e ordenação de etapas flexíveis (`ProjectStage`) com vinculação de tarefas (`Task`).
-- [ ] **6.4 Validação de Trava nos Gatekeepers (NIT e Congresso) no Backend**
+- [x] **6.4 Validação de Trava nos Gatekeepers (NIT e Congresso) no Backend**
   - *Descrição*: Aplicar regra de trava em `ProjectsService`: rejeitar solicitações de NIT se houver etapas de escrita pendentes (< 100%), e rejeitar submissão ao congresso se o NIT não estiver aprovado (`APPROVED_NIT`).
-- [ ] **6.5 Interface Frontend da Régua de Timeline Paralela e Badges de Trava (`🔒 LOCKED`)**
+- [x] **6.5 Interface Frontend da Régua de Timeline Paralela e Badges de Trava (`🔒 LOCKED`)**
   - *Descrição*: Desenvolver componentes `<ArticleTimelineHeader />`, `<GatekeeperLockBadge />` e seletor de etapa no `<CreateTaskModal />`, integrando ao `AuthorDashboard.tsx` e `ManagementDashboard.tsx`.
-- [ ] **6.6 Painel de Analítico de Gargalos e Desempenho de Metas**
+- [x] **6.6 Painel de Analítico de Gargalos e Desempenho de Metas**
   - *Descrição*: Desenvolver no `ManagementDashboard.tsx` os relatórios visuais de gargalos por etapa e avanço de metas em relação ao Ciclo Acadêmico ativo.
 
