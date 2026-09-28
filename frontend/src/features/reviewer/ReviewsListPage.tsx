@@ -36,11 +36,11 @@ import {
   usePendingReviews,
 } from "../../hooks/useReviewQueries";
 import { useUrlFilters } from "../../hooks/useUrlFilters";
+import { createDateColumn } from "../../components/common/dataGridColumns";
 import {
   AuthorCell,
   ProjectCell,
   ReviewActionCell,
-  SentDateCell,
   SubmissionTitleCell,
 } from "./components/ReviewDataGridCells";
 
@@ -236,13 +236,12 @@ export const ReviewsListPage = () => {
         minWidth: 200,
         renderCell: (params) => <AuthorCell row={params.row} />,
       },
-      {
+      createDateColumn({
         field: "createdAt",
         headerName: "Data de Envio",
         flex: 1,
         minWidth: 160,
-        renderCell: (params) => <SentDateCell row={params.row} />,
-      },
+      }),
       {
         field: "status",
         headerName: "Status PR",

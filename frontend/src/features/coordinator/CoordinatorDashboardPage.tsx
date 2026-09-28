@@ -21,12 +21,16 @@ import type { GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
+import {
+  createBoldColumn,
+  createDateColumn,
+} from "../../components/common/dataGridColumns";
 import { DeadlineStatusChip } from "../../components/common/StatusChips";
 import { useUpdateDeadlineMutation } from "../../hooks/useManagementQueries";
 import { useProjectsList } from "../../hooks/useProjectQueries";
 import { showNotification } from "../../store/slices/notificationSlice";
 
-export const CoordinatorDashboardPage: React.FC = () => {
+export const CoordinatorDashboardPage = () => {
   const dispatch = useDispatch();
   const updateDeadlineMutation = useUpdateDeadlineMutation();
   const { data: projects, isLoading } = useProjectsList();
@@ -103,17 +107,12 @@ export const CoordinatorDashboardPage: React.FC = () => {
 
   const columns = React.useMemo<GridColDef[]>(
     () => [
-      {
+      createBoldColumn({
         field: "projectName",
         headerName: "Projeto / Artigo",
         flex: 1.5,
         minWidth: 220,
-        renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {params.value}
-          </Typography>
-        ),
-      },
+      }),
       {
         field: "taskTitle",
         headerName: "Seção do LaTeX",
@@ -126,17 +125,12 @@ export const CoordinatorDashboardPage: React.FC = () => {
         flex: 1.2,
         minWidth: 180,
       },
-      {
+      createDateColumn({
         field: "dueDate",
         headerName: "Data Limite",
         flex: 1,
         minWidth: 130,
-        renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {params.value}
-          </Typography>
-        ),
-      },
+      }),
       {
         field: "status",
         headerName: "Indicador de Prazo",

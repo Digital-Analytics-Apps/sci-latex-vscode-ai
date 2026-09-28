@@ -285,7 +285,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                  Revisor Técnico (Instância NIT):
+                  Revisor Técnico / Revisor de Par:
                 </Typography>
                 <UserSearchAutocomplete
                   value={reviewerSearchText}
@@ -293,9 +293,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                     setReviewerSearchText(email);
                     setSelectedReviewer(user || null);
                   }}
-                  allowedRoles={["REVIEWER"]}
                   size="small"
-                  label="Pesquisar Revisor Técnico (mín. 3 letras)"
+                  label="Pesquisar Revisor Técnico"
                   placeholder="Digite nome ou e-mail..."
                 />
               </Box>

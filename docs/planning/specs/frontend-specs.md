@@ -1,7 +1,7 @@
 # Especificação Técnica do Frontend (ReactJS + Redux Toolkit + TanStack Query)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-22  
+**Última Atualização:** 2026-09-27  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -14,7 +14,7 @@ O frontend é desenvolvido em **ReactJS + TypeScript**, utilizando **Redux Toolk
 src/
 ├── assets/                 # Logotipos, ícones e fontes
 ├── components/             # Componentes genéricos e reutilizáveis de UI
-│   └── common/             # GenericDataGrid (AutoSizer), StatusChips (PR/NIT/Deadline), Selectors e Cards
+│   └── common/             # GenericDataGrid (AutoSizer), dataGridColumns, StatusChips (PR/NIT/Deadline), Selectors e Cards
 ├── constants/              # Fontes únicas da verdade para tipos/enumerações (status.ts, roles.ts)
 ├── features/               # Módulos Funcionais e Telas por Domínio
 │   ├── auth/               # Página de Login e componente de Proteção de Rota (RBAC)

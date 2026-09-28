@@ -97,7 +97,6 @@ export const ManageTeamModal = ({
 
   // Estado para Aba 1: Busca e Adição de Membros
   const [search, setSearch] = useState("");
-  const [selectedRole, setSelectedRole] = useState<string>(Role.AUTHOR);
   const { data: searchResults } = useUserSearchQuery(search);
 
   // Estado para Aba 2: Cotas da Equipe
@@ -227,24 +226,18 @@ export const ManageTeamModal = ({
     }
   };
 
-  // Handler para Adicionar Membro com Função (Aba 1)
+  // Handler para Adicionar Pesquisador à Equipe (Aba 1)
   const handleAddMember = async (user: UserMemberItem) => {
     if (!activeTeamId) return;
     try {
       await addMemberMutation.mutateAsync({
         userId: user.id,
-        role: selectedRole,
+        role: Role.AUTHOR,
       });
-      if (selectedRole === Role.COORDINATOR) {
-        await updateTeamMutation.mutateAsync({
-          id: activeTeamId,
-          data: { coordinatorEmail: user.email },
-        });
-      }
 
       dispatch(
         showNotification({
-          message: `${user.name} adicionado(a) como ${MEMBER_ROLE_LABELS[selectedRole as keyof typeof MEMBER_ROLE_LABELS] || selectedRole}!`,
+          message: `${user.name} adicionado(a) como Pesquisador(a) à equipe!`,
           severity: "success",
         }),
       );
@@ -443,11 +436,11 @@ export const ManageTeamModal = ({
           </form>
         )}
 
-        {/* ABA 1: INTEGRANTES & FUNÇÕES */}
+        {/* ABA 1: INTEGRANTES & PESQUISADORES */}
         {tabIndex === 1 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              Vincule pesquisadores ao laboratório e defina seu papel (Autor, Revisor de Par ou Coordenador).
+              Vincule pesquisadores e colaboradores à equipe do laboratório.
             </Typography>
 
             {/* Form de Adição de Membros */}
@@ -462,31 +455,24 @@ export const ManageTeamModal = ({
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                Adicionar Integrante à Equipe
+                Adicionar Pesquisador à Equipe
               </Typography>
 
               <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
                 <Box sx={{ flex: 1, minWidth: 200 }}>
                   <UserSearchAutocomplete
                     value={search}
-                    onChange={(val) => setSearch(val)}
+                    onChange={(val, user) => {
+                      setSearch(val);
+                      if (user) {
+                        handleAddMember(user);
+                      }
+                    }}
                     size="small"
                     label="Buscar pesquisador (nome ou e-mail)"
-                    placeholder="Digite pelo menos 3 letras..."
+                    placeholder="Digite para pesquisar..."
                   />
                 </Box>
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel>Função no Time</InputLabel>
-                  <Select
-                    value={selectedRole}
-                    label="Função no Time"
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                  >
-                    <MenuItem value={Role.AUTHOR}>Autor</MenuItem>
-                    <MenuItem value={Role.REVIEWER}>Revisor</MenuItem>
-                    <MenuItem value={Role.COORDINATOR}>Coordenador</MenuItem>
-                  </Select>
-                </FormControl>
               </Box>
 
               {/* Resultado da Busca */}

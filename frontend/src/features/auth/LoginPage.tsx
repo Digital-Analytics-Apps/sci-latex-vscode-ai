@@ -8,11 +8,9 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   CircularProgress,
   Container,
   IconButton,
-  Paper,
   TextField,
   Tooltip,
   Typography,
@@ -25,6 +23,7 @@ import { type LoginFormData, loginSchema } from "../../schemas/auth.schema";
 import { api } from "../../services/api";
 import { setCredentials } from "../../store/slices/authSlice";
 import { useColorMode } from "../../theme";
+import { SciLatexAnimatedLogo } from "./components/SciLatexAnimatedLogo";
 
 export const LoginPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -36,7 +35,6 @@ export const LoginPage: React.FC = () => {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -66,11 +64,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const fillQuickDemo = (email: string) => {
-    setValue("email", email);
-    setValue("password", "Password123!");
-  };
-
   return (
     <Box
       sx={{
@@ -82,6 +75,7 @@ export const LoginPage: React.FC = () => {
         position: "relative",
         overflow: "hidden",
         px: 2,
+        py: 4,
       }}
     >
       <Box
@@ -90,10 +84,10 @@ export const LoginPage: React.FC = () => {
           top: "-15%",
           left: "50%",
           transform: "translateX(-50%)",
-          width: "600px",
-          height: "600px",
+          width: "750px",
+          height: "750px",
           background:
-            "radial-gradient(circle, rgba(16,185,129,0.15) 0%, rgba(0,0,0,0) 70%)",
+            "radial-gradient(circle, rgba(16,185,129,0.18) 0%, rgba(0,0,0,0) 70%)",
           pointerEvents: "none",
         }}
       />
@@ -106,164 +100,187 @@ export const LoginPage: React.FC = () => {
         </Tooltip>
       </Box>
 
-      <Container maxWidth="xs">
+      <Container maxWidth="lg" sx={{ maxWidth: "1140px !important" }}>
         <Card
           variant="outlined"
           sx={{
-            p: 1,
-            backdropFilter: "blur(12px)",
+            p: { xs: 3, sm: 5, md: 6 },
+            backdropFilter: "blur(18px)",
             borderColor: "divider",
+            borderRadius: 5,
             bgcolor:
               mode === "dark"
-                ? "rgba(17, 24, 39, 0.85)"
-                : "rgba(255, 255, 255, 0.95)",
+                ? "rgba(17, 24, 39, 0.90)"
+                : "rgba(255, 255, 255, 0.97)",
+            boxShadow:
+              mode === "dark"
+                ? "0 30px 60px -15px rgba(0, 0, 0, 0.7)"
+                : "0 30px 60px -15px rgba(0, 0, 0, 0.09)",
           }}
         >
-          <CardContent>
-            <Box sx={{ textAlign: "center", mb: 3 }}>
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 1,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: 4,
-                  bgcolor:
-                    mode === "dark"
-                      ? "rgba(16, 185, 129, 0.12)"
-                      : "rgba(5, 150, 105, 0.1)",
-                  color: "primary.main",
-                  mb: 1.5,
-                }}
-              >
-                <AutoAwesomeIcon sx={{ fontSize: 16 }} />
-                <Typography variant="overline" sx={{ fontWeight: 700 }}>
-                  SCI-LaTeX Web Platform
-                </Typography>
-              </Box>
-              <Typography
-                variant="h2"
-                component="h1"
-                gutterBottom
-                sx={{ fontWeight: 700 }}
-              >
-                Escrita Científica Self-Hosted
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Entre com suas credenciais para acessar o workspace acadêmico.
-              </Typography>
-            </Box>
-
-            {errorMessage && (
-              <Alert severity="error" sx={{ mb: 2, fontSize: "0.8rem" }}>
-                {errorMessage}
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <Box sx={{ mb: 2 }}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ mb: 0.5, fontWeight: 600 }}
-                >
-                  E-mail institucional
-                </Typography>
-                <TextField
-                  fullWidth
-                  placeholder="usuario@universidade.edu"
-                  {...register("email")}
-                  error={Boolean(errors.email)}
-                  helperText={errors.email?.message}
-                />
-              </Box>
-
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ mb: 0.5, fontWeight: 600 }}
-                >
-                  Senha de acesso
-                </Typography>
-                <TextField
-                  fullWidth
-                  type="password"
-                  placeholder="••••••••"
-                  {...register("password")}
-                  error={Boolean(errors.password)}
-                  helperText={errors.password?.message}
-                />
-              </Box>
-
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                fullWidth
-                disabled={loading}
-                sx={{ py: 1.2, fontWeight: 600 }}
-              >
-                {loading ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  "Entrar no Sistema"
-                )}
-              </Button>
-            </form>
-
-            <Paper
-              variant="outlined"
+          <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+            <Box
               sx={{
-                mt: 3,
-                p: 1.5,
-                bgcolor:
-                  mode === "dark"
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(0,0,0,0.02)",
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                alignItems: "center",
+                gap: { xs: 5, md: 7 },
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 1 }}
+              {/* LADO ESQUERDO: Logo Animada + Centralizada + Texto */}
+              <Box
+                sx={{
+                  flex: 1.15,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  textAlign: "center",
+                  pr: { md: 4 },
+                }}
               >
-                Selecione um perfil de teste:
-              </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                <Chip
-                  label="Autor"
-                  size="small"
-                  clickable
-                  color="primary"
-                  variant="outlined"
-                  onClick={() => fillQuickDemo("author@sci-latex.org")}
-                />
-                <Chip
-                  label="Revisor"
-                  size="small"
-                  clickable
-                  color="secondary"
-                  variant="outlined"
-                  onClick={() => fillQuickDemo("reviewer@sci-latex.org")}
-                />
-                <Chip
-                  label="Coordenador"
-                  size="small"
-                  clickable
-                  color="info"
-                  variant="outlined"
-                  onClick={() => fillQuickDemo("coordinator@sci-latex.org")}
-                />
-                <Chip
-                  label="Gerente"
-                  size="small"
-                  clickable
-                  color="warning"
-                  variant="outlined"
-                  onClick={() => fillQuickDemo("manager@sci-latex.org")}
-                />
+                <Box sx={{ mb: 2 }}>
+                  <SciLatexAnimatedLogo size={340} mode={mode} />
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 1,
+                    px: 2,
+                    py: 0.6,
+                    borderRadius: 4,
+                    bgcolor:
+                      mode === "dark"
+                        ? "rgba(16, 185, 129, 0.12)"
+                        : "rgba(5, 150, 105, 0.1)",
+                    color: "primary.main",
+                    mb: 2,
+                  }}
+                >
+                  <AutoAwesomeIcon sx={{ fontSize: 18 }} />
+                  <Typography
+                    variant="overline"
+                    sx={{ fontWeight: 700, letterSpacing: 1 }}
+                  >
+                    SCI-LaTeX Web Platform
+                  </Typography>
+                </Box>
+
+                <Typography
+                  variant="h3"
+                  component="h1"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: "1.85rem", md: "1.8rem" },
+                    lineHeight: 1.25,
+                  }}
+                >
+                  Escrita Científica Self-Hosted
+                </Typography>
+
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ lineHeight: 1.6, maxWidth: 460, fontSize: "1rem" }}
+                >
+                  Plataforma integrada de alta performance para escrita
+                  acadêmica em LaTeX, auditoria de projetos científicos e gestão
+                  colaborativa de artigos e revisões por pares.
+                </Typography>
               </Box>
-            </Paper>
+
+              {/* LADO DIREITO: Formulário de Autenticação */}
+              <Box
+                sx={{
+                  flex: 1,
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  pl: { md: 6 },
+                  borderLeft: { md: "1px solid" },
+                  borderColor: "divider",
+                }}
+              >
+                <Typography
+                  variant="h4"
+                  component="h2"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 0.5,
+                    fontSize: { xs: "1.5rem", md: "1.75rem" },
+                  }}
+                >
+                  Acessar Conta
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
+                  Entre com suas credenciais institucionais.
+                </Typography>
+
+                {errorMessage && (
+                  <Alert severity="error" sx={{ mb: 2.5, fontSize: "0.85rem" }}>
+                    {errorMessage}
+                  </Alert>
+                )}
+
+                <form onSubmit={handleSubmit(onSubmit)}>
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 0.8, fontWeight: 600 }}
+                    >
+                      E-mail institucional
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="usuario@universidade.edu"
+                      {...register("email")}
+                      error={Boolean(errors.email)}
+                      helperText={errors.email?.message}
+                    />
+                  </Box>
+
+                  <Box sx={{ mb: 3.5 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 0.8, fontWeight: 600 }}
+                    >
+                      Senha de acesso
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      type="password"
+                      placeholder="••••••••"
+                      {...register("password")}
+                      error={Boolean(errors.password)}
+                      helperText={errors.password?.message}
+                    />
+                  </Box>
+
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    disabled={loading}
+                    sx={{ py: 1.4, fontWeight: 700, fontSize: "0.95rem" }}
+                  >
+                    {loading ? (
+                      <CircularProgress size={22} color="inherit" />
+                    ) : (
+                      "Entrar no Sistema"
+                    )}
+                  </Button>
+                </form>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
       </Container>

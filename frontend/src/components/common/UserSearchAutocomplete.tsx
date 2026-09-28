@@ -9,6 +9,7 @@ import {
 import { useMemo, useState } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useUserSearchQuery } from "../../hooks/useUserQueries";
+import { MEMBER_ROLE_LABELS } from "../../constants/teams";
 import type { UserMemberItem } from "../../types/user.types";
 
 function normalizeRoles(roles?: string[] | string): string[] {
@@ -201,7 +202,11 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
                 </Typography>
               </Box>
               <Chip
-                label={option.role}
+                label={
+                  MEMBER_ROLE_LABELS[
+                    option.role as keyof typeof MEMBER_ROLE_LABELS
+                  ] || option.role
+                }
                 size="small"
                 variant="outlined"
                 color={option.role === "COORDINATOR" ? "warning" : "default"}
@@ -308,7 +313,11 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
                 </Typography>
               </Box>
               <Chip
-                label={option.role}
+                label={
+                  MEMBER_ROLE_LABELS[
+                    option.role as keyof typeof MEMBER_ROLE_LABELS
+                  ] || option.role
+                }
                 size="small"
                 variant="outlined"
                 color={option.role === "COORDINATOR" ? "warning" : "default"}
@@ -402,7 +411,11 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
               </Typography>
             </Box>
             <Chip
-              label={option.role}
+              label={
+                MEMBER_ROLE_LABELS[
+                  option.role as keyof typeof MEMBER_ROLE_LABELS
+                ] || option.role
+              }
               size="small"
               variant="outlined"
               color={option.role === "COORDINATOR" ? "warning" : "default"}

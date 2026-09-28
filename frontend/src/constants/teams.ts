@@ -1,6 +1,6 @@
 export const MEMBER_ROLE_LABELS = {
-  AUTHOR: "Autor / Pesquisador",
-  REVIEWER: "Revisor Técnico",
+  AUTHOR: "Pesquisador / Integrante",
+  REVIEWER: "Revisor Técnico de Artigo",
   COORDINATOR: "Coordenador de Laboratório",
   MANAGER: "Gerente Institucional",
   ADMIN: "Administrador",

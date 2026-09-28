@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 27 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Persona Gerente: Central de Comando com Sidebar Nativa, Modal Tabulado MUI de Equipes (Dados, Integrantes, Cotas) e Cadastro de Usuários com Roles** Concluído com Sucesso. 100% dos testes passando e 0 erros de compilação.
+**Status Geral do Projeto:** 🟢 **Redesign da Tela de Login & Logo Vetorial Animada Interativa (Composição Radial em 360°, Marcadores Internos de Cronômetro e Efeito Explosão no Hover)** Concluído com Sucesso. 100% dos testes de compilação TypeScript e linting passando com 0 erros.
 
 ---
 
@@ -12,28 +12,22 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-* **Últimas Implementações Finalizadas na Sessão:**
-  * **Sidebar Nativa no Painel do Gerente (`ManagerDashboardPage.tsx`):**
-    * **Seção 0 (Home / Visão Geral):** Exibe exclusivamente os Cards de Métricas Executivas de Produção Científica (*Total de Artigos*, *Publicados com DOI*, *Em Avaliação Gatekeeper*, *Laboratórios Ativos*). **Tabela removida da Home**.
-    * **Seção 1 (Ciclos Acadêmicos):** Guia dedicada para acompanhamento e criação de Ciclos Acadêmicos (`CreateAcademicPeriodModal`), onde a meta global de artigos é definida. **Botão redundante "Definir Cotas" removido do header**.
-    * **Seção 2 (Artigos Institucionais):** Tabela DataGrid de artigos com status de governança e ação contextual "Novo Artigo".
-    * **Seção 3 (Gestão de Equipes):** Tabela DataGrid de equipes com KPIs dedicados e ações "Nova Equipe", "Cadastrar Membro" e "Gerenciar Equipe".
-  * **Unificação dos Modais de Equipes (`ManageTeamModal.tsx`):**
-    * **Modal Único (Criação + Edição):** Removido o arquivo redundante `CreateTeamModal.tsx`. Ao clicar em "Nova Equipe", o modal abre na Aba 0 para cadastro inicial. Ao salvar, transiciona dinamicamente para o modo edição liberando as abas de **Integrantes** e **Cotas** sem fechar o modal.
-    * **Busca Dinâmica de Coordenador (`UserSearchAutocomplete.tsx`):** Suporta modos simples e múltiplo (`multiple`), filtragem por papel (`allowedRoles`/`excludeRoles`) por nome ou e-mail com debounce de 300ms.
-    * **Aba 0 (Dados Gerais):** Nome do laboratório, e-mail/busca do Coordenador e Exclusão de equipe.
-    * **Aba 1 (Integrantes & Funções):** Busca em tempo real de pesquisadores (`useUserSearchQuery`), seleção de papel ao vincular (`Autor`, `Revisor`, `Coordenador`), chips de role e promoção a Coordenador Responsável.
-    * **Aba 2 (Cotas da Equipe):** Seleção do Ciclo Acadêmico e atribuição direta da cota/meta de artigos para o laboratório via `useSetTeamGoalMutation`.
-  * **Modal de Cadastro de Usuários com Seleção de Roles (`CreateUserModal.tsx`):**
-    * Permite cadastrar novos membros informando Nome, E-mail, Senha e Papel (`AUTHOR`, `REVIEWER`, `COORDINATOR`, `MANAGER`).
-  * **Constantes de Domínio (`frontend/src/constants/teams.ts`):**
-    * Mapeamentos de papéis (`MEMBER_ROLE_LABELS`), cores de chips (`MEMBER_ROLE_COLORS`) e rótulos de interface.
+  * **Redesign da Tela de Login (`LoginPage.tsx`):**
+    * **Layout Responsivo Split (2 Colunas):** Container centralizado de 1140px (`maxWidth="lg"`), alinhando a marca/logo animada à esquerda e o formulário de autenticação institucional à direita.
+    * **Remoção de Perfis de Teste:** Removida a seção demonstrativa de seleção rápida de contas de teste (`Paper` com "Selecione um perfil de teste").
+  * **Logo Vetorial Animada Interativa (`SciLatexAnimatedLogo.tsx` e `sci-latex-logo-animated.svg`):**
+    * **Renderização Inline Nativa:** O SVG animado foi incorporado como componente React nativo inline em [`SciLatexAnimatedLogo.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/auth/components/SciLatexAnimatedLogo.tsx), garantindo 100% de estabilidade de exibição em todos os navegadores.
+    * **Anel Orbital Cronômetro:** Anel transformado em círculo contínuo completo (`r=345`, `stroke-width=12`) com **12 marcadores/traços de horas 100% internos** (`y1=65` a `y2=85/95`) ao longo da borda interna da órbita.
+    * **Composição Equilibrada das Figuras:**
+      - **Papel Científico:** Centralizado no centro do círculo ($X=400, Y=400$).
+      - **Cérebro (IA):** Elevado para o topo do arco orbital.
+      - **Caneta de Redação:** Posicionada em posição de escrita sobre a folha, executando uma animação de escrita contínua (`penWriting`) acompanhada por um traço de rabisco azul desenhado dinamicamente (`penScribble`).
+      - **Figura do Relógio Secundário:** Removida para manter a composição minimalista e limpa.
+    * **Interatividade de Explosão Radial em 360°:** Ao passar o mouse (`isHovered`), todos os elementos expandem-se radialmente para fora em 360° e retornam suavemente com curva `cubic-bezier(0.34, 1.56, 0.64, 1)` ao retirar o cursor.
   * **Qualidade, Linter e Testes:**
-    * **`npx tsc -b`:** 0 erros.
-    * **`npm run lint:fix`:** 0 erros / 0 warnings.
-    * **`npm run build`:** Sucesso em 884ms.
-    * **`npm test` (Backend):** 18/18 arquivos de teste verdes (61/61 suítes ok).
-    * **Estado Git:** Modificações finais prontas no working tree (não comitadas conforme solicitado pelo usuário para revisão manual).
+    * **`npx tsc -b`:** 0 erros de compilação TypeScript.
+    * **`npm run lint:fix`:** 0 erros / 0 warnings no ESLint.
+    * **Estado Git:** Alterações no working tree mantidas prontas para commit / PR na próxima sessão.
 
 ---
 
