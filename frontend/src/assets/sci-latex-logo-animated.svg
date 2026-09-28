@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">SCI-LaTeX animated logo</title>
+  <desc id="desc">Logo for a scientific writing platform combining academic writing, AI, code editing and project management.</desc>
+
+  <defs>
+    <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16C7A0"/>
+      <stop offset="0.5" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#315EF5"/>
+    </linearGradient>
+    <linearGradient id="brainGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08A9F5"/>
+      <stop offset="1" stop-color="#5B35E8"/>
+    </linearGradient>
+    <linearGradient id="codeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B356F"/>
+      <stop offset="1" stop-color="#08224B"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-opacity=".14"/>
+    </filter>
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    .logo-root { transform-origin: 400px 400px; }
+    .orbit { transform-origin: 400px 400px; stroke-dasharray: 2200; stroke-dashoffset: 2200; animation: orbitDraw 2.2s ease-out forwards, orbitFloat 5s ease-in-out 2.2s infinite; }
+    .document { transform-origin: 500px 520px; animation: documentIn .8s cubic-bezier(.2,.8,.2,1) .35s both, documentFloat 4s ease-in-out 1.2s infinite; }
+    .brain { transform-origin: 405px 205px; animation: brainIn .75s cubic-bezier(.2,.9,.2,1) .75s both, brainPulse 3s ease-in-out 1.5s infinite; }
+    .brain-circuit { stroke-dasharray: 35; stroke-dashoffset: 35; animation: circuitDraw 1.2s ease-out 1.15s forwards, circuitGlow 3s ease-in-out 2.4s infinite; }
+    .code-window { transform-origin: 280px 540px; animation: codeIn .75s cubic-bezier(.2,.9,.2,1) .85s both, codeFloat 4.5s ease-in-out 1.6s infinite; }
+    .pen { transform-origin: 575px 585px; animation: penIn .7s cubic-bezier(.2,.9,.2,1) 1.1s both, penFloat 3.5s ease-in-out 1.8s infinite; }
+    .clock { transform-origin: 620px 360px; animation: clockIn .65s cubic-bezier(.2,.9,.2,1) 1.25s both, clockPulse 4s ease-in-out 2s infinite; }
+    .clock-hand { transform-origin: 620px 360px; animation: clockHands 14s linear 2s infinite; }
+    .tasks { transform-origin: 650px 510px; animation: tasksIn .7s cubic-bezier(.2,.9,.2,1) 1.35s both; }
+    .check1 { animation: checkIn .35s ease-out 1.9s both; }
+    .check2 { animation: checkIn .35s ease-out 2.15s both; }
+    .check3 { animation: checkIn .35s ease-out 2.4s both; }
+
+    @keyframes orbitDraw { to { stroke-dashoffset: 0; } }
+    @keyframes orbitFloat { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(2deg); } }
+    @keyframes documentIn { from { opacity:0; transform:translateY(28px) scale(.94); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes documentFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-5px); } }
+    @keyframes brainIn { from { opacity:0; transform:scale(.7); } to { opacity:1; transform:scale(1); } }
+    @keyframes brainPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.025); } }
+    @keyframes circuitDraw { to { stroke-dashoffset:0; } }
+    @keyframes circuitGlow { 0%,100% { filter:none; } 50% { filter:url(#softGlow); } }
+    @keyframes codeIn { from { opacity:0; transform:translateX(-30px) scale(.9); } to { opacity:1; transform:translateX(0) scale(1); } }
+    @keyframes codeFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+    @keyframes penIn { from { opacity:0; transform:translate(25px,25px) rotate(15deg); } to { opacity:1; transform:translate(0,0) rotate(0deg); } }
+    @keyframes penFloat { 0%,100% { transform:translate(0,0) rotate(0deg); } 50% { transform:translate(-3px,-5px) rotate(-2deg); } }
+    @keyframes clockIn { from { opacity:0; transform:scale(.65); } to { opacity:1; transform:scale(1); } }
+    @keyframes clockPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.035); } }
+    @keyframes clockHands { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+    @keyframes tasksIn { from { opacity:0; transform:translateX(25px) scale(.9); } to { opacity:1; transform:translateX(0) scale(1); } }
+    @keyframes checkIn { from { opacity:0; transform:scale(.4); } to { opacity:1; transform:scale(1); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+    }
+  </style>
+
+  <g class="logo-root">
+    <!-- Dynamic orbit: research + workflow -->
+    <circle class="orbit" cx="400" cy="400" r="345" fill="none" stroke="url(#arcGrad)" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- AI brain -->
+    <g transform="translate(0, -55)">
+      <g class="brain" filter="url(#shadow)">
+        <path d="M400 205
+                 C365 175 315 196 320 238
+                 C285 245 282 295 313 310
+                 C294 348 331 378 365 365
+                 C382 390 418 390 435 365
+                 C469 378 506 348 487 310
+                 C518 295 515 245 480 238
+                 C485 196 435 175 400 205Z" fill="url(#brainGrad)"/>
+        <path class="brain-circuit" d="M400 215 V350 M400 255 H360 V230 M400 280 H445 V245 M400 310 H355 V295 M400 330 H440 V315"
+              fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="#fff">
+          <circle cx="360" cy="230" r="8"/><circle cx="445" cy="245" r="8"/>
+          <circle cx="355" cy="295" r="8"/><circle cx="440" cy="315" r="8"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- Scientific document -->
+    <g class="document" filter="url(#shadow)">
+      <path d="M345 300 H505 L555 350 V650 H345 Z" fill="#fff"/>
+      <path d="M505 300 V350 H555" fill="#DCEAFF"/>
+      <path d="M505 300 L555 350 H505 Z" fill="#C9DDF7"/>
+      <rect x="375" y="375" width="115" height="13" rx="6" fill="#0B3F86"/>
+      <rect x="375" y="405" width="145" height="10" rx="5" fill="#9DB9D8"/>
+      <rect x="375" y="450" width="140" height="10" rx="5" fill="#AFC5DE"/>
+      <rect x="375" y="475" width="120" height="10" rx="5" fill="#AFC5DE"/>
+      <rect x="375" y="500" width="150" height="13" rx="6" fill="#0B3F86"/>
+      <rect x="375" y="530" width="125" height="10" rx="5" fill="#AFC5DE"/>
+      <rect x="375" y="555" width="95" height="10" rx="5" fill="#AFC5DE"/>
+      <rect x="375" y="580" width="135" height="10" rx="5" fill="#AFC5DE"/>
+    </g>
+
+    <!-- VS Code-style editor -->
+    <g class="code-window" filter="url(#shadow)">
+      <rect x="165" y="450" width="235" height="185" rx="22" fill="url(#codeGrad)"/>
+      <circle cx="195" cy="478" r="7" fill="#20A9F4"/>
+      <circle cx="218" cy="478" r="7" fill="#20A9F4"/>
+      <circle cx="241" cy="478" r="7" fill="#20A9F4"/>
+      <path d="M225 540 L285 585 L325 555 L285 525 L225 570" fill="none" stroke="#1697F3" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M285 525 V585" stroke="#1697F3" stroke-width="20" stroke-linecap="round"/>
+    </g>
+
+    <!-- Clock / time management -->
+    <g class="clock" filter="url(#shadow)">
+      <circle cx="620" cy="360" r="72" fill="#08A98F"/>
+      <circle cx="620" cy="360" r="57" fill="#E9FFFA"/>
+      <g class="clock-hand" stroke="#087D6D" stroke-width="10" stroke-linecap="round">
+        <path d="M620 360 V325"/>
+        <path d="M620 360 L648 377"/>
+      </g>
+      <circle cx="620" cy="360" r="7" fill="#087D6D"/>
+    </g>
+
+    <!-- Goals / tasks -->
+    <g class="tasks" filter="url(#shadow)">
+      <rect x="575" y="435" width="165" height="145" rx="20" fill="#10B98E"/>
+      <g fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+        <path class="check1" d="M595 470 L608 483 L630 458"/>
+        <path class="check2" d="M595 510 L608 523 L630 498"/>
+        <path class="check3" d="M595 550 L608 563 L630 538"/>
+      </g>
+      <g stroke="#D5FFF5" stroke-width="8" stroke-linecap="round">
+        <path d="M650 470 H710"/><path d="M650 510 H710"/><path d="M650 550 H710"/>
+      </g>
+    </g>
+
+    <!-- Writing / authoring pen -->
+    <g class="pen" filter="url(#shadow)">
+      <path d="M520 625 L585 545 L625 575 L560 655 Z" fill="#0A3D82"/>
+      <path d="M520 625 L500 665 L560 655 Z" fill="#0A3D82"/>
+      <path d="M585 545 L600 530 L640 560 L625 575 Z" fill="#1A74D8"/>
+      <path d="M500 665 L493 680 L520 674 Z" fill="#123F79"/>
+    </g>
+  </g>
+</svg>
