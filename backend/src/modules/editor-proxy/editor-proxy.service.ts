@@ -171,6 +171,129 @@ export class EditorProxyService {
     await execAsync(`chmod -R 777 "${targetDir}"`).catch(() => {});
   }
 
+  // Semeadura e injeção do arquivo de configuração (.vscode/settings.json) com base no perfil (author vs reviewer)
+  async ensureWorkspaceSettings(targetDir: string, mode?: string) {
+    const vscodeDir = path.join(targetDir, '.vscode');
+    const settingsPath = path.join(vscodeDir, 'settings.json');
+
+    try {
+      await fs.mkdir(vscodeDir, { recursive: true, mode: 0o777 });
+
+      const isReviewMode = mode === 'review';
+      const sourceSettingsFile = isReviewMode ? 'reviewer.settings.json' : 'author.settings.json';
+
+      const candidatePaths = [
+        path.resolve(__dirname, `../../../../docker/code-server/${sourceSettingsFile}`),
+        path.resolve(process.cwd(), `../docker/code-server/${sourceSettingsFile}`),
+        path.resolve('/app/docker/code-server', sourceSettingsFile),
+        path.resolve(process.cwd(), `docker/code-server/${sourceSettingsFile}`),
+      ];
+
+      let copiedSuccess = false;
+      for (const candidatePath of candidatePaths) {
+        try {
+          await fs.copyFile(candidatePath, settingsPath);
+          copiedSuccess = true;
+          break;
+        } catch {
+          // Tenta o próximo caminho candidato
+        }
+      }
+
+      if (!copiedSuccess) {
+        // Fallback: se o arquivo de template fonte não for localizado em nenhum caminho
+        if (isReviewMode) {
+          const fallbackContent = JSON.stringify(
+            {
+              'files.autoSave': 'off',
+              'files.readOnlyInclude': { '**/*': true, '**': true, '*': true },
+              'files.readOnlyFromPermissions': true,
+              'editor.readOnly': true,
+              'editor.stickyScroll.enabled': true,
+              'breadcrumbs.enabled': true,
+              'diffEditor.renderSideBySide': true,
+              'diffEditor.ignoreTrimWhitespace': true,
+              'diffEditor.wordWrap': 'on',
+              'diffEditor.maxComputationTime': 0,
+              'workbench.editor.openSideBySideDirection': 'right',
+              'explorer.enableDragAndDrop': false,
+              'security.workspace.trust.enabled': false,
+              'security.workspace.trust.startupPrompt': 'never',
+              'security.workspace.trust.emptyWindow': false,
+              'git.openRepositoryInParentFolders': 'always',
+              'telemetry.telemetryLevel': 'off',
+              'workbench.colorTheme': 'Default Dark Modern',
+              'workbench.colorCustomizations': {
+                'statusBar.background': '#4A154B',
+                'statusBar.foreground': '#FFFFFF',
+                'titleBar.activeBackground': '#2C0D2D',
+                'titleBar.activeForeground': '#FFFFFF',
+              },
+              'workbench.activityBar.location': 'hidden',
+              'workbench.statusBar.visible': true,
+              'workbench.startupEditor': 'none',
+              'workbench.tips.enabled': false,
+              'workbench.layoutControl.enabled': false,
+              'workbench.secondarySideBar.visible': false,
+              'workbench.panel.visible': false,
+              'window.menuBarVisibility': 'hidden',
+              'workbench.menuBarVisibility': 'hidden',
+              'files.exclude': {
+                '**/*.aux': true,
+                '**/*.log': true,
+                '**/*.out': true,
+                '**/*.toc': true,
+                '**/*.fls': true,
+                '**/*.fdb_latexmk': true,
+                '**/*.synctex.gz': true,
+                '**/*.bbl': true,
+                '**/*.blg': true,
+                '**/*.run.xml': true,
+                '**/*.bcf': true,
+                '**/indent.log': true,
+              },
+              'editor.minimap.enabled': false,
+              'editor.lightbulb.enabled': 'off',
+              'editor.glyphMargin': false,
+              'editor.folding': false,
+              'editor.guides.indentation': false,
+              'editor.guides.bracketPairs': false,
+              'editor.wordWrap': 'on',
+              'scm.showActionButton': false,
+              'scm.graph.defaultState': 'hidden',
+              'extensions.autoCheckUpdates': false,
+              'extensions.ignoreRecommendations': true,
+              'chat.experimental.agent.enabled': false,
+              'chat.agent.enabled': false,
+              'chat.commandCenter.enabled': false,
+              'terminal.integrated.enabled': false,
+              'terminal.integrated.profiles.linux': {},
+              'latex-workshop.view.pdf.viewer': 'tab',
+              'latex-workshop.latex.autoBuild.run': 'off',
+              'latex-workshop.latex.outDir': '%DIR%',
+              '[latex]': {
+                'editor.defaultFormatter': 'james-yu.latex-workshop',
+                'editor.formatOnSave': false,
+              },
+            },
+            null,
+            2
+          );
+          await fs.writeFile(settingsPath, fallbackContent, 'utf-8');
+        }
+      }
+
+      if (isReviewMode) {
+        await execAsync(`find "${targetDir}" -type f -exec chmod 444 {} +`).catch(() => {});
+        await execAsync(`find "${targetDir}" -type d -exec chmod 555 {} +`).catch(() => {});
+      } else {
+        await execAsync(`chmod -R 777 "${targetDir}"`).catch(() => {});
+      }
+    } catch {
+      // Ignora erro de criação de settings se diretório não permitir
+    }
+  }
+
   // Garantia do repositório Git por usuário/task via clone/fetch direto do GitHub (Zero arquivos estáticos fs.cp)
   async ensureTaskWorkspace(params: {
     projectId: string;
@@ -179,8 +302,9 @@ export class EditorProxyService {
     branchName: string;
     targetCommitHash?: string;
     gitRepoPath?: string;
+    mode?: string;
   }): Promise<string> {
-    const { projectId, userId, taskId, branchName, targetCommitHash, gitRepoPath } = params;
+    const { projectId, userId, taskId, branchName, targetCommitHash, gitRepoPath, mode } = params;
 
     // 1. Resolver a URL remota do GitHub ou o diretório host local
     let remoteUrl: string | undefined = undefined;
@@ -325,6 +449,7 @@ export class EditorProxyService {
     }
 
     await this.ensureTeXTemplateFiles(taskWorkspaceDir, 'Artigo SCI-LaTeX');
+    await this.ensureWorkspaceSettings(taskWorkspaceDir, mode);
 
     return taskWorkspaceDir;
   }
@@ -471,6 +596,7 @@ export class EditorProxyService {
       branchName: targetBranch,
       targetCommitHash,
       gitRepoPath: project.gitRepoPath,
+      mode: params.mode,
     });
 
     // 2. Reivindica o Pod isolado da Task do projeto no K8s

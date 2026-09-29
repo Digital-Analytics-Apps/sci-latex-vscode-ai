@@ -21,8 +21,16 @@
     * **Eliminação de Ternários Aninhados:** Simplificadas as renderizações condicionais e declarações ternárias encadeadas em `SaveProgressModal.tsx`, `StandardModal.tsx`, `ArticleTimelineHeader.tsx`, `ReleaseCandidatesModal.tsx` e `ManageTeamModal.tsx`.
   * **Correção no Backend Prisma:**
     * Ajustado [`users.repository.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/repositories/users.repository.ts) e [`users.service.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/users/users.service.ts) alinhando os seletores `_count` e relacionamentos com o schema Prisma (`teamMemberships` e `projects`).
+  * **Especificação, Perfis de Configuração Read-Only & Implementação do Backend (`mode=review`):**
+    * **Diagrama de Sequência e Seção 4.3 na Spec:** Adicionados o diagrama Mermaid do *Fluxo de Injeção Dinâmica* e a **Seção 4.3 (Melhorias de Experiência e Layout Distraction-Free do VS Code UI)** em [`reviewer-view-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/reviewer-view-spec.md).
+    * **Perfis Separados em `docker/code-server/`:** Criados `author.settings.json` (perfil padrão do autor) e `reviewer.settings.json` (perfil do revisor com trava `files.readOnlyInclude: { "**/*": true }`, `editor.stickyScroll.enabled: true`, `breadcrumbs.enabled: true`, `diffEditor.renderSideBySide: true` e `workbench.editor.openSideBySideDirection: "right"`).
+    * **Injeção Dinâmica, Mapeamento de Volumes e Permissões no Linux:** Método `ensureWorkspaceSettings` em [`editor-proxy.service.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/editor-proxy/editor-proxy.service.ts) atualizado com busca resiliente por múltiplos caminhos de template (`/app/docker/code-server`, `../docker/code-server`, etc.) e fallback completo com todas as propriedades da UI (Sticky Scroll, Side-by-Side, ocultação de Sidebars e Chat). Mapeado `./docker/code-server` como volume de leitura no [`docker-compose.yml`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docker-compose.yml) do backend e aplicadas permissões `chmod 444` (arquivos) e `chmod 555` (diretórios) quando `mode=review`.
+    * **Containers e Cluster KinD Atualizados:** Recriado o container `sci_latex_backend` com os volumes corretos, purgados pods K8s obsoletos e recarregada a imagem no KinD (`sci-latex-kind`).
+  * **Refatoração do Tema Frontend & Tokens de Cores (`tokens.ts` e `palette.ts`):**
+    * **Padronização Dark/Light Mode:** Paleta MUI refatorada com tokens Tailwind Gray 950 + Acento Sky 400 + acentos semânticos (Emerald/Amber/Red) para os modos escuro e claro, garantindo alta legibilidade e contraste consistente em todos os modais e painéis.
   * **Qualidade, Linter e Testes:**
     * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
+    * **Backend (`npx vitest run`):** 100% dos testes unitários passando.
     * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
     * **Frontend (`npm run lint:fix`):** 0 erros e 0 warnings no ESLint.
 

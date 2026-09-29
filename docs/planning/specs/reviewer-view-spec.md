@@ -135,6 +135,32 @@ export interface ReviewDiff {
    - O workspace do Revisor é montado em um subcaminho isolado (`projects/${projectId}/users/${reviewerUserId}/tasks/${taskId}`), fisicamente disjunto do workspace do Autor (`projects/${projectId}/users/${authorUserId}/tasks/${taskId}`).
    - O repositório local do Revisor faz checkout automático da branch/commit da submissão enviada sem interferir na árvore de arquivos não salvos do Autor.
 
+3. **Injeção de Perfil `reviewer.settings.json` & Trava Read-Only Estrita**:
+   - Ao inicializar a sessão com `mode=review`, o `EditorProxyService` injeta o template `docker/code-server/reviewer.settings.json` em `~/.local/share/code-server/User/settings.json` do container.
+   - **Mecanismo Triplo de Proteção e Leitura**:
+     1. **VS Code Read-Only**: Definição de `"files.readOnlyInclude": { "**/*": true }` e `"editor.readOnly": true`. Exibe ícone de cadeado 🔒 nas abas e bloqueia qualquer tentativa de edição com alerta nativo (*"Cannot edit in read-only editor"*).
+     2. **Permissão de SO (Linux)**: Execução de `chmod 444` em arquivos e `chmod 555` em pastas no repositório local do Revisor, garantindo retenção de erro `EACCES` em qualquer tentativa de escrita no disco.
+     3. **Customização Visual de Tema**: Injeção de `"workbench.colorCustomizations"` (`statusBar.background: "#4A154B"`, `titleBar.activeBackground: "#2C0D2D"`). O Revisor tem clareza visual imediata (barra roxa/destacada) de que está operando no workspace de leitura/revisão.
+   - **Terminal e Ferramentas Desativados**: Desativação do terminal integrado (`"terminal.integrated.enabled": false`), auto-save e auto-build no salvamento.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Revisor as Revisor (React UI)
+    participant Proxy as EditorProxyService (Backend)
+    participant K8s as Orquestrador K8s / Pod Workspace
+    participant CodeServer as VS Code (code-server)
+
+    Revisor->>Proxy: GET /api/v1/editor/session?taskId=X&mode=review
+    Proxy->>Proxy: Identifica perfil = REVIEWER (mode=review)
+    Proxy->>K8s: Provisiona / Prepara diretório isolado do Revisor
+    Proxy->>K8s: Copia reviewer.settings.json -> ~/.local/share/code-server/User/settings.json
+    Proxy->>K8s: Executa chmod -R 444 (arquivos) / 555 (pastas) no repositório
+    Proxy-->>Revisor: Retorna URL de sessão do iframe
+    Revisor->>CodeServer: Carrega Iframe do VS Code
+    CodeServer-->>Revisor: Interface Read-Only com barras Roxas + Cadeado 🔒 + Digitação Bloqueada
+```
+
 ---
 
 ### 4.2 Resiliência de Pods K8s, Monitoramento Redis & SSE com Web Worker & Heartbeat na Tela de Revisão
@@ -147,6 +173,31 @@ export interface ReviewDiff {
    - **`useSSEEventSource` na Tela do Revisor (`ReviewDetailPage.tsx`)**: A visão do Revisor invoca o hook `useSSEEventSource` passando o `projectId` e `taskId` do PR em avaliação.
    - **Web Worker Dedicado para Heartbeats**: O hook instancia um Web Worker em background (`pingWorker`) que executa um loop de 20 segundos chamando `POST /api/v1/events/heartbeat`. Como Web Workers funcionam em uma thread separada do sistema operacional, o navegador **NÃO** desativa o batimento quando a aba perde o foco.
    - **Gatilho de Visibilidade (`visibilitychange`)**: Sempre que o Revisor alterna de aba ou volta o foco para a aplicação/iframe, o evento `visibilitychange` dispara um ping instantâneo de reconexão, renovando a presença no Redis por 180 segundos e cancelando qualquer timer de limpeza do Pod.
+
+---
+
+### 4.3 Melhorias de Experiência e Layout Distraction-Free (VS Code UI Framework)
+
+Baseado no guia oficial de [Interface do VS Code (VS Code UI Documentation)](https://code.visualstudio.com/docs/getstarted/userinterface), a visão do Revisor é otimizada com os seguintes recursos nativos do layout do workbench:
+
+1. **Navegação de Escopo por Sticky Scroll (`editor.stickyScroll.enabled`)**:
+   - Fixa as seções TeX (`\section`, `\subsection`) no topo do editor enquanto o revisor rola o artigo longo, proporcionando âncoras de contexto ininterruptas durante a leitura.
+
+2. **Navegação Estruturada por Breadcrumbs (`breadcrumbs.enabled`)**:
+   - Exibe a hierarquia completa de arquivos e estruturas TeX no topo da aba (`main.tex > sections/01-introduction.tex > \subsection{...}`).
+
+3. **Layout Dual Side-by-Side (`workbench.editor.openSideBySideDirection: "right"`)**:
+   - Posiciona o código TeX da submissão à esquerda e a aba do PDF compilado à direita, permitindo validação visual instantânea de layout, figuras e equações sem alternar abas.
+
+4. **Visualização Avançada de Diff (`diffEditor`)**:
+   - `diffEditor.renderSideBySide: true`: Comparação em duas colunas verticais.
+   - `diffEditor.ignoreTrimWhitespace: true`: Oculta ruídos de espaçamento para destacar alterações puras de texto acadêmico.
+   - `diffEditor.wordWrap: "on"`: Quebra automática de linhas em parágrafos TeX.
+
+5. **Interface Zen / Minimalista sem Distrações**:
+   - Ocultação da barra de atividades (`workbench.activityBar.location: "hidden"`).
+   - Ocultação do painel inferior de terminal (`workbench.panel.visible: false`, `terminal.integrated.enabled: false`).
+   - Ocultação do minimapa (`editor.minimap.enabled: false`) em favor do Sticky Scroll.
 
 ---
 
@@ -185,6 +236,7 @@ type EditorMessage =
 | **Visualização Dual (`overview` vs `roundChanges`)** | ✅ Aprovado | Permite validar correções pontuais da rodada sem precisar reler o artigo inteiro. |
 | **Comunicação React $\leftrightarrow$ VS Code** | ✅ Aprovado | `postMessage` orientado a intenção de domínio (`EditorMessage`). |
 | **Isolamento do Revisor (`mode=review`)** | ✅ Aprovado | Revisor acessa workspace em diretório/Pod isolado sem ser bloqueado por trava de concorrência do Autor. |
+| **Workspace do Revisor Read-Only (`reviewer.settings.json`)** | ✅ Aprovado | Trava de digitação (`files.readOnlyInclude`), `chmod -R a-w` e tema roxo indicativo (`#4A154B`), garantindo imutabilidade do commit submetido. |
 | **Resiliência SSE via Web Worker & Heartbeat** | ✅ Aprovado | `useSSEEventSource` integrado em `ReviewDetailPage.tsx` com pings em background e listener de `visibilitychange` renovando Redis TTL (180s). |
 | **Backlog Futuro (Fases Posteriores)** | ⏳ Trancado | `latexdiff`, síntese generativa por IA e comentários nativos no VS Code deliberadamente adiados. |
 

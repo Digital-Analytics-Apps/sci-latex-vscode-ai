@@ -87,7 +87,7 @@ export const LoginPage: React.FC = () => {
           width: "750px",
           height: "750px",
           background:
-            "radial-gradient(circle, rgba(16,185,129,0.18) 0%, rgba(0,0,0,0) 70%)",
+            "radial-gradient(circle, rgba(14, 165, 233, 0.22) 0%, rgba(0,0,0,0) 70%)",
           pointerEvents: "none",
         }}
       />
@@ -153,8 +153,8 @@ export const LoginPage: React.FC = () => {
                     borderRadius: 4,
                     bgcolor:
                       mode === "dark"
-                        ? "rgba(16, 185, 129, 0.12)"
-                        : "rgba(5, 150, 105, 0.1)",
+                        ? "rgba(14, 165, 233, 0.14)"
+                        : "rgba(2, 132, 199, 0.1)",
                     color: "primary.main",
                     mb: 2,
                   }}

@@ -62,9 +62,13 @@ Para proporcionar um ambiente de escrita acadêmica sem distrações:
    - O diretório `.git` é preservado no repositório da workspace do usuário para habilitar os recursos visuais nativos do VS Code (calhas de diff, visualização side-by-side de edições).
    - Configurações do container: `git config core.fileMode false` (evita falsos modificados por diferenças de permissão de arquivo `0755`/`0644` no Linux) e `safe.directory "*"` configurado em `/etc/gitconfig` (elimina o aviso de "Unsafe Repository").
 
-### 2.4 Fonte Única da Verdade para Configurações do VS Code (Princípio DRY)
+### 2.4 Fonte de Configurações por Perfil do VS Code (`author.settings.json` vs `reviewer.settings.json`)
 
-Todas as configurações de ambiente do editor são mantidas exclusivamente em `docker/code-server/settings.json` e montadas diretamente no diretório global do usuário no container (`~/.local/share/code-server/User/settings.json`). O módulo `editor-proxy` é estruturado na arquitetura em camadas com `EditorProxyService` (`backend/src/modules/editor-proxy/editor-proxy.service.ts`), controlador enxuto e especificação `specs.md` na pasta do módulo. O provisionamento é exibido diretamente nos cards de tarefas do frontend (`"⚡ Provisionando..."`), eliminando telas HTML com recarregamento efêmero no iframe.
+As configurações de ambiente do editor são mantidas em dois perfis de modelos distintos em `docker/code-server/`:
+- **Perfil do Autor (`author.settings.json`)**: Configurações padrão de edição com salvamento automático (`files.autoSave: "afterDelay"`), auto-compilação TeX ao salvar (`latex-workshop.latex.autoBuild.run: "onSave"`) e visualizador de PDF habilitado.
+- **Perfil do Revisor (`reviewer.settings.json`)**: Configurações em modo estrito de leitura (Read-Only) com trava de digitação (`"files.readOnlyInclude": { "**/*": true }`), desativação de auto-save e auto-build, desativação do terminal integrado (`"terminal.integrated.enabled": false`) e customização visual com tema indicativo de revisão (`statusBar.background: "#4A154B"`).
+
+O módulo `editor-proxy` (`backend/src/modules/editor-proxy/editor-proxy.service.ts`) identifica o modo da sessão (`mode=author` vs `mode=review`) e injeta dinamicamente o arquivo de perfil apropriado em `~/.local/share/code-server/User/settings.json` no container do usuário. O provisionamento é exibido diretamente nos cards de tarefas do frontend (`"⚡ Provisionando..."`), eliminando telas HTML com recarregamento efêmero no iframe.
 
 ---
 

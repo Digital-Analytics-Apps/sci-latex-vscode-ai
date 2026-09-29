@@ -22,14 +22,19 @@ export const componentsOverrides: Components<Omit<Theme, "components">> = {
         height: "100%",
         width: "100%",
       },
+      "code, pre, kbd, samp": {
+        fontFamily: "var(--font-mono)",
+      },
     },
   },
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: "6px",
+        borderRadius: "8px",
         padding: "6px 14px",
         boxShadow: "none",
+        textTransform: "none",
+        fontWeight: 600,
         "&:hover": {
           boxShadow: "none",
         },
@@ -44,17 +49,20 @@ export const componentsOverrides: Components<Omit<Theme, "components">> = {
       root: {
         backgroundImage: "none",
         borderRadius: "8px",
+        boxShadow: "none",
+        border: "1px solid var(--border-color)",
       },
       outlined: {
-        borderColor: "rgba(255, 255, 255, 0.08)",
+        borderColor: "var(--border-color)",
       },
     },
   },
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: "10px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+        borderRadius: "12px",
+        boxShadow: "none",
+        border: "1px solid var(--border-color)",
         overflow: "hidden",
       },
     },
@@ -82,7 +90,7 @@ export const componentsOverrides: Components<Omit<Theme, "components">> = {
   MuiOutlinedInput: {
     styleOverrides: {
       root: {
-        borderRadius: "6px",
+        borderRadius: "8px",
         fontSize: "0.8125rem",
       },
     },
@@ -92,7 +100,7 @@ export const componentsOverrides: Components<Omit<Theme, "components">> = {
       root: {
         padding: "10px 12px",
         fontSize: "0.8125rem",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+        borderBottom: "1px solid var(--border-color)",
       },
       head: {
         fontWeight: 600,
@@ -105,7 +113,7 @@ export const componentsOverrides: Components<Omit<Theme, "components">> = {
   MuiDrawer: {
     styleOverrides: {
       paper: {
-        borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRight: "1px solid var(--border-color)",
       },
     },
   },
@@ -113,7 +121,7 @@ export const componentsOverrides: Components<Omit<Theme, "components">> = {
     styleOverrides: {
       root: {
         boxShadow: "none",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+        borderBottom: "1px solid var(--border-color)",
       },
     },
   },

@@ -1,65 +1,119 @@
 import type { PaletteOptions } from "@mui/material/styles";
+import { colors, sciLatexTokens } from "./tokens";
 
-// Paleta Dark Mode (Obsidian Emerald - Fundo #0b0f17, primária #10b981)
+const darkTokens = sciLatexTokens.dark;
+const lightTokens = sciLatexTokens.light;
+
+// Paleta Dark Mode (Tailwind Gray 950 + Sky 400 Acento + Emerald/Amber/Red)
 export const darkPalette: PaletteOptions = {
   mode: "dark",
   primary: {
-    main: "#10b981", // Emerald 500
-    light: "#34d399", // Emerald 400
-    dark: "#059669", // Emerald 600
-    contrastText: "#042f2e",
+    main: darkTokens.primary.main,
+    light: darkTokens.primary.hover,
+    dark: darkTokens.primary.active,
+    contrastText: darkTokens.primary.contrast,
   },
   secondary: {
-    main: "#0ea5e9", // Sky 500
-    light: "#38bdf8",
-    dark: "#0284c7",
-    contrastText: "#ffffff",
+    main: colors.indigo[400],
+    light: colors.indigo[300],
+    dark: colors.indigo[600],
+    contrastText: colors.white,
   },
+  error: {
+    main: darkTokens.error.main,
+    light: colors.red[300],
+    dark: colors.red[600],
+    contrastText: colors.white,
+  },
+  warning: {
+    main: darkTokens.warning.main,
+    light: colors.amber[300],
+    dark: colors.amber[600],
+    contrastText: colors.gray[950],
+  },
+  info: {
+    main: darkTokens.primary.main,
+    light: colors.sky[300],
+    dark: colors.sky[600],
+    contrastText: colors.gray[950],
+  },
+  success: {
+    main: darkTokens.success.main,
+    light: colors.emerald[300],
+    dark: colors.emerald[600],
+    contrastText: colors.gray[950],
+  },
+  grey: colors.gray,
   background: {
-    default: "#0b0f17", // Black Obsidian
-    paper: "#111827", // Slate Dark
+    default: darkTokens.background.default, // #030712 (Gray 950)
+    paper: darkTokens.background.paper,     // #111827 (Gray 900)
   },
   text: {
-    primary: "#f3f4f6",
-    secondary: "#9ca3af",
-    disabled: "#4b5563",
+    primary: darkTokens.text.primary,       // #f9fafb (Gray 50)
+    secondary: darkTokens.text.secondary,   // #d1d5db (Gray 300)
+    disabled: darkTokens.text.disabled,     // #6b7280 (Gray 500)
   },
-  divider: "rgba(255, 255, 255, 0.08)",
+  divider: darkTokens.border.default,       // #1f2937 (Gray 800)
   action: {
-    active: "#10b981",
-    hover: "rgba(16, 185, 129, 0.08)",
-    selected: "rgba(16, 185, 129, 0.16)",
+    active: darkTokens.primary.main,
+    hover: "rgba(56, 189, 248, 0.08)",
+    selected: "rgba(56, 189, 248, 0.16)",
   },
 };
 
-// Paleta Light Mode (Clean Emerald - Fundo #f8fafc, primária #059669)
+// Paleta Light Mode (Tailwind Clean White/Gray-50 + Sky 600 Acento)
 export const lightPalette: PaletteOptions = {
   mode: "light",
   primary: {
-    main: "#059669", // Emerald 600
-    light: "#10b981", // Emerald 500
-    dark: "#047857", // Emerald 700
-    contrastText: "#ffffff",
+    main: lightTokens.primary.main,
+    light: lightTokens.primary.hover,
+    dark: lightTokens.primary.active,
+    contrastText: lightTokens.primary.contrast,
   },
   secondary: {
-    main: "#0284c7", // Sky 600
-    light: "#0ea5e9",
-    dark: "#0369a1",
-    contrastText: "#ffffff",
+    main: colors.indigo[600],
+    light: colors.indigo[500],
+    dark: colors.indigo[700],
+    contrastText: colors.white,
   },
+  error: {
+    main: lightTokens.error.main,
+    light: colors.red[500],
+    dark: colors.red[700],
+    contrastText: colors.white,
+  },
+  warning: {
+    main: lightTokens.warning.main,
+    light: colors.amber[500],
+    dark: colors.amber[700],
+    contrastText: colors.white,
+  },
+  info: {
+    main: lightTokens.primary.main,
+    light: colors.sky[500],
+    dark: colors.sky[700],
+    contrastText: colors.white,
+  },
+  success: {
+    main: lightTokens.success.main,
+    light: colors.emerald[500],
+    dark: colors.emerald[700],
+    contrastText: colors.white,
+  },
+  grey: colors.gray,
   background: {
-    default: "#f8fafc",
-    paper: "#ffffff",
+    default: lightTokens.background.default, // #ffffff (White)
+    paper: lightTokens.background.paper,     // #ffffff (White)
   },
   text: {
-    primary: "#0f172a",
-    secondary: "#475569",
-    disabled: "#94a3b8",
+    primary: lightTokens.text.primary,       // #030712 (Gray 950 - Alta Legibilidade)
+    secondary: lightTokens.text.secondary,   // #4b5563 (Gray 600)
+    disabled: lightTokens.text.disabled,     // #9ca3af (Gray 400)
   },
-  divider: "rgba(0, 0, 0, 0.08)",
+  divider: lightTokens.border.default,       // #e5e7eb (Gray 200)
   action: {
-    active: "#059669",
-    hover: "rgba(5, 150, 105, 0.08)",
-    selected: "rgba(5, 150, 105, 0.14)",
+    active: lightTokens.primary.main,
+    hover: "rgba(2, 132, 199, 0.08)",
+    selected: "rgba(2, 132, 199, 0.14)",
   },
 };

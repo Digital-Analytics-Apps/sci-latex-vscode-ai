@@ -1,45 +1,46 @@
 import type { TypographyVariantsOptions } from "@mui/material/styles";
+import { tailwindFonts } from "./tokens";
 
 export const typography: TypographyVariantsOptions = {
-  fontFamily: [
-    '"Plus Jakarta Sans"',
-    '"Inter"',
-    "-apple-system",
-    "BlinkMacSystemFont",
-    '"Segoe UI"',
-    "Roboto",
-    "sans-serif",
-  ].join(","),
-  fontSize: 13, // Base compacta para alta densidade visual técnica
+  fontFamily: tailwindFonts.sans,
+  fontSize: 13,
   htmlFontSize: 16,
   h1: {
-    fontSize: "1.75rem",
+    fontFamily: tailwindFonts.sans,
+    fontSize: "1.85rem",
     fontWeight: 700,
     lineHeight: 1.2,
-    letterSpacing: "-0.02em",
+    letterSpacing: "-0.035em",
   },
   h2: {
-    fontSize: "1.4rem",
+    fontFamily: tailwindFonts.sans,
+    fontSize: "1.45rem",
     fontWeight: 700,
     lineHeight: 1.25,
-    letterSpacing: "-0.015em",
+    letterSpacing: "-0.03em",
   },
   h3: {
-    fontSize: "1.2rem",
-    fontWeight: 600,
+    fontFamily: tailwindFonts.sans,
+    fontSize: "1.22rem",
+    fontWeight: 650,
     lineHeight: 1.3,
+    letterSpacing: "-0.025em",
   },
   h4: {
+    fontFamily: tailwindFonts.sans,
     fontSize: "1.05rem",
     fontWeight: 600,
     lineHeight: 1.35,
+    letterSpacing: "-0.015em",
   },
   h5: {
+    fontFamily: tailwindFonts.sans,
     fontSize: "0.95rem",
     fontWeight: 600,
     lineHeight: 1.4,
   },
   h6: {
+    fontFamily: tailwindFonts.sans,
     fontSize: "0.875rem",
     fontWeight: 600,
     lineHeight: 1.4,

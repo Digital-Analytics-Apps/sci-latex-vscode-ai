@@ -88,4 +88,23 @@ describe('EditorProxyService', () => {
       })
     );
   });
+
+  it('deve injetar a configuração do perfil reviewer.settings.json quando mode for review', async () => {
+    const service = new EditorProxyService();
+    const testDir = '/tmp/test-workspace-settings-review';
+
+    await service.ensureWorkspaceSettings(testDir, 'review');
+
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const settingsContent = await fs.readFile(
+      path.join(testDir, '.vscode', 'settings.json'),
+      'utf-8'
+    );
+
+    expect(settingsContent).toContain('files.readOnlyInclude');
+    expect(settingsContent).toContain('#4A154B');
+
+    await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
+  });
 });

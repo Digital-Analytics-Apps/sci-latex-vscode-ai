@@ -54,6 +54,7 @@ services:
     volumes:
       - ./backend:/app
       - ./storage:/app/storage
+      - ./docker/code-server:/app/docker/code-server:ro
       - /app/node_modules
       - ${HOME}/.kube/config:/root/.kube/config:ro
     extra_hosts:

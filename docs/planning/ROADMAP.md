@@ -12,8 +12,8 @@
   - *Descrição*: No `events.manager.ts` e no `k8s-pod-manager.service.ts`, garantido que ao encerrar ou destruir um Pod por timeout/deleção, o repositório `IWorkspacesRepository` atualiza o status no banco de dados para `TERMINATED` e limpa o `podName`.
 - [x] **1.2 Redirecionamento Sincronizado e Refatoração do Módulo `editor-proxy`**
   - *Descrição*: Refatorado o controlador `/api/v1/editor-proxy` para desacoplar a regra de negócio em `EditorProxyService`, criando a especificação `specs.md` no módulo. Removida a tela HTML de auto-reload interna do iframe; o frontend agora exibe feedback de carregamento no próprio card da tarefa (`"⚡ Provisionando..."`) enquanto o backend aguarda o status `READY`.
-- [x] **1.3 Fonte Única de Verdade de Configuração do VS Code (`settings.json`)**
-  - *Descrição*: Centralização de 100% das configurações do editor em `docker/code-server/settings.json` (auto-build do TeX ao salvar, tema escuro, telemetria desativada), eliminando duplicidade de arquivos `.vscode/settings.json` na workspace.
+- [x] **1.3 Fonte de Configurações do VS Code por Perfil (`author.settings.json` vs `reviewer.settings.json`)**
+  - *Descrição*: Perfis de modelo em `docker/code-server/` (`author.settings.json` para escrita e `reviewer.settings.json` para leitura Read-Only estrita) injetados dinamicamente em `~/.local/share/code-server/User/settings.json` e `.vscode/settings.json` pelo `EditorProxyService`.
 - [x] **1.4 Limpeza e `.gitignore` Estrito de Arquivos Temporários TeX**
   - *Descrição*: Cópia automática de um `.gitignore` padrão na inicialização do repositório TeX ignorando `*.aux`, `*.log`, `*.out`, `*.toc`, `*.fls`, `*.fdb_latexmk`, evitando commits de arquivos gerados temporariamente no GitHub.
 - [x] **1.5 Ambiente de Edição Zen Mode Distraction-Free**
@@ -29,8 +29,8 @@
   - *Descrição*: Preservação da pasta `.git` na workspace do usuário (`users/:userId`), permitindo calhas de diff e comparador side-by-side nativos do VS Code. Adicionadas configurações `git config core.fileMode false` e `safe.directory "*"` no container para eliminar alertas de permissão.
 - [x] **2.3 Validação Estrita do Fluxo "Enviar para Revisão"**
   - *Descrição*: Transição controlada para `UNDER_REVIEW` no `PullRequestsService`, bloqueando envios em estados inválidos e emitindo notificação SSE (`PR_OPENED`).
-- [x] **2.4 Pod e Workspace Isolados para o Revisor**
-  - *Descrição*: Garantido que o Revisor receba um Pod e subdiretório isolados (`users/${reviewerId}`) via `claimPodForProject` e `ensureGitRepositoryWorkspace`, mantendo a pasta do Autor 100% intacta.
+- [x] **2.4 Pod, Workspace Isolados & Trava Read-Only do Revisor (`mode=review`)**
+  - *Descrição*: Garantido que o Revisor receba Pod e diretório isolados (`users/${reviewerId}`). Injeção de `reviewer.settings.json` com `files.readOnlyInclude`, `chmod 444` (arquivos) / `555` (pastas), Sticky Scroll (`editor.stickyScroll.enabled`), Breadcrumbs (`breadcrumbs.enabled`), visualização dual side-by-side (`openSideBySideDirection: "right"`) e barra de status roxa (`#4A154B`).
 - [x] **2.5 Bloqueio Visual e Badge "Em Revisão"**
   - *Descrição*: A transição de status para `UNDER_REVIEW` é exposta em tempo real e bloqueia rascunhos até a conclusão do parecer.
 - [x] **2.6 Destruição de Pod K8s e Limpeza do PVC após o Merge de Sucesso**
