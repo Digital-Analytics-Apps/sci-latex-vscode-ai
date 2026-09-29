@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 29 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Componente `StandardModal` Reutilizável com Dimensões Fixas (Presets `sm`, `md`, `lg`, `xl`) e Footer Padronizado (Salvar/Cancelar) Implementado e Refatorado em Todos os Modais do Sistema** Concluído com Sucesso. 100% dos testes de compilação TypeScript e linting passando com 0 erros e 0 warnings.
+**Status Geral do Projeto:** 🟢 **Padronização de Modais (`StandardModal`), Refatoração de Ternários Aninhados, Modularização das Abas de Equipes (`manage-team-tabs/`) e Correção de Relações no Backend Prisma** Concluídos com Sucesso. 100% dos testes de compilação TypeScript (Frontend e Backend) e linting passando com 0 erros e 0 warnings.
 
 ---
 
@@ -14,15 +14,15 @@
 ### 🔍 Estado Atual da Aplicação
   * **Componente `StandardModal` (`StandardModal.tsx`):**
     * **Dimensões Fixas por Preset:** Elimina pulos visuais e variações de altura/largura ao alternar abas ou carregar dados (`sm`: 560x560, `md`: 740x640, `lg`: 920x720, `xl`: 1140x780).
-    * **Footer Padronizado:** Botões *Cancelar* e *Salvar / Confirmar* integrados com indicador de progresso (`isSubmitting`), desativação dinâmica (`confirmDisabled`) e slot para ações no canto esquerdo (`extraFooterActions`, ex: *Excluir Equipe*).
-    * **Subheader para Abas e Stepper:** Suporta `Tabs` ou `Stepper` fixos no topo sem afetar o scroll do conteúdo interno.
-  * **Modais Refatorados:**
-    * `ManageTeamModal.tsx`: Dimensões fixas (`md`) com 3 abas sem pulos visuais ao navegar.
-    * `CreateUserModal.tsx`: Refatorado com preset `sm` e footer nativo.
-    * `CreateAcademicPeriodModal.tsx`: Refatorado com preset `sm` e footer nativo.
-    * `CreateProjectModal.tsx`: Refatorado com preset `lg` e Stepper fixo no subheader.
-    * `AddMemberModal.tsx`: Refatorado com preset `sm` e footer nativo.
+    * **Footer Padronizado:** Botões *Cancelar* e *Salvar / Confirmar* integrados com suporte a `confirmIcon`, `isSubmitting`, `confirmDisabled` e `extraFooterActions` (ex: *Excluir Equipe*).
+    * **100% dos Modais Convertidos:** `ManageTeamModal`, `CreateUserModal`, `CreateAcademicPeriodModal`, `CreateProjectModal`, `AddMemberModal`, `CreateTaskModal`, `SaveProgressModal`, `CreatePRModal`, `ReleaseCandidatesModal`, `NITParecerModal` e `PostSubmissionModal`.
+  * **Modularização & Redução de Complexidade Cognitiva:**
+    * **Subpasta de Abas de Equipe (`manage-team-tabs/`):** As abas do `ManageTeamModal` foram desacopladas em subcomponentes reutilizáveis em `src/features/manager/components/manage-team-tabs/` (`TeamGeneralTab.tsx`, `TeamMembersTab.tsx`, `TeamGoalsTab.tsx`).
+    * **Eliminação de Ternários Aninhados:** Simplificadas as renderizações condicionais e declarações ternárias encadeadas em `SaveProgressModal.tsx`, `StandardModal.tsx`, `ArticleTimelineHeader.tsx`, `ReleaseCandidatesModal.tsx` e `ManageTeamModal.tsx`.
+  * **Correção no Backend Prisma:**
+    * Ajustado [`users.repository.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/repositories/users.repository.ts) e [`users.service.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/users/users.service.ts) alinhando os seletores `_count` e relacionamentos com o schema Prisma (`teamMemberships` e `projects`).
   * **Qualidade, Linter e Testes:**
+    * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
     * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
     * **Frontend (`npm run lint:fix`):** 0 erros e 0 warnings no ESLint.
 
