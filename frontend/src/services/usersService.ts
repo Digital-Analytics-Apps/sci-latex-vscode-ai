@@ -5,18 +5,22 @@ import { api } from "./api";
 export type { UserMemberItem } from "../types/user.types";
 
 export const usersService = {
-  // Buscar lista de usuários com suporte a termo de busca (debounced) e papel (role)
+  // Buscar lista de usuários com suporte a termo de busca (debounced), papel (role) e equipe (teamId)
   async searchUsers(
     search: string = "",
     role?: string,
+    teamId?: string,
   ): Promise<UserMemberItem[]> {
     try {
       const params = new URLSearchParams();
       if (search.trim()) {
         params.append("search", search.trim());
       }
-      if (role) {
+      if (role && role !== "ALL") {
         params.append("role", role);
+      }
+      if (teamId && teamId !== "ALL") {
+        params.append("teamId", teamId);
       }
       const response = await api.get(`/users?${params.toString()}`);
       return response.data.users || [];

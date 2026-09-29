@@ -12,6 +12,8 @@ export interface UserMemberItem {
   name: string;
   email: string;
   role: Role;
+  teams?: { id: string; name: string; role?: string }[];
+  authoredProjectsCount?: number;
 }
 
 export interface ProjectMember {

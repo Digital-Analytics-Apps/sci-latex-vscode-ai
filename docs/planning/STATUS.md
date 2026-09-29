@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
-**Última Atualização:** 27 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Redesign da Tela de Login & Logo Vetorial Animada Interativa (Composição Radial em 360°, Marcadores Internos de Cronômetro e Efeito Explosão no Hover)** Concluído com Sucesso. 100% dos testes de compilação TypeScript e linting passando com 0 erros.
+**Última Atualização:** 29 de Setembro de 2026  
+**Status Geral do Projeto:** 🟢 **Componente `StandardModal` Reutilizável com Dimensões Fixas (Presets `sm`, `md`, `lg`, `xl`) e Footer Padronizado (Salvar/Cancelar) Implementado e Refatorado em Todos os Modais do Sistema** Concluído com Sucesso. 100% dos testes de compilação TypeScript e linting passando com 0 erros e 0 warnings.
 
 ---
 
@@ -12,22 +12,19 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Redesign da Tela de Login (`LoginPage.tsx`):**
-    * **Layout Responsivo Split (2 Colunas):** Container centralizado de 1140px (`maxWidth="lg"`), alinhando a marca/logo animada à esquerda e o formulário de autenticação institucional à direita.
-    * **Remoção de Perfis de Teste:** Removida a seção demonstrativa de seleção rápida de contas de teste (`Paper` com "Selecione um perfil de teste").
-  * **Logo Vetorial Animada Interativa (`SciLatexAnimatedLogo.tsx` e `sci-latex-logo-animated.svg`):**
-    * **Renderização Inline Nativa:** O SVG animado foi incorporado como componente React nativo inline em [`SciLatexAnimatedLogo.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/auth/components/SciLatexAnimatedLogo.tsx), garantindo 100% de estabilidade de exibição em todos os navegadores.
-    * **Anel Orbital Cronômetro:** Anel transformado em círculo contínuo completo (`r=345`, `stroke-width=12`) com **12 marcadores/traços de horas 100% internos** (`y1=65` a `y2=85/95`) ao longo da borda interna da órbita.
-    * **Composição Equilibrada das Figuras:**
-      - **Papel Científico:** Centralizado no centro do círculo ($X=400, Y=400$).
-      - **Cérebro (IA):** Elevado para o topo do arco orbital.
-      - **Caneta de Redação:** Posicionada em posição de escrita sobre a folha, executando uma animação de escrita contínua (`penWriting`) acompanhada por um traço de rabisco azul desenhado dinamicamente (`penScribble`).
-      - **Figura do Relógio Secundário:** Removida para manter a composição minimalista e limpa.
-    * **Interatividade de Explosão Radial em 360°:** Ao passar o mouse (`isHovered`), todos os elementos expandem-se radialmente para fora em 360° e retornam suavemente com curva `cubic-bezier(0.34, 1.56, 0.64, 1)` ao retirar o cursor.
+  * **Componente `StandardModal` (`StandardModal.tsx`):**
+    * **Dimensões Fixas por Preset:** Elimina pulos visuais e variações de altura/largura ao alternar abas ou carregar dados (`sm`: 560x560, `md`: 740x640, `lg`: 920x720, `xl`: 1140x780).
+    * **Footer Padronizado:** Botões *Cancelar* e *Salvar / Confirmar* integrados com indicador de progresso (`isSubmitting`), desativação dinâmica (`confirmDisabled`) e slot para ações no canto esquerdo (`extraFooterActions`, ex: *Excluir Equipe*).
+    * **Subheader para Abas e Stepper:** Suporta `Tabs` ou `Stepper` fixos no topo sem afetar o scroll do conteúdo interno.
+  * **Modais Refatorados:**
+    * `ManageTeamModal.tsx`: Dimensões fixas (`md`) com 3 abas sem pulos visuais ao navegar.
+    * `CreateUserModal.tsx`: Refatorado com preset `sm` e footer nativo.
+    * `CreateAcademicPeriodModal.tsx`: Refatorado com preset `sm` e footer nativo.
+    * `CreateProjectModal.tsx`: Refatorado com preset `lg` e Stepper fixo no subheader.
+    * `AddMemberModal.tsx`: Refatorado com preset `sm` e footer nativo.
   * **Qualidade, Linter e Testes:**
-    * **`npx tsc -b`:** 0 erros de compilação TypeScript.
-    * **`npm run lint:fix`:** 0 erros / 0 warnings no ESLint.
-    * **Estado Git:** Alterações no working tree mantidas prontas para commit / PR na próxima sessão.
+    * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
+    * **Frontend (`npm run lint:fix`):** 0 erros e 0 warnings no ESLint.
 
 ---
 

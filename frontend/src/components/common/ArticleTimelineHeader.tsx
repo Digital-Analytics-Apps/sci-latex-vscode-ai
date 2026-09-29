@@ -79,6 +79,34 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
             const isCompleted = stage.status === StageStatus.COMPLETED;
             const isInProgress = stage.status === StageStatus.IN_PROGRESS;
 
+            let borderColor = "divider";
+            if (isCompleted) {
+              borderColor = "success.main";
+            } else if (isInProgress) {
+              borderColor = "primary.main";
+            }
+
+            let bgcolor = "background.paper";
+            if (isCompleted) {
+              bgcolor = "success.50";
+            } else if (isInProgress) {
+              bgcolor = "action.hover";
+            }
+
+            let chipLabel = "Pendente";
+            if (isCompleted) {
+              chipLabel = "Concluída";
+            } else if (isInProgress) {
+              chipLabel = "Em Andamento";
+            }
+
+            let chipColor: "success" | "primary" | "default" = "default";
+            if (isCompleted) {
+              chipColor = "success";
+            } else if (isInProgress) {
+              chipColor = "primary";
+            }
+
             return (
               <Box
                 key={stage.id}
@@ -88,16 +116,8 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                   p: 1.5,
                   borderRadius: 2,
                   border: "1px solid",
-                  borderColor: isCompleted
-                    ? "success.main"
-                    : isInProgress
-                      ? "primary.main"
-                      : "divider",
-                  bgcolor: isCompleted
-                    ? "success.50"
-                    : isInProgress
-                      ? "action.hover"
-                      : "background.paper",
+                  borderColor,
+                  bgcolor,
                 }}
               >
                 <Box
@@ -126,20 +146,8 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                   ) : (
                     <Chip
                       size="small"
-                      label={
-                        isCompleted
-                          ? "Concluída"
-                          : isInProgress
-                            ? "Em Andamento"
-                            : "Pendente"
-                      }
-                      color={
-                        isCompleted
-                          ? "success"
-                          : isInProgress
-                            ? "primary"
-                            : "default"
-                      }
+                      label={chipLabel}
+                      color={chipColor}
                       variant={isCompleted ? "filled" : "outlined"}
                     />
                   )}

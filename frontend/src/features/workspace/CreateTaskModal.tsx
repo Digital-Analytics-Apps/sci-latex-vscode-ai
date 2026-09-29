@@ -2,13 +2,8 @@ import AddTaskIcon from "@mui/icons-material/AddTask";
 import {
   Autocomplete,
   Box,
-  Button,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -19,14 +14,15 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
+import { StandardModal } from "../../components/common/StandardModal";
+import { Role } from "../../constants/roles";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useProjectDetails } from "../../hooks/useProjectQueries";
 import { useUserSearchQuery } from "../../hooks/useUserQueries";
+import { type ProjectMember } from "../../services/projectsService";
 import { tasksService } from "../../services/tasksService";
 import { type UserMemberItem } from "../../services/usersService";
 import { showNotification } from "../../store/slices/notificationSlice";
-import { Role } from "../../constants/roles";
-import { type ProjectMember } from "../../services/projectsService";
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -144,187 +140,160 @@ export const CreateTaskModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          pb: 1,
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
-        <AddTaskIcon color="primary" />
-        Criar Nova Tarefa do Artigo
-      </DialogTitle>
-      <Typography variant="body2" color="text.secondary" sx={{ px: 3, pb: 1 }}>
-        Atribua uma tarefa a um membro (Autor/Revisor) pertencente a este
-        artigo.
-      </Typography>
+    <StandardModal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      icon={<AddTaskIcon color="primary" />}
+      title="Criar Nova Tarefa do Artigo"
+      subtitle="Atribua uma tarefa a um membro (Autor/Revisor) pertencente a este artigo."
+      onSubmit={handleSubmit}
+      confirmText="Criar Tarefa"
+      confirmColor="primary"
+      isSubmitting={isSubmitting}
+    >
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <TextField
+          fullWidth
+          size="small"
+          label="Título da Tarefa"
+          placeholder="Ex: Formulação das equações da Introdução"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
 
-      <DialogContent dividers>
-        <Box
-          component="form"
-          id="create-task-form"
-          onSubmit={handleSubmit}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <TextField
-            fullWidth
-            size="small"
-            label="Título da Tarefa"
-            placeholder="Ex: Formulação das equações da Introdução"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-
-          {/* Seleção do Membro do Artigo */}
-          {articleMembers.length > 0 ? (
-            <FormControl fullWidth size="small" required>
-              <InputLabel>Membro Atribuído (Membros do Artigo)</InputLabel>
-              <Select
-                value={assignedToId}
-                label="Membro Atribuído (Membros do Artigo)"
-                onChange={(e) => setAssignedToId(e.target.value)}
+        {/* Seleção do Membro do Artigo */}
+        {articleMembers.length > 0 ? (
+          <FormControl fullWidth size="small" required>
+            <InputLabel>Membro Atribuído (Membros do Artigo)</InputLabel>
+            <Select
+              value={assignedToId}
+              label="Membro Atribuído (Membros do Artigo)"
+              onChange={(e) => setAssignedToId(e.target.value)}
+            >
+              {articleMembers.map((m) => {
+                const targetUserId = m.userId || m.user?.id || m.id;
+                const userName = m.user?.name || "Membro do Artigo";
+                const userEmail = m.user?.email ? ` (${m.user.email})` : "";
+                const roleLabel =
+                  m.role === Role.REVIEWER ? "Revisor" : "Autor";
+                return (
+                  <MenuItem key={targetUserId} value={targetUserId}>
+                    {userName} [{roleLabel}]{userEmail}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+        ) : (
+          /* Autocomplete com Debounce (mín. 3 letras) se não houver membros pré-carregados */
+          <Autocomplete
+            options={usersList}
+            value={selectedGlobalAssignee}
+            onChange={(_e, newValue) =>
+              setSelectedGlobalAssignee(newValue as UserMemberItem | null)
+            }
+            inputValue={assigneeSearchText}
+            onInputChange={(_e, newInputValue) =>
+              setAssigneeSearchText(newInputValue)
+            }
+            getOptionLabel={(option) => option.name}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            loading={isFetchingUsers}
+            noOptionsText={
+              assigneeSearchText.trim().length > 0 &&
+              assigneeSearchText.trim().length < 3
+                ? "Digite pelo menos 3 letras para pesquisar..."
+                : "Nenhum usuário encontrado."
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                size="small"
+                label="Autor Responsável (Pesquisa Global)"
+                placeholder="Pesquisar por nome ou e-mail..."
+                slotProps={{
+                  ...params.slotProps,
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <>
+                        {isFetchingUsers ? (
+                          <CircularProgress color="inherit" size={18} />
+                        ) : null}
+                        {params.slotProps.input.endAdornment}
+                      </>
+                    ),
+                  },
+                }}
+              />
+            )}
+            renderOption={(props, option) => (
+              <Box
+                component="li"
+                {...props}
+                key={option.id}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  py: 1,
+                }}
               >
-                {articleMembers.map((m) => {
-                  const targetUserId = m.userId || m.user?.id || m.id;
-                  const userName = m.user?.name || "Membro do Artigo";
-                  const userEmail = m.user?.email ? ` (${m.user.email})` : "";
-                  const roleLabel =
-                    m.role === Role.REVIEWER ? "Revisor" : "Autor";
-                  return (
-                    <MenuItem key={targetUserId} value={targetUserId}>
-                      {userName} [{roleLabel}]{userEmail}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
-          ) : (
-            /* Autocomplete com Debounce (mín. 3 letras) se não houver membros pré-carregados */
-            <Autocomplete
-              options={usersList}
-              value={selectedGlobalAssignee}
-              onChange={(_e, newValue) =>
-                setSelectedGlobalAssignee(newValue as UserMemberItem | null)
-              }
-              inputValue={assigneeSearchText}
-              onInputChange={(_e, newInputValue) =>
-                setAssigneeSearchText(newInputValue)
-              }
-              getOptionLabel={(option) => option.name}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              loading={isFetchingUsers}
-              noOptionsText={
-                assigneeSearchText.trim().length > 0 &&
-                assigneeSearchText.trim().length < 3
-                  ? "Digite pelo menos 3 letras para pesquisar..."
-                  : "Nenhum usuário encontrado."
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  size="small"
-                  label="Autor Responsável (Pesquisa Global)"
-                  placeholder="Pesquisar por nome ou e-mail..."
-                  slotProps={{
-                    ...params.slotProps,
-                    input: {
-                      ...params.slotProps.input,
-                      endAdornment: (
-                        <>
-                          {isFetchingUsers ? (
-                            <CircularProgress color="inherit" size={18} />
-                          ) : null}
-                          {params.slotProps.input.endAdornment}
-                        </>
-                      ),
-                    },
-                  }}
-                />
-              )}
-              renderOption={(props, option) => (
-                <Box
-                  component="li"
-                  {...props}
-                  key={option.id}
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    py: 1,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {option.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {option.email}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={option.role}
-                    size="small"
-                    variant="outlined"
-                    color="primary"
-                  />
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {option.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.email}
+                  </Typography>
                 </Box>
-              )}
-            />
-          )}
-
-          {/* Seleção da Etapa de Escrita Associada */}
-          {projectStages.length > 0 && (
-            <FormControl fullWidth size="small">
-              <InputLabel>Etapa de Escrita Associada (Opcional)</InputLabel>
-              <Select
-                value={stageId}
-                label="Etapa de Escrita Associada (Opcional)"
-                onChange={(e) => setStageId(e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>Nenhuma (Geral do Artigo)</em>
-                </MenuItem>
-                {projectStages
-                  .filter((s: any) => !s.isGatekeeper)
-                  .map((s: any) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      Etapa {s.order}: {s.title}
-                    </MenuItem>
-                  ))}
-              </Select>
-            </FormControl>
-          )}
-
-          <TextField
-            fullWidth
-            size="small"
-            type="date"
-            label="Data Limite (Prazo)"
-            slotProps={{ inputLabel: { shrink: true } }}
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+                <Chip
+                  label={option.role}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              </Box>
+            )}
           />
-        </Box>
-      </DialogContent>
+        )}
 
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          form="create-task-form"
-          variant="contained"
-          color="primary"
-          disabled={isSubmitting}
-        >
-          Criar Tarefa
-        </Button>
-      </DialogActions>
-    </Dialog>
+        {/* Seleção da Etapa de Escrita Associada */}
+        {projectStages.length > 0 && (
+          <FormControl fullWidth size="small">
+            <InputLabel>Etapa de Escrita Associada (Opcional)</InputLabel>
+            <Select
+              value={stageId}
+              label="Etapa de Escrita Associada (Opcional)"
+              onChange={(e) => setStageId(e.target.value)}
+            >
+              <MenuItem value="">
+                <em>Nenhuma (Geral do Artigo)</em>
+              </MenuItem>
+              {projectStages
+                .filter((s: any) => !s.isGatekeeper)
+                .map((s: any) => (
+                  <MenuItem key={s.id} value={s.id}>
+                    Etapa {s.order}: {s.title}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <TextField
+          fullWidth
+          size="small"
+          type="date"
+          label="Data Limite (Prazo)"
+          slotProps={{ inputLabel: { shrink: true } }}
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+      </Box>
+    </StandardModal>
   );
 };
+

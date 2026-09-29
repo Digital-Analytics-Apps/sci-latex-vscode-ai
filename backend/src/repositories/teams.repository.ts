@@ -20,7 +20,7 @@ export interface UpdateTeamData {
 export interface ITeamsRepository {
   create(data: CreateTeamData): Promise<Team>;
   findById(id: string): Promise<Team | null>;
-  findAll(managerId?: string): Promise<Team[]>;
+  findAll(params?: { managerId?: string; search?: string }): Promise<Team[]>;
   update(id: string, data: UpdateTeamData): Promise<Team>;
   addMember(teamId: string, userId: string, role: Role): Promise<void>;
   removeMember(teamId: string, userId: string): Promise<void>;
@@ -80,12 +80,26 @@ export class PrismaTeamsRepository implements ITeamsRepository {
     });
   }
 
-  async findAll(managerId?: string): Promise<Team[]> {
+  async findAll(params?: { managerId?: string; search?: string }): Promise<Team[]> {
+    const managerId = params?.managerId;
+    const search = params?.search;
+
+    const where: any = {
+      deletedAt: null,
+      ...(managerId ? { managerId } : {}),
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { coordinator: { email: { contains: search, mode: 'insensitive' } } },
+        { coordinator: { name: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
     return prisma.team.findMany({
-      where: {
-        ...(managerId ? { managerId } : {}),
-        deletedAt: null,
-      },
+      where,
       include: {
         coordinator: { select: { id: true, name: true, email: true, role: true } },
         manager: { select: { id: true, name: true, email: true, role: true } },

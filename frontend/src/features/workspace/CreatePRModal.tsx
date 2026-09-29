@@ -2,12 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import SendIcon from "@mui/icons-material/Send";
 import {
   Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   TextField,
   Typography,
 } from "@mui/material";
@@ -15,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { ActiveTaskCard } from "../../components/common/ActiveTaskCard";
+import { StandardModal } from "../../components/common/StandardModal";
 import {
   type ReviewType,
   ReviewTypeSelector,
@@ -190,88 +185,68 @@ export const CreatePRModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>
-        Enviar para Revisão Acadêmica
-      </DialogTitle>
+    <StandardModal
+      open={open}
+      onClose={onClose}
+      size="md"
+      icon={<SendIcon color="primary" />}
+      title="Enviar para Revisão Acadêmica"
+      onSubmit={handleSubmit(onSubmit)}
+      confirmText="Enviar p/ Revisão"
+      confirmColor="primary"
+      isSubmitting={createPRMutation.isPending}
+    >
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        {/* Card Fixo de Tarefa Vinculada à Workspace (Componente Reutilizável) */}
+        <ActiveTaskCard
+          title={activeTask?.title || "Tarefa Atual do Artigo"}
+        />
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogContent
-          dividers
-          sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
-        >
-          {/* Card Fixo de Tarefa Vinculada à Workspace (Componente Reutilizável) */}
-          <ActiveTaskCard
-            title={activeTask?.title || "Tarefa Atual do Artigo"}
+        {/* Seleção de Nível/Tipo de Revisão (Componente Reutilizável) */}
+        <ReviewTypeSelector
+          value={reviewType}
+          onChange={handleReviewTypeChange}
+        />
+
+        {/* Título do PR */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
+            Título do Pull Request *
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="ex: Revisão da Tarefa - Introdução e Referências"
+            {...register("title")}
+            error={Boolean(errors.title)}
+            helperText={errors.title?.message}
           />
+        </Box>
 
-          {/* Seleção de Nível/Tipo de Revisão (Componente Reutilizável) */}
-          <ReviewTypeSelector
-            value={reviewType}
-            onChange={handleReviewTypeChange}
+        {/* Seletor Dinâmico do Revisor/Pares (Componente Reutilizável) */}
+        <ReviewerSelector
+          reviewType={reviewType}
+          officialReviewer={officialReviewer}
+          peerOptions={peerOptions}
+          selectedPeers={selectedPeers}
+          onPeersChange={handlePeersChange}
+        />
+
+        {/* Descrição com Template de PR */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
+            Descrição e Checklist do PR (Template TeX)
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={6}
+            placeholder="Preencha o template do Pull Request..."
+            {...register("description")}
+            sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}
           />
-
-          {/* Título do PR */}
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
-              Título do Pull Request *
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="ex: Revisão da Tarefa - Introdução e Referências"
-              {...register("title")}
-              error={Boolean(errors.title)}
-              helperText={errors.title?.message}
-            />
-          </Box>
-
-          {/* Seletor Dinâmico do Revisor/Pares (Componente Reutilizável) */}
-          <ReviewerSelector
-            reviewType={reviewType}
-            officialReviewer={officialReviewer}
-            peerOptions={peerOptions}
-            selectedPeers={selectedPeers}
-            onPeersChange={handlePeersChange}
-          />
-
-          {/* Descrição com Template de PR */}
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
-              Descrição e Checklist do PR (Template TeX)
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={6}
-              placeholder="Preencha o template do Pull Request..."
-              {...register("description")}
-              sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}
-            />
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={createPRMutation.isPending}
-            startIcon={
-              createPRMutation.isPending ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : (
-                <SendIcon />
-              )
-            }
-          >
-            Enviar p/ Revisão
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+        </Box>
+      </Box>
+    </StandardModal>
   );
 };

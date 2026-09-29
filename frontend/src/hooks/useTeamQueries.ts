@@ -5,10 +5,10 @@ import {
   type UpdateTeamInput,
 } from "../services/teamsService";
 
-export function useTeamsQuery() {
+export function useTeamsQuery(search?: string) {
   return useQuery({
-    queryKey: ["teams"],
-    queryFn: () => teamsService.getTeams(),
+    queryKey: ["teams", search || ""],
+    queryFn: () => teamsService.getTeams(search),
   });
 }
 

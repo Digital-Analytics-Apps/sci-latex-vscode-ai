@@ -13,8 +13,14 @@ export type {
 
 export const teamsService = {
   // Buscar lista de equipes
-  async getTeams(): Promise<TeamItem[]> {
-    const response = await api.get("/teams");
+  async getTeams(search?: string): Promise<TeamItem[]> {
+    const params = new URLSearchParams();
+    if (search?.trim()) {
+      params.append("search", search.trim());
+    }
+    const queryString = params.toString();
+    const url = queryString ? `/teams?${queryString}` : "/teams";
+    const response = await api.get(url);
     return response.data.teams || response.data || [];
   },
 

@@ -1,20 +1,16 @@
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  Box,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   TextField,
-  Typography,
 } from "@mui/material";
 import type { SyntheticEvent } from "react";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { StandardModal } from "../../../components/common/StandardModal";
 import { Role } from "../../../constants/roles";
 import { MEMBER_ROLE_LABELS } from "../../../constants/teams";
 import { useCreateUserMutation } from "../../../hooks/useUserQueries";
@@ -69,94 +65,68 @@ export const CreateUserModal = ({ open, onClose }: CreateUserModalProps) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <form onSubmit={handleSubmit}>
-        <DialogTitle
-          sx={{
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
+    <StandardModal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      icon={<PersonAddIcon color="primary" />}
+      title="Cadastrar Novo Integrante"
+      subtitle="Cadastre um novo usuário no sistema e atribua seu papel de acesso institucional."
+      onSubmit={handleSubmit}
+      confirmText="Cadastrar Integrante"
+      confirmColor="primary"
+      isSubmitting={createUserMutation.isPending}
+    >
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <TextField
+          required
+          fullWidth
+          label="Nome Completo"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <TextField
+          required
+          fullWidth
+          type="email"
+          label="E-mail Institucional"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <TextField
+          required
+          fullWidth
+          type="password"
+          label="Senha Inicial"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          slotProps={{
+            htmlInput: { minLength: 6 },
           }}
-        >
-          <PersonAddIcon color="primary" />
-          Cadastrar Novo Integrante
-        </DialogTitle>
+        />
 
-        <DialogContent
-          dividers
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            Cadastre um novo usuário no sistema e atribua seu papel de acesso
-            institucional.
-          </Typography>
-
-          <TextField
-            required
-            fullWidth
-            label="Nome Completo"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <TextField
-            required
-            fullWidth
-            type="email"
-            label="E-mail Institucional"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <TextField
-            required
-            fullWidth
-            type="password"
-            label="Senha Inicial"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            slotProps={{
-              htmlInput: { minLength: 6 },
-            }}
-          />
-
-          <FormControl fullWidth required>
-            <InputLabel>Função Institucional</InputLabel>
-            <Select
-              value={role}
-              label="Função Institucional"
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <MenuItem value={Role.AUTHOR}>
-                {MEMBER_ROLE_LABELS.AUTHOR}
-              </MenuItem>
-              <MenuItem value={Role.REVIEWER}>
-                {MEMBER_ROLE_LABELS.REVIEWER}
-              </MenuItem>
-              <MenuItem value={Role.COORDINATOR}>
-                {MEMBER_ROLE_LABELS.COORDINATOR}
-              </MenuItem>
-              <MenuItem value={Role.MANAGER}>
-                {MEMBER_ROLE_LABELS.MANAGER}
-              </MenuItem>
-            </Select>
-          </FormControl>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={createUserMutation.isPending}
+        <FormControl fullWidth required>
+          <InputLabel>Função Institucional</InputLabel>
+          <Select
+            value={role}
+            label="Função Institucional"
+            onChange={(e) => setRole(e.target.value)}
           >
-            {createUserMutation.isPending ? "Cadastrando..." : "Cadastrar Integrante"}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+            <MenuItem value={Role.AUTHOR}>{MEMBER_ROLE_LABELS.AUTHOR}</MenuItem>
+            <MenuItem value={Role.REVIEWER}>
+              {MEMBER_ROLE_LABELS.REVIEWER}
+            </MenuItem>
+            <MenuItem value={Role.COORDINATOR}>
+              {MEMBER_ROLE_LABELS.COORDINATOR}
+            </MenuItem>
+            <MenuItem value={Role.MANAGER}>
+              {MEMBER_ROLE_LABELS.MANAGER}
+            </MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+    </StandardModal>
   );
 };

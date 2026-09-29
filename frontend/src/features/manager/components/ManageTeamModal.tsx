@@ -3,40 +3,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import FlagIcon from "@mui/icons-material/Flag";
 import GroupIcon from "@mui/icons-material/Group";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import StarIcon from "@mui/icons-material/Star";
-import {
-  Avatar,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  IconButton,
-  InputLabel,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  MenuItem,
-  Select,
-  Tab,
-  Tabs,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Button, Tab, Tabs } from "@mui/material";
 import type { SyntheticEvent } from "react";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
+import { StandardModal } from "../../../components/common/StandardModal";
 import { Role } from "../../../constants/roles";
-import {
-  MEMBER_ROLE_COLORS,
-  MEMBER_ROLE_LABELS,
-} from "../../../constants/teams";
 import {
   useAcademicPeriods,
   useSetTeamGoalMutation,
@@ -53,6 +25,9 @@ import { useUserSearchQuery } from "../../../hooks/useUserQueries";
 import { showNotification } from "../../../store/slices/notificationSlice";
 import type { TeamItem } from "../../../types/team.types";
 import type { UserMemberItem } from "../../../types/user.types";
+import { TeamGeneralTab } from "./manage-team-tabs/TeamGeneralTab";
+import { TeamGoalsTab } from "./manage-team-tabs/TeamGoalsTab";
+import { TeamMembersTab } from "./manage-team-tabs/TeamMembersTab";
 
 interface ManageTeamModalProps {
   open: boolean;
@@ -87,7 +62,7 @@ export const ManageTeamModal = ({
   // Tab State
   const [tabIndex, setTabIndex] = useState(0);
 
-  // Form State para Aba 0: Dados da Equipe (Unificado em um único estado)
+  // Form State para Aba 0: Dados da Equipe
   const [prevTeamId, setPrevTeamId] = useState<string | null>(null);
   const [teamForm, setTeamForm] = useState({
     name: "",
@@ -145,7 +120,6 @@ export const ManageTeamModal = ({
     if (!teamForm.name.trim()) return;
 
     if (isEditMode && activeTeam) {
-      // Atualização de Equipe Existente
       try {
         await updateTeamMutation.mutateAsync({
           id: activeTeam.id,
@@ -170,7 +144,6 @@ export const ManageTeamModal = ({
         );
       }
     } else {
-      // Criação de Nova Equipe
       try {
         const newTeam = await createTeamMutation.mutateAsync({
           name: teamForm.name.trim(),
@@ -184,7 +157,7 @@ export const ManageTeamModal = ({
             severity: "success",
           }),
         );
-        setTabIndex(1); // Auto avança para a Aba de Integrantes
+        setTabIndex(1);
       } catch {
         dispatch(
           showNotification({
@@ -273,6 +246,33 @@ export const ManageTeamModal = ({
     }
   };
 
+  // Handler para Promover Membro a Coordenador (Aba 1)
+  const handlePromoteCoordinator = async (
+    userEmail: string,
+    userName: string,
+  ) => {
+    if (!activeTeamId) return;
+    try {
+      await updateTeamMutation.mutateAsync({
+        id: activeTeamId,
+        data: { coordinatorEmail: userEmail },
+      });
+      dispatch(
+        showNotification({
+          message: `${userName} agora é o(a) Coordenador(a) responsável!`,
+          severity: "success",
+        }),
+      );
+    } catch {
+      dispatch(
+        showNotification({
+          message: "Erro ao promover integrante a coordenador.",
+          severity: "error",
+        }),
+      );
+    }
+  };
+
   // Handler para Definir Cota da Equipe (Aba 2)
   const handleSetTeamGoal = async (e: SyntheticEvent) => {
     e.preventDefault();
@@ -302,405 +302,117 @@ export const ManageTeamModal = ({
     }
   };
 
+  let modalFormId: string | undefined;
+  if (tabIndex === 0) {
+    modalFormId = "save-team-form";
+  } else if (tabIndex === 2) {
+    modalFormId = "team-goal-form";
+  }
+
+  let modalConfirmText = "Atribuir Cota à Equipe";
+  if (tabIndex === 0) {
+    if (isEditMode) {
+      modalConfirmText = "Salvar Alterações";
+    } else {
+      modalConfirmText = "Cadastrar Equipe";
+    }
+  }
+
   return (
-    <Dialog open={open} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-      <DialogTitle
-        sx={{
-          pb: 1,
-          fontWeight: 700,
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
-        <GroupIcon color="warning" />
-        {isEditMode
+    <StandardModal
+      open={open}
+      onClose={handleCloseModal}
+      size="md"
+      icon={<GroupIcon color="warning" />}
+      title={
+        isEditMode
           ? `Gerenciar: ${currentTeam?.name || teamForm.name}`
-          : "Nova Equipe de Pesquisa"}
-      </DialogTitle>
+          : "Nova Equipe de Pesquisa"
+      }
+      subheader={
+        isEditMode ? (
+          <Tabs
+            value={tabIndex}
+            onChange={(_, newValue) => setTabIndex(newValue)}
+            aria-label="Abas de Gestão de Equipes"
+          >
+            <Tab
+              icon={<EditIcon fontSize="small" />}
+              iconPosition="start"
+              label="Dados Gerais"
+            />
+            <Tab
+              icon={<PersonAddIcon fontSize="small" />}
+              iconPosition="start"
+              label={`Integrantes (${currentMembers.length})`}
+            />
+            <Tab
+              icon={<FlagIcon fontSize="small" />}
+              iconPosition="start"
+              label="Cota da Equipe"
+            />
+          </Tabs>
+        ) : undefined
+      }
+      formId={modalFormId}
+      showConfirm={tabIndex !== 1}
+      confirmText={modalConfirmText}
+      confirmColor="warning"
+      isSubmitting={
+        updateTeamMutation.isPending ||
+        createTeamMutation.isPending ||
+        setTeamGoalMutation.isPending
+      }
+      cancelText={tabIndex === 1 ? "Concluir" : "Cancelar"}
+      extraFooterActions={
+        tabIndex === 0 && isEditMode ? (
+          <Button
+            color="error"
+            variant="outlined"
+            size="small"
+            startIcon={<DeleteIcon fontSize="small" />}
+            onClick={handleDeleteTeam}
+            disabled={deleteTeamMutation.isPending}
+          >
+            Excluir Equipe
+          </Button>
+        ) : null
+      }
+    >
+      {tabIndex === 0 && (
+        <TeamGeneralTab
+          isEditMode={isEditMode}
+          teamForm={teamForm}
+          setTeamForm={setTeamForm}
+          onSubmit={handleSaveTeam}
+        />
+      )}
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
-        <Tabs
-          value={tabIndex}
-          onChange={(_, newValue) => setTabIndex(newValue)}
-          aria-label="Abas de Gestão de Equipes"
-        >
-          <Tab
-            icon={<EditIcon fontSize="small" />}
-            iconPosition="start"
-            label={isEditMode ? "Dados Gerais" : "Criar Equipe"}
-          />
-          <Tab
-            icon={<PersonAddIcon fontSize="small" />}
-            iconPosition="start"
-            label={
-              isEditMode
-                ? `Integrantes (${currentMembers.length})`
-                : "Integrantes"
-            }
-            disabled={!isEditMode}
-          />
-          <Tab
-            icon={<FlagIcon fontSize="small" />}
-            iconPosition="start"
-            label="Cota da Equipe"
-            disabled={!isEditMode}
-          />
-        </Tabs>
-      </Box>
+      {tabIndex === 1 && (
+        <TeamMembersTab
+          currentTeam={currentTeam}
+          currentMembers={currentMembers}
+          isLoadingDetails={isLoadingDetails}
+          search={search}
+          setSearch={setSearch}
+          searchResults={searchResults}
+          onAddMember={handleAddMember}
+          onRemoveMember={handleRemoveMember}
+          onPromoteCoordinator={handlePromoteCoordinator}
+          isAddPending={addMemberMutation.isPending}
+        />
+      )}
 
-      <DialogContent dividers sx={{ p: 3 }}>
-        {/* ABA 0: DADOS GERAIS / CRIAÇÃO DA EQUIPE */}
-        {tabIndex === 0 && (
-          <form id="save-team-form" onSubmit={handleSaveTeam}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-              <Typography variant="body2" color="text.secondary">
-                {isEditMode
-                  ? "Atualize o nome do laboratório/equipe e o Coordenador responsável."
-                  : "Cadastre uma nova equipe de pesquisa e atribua o Coordenador responsável."}
-              </Typography>
-
-              <TextField
-                required
-                fullWidth
-                label="Nome da Equipe / Laboratório"
-                placeholder="Ex: Laboratório de Robótica & IA"
-                value={teamForm.name}
-                onChange={(e) =>
-                  setTeamForm((prev) => ({ ...prev, name: e.target.value }))
-                }
-              />
-
-              <UserSearchAutocomplete
-                value={teamForm.coordinatorEmail}
-                onChange={(email, user) => {
-                  setTeamForm((prev) => ({
-                    ...prev,
-                    coordinatorEmail: email,
-                    coordinatorId: user?.id || "",
-                  }));
-                }}
-                allowedRoles={["COORDINATOR", "MANAGER", "ADMIN"]}
-                label="Coordenador Responsável"
-                placeholder="Buscar por nome ou e-mail..."
-                helperText="Selecione um pesquisador cadastrado na lista de sugestões"
-              />
-
-              {!isEditMode && (
-                <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600, mt: -1 }}>
-                  💡 Dica: Após cadastrar os dados iniciais, o modal liberará automaticamente as abas de Integrantes e Cotas.
-                </Typography>
-              )}
-
-              <Box
-                sx={{
-                  pt: 2,
-                  display: "flex",
-                  justifyContent: isEditMode ? "space-between" : "flex-end",
-                  alignItems: "center",
-                  borderTop: "1px dashed",
-                  borderColor: "divider",
-                }}
-              >
-                {isEditMode && (
-                  <Button
-                    color="error"
-                    variant="outlined"
-                    size="small"
-                    startIcon={<DeleteIcon fontSize="small" />}
-                    onClick={handleDeleteTeam}
-                    disabled={deleteTeamMutation.isPending}
-                  >
-                    Excluir Equipe
-                  </Button>
-                )}
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="warning"
-                  disabled={
-                    updateTeamMutation.isPending || createTeamMutation.isPending
-                  }
-                >
-                  {isEditMode
-                    ? updateTeamMutation.isPending
-                      ? "Salvando..."
-                      : "Salvar Alterações"
-                    : createTeamMutation.isPending
-                      ? "Cadastrando..."
-                      : "Cadastrar Equipe & Avançar"}
-                </Button>
-              </Box>
-            </Box>
-          </form>
-        )}
-
-        {/* ABA 1: INTEGRANTES & PESQUISADORES */}
-        {tabIndex === 1 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Vincule pesquisadores e colaboradores à equipe do laboratório.
-            </Typography>
-
-            {/* Form de Adição de Membros */}
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: "action.hover",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                Adicionar Pesquisador à Equipe
-              </Typography>
-
-              <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-                <Box sx={{ flex: 1, minWidth: 200 }}>
-                  <UserSearchAutocomplete
-                    value={search}
-                    onChange={(val, user) => {
-                      setSearch(val);
-                      if (user) {
-                        handleAddMember(user);
-                      }
-                    }}
-                    size="small"
-                    label="Buscar pesquisador (nome ou e-mail)"
-                    placeholder="Digite para pesquisar..."
-                  />
-                </Box>
-              </Box>
-
-              {/* Resultado da Busca */}
-              {searchResults && searchResults.length > 0 && (
-                <List
-                  dense
-                  sx={{
-                    bgcolor: "background.paper",
-                    borderRadius: 1,
-                    maxHeight: 180,
-                    overflow: "auto",
-                  }}
-                >
-                  {searchResults.map((u) => {
-                    const isMember = currentMembers.some(
-                      (m) => (m.userId || m.id) === u.id,
-                    );
-                    return (
-                      <ListItem
-                        key={u.id}
-                        secondaryAction={
-                          <Button
-                            size="small"
-                            variant="contained"
-                            disabled={isMember || addMemberMutation.isPending}
-                            onClick={() => handleAddMember(u)}
-                          >
-                            {isMember ? "Já Vinculado" : "Adicionar"}
-                          </Button>
-                        }
-                      >
-                        <ListItemAvatar>
-                          <Avatar sx={{ width: 28, height: 28 }}>
-                            {u.name.charAt(0)}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={u.name}
-                          secondary={`${u.email} • ${u.role}`}
-                        />
-                      </ListItem>
-                    );
-                  })}
-                </List>
-              )}
-            </Box>
-
-            {/* Lista Atual de Integrantes da Equipe */}
-            <Typography
-              variant="subtitle2"
-              sx={{ fontWeight: 700, mt: 1, mb: -1 }}
-            >
-              Integrantes Atuais ({currentMembers.length})
-            </Typography>
-
-            {isLoadingDetails ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : currentMembers.length === 0 ? (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontStyle: "italic", py: 2 }}
-              >
-                Nenhum integrante vinculado a esta equipe ainda.
-              </Typography>
-            ) : (
-              <List dense sx={{ width: "100%" }}>
-                {currentMembers.map((m) => {
-                  const u = m.user || (m as any);
-                  const memberRole = (m as any).role || u?.role;
-                  const isCoordinator =
-                    currentTeam?.coordinator?.email === u?.email ||
-                    memberRole === Role.COORDINATOR;
-                  const roleLabel = isCoordinator
-                    ? "Coordenador"
-                    : MEMBER_ROLE_LABELS[
-                        memberRole as keyof typeof MEMBER_ROLE_LABELS
-                      ] || "Membro";
-
-                  return (
-                    <ListItem
-                      key={m.id || u.id}
-                      divider
-                      secondaryAction={
-                        <Box sx={{ display: "flex", gap: 1 }}>
-                          {!isCoordinator && (
-                            <IconButton
-                              size="small"
-                              title="Promover a Coordenador"
-                              color="warning"
-                              onClick={async () => {
-                                if (!activeTeamId) return;
-                                await updateTeamMutation.mutateAsync({
-                                  id: activeTeamId,
-                                  data: { coordinatorEmail: u.email },
-                                });
-                                dispatch(
-                                  showNotification({
-                                    message: `${u.name} agora é o(a) Coordenador(a) responsável!`,
-                                    severity: "success",
-                                  }),
-                                );
-                              }}
-                            >
-                              <StarIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                          {!isCoordinator && (
-                            <IconButton
-                              size="small"
-                              title="Remover da Equipe"
-                              color="error"
-                              onClick={() =>
-                                handleRemoveMember(
-                                  u?.id || "",
-                                  u?.name || "Membro",
-                                )
-                              }
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Box>
-                      }
-                    >
-                      <ListItemAvatar>
-                        <Avatar sx={{ width: 32, height: 32 }}>
-                          {u?.name?.charAt(0).toUpperCase() || "P"}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ fontWeight: 600 }}
-                            >
-                              {u?.name}
-                            </Typography>
-                            <Chip
-                              label={roleLabel}
-                              size="small"
-                              variant="outlined"
-                              color={
-                                isCoordinator
-                                  ? "warning"
-                                  : MEMBER_ROLE_COLORS[
-                                      memberRole as keyof typeof MEMBER_ROLE_COLORS
-                                    ] || "default"
-                              }
-                            />
-                          </Box>
-                        }
-                        secondary={u?.email}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </List>
-            )}
-          </Box>
-        )}
-
-        {/* ABA 2: COTAS DA EQUIPE */}
-        {tabIndex === 2 && (
-          <form id="team-goal-form" onSubmit={handleSetTeamGoal}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-              <Typography variant="body2" color="text.secondary">
-                Defina a meta/cota de artigos científicos a serem produzidos por este laboratório no Ciclo Acadêmico ativo.
-              </Typography>
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Ciclo Acadêmico</InputLabel>
-                <Select
-                  value={selectedPeriodId || periods?.[0]?.id || ""}
-                  label="Ciclo Acadêmico"
-                  onChange={(e) => setSelectedPeriodId(e.target.value)}
-                >
-                  {periods?.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                      {p.name} ({new Date(p.startDate).getFullYear()})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                required
-                fullWidth
-                type="number"
-                label="Cota de Artigos Científicos"
-                placeholder="Ex: 8"
-                value={targetArticles}
-                onChange={(e) => setTargetArticles(Number(e.target.value))}
-                slotProps={{ htmlInput: { min: 1, max: 100 } }}
-                helperText="Meta de artigos a serem submetidos nesta vigência acadêmica"
-              />
-
-              <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 2 }}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="warning"
-                  disabled={setTeamGoalMutation.isPending}
-                >
-                  {setTeamGoalMutation.isPending
-                    ? "Atribuindo..."
-                    : "Atribuir Cota à Equipe"}
-                </Button>
-              </Box>
-            </Box>
-          </form>
-        )}
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleCloseModal} color="inherit">
-          Concluir
-        </Button>
-      </DialogActions>
-    </Dialog>
+      {tabIndex === 2 && (
+        <TeamGoalsTab
+          periods={periods}
+          selectedPeriodId={selectedPeriodId}
+          setSelectedPeriodId={setSelectedPeriodId}
+          targetArticles={targetArticles}
+          setTargetArticles={setTargetArticles}
+          onSubmit={handleSetTeamGoal}
+        />
+      )}
+    </StandardModal>
   );
 };

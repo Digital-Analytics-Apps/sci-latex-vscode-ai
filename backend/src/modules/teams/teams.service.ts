@@ -61,9 +61,9 @@ export class TeamsService {
     return team;
   }
 
-  // Listar todas as equipes (opcionalmente filtrado por gerente)
-  async listTeams(managerId?: string) {
-    return this.teamsRepository.findAll(managerId);
+  // Listar todas as equipes (opcionalmente filtrado por busca e gerente)
+  async listTeams(params?: { search?: string; managerId?: string }) {
+    return this.teamsRepository.findAll(params);
   }
 
   // Atualizar informações da equipe (Nome, Descrição, Coordenador, Gerente)

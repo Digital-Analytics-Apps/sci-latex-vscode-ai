@@ -4,11 +4,6 @@ import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import SendIcon from "@mui/icons-material/Send";
 import {
   Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   FormControlLabel,
   FormHelperText,
@@ -23,6 +18,7 @@ import {
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
+import { StandardModal } from "../../components/common/StandardModal";
 import {
   type DOIFormData,
   doiSchema,
@@ -113,184 +109,171 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
-        Registro de Pós-Submissão & Resultado Final
-      </DialogTitle>
-      <Typography variant="body2" color="text.secondary" sx={{ px: 3, pb: 1 }}>
-        Projeto: <strong>{projectTitle}</strong>
-      </Typography>
-
-      <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_e, newValue) => setActiveTab(newValue)}
-          textColor="primary"
-          indicatorColor="primary"
+    <StandardModal
+      open={open}
+      onClose={onClose}
+      size="md"
+      icon={<CheckCircleOutlinedIcon color="primary" />}
+      title="Registro de Pós-Submissão & Resultado Final"
+      subheader={
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Projeto: <strong>{projectTitle}</strong>
+          </Typography>
+          <Tabs
+            value={activeTab}
+            onChange={(_e, newValue) => setActiveTab(newValue)}
+            textColor="primary"
+            indicatorColor="primary"
+          >
+            <Tab
+              value="ACCEPTED"
+              label="Artigo Aceito (DOI & Câmera-Ready)"
+              icon={<CheckCircleOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+            />
+            <Tab
+              value="REJECTED"
+              label="Plano v2 (Pós-Rejeição)"
+              icon={<HighlightOffIcon fontSize="small" />}
+              iconPosition="start"
+            />
+          </Tabs>
+        </Box>
+      }
+      formId={activeTab === "ACCEPTED" ? "doi-form" : "rejection-form"}
+      confirmText={
+        activeTab === "ACCEPTED"
+          ? "Registrar DOI & Finalizar Artigo"
+          : "Confirmar Estratégia v2"
+      }
+      confirmColor={activeTab === "ACCEPTED" ? "success" : "warning"}
+      confirmIcon={
+        activeTab === "ACCEPTED" ? (
+          <CheckCircleOutlinedIcon fontSize="small" />
+        ) : (
+          <SendIcon fontSize="small" />
+        )
+      }
+      cancelText="Cancelar"
+    >
+      {activeTab === "ACCEPTED" ? (
+        <Box
+          component="form"
+          id="doi-form"
+          onSubmit={handleSubmitDoi(onSubmitDoi)}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          <Tab
-            value="ACCEPTED"
-            label="Artigo Aceito (DOI & Câmera-Ready)"
-            icon={<CheckCircleOutlinedIcon fontSize="small" />}
-            iconPosition="start"
-            sx={{ fontWeight: 600 }}
+          <Typography variant="body2" color="text.secondary">
+            Parabéns! O artigo foi aceito pela banca do evento/periódico.
+            Preencha os identificadores persistentes para catalogação no
+            sistema.
+          </Typography>
+
+          <TextField
+            fullWidth
+            size="small"
+            label="DOI do Artigo"
+            placeholder="10.1109/SCI.2026.XXXXX"
+            {...registerDoi("doi")}
+            error={Boolean(doiErrors.doi)}
+            helperText={doiErrors.doi?.message}
           />
-          <Tab
-            value="REJECTED"
-            label="Plano v2 (Pós-Rejeição)"
-            icon={<HighlightOffIcon fontSize="small" />}
-            iconPosition="start"
-            sx={{ fontWeight: 600 }}
+
+          <TextField
+            fullWidth
+            size="small"
+            label="URL da Publicação (IEEE / Springer / ACM / Evento)"
+            placeholder="https://doi.org/..."
+            {...registerDoi("publicationUrl")}
+            error={Boolean(doiErrors.publicationUrl)}
+            helperText={doiErrors.publicationUrl?.message}
           />
-        </Tabs>
-      </Box>
 
-      <DialogContent dividers>
-        {activeTab === "ACCEPTED" ? (
-          <Box
-            component="form"
-            id="doi-form"
-            onSubmit={handleSubmitDoi(onSubmitDoi)}
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Parabéns! O artigo foi aceito pela banca do evento/periódico.
-              Preencha os identificadores persistentes para catalogação no
-              sistema.
-            </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            label="URL do Repository / Dataset (Zenodo, Figshare, GitHub)"
+            placeholder="https://zenodo.org/..."
+            {...registerDoi("datasetUrl")}
+            error={Boolean(doiErrors.datasetUrl)}
+            helperText={doiErrors.datasetUrl?.message}
+          />
+        </Box>
+      ) : (
+        <Box
+          component="form"
+          id="rejection-form"
+          onSubmit={handleSubmitRejection(onSubmitRejection)}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Em caso de rejeição no congresso primário, selecione o fluxo de
+            contingência v2 definido pela equipe.
+          </Typography>
 
-            <TextField
-              fullWidth
-              size="small"
-              label="DOI do Artigo"
-              placeholder="10.1109/SCI.2026.XXXXX"
-              {...registerDoi("doi")}
-              error={Boolean(doiErrors.doi)}
-              helperText={doiErrors.doi?.message}
-            />
-
-            <TextField
-              fullWidth
-              size="small"
-              label="URL da Publicação (IEEE / Springer / ACM / Evento)"
-              placeholder="https://doi.org/..."
-              {...registerDoi("publicationUrl")}
-              error={Boolean(doiErrors.publicationUrl)}
-              helperText={doiErrors.publicationUrl?.message}
-            />
-
-            <TextField
-              fullWidth
-              size="small"
-              label="URL do Repository / Dataset (Zenodo, Figshare, GitHub)"
-              placeholder="https://zenodo.org/..."
-              {...registerDoi("datasetUrl")}
-              error={Boolean(doiErrors.datasetUrl)}
-              helperText={doiErrors.datasetUrl?.message}
-            />
-          </Box>
-        ) : (
-          <Box
-            component="form"
-            id="rejection-form"
-            onSubmit={handleSubmitRejection(onSubmitRejection)}
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Em caso de rejeição no congresso primário, selecione o fluxo de
-              contingência v2 definido pela equipe.
-            </Typography>
-
-            <FormControl error={Boolean(rejectionErrors.decisionStrategy)}>
-              <FormLabel sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
-                Estratégia de Redirecionamento
-              </FormLabel>
-              <RadioGroup
-                value={selectedStrategy}
-                onChange={(e) =>
-                  setRejectionValue(
-                    "decisionStrategy",
-                    e.target.value as "SUBMIT_BACKUP" | "SUBMIT_NEW_TARGET",
-                  )
-                }
-              >
-                <FormControlLabel
-                  value="SUBMIT_BACKUP"
-                  control={<Radio size="small" color="primary" />}
-                  label="1. Submeter imediatamente ao Congresso Backup pré-cadastrado no projeto"
-                />
-                <FormControlLabel
-                  value="SUBMIT_NEW_TARGET"
-                  control={<Radio size="small" color="primary" />}
-                  label="2. Escolher um Novo Congresso Target e readequar a versão v2"
-                />
-              </RadioGroup>
-              {rejectionErrors.decisionStrategy && (
-                <FormHelperText>
-                  {rejectionErrors.decisionStrategy.message}
-                </FormHelperText>
-              )}
-            </FormControl>
-
-            {selectedStrategy === "SUBMIT_NEW_TARGET" && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  pl: 3,
-                  pt: 1,
-                  borderLeft: "2px solid",
-                  borderColor: "primary.main",
-                }}
-              >
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Nome do Novo Congresso / Periódico Target"
-                  placeholder="Ex: ACM SIGCOMM 2027"
-                  {...registerRejection("newConferenceName")}
-                />
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  label="Nova Data Limite de Submissão"
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  {...registerRejection("newConferenceDate")}
-                />
-              </Box>
+          <FormControl error={Boolean(rejectionErrors.decisionStrategy)}>
+            <FormLabel sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+              Estratégia de Redirecionamento
+            </FormLabel>
+            <RadioGroup
+              value={selectedStrategy}
+              onChange={(e) =>
+                setRejectionValue(
+                  "decisionStrategy",
+                  e.target.value as "SUBMIT_BACKUP" | "SUBMIT_NEW_TARGET",
+                )
+              }
+            >
+              <FormControlLabel
+                value="SUBMIT_BACKUP"
+                control={<Radio size="small" color="primary" />}
+                label="1. Submeter imediatamente ao Congresso Backup pré-cadastrado no projeto"
+              />
+              <FormControlLabel
+                value="SUBMIT_NEW_TARGET"
+                control={<Radio size="small" color="primary" />}
+                label="2. Escolher um Novo Congresso Target e readequar a versão v2"
+              />
+            </RadioGroup>
+            {rejectionErrors.decisionStrategy && (
+              <FormHelperText>
+                {rejectionErrors.decisionStrategy.message}
+              </FormHelperText>
             )}
-          </Box>
-        )}
-      </DialogContent>
+          </FormControl>
 
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
-          Cancelar
-        </Button>
-        {activeTab === "ACCEPTED" ? (
-          <Button
-            type="submit"
-            form="doi-form"
-            variant="contained"
-            color="success"
-            startIcon={<CheckCircleOutlinedIcon />}
-          >
-            Registrar DOI & Finalizar Artigo
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            form="rejection-form"
-            variant="contained"
-            color="warning"
-            startIcon={<SendIcon />}
-          >
-            Confirmar Estratégia v2
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+          {selectedStrategy === "SUBMIT_NEW_TARGET" && (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                pl: 3,
+                pt: 1,
+                borderLeft: "2px solid",
+                borderColor: "primary.main",
+              }}
+            >
+              <TextField
+                fullWidth
+                size="small"
+                label="Nome do Novo Congresso / Periódico Target"
+                placeholder="Ex: ACM SIGCOMM 2027"
+                {...registerRejection("newConferenceName")}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                type="date"
+                label="Nova Data Limite de Submissão"
+                slotProps={{ inputLabel: { shrink: true } }}
+                {...registerRejection("newConferenceDate")}
+              />
+            </Box>
+          )}
+        </Box>
+      )}
+    </StandardModal>
   );
 };

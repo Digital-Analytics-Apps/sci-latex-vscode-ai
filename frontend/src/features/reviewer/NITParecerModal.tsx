@@ -8,11 +8,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   FormControlLabel,
   FormHelperText,
@@ -27,6 +22,7 @@ import {
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
+import { StandardModal } from "../../components/common/StandardModal";
 import { NITStatus } from "../../constants/status";
 import { useSubmitNITParecerMutation } from "../../hooks/useReviewQueries";
 import {
@@ -155,12 +151,13 @@ export function NITParecerModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
-        Núcleo de Inovação Tecnológica (NIT) - Propriedade Intelectual & Sigilo
-      </DialogTitle>
-
-      <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
+    <StandardModal
+      open={open}
+      onClose={onClose}
+      size="md"
+      icon={<HourglassTopIcon color="primary" />}
+      title="Núcleo de Inovação Tecnológica (NIT) - Propriedade Intelectual & Sigilo"
+      subheader={
         <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
           <Tab
             label="1. Registrar Envio ao NIT"
@@ -173,213 +170,189 @@ export function NITParecerModal({
             iconPosition="start"
           />
         </Tabs>
-      </Box>
+      }
+      onSubmit={handleSubmit(onSubmit)}
+      confirmText={
+        activeTab === 0
+          ? "Registrar Envio ao NIT"
+          : "Registrar Parecer Final do NIT"
+      }
+      confirmColor={
+        activeTab === 0
+          ? "primary"
+          : selectedStatus === NITStatus.APPROVED_NIT
+            ? "success"
+            : "error"
+      }
+      isSubmitting={submitNITMutation.isPending}
+    >
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        {activeTab === 0 && (
+          <>
+            <Alert severity="info" variant="outlined">
+              O departamento do NIT realiza a análise de patenteabilidade e
+              sigilo de forma offline/externa. Registre aqui o envio da cópia
+              do artigo em PDF para acompanhamento do processo.
+            </Alert>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogContent
-          dividers
-          sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
-        >
-          {activeTab === 0 && (
-            <>
-              <Alert severity="info" variant="outlined">
-                O departamento do NIT realiza a análise de patenteabilidade e
-                sigilo de forma offline/externa. Registre aqui o envio da cópia
-                do artigo em PDF para acompanhamento do processo.
-              </Alert>
-
-              {pdfUrl && (
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: 1,
-                    bgcolor: "action.hover",
-                    display: "flex",
-                    alignItems: "center",
-                    justify: "space-between",
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Cópia do Artigo PDF para o NIT:
-                  </Typography>
-                  <Button
-                    component="a"
-                    href={pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="outlined"
-                    size="small"
-                    startIcon={<DownloadIcon />}
-                  >
-                    Baixar PDF
-                  </Button>
-                </Box>
-              )}
-
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ mb: 0.5, fontWeight: 600 }}
-                >
-                  Data e Hora do Envio *
+            {pdfUrl && (
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: "action.hover",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Cópia do Artigo PDF para o NIT:
                 </Typography>
-                <TextField
-                  fullWidth
-                  type="datetime-local"
-                  {...register("sentToNitAt")}
-                  error={Boolean(errors.sentToNitAt)}
-                  helperText={errors.sentToNitAt?.message}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                />
-              </Box>
-
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ mb: 0.5, fontWeight: 600 }}
+                <Button
+                  component="a"
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<DownloadIcon />}
                 >
-                  Observações de Envio / Protocolo (Opcional)
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  placeholder="Ex: Enviado por e-mail para nit@instituicao.br com protocolo #2026-091..."
-                  {...register("sentToNitNotes")}
-                  error={Boolean(errors.sentToNitNotes)}
-                  helperText={errors.sentToNitNotes?.message}
-                />
+                  Baixar PDF
+                </Button>
               </Box>
-            </>
-          )}
+            )}
 
-          {activeTab === 1 && (
-            <>
-              {initialSentToNitAt && (
-                <Alert severity="success" variant="outlined" sx={{ mb: 1 }}>
-                  Envio registrado em:{" "}
-                  <strong>
-                    {new Date(initialSentToNitAt).toLocaleString("pt-BR")}
-                  </strong>
-                  {initialSentToNitNotes && (
-                    <div>Nota: {initialSentToNitNotes}</div>
-                  )}
-                </Alert>
-              )}
-
-              <Typography variant="body2" color="text.secondary">
-                Após a devolutiva offline do NIT, registre o resultado final do
-                parecer para que o autor e revisor possam dar prosseguimento.
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 0.5, fontWeight: 600 }}
+              >
+                Data e Hora do Envio *
               </Typography>
+              <TextField
+                fullWidth
+                type="datetime-local"
+                {...register("sentToNitAt")}
+                error={Boolean(errors.sentToNitAt)}
+                helperText={errors.sentToNitAt?.message}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Box>
 
-              <FormControl error={Boolean(errors.nitStatus)}>
-                <FormLabel sx={{ fontWeight: 600, mb: 1, fontSize: "0.85rem" }}>
-                  Resultado da Devolutiva do NIT *
-                </FormLabel>
-                <RadioGroup
-                  row
-                  value={selectedStatus}
-                  onChange={(e) =>
-                    setValue(
-                      "nitStatus",
-                      e.target.value as "APPROVED_NIT" | "REJECTED_NIT",
-                    )
-                  }
-                >
-                  <FormControlLabel
-                    value={NITStatus.APPROVED_NIT}
-                    control={<Radio color="success" />}
-                    label={
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        <CheckCircleIcon color="success" fontSize="small" />
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 600, color: "success.main" }}
-                        >
-                          Aprovado pelo NIT (Liberar Merge)
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                  <FormControlLabel
-                    value={NITStatus.REJECTED_NIT}
-                    control={<Radio color="error" />}
-                    label={
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        <CancelIcon color="error" fontSize="small" />
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 600, color: "error.main" }}
-                        >
-                          Rejeitado pelo NIT / Restrição de Sigilo
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                </RadioGroup>
-                {errors.nitStatus && (
-                  <FormHelperText>{errors.nitStatus.message}</FormHelperText>
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 0.5, fontWeight: 600 }}
+              >
+                Observações de Envio / Protocolo (Opcional)
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                placeholder="Ex: Enviado por e-mail para nit@instituicao.br com protocolo #2026-091..."
+                {...register("sentToNitNotes")}
+                error={Boolean(errors.sentToNitNotes)}
+                helperText={errors.sentToNitNotes?.message}
+              />
+            </Box>
+          </>
+        )}
+
+        {activeTab === 1 && (
+          <>
+            {initialSentToNitAt && (
+              <Alert severity="success" variant="outlined" sx={{ mb: 1 }}>
+                Envio registrado em:{" "}
+                <strong>
+                  {new Date(initialSentToNitAt).toLocaleString("pt-BR")}
+                </strong>
+                {initialSentToNitNotes && (
+                  <div>Nota: {initialSentToNitNotes}</div>
                 )}
-              </FormControl>
+              </Alert>
+            )}
 
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ mb: 0.5, fontWeight: 600 }}
-                >
-                  Parecer Técnico / Justificativa do NIT *
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  placeholder="Descreva as orientações, parecer técnico ou restrições apontadas pelo NIT..."
-                  {...register("nitNotes")}
-                  error={Boolean(errors.nitNotes)}
-                  helperText={errors.nitNotes?.message}
+            <Typography variant="body2" color="text.secondary">
+              Após a devolutiva offline do NIT, registre o resultado final do
+              parecer para que o autor e revisor possam dar prosseguimento.
+            </Typography>
+
+            <FormControl error={Boolean(errors.nitStatus)}>
+              <FormLabel sx={{ fontWeight: 600, mb: 1, fontSize: "0.85rem" }}>
+                Resultado da Devolutiva do NIT *
+              </FormLabel>
+              <RadioGroup
+                row
+                value={selectedStatus}
+                onChange={(e) =>
+                  setValue(
+                    "nitStatus",
+                    e.target.value as "APPROVED_NIT" | "REJECTED_NIT",
+                  )
+                }
+              >
+                <FormControlLabel
+                  value={NITStatus.APPROVED_NIT}
+                  control={<Radio color="success" />}
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      <CheckCircleIcon color="success" fontSize="small" />
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, color: "success.main" }}
+                      >
+                        Aprovado pelo NIT (Liberar Merge)
+                      </Typography>
+                    </Box>
+                  }
                 />
-              </Box>
-            </>
-          )}
-        </DialogContent>
+                <FormControlLabel
+                  value={NITStatus.REJECTED_NIT}
+                  control={<Radio color="error" />}
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      <CancelIcon color="error" fontSize="small" />
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, color: "error.main" }}
+                      >
+                        Rejeitado pelo NIT / Restrição de Sigilo
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </RadioGroup>
+              {errors.nitStatus && (
+                <FormHelperText>{errors.nitStatus.message}</FormHelperText>
+              )}
+            </FormControl>
 
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color={
-              activeTab === 0
-                ? "primary"
-                : selectedStatus === NITStatus.APPROVED_NIT
-                  ? "success"
-                  : "error"
-            }
-            disabled={submitNITMutation.isPending}
-            startIcon={
-              submitNITMutation.isPending ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : activeTab === 0 ? (
-                <SendIcon />
-              ) : selectedStatus === NITStatus.APPROVED_NIT ? (
-                <CheckCircleIcon />
-              ) : (
-                <CancelIcon />
-              )
-            }
-          >
-            {activeTab === 0
-              ? "Registrar Envio ao NIT"
-              : "Registrar Parecer Final do NIT"}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 0.5, fontWeight: 600 }}
+              >
+                Parecer Técnico / Justificativa do NIT *
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                placeholder="Descreva as orientações, parecer técnico ou restrições apontadas pelo NIT..."
+                {...register("nitNotes")}
+                error={Boolean(errors.nitNotes)}
+                helperText={errors.nitNotes?.message}
+              />
+            </Box>
+          </>
+        )}
+      </Box>
+    </StandardModal>
   );
 }

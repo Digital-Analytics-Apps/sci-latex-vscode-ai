@@ -49,6 +49,7 @@ export async function teamsRoutes(app: FastifyInstance) {
         description: 'Retorna a lista de equipes ativas com contagem de membros e projetos.',
         security: [{ bearerAuth: [] }],
         querystring: z.object({
+          search: z.string().optional(),
           managerId: z.string().uuid().optional(),
         }),
       },

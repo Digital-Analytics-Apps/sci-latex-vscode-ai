@@ -23,11 +23,12 @@ export class TeamsController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
+      search: z.string().optional(),
       managerId: z.string().uuid().optional(),
     });
 
-    const { managerId } = querySchema.parse(request.query);
-    const teams = await this.teamsService.listTeams(managerId);
+    const { search, managerId } = querySchema.parse(request.query);
+    const teams = await this.teamsService.listTeams({ search, managerId });
     return reply.send({ teams });
   }
 

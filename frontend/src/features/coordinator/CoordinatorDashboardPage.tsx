@@ -8,10 +8,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   TextField,
   Tooltip,
   Typography,
@@ -21,6 +17,7 @@ import type { GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
+import { StandardModal } from "../../components/common/StandardModal";
 import {
   createBoldColumn,
   createDateColumn,
@@ -246,21 +243,23 @@ export const CoordinatorDashboardPage = () => {
       </Card>
 
       {/* Modal do Coordenador para Ajuste de Prazo */}
-      <Dialog
+      <StandardModal
         open={Boolean(selectedTask)}
         onClose={() => setSelectedTask(null)}
-        maxWidth="xs"
-        fullWidth
+        size="sm"
+        icon={<EventAvailableIcon color="info" />}
+        title="Ajustar Prazo da Tarefa"
+        subtitle={
+          selectedTask
+            ? `Como Coordenador da equipe, você tem autoridade para estender ou antecipar o prazo da tarefa "${selectedTask.title}".`
+            : undefined
+        }
+        onConfirm={handleSaveNewDate}
+        confirmText="Salvar Novo Prazo"
+        confirmColor="info"
+        isSubmitting={updateDeadlineMutation.isPending}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          Ajustar Prazo da Tarefa
-        </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Como Coordenador da equipe, você tem autoridade para estender ou
-            antecipar o prazo de entrega da tarefa{" "}
-            <strong>{selectedTask?.title}</strong>.
-          </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField
             fullWidth
             type="date"
@@ -269,21 +268,8 @@ export const CoordinatorDashboardPage = () => {
             onChange={(e) => setNewDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setSelectedTask(null)} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color="info"
-            startIcon={<EventAvailableIcon />}
-            onClick={handleSaveNewDate}
-          >
-            Salvar Novo Prazo
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </StandardModal>
     </Box>
   );
 };
