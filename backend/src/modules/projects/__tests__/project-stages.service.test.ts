@@ -83,6 +83,20 @@ class InMemoryProjectStagesRepository implements IProjectStagesRepository {
     }
     return created;
   }
+
+  async reorderStages(
+    projectId: string,
+    stageOrders: { id: string; order: number }[]
+  ): Promise<ProjectStage[]> {
+    for (const item of stageOrders) {
+      const stage = this.stages.find((s) => s.id === item.id);
+      if (stage) {
+        stage.order = item.order;
+        stage.updatedAt = new Date();
+      }
+    }
+    return this.findByProjectId(projectId);
+  }
 }
 
 describe('ProjectStagesService', () => {
@@ -181,7 +195,9 @@ describe('ProjectStagesService', () => {
     const stagesAfterDelete = await service.listStages('proj-1');
     expect(stagesAfterDelete.find((s) => s.id === custom.id)).toBeUndefined();
 
-    const nitStage = stagesAfterDelete.find((s) => s.order === 4)!;
+    const nitStage = stagesAfterDelete.find(
+      (s) => s.isGatekeeper && (s.gatekeeperType === 'NIT' || s.title.includes('NIT'))
+    )!;
     await expect(service.deleteStage('proj-1', nitStage.id)).rejects.toThrow(
       'Não é possível excluir etapas de Gatekeeper obrigatórias'
     );

@@ -144,10 +144,13 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
 * **Filtros com Debounce & REST API:** Integração direta com `useUrlFilters` e `useDebounce` (400ms), repassando parâmetros filtrados (`search`, `status`) para a API REST sem realizar filtragem em memória no cliente.
 * **Células Especializadas:**
   - `TaskTitleBranchCell`: Título em destaque e tag com a branch Git (`code`).
-  - `TaskAssigneeCell`: Nome e avatar do responsável pela tarefa.
+  - `TaskAssigneeCell`: Nome e avatar do responsável pela tarefa ou indicação `⚠️ Sem Responsável`.
   - `TaskDueDateCell`: Prazo formatado em data pt-BR.
   - `TaskStatusChip`: Status visual utilizando helper `getTaskStatusConfig` (cor MUI e rótulo) e indicador de bloqueio por outro autor (`🔒`).
-  - `TaskActionCell`: Botão contextual "🚀 Iniciar Workspace", "⚡ Provisionando...", "🔒 Em uso por X" ou "Tarefa Concluída".
+  - `TaskActionCell`: Botões de governança **"✍️ Assinar"** (atribui a tarefa ao usuário logado) e **"🔓 Desassinar"** (libera a tarefa), além do botão "🚀 Iniciar Workspace" / "🔒 Em uso por X".
+  - **Estado Inicial Vazio:** Ao criar um novo artigo, as Etapas de Escrita são instanciadas como estruturas, e a tabela/seções iniciam **vazias de tarefas**. O Autor adiciona sub-tarefas vinculadas às etapas conforme a necessidade.
+  - **Gestão Dinâmica de Etapas (Features):** Modais e ações para criar, editar, reordenar e remover etapas de escrita customizadas.
+  - **Restrição do Modal de PR:** O modal de solicitação de revisão (`CreatePRModal`) permite selecionar apenas a **Feature Branch** da Etapa (`feature/<stage-slug>` $\rightarrow$ `dev`) para revisão entre pares ou revisor principal. Sub-tarefas são integradas diretamente pelo autor na Feature Branch sem exigir PR formal.
 
 ---
 
@@ -197,12 +200,10 @@ A tela principal do Dashboard (`src/features/dashboard/DashboardPage.tsx`) funci
 
 1. **Régua de Timeline Paralela (`<ArticleTimelineHeader />`):**
    - Exibe visualmente as etapas de escrita de conteúdo rodando em paralelo, indicando a porcentagem de conclusão de cada uma baseada no progresso das tarefas agrupadas (`stageId`).
-2. **Badges de Trava Visual dos Gatekeepers (`<GatekeeperLockBadge />`):**
-   - Os botões de ação do **NIT** e da **Submissão ao Congresso** exibem a badge de trava visual enquanto houver conteúdo de escrita pendente:
-     - Estado Bloqueado: `🔒 Bloqueado (X etapas de escrita pendentes)`.
-     - Estado Liberado: `🔓 Liberado para Análise do NIT` (habilita o clique para Autores ou Revisor-Autor).
-3. **Modal de Atribuição de Tarefa a Etapa (`CreateTaskModal`):**
-   - Inclui o seletor de Etapa do Artigo (`stageId`), permitindo que cada nova tarefa seja vinculada a um marco específico da Timeline.
+   - **Reordenação Drag & Drop (`@dnd-kit/core` + `@dnd-kit/sortable`):** Permite que autores reordenem as etapas de escrita dinamicamente arrastando os cards via alça de arrasto (`DragIndicatorIcon`).
+   - **Trava dos Gatekeepers (NIT e Congresso):** As duas últimas etapas de gatekeeper (NIT e Congresso Alvo) permanecem **fixas no final da timeline** e não podem ser reordenadas nem arrastadas para trás de etapas de escrita.
+   - **Restrição de Exclusão:** Etapas de escrita só podem ser excluídas se não houver nenhuma tarefa vinculada a elas (`tasks.length === 0`).
+   - **Modal de Criação de Etapa (`CreateStageModal.tsx`):** Permite aos autores adicionar novas etapas de escrita de conteúdo antes das etapas fixas de gatekeeper.
 
 ---
 

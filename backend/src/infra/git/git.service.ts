@@ -1,9 +1,10 @@
 import { Octokit } from '@octokit/rest';
-import { exec } from 'child_process';
-import fs from 'fs/promises';
-import path from 'path';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import { env } from '../../config/env';
+import { prisma } from '../../db/prisma';
 
 const execAsync = promisify(exec);
 
@@ -275,6 +276,75 @@ export class GitService {
     return !isTestMode
       ? `https://github.com/${owner}/${repoName}`
       : path.join(this.baseStoragePath, `${projectId}.git`);
+  }
+
+  // Cria uma Feature Branch para a etapa de escrita (feature/<stage-slug>) derivada do ramo dev
+  async createFeatureBranch(
+    projectId: string,
+    stageTitle: string,
+    repoUrl?: string
+  ): Promise<string> {
+    await this.ensureStorageDir();
+    const gitFlags = this.getGitAuthFlags();
+
+    let targetRepoLocation = repoUrl;
+    if (!targetRepoLocation && env.NODE_ENV !== 'test') {
+      try {
+        const proj = await prisma.project.findUnique({
+          where: { id: projectId },
+          select: { gitRepoPath: true, name: true },
+        });
+        if (proj?.gitRepoPath) {
+          targetRepoLocation = proj.gitRepoPath;
+        } else if (proj?.name) {
+          targetRepoLocation = this.getRepoPath(projectId, proj.name);
+        }
+      } catch {
+        // Fallback para getRepoPath padrão
+      }
+    }
+
+    const cleanRepoLocation = this.cleanRepoUrl(targetRepoLocation || this.getRepoPath(projectId));
+
+    const slug = stageTitle
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 30)
+      .replace(/^-+|-+$/g, '');
+
+    const branchName = `feature/${slug || 'stage'}`;
+    const tempDir = path.join(this.baseStoragePath, `temp-feature-${projectId}-${Date.now()}`);
+
+    try {
+      try {
+        await execAsync(`git ${gitFlags} clone --branch dev "${cleanRepoLocation}" "${tempDir}"`, {
+          cwd: this.baseStoragePath,
+        });
+      } catch {
+        await execAsync(`git ${gitFlags} clone --branch main "${cleanRepoLocation}" "${tempDir}"`, {
+          cwd: this.baseStoragePath,
+        });
+      }
+
+      await execAsync(`git checkout -b ${branchName}`, { cwd: tempDir }).catch(() => {});
+      await execAsync(`git ${gitFlags} push origin ${branchName}`, { cwd: tempDir }).catch(
+        (err) => {
+          console.warn(`⚠️ Warning pushing feature branch ${branchName}:`, err.message || err);
+        }
+      );
+
+      return branchName;
+    } catch (err: any) {
+      console.warn(`⚠️ Could not create feature branch ${branchName}:`, err.message || err);
+      return branchName;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 
   // Realiza o commit silencioso de uma alteração em um arquivo do projeto

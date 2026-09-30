@@ -80,16 +80,7 @@ export const CreateTaskModal = ({
       return;
     }
 
-    const finalAssignedToId = assignedToId || selectedGlobalAssignee?.id;
-    if (!finalAssignedToId) {
-      dispatch(
-        showNotification({
-          message: "Selecione um membro do artigo responsável pela tarefa.",
-          severity: "warning",
-        }),
-      );
-      return;
-    }
+    const finalAssignedToId = assignedToId || selectedGlobalAssignee?.id || undefined;
 
     setIsSubmitting(true);
     try {
@@ -103,18 +94,20 @@ export const CreateTaskModal = ({
       }
 
       // Encontrar nome do usuário atribuído para notificação
-      const assignedMember = articleMembers.find(
-        (m) =>
-          m.userId === finalAssignedToId || m.user?.id === finalAssignedToId,
-      );
-      const assignedName =
-        assignedMember?.user?.name ||
-        selectedGlobalAssignee?.name ||
-        "Autor Responsável";
+      const assignedMember = finalAssignedToId
+        ? articleMembers.find(
+            (m) =>
+              m.userId === finalAssignedToId || m.user?.id === finalAssignedToId,
+          )
+        : null;
+      const assignedName = assignedMember?.user?.name || selectedGlobalAssignee?.name;
+      const notificationMsg = assignedName
+        ? `Nova Tarefa "${title}" atribuída para ${assignedName} com sucesso!`
+        : `Nova Tarefa "${title}" criada com sucesso (não atribuída)!`;
 
       dispatch(
         showNotification({
-          message: `Nova Tarefa "${title}" atribuída para ${assignedName} com sucesso!`,
+          message: notificationMsg,
           severity: "success",
         }),
       );
@@ -146,7 +139,7 @@ export const CreateTaskModal = ({
       size="sm"
       icon={<AddTaskIcon color="primary" />}
       title="Criar Nova Tarefa do Artigo"
-      subtitle="Atribua uma tarefa a um membro (Autor/Revisor) pertencente a este artigo."
+      subtitle="Crie uma tarefa para o artigo. A atribuição a um membro é opcional (pode ser assinada depois)."
       onSubmit={handleSubmit}
       confirmText="Criar Tarefa"
       confirmColor="primary"
@@ -165,13 +158,16 @@ export const CreateTaskModal = ({
 
         {/* Seleção do Membro do Artigo */}
         {articleMembers.length > 0 ? (
-          <FormControl fullWidth size="small" required>
-            <InputLabel>Membro Atribuído (Membros do Artigo)</InputLabel>
+          <FormControl fullWidth size="small">
+            <InputLabel>Membro Atribuído (Opcional)</InputLabel>
             <Select
               value={assignedToId}
-              label="Membro Atribuído (Membros do Artigo)"
+              label="Membro Atribuído (Opcional)"
               onChange={(e) => setAssignedToId(e.target.value)}
             >
+              <MenuItem value="">
+                <em>Não Atribuído (Qualquer Autor pode Assinar)</em>
+              </MenuItem>
               {articleMembers.map((m) => {
                 const targetUserId = m.userId || m.user?.id || m.id;
                 const userName = m.user?.name || "Membro do Artigo";

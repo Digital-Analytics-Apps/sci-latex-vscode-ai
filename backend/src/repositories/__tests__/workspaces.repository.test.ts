@@ -45,11 +45,17 @@ describe('PrismaWorkspacesRepository', () => {
 
     expect(prisma.workspace.upsert).toHaveBeenCalledWith({
       where: {
-        projectId_userId_taskId: { projectId: 'proj-1', userId: 'user-1', taskId: 'task-1' },
+        projectId_userId_stageId_taskId: {
+          projectId: 'proj-1',
+          userId: 'user-1',
+          stageId: 'general',
+          taskId: 'task-1',
+        },
       },
       create: {
         projectId: 'proj-1',
         userId: 'user-1',
+        stageId: 'general',
         taskId: 'task-1',
         podName: 'workspace-pod-1',
         status: 'READY',
@@ -92,7 +98,12 @@ describe('PrismaWorkspacesRepository', () => {
 
     expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
       where: {
-        projectId_userId_taskId: { projectId: 'proj-1', userId: 'user-1', taskId: 'task-1' },
+        projectId_userId_stageId_taskId: {
+          projectId: 'proj-1',
+          userId: 'user-1',
+          stageId: 'general',
+          taskId: 'task-1',
+        },
       },
     });
 

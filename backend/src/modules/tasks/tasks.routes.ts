@@ -44,6 +44,34 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
     controller.list.bind(controller)
   );
 
+  // POST /api/v1/projects/:projectId/tasks/:taskId/claim - Assinar tarefa
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/claim',
+    {
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Assinar tarefa (Claim)',
+        security: [{ bearerAuth: [] }],
+        params: taskWorkspaceParamsSchema,
+      },
+    },
+    controller.claim.bind(controller)
+  );
+
+  // POST /api/v1/projects/:projectId/tasks/:taskId/unclaim - Desassinar tarefa
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/unclaim',
+    {
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Desassinar tarefa (Unclaim)',
+        security: [{ bearerAuth: [] }],
+        params: taskWorkspaceParamsSchema,
+      },
+    },
+    controller.unclaim.bind(controller)
+  );
+
   // POST /api/v1/projects/:projectId/tasks/:taskId/workspace - Iniciar / Continuar Workspace para uma Task
   fastify.post(
     '/api/v1/projects/:projectId/tasks/:taskId/workspace',

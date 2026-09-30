@@ -1,7 +1,9 @@
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import HowToRegIcon from "@mui/icons-material/HowToReg";
 import LaunchIcon from "@mui/icons-material/Launch";
 import LockIcon from "@mui/icons-material/Lock";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import {
   Avatar,
   Box,
@@ -56,12 +58,32 @@ export const TaskTitleBranchCell = ({ row }: { row: TaskItem }) => (
 );
 
 export const TaskAssigneeCell = ({ row }: { row: TaskItem }) => {
+  const isUnassigned =
+    !row.assignedToId &&
+    (!row.assignee ||
+      row.assignee === "Não atribuído" ||
+      (typeof row.assignee === "object" && !(row.assignee as any).name));
+
+  if (isUnassigned) {
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", py: 0.5 }}>
+        <Chip
+          label="Não Atribuído"
+          size="small"
+          variant="outlined"
+          color="default"
+          sx={{ fontSize: "0.75rem", fontStyle: "italic", borderColor: "divider" }}
+        />
+      </Box>
+    );
+  }
+
   const name =
     typeof row.assignee === "object" && row.assignee
-      ? (row.assignee as any).name || "Não atribuído"
+      ? (row.assignee as any).name || "Autor"
       : typeof row.assignee === "string"
         ? row.assignee
-        : "Não atribuído";
+        : "Autor";
 
   const email =
     typeof row.assignee === "object" && row.assignee
@@ -186,17 +208,27 @@ export const TaskActionCell = ({
   provisioningTaskId,
   currentUserId,
   onStartWorkspace,
+  onClaimTask,
+  onUnclaimTask,
+  isClaiming = false,
+  isUnclaiming = false,
 }: {
   row: TaskItem;
   provisioningTaskId: string | null;
   currentUserId?: string;
   onStartWorkspace: (task: TaskItem) => void;
+  onClaimTask?: (taskId: string) => void;
+  onUnclaimTask?: (taskId: string) => void;
+  isClaiming?: boolean;
+  isUnclaiming?: boolean;
 }) => {
   const isOccupiedByOther =
     row.isOccupied && row.occupiedBy && row.occupiedBy.id !== currentUserId;
 
   const isMerged = row.status === TaskStatus.MERGED;
   const isProvisioning = provisioningTaskId === row.id;
+  const isUnassigned = !row.assignedToId;
+  const isAssignedToMe = row.assignedToId === currentUserId;
 
   if (isMerged) {
     return (
@@ -228,23 +260,84 @@ export const TaskActionCell = ({
     );
   }
 
+  // Tarefa sem dono: Botão de Assinar
+  if (isUnassigned) {
+    return (
+      <Button
+        variant="outlined"
+        color="primary"
+        size="small"
+        disabled={isClaiming}
+        startIcon={
+          isClaiming ? (
+            <CircularProgress size={14} color="inherit" />
+          ) : (
+            <HowToRegIcon fontSize="small" />
+          )
+        }
+        onClick={() => onClaimTask && onClaimTask(row.id)}
+        sx={{ fontWeight: 700 }}
+      >
+        {isClaiming ? "Assinando..." : "Assinar Tarefa"}
+      </Button>
+    );
+  }
+
+  // Tarefa atribuída ao usuário atual: Botão Iniciar Workspace + Botão Desassinar
+  if (isAssignedToMe) {
+    return (
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          disabled={isProvisioning}
+          startIcon={
+            isProvisioning ? (
+              <CircularProgress size={14} color="inherit" />
+            ) : (
+              <LaunchIcon fontSize="small" />
+            )
+          }
+          onClick={() => onStartWorkspace(row)}
+          sx={{ fontWeight: 700 }}
+        >
+          {isProvisioning ? "⚡ Provisionando..." : "🚀 Iniciar Workspace"}
+        </Button>
+
+        {onUnclaimTask && (
+          <Tooltip title="Desassinar tarefa (liberar para outros autores)">
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              disabled={isUnclaiming || isProvisioning}
+              onClick={() => onUnclaimTask(row.id)}
+              sx={{ minWidth: 32, px: 1 }}
+            >
+              {isUnclaiming ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <PersonRemoveIcon fontSize="small" />
+              )}
+            </Button>
+          </Tooltip>
+        )}
+      </Stack>
+    );
+  }
+
+  // Tarefa atribuída a outro autor
   return (
     <Button
-      variant="contained"
-      color="primary"
+      variant="outlined"
+      color="info"
       size="small"
-      disabled={isProvisioning}
-      startIcon={
-        isProvisioning ? (
-          <CircularProgress size={14} color="inherit" />
-        ) : (
-          <LaunchIcon fontSize="small" />
-        )
-      }
-      onClick={() => onStartWorkspace(row)}
-      sx={{ fontWeight: 700 }}
+      disabled
+      sx={{ fontWeight: 600 }}
     >
-      {isProvisioning ? "⚡ Provisionando..." : "🚀 Iniciar Workspace"}
+      Atribuída a outro autor
     </Button>
   );
 };
+

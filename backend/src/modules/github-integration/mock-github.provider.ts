@@ -5,8 +5,8 @@ import {
 } from './github-provider.interface';
 
 export class MockGithubProvider implements IGithubProvider {
-  private repoCounter = 1000n;
-  private issueCounter = 5000n;
+  private repoCounter = BigInt(Date.now());
+  private issueCounter = BigInt(Date.now() + 5000);
 
   async createRepositoryWithTeXTemplate(
     params: CreateArticleGithubRepositoryParams
@@ -15,12 +15,7 @@ export class MockGithubProvider implements IGithubProvider {
     const repoName = `sci-paper-${params.articleId.slice(0, 8)}`;
     const projectV2Id = `PVT_kwDO${params.articleId.slice(0, 8)}`;
 
-    const initialTitles = [
-      'Seção 1: Introdução e Trabalhos Relacionados',
-      'Seção 2: Metodologia e Formulacao',
-      'Seção 3: Resultados e Experimentos',
-      'Seção 4: Conclusão e Trab. Futuros',
-    ];
+    const initialTitles: string[] = [];
 
     const initialIssues = initialTitles.map((title, index) => {
       const issueId = ++this.issueCounter;

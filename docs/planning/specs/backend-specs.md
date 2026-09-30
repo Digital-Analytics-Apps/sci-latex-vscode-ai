@@ -79,28 +79,33 @@ src/
 - **Responsabilidade:** Camada de infraestrutura pura (stateless) responsável por interagir diretamente com a API do Kubernetes (via `@kubernetes/client-node`) para provisionamento, alocação e destruição física de containers `code-server` e volumes isolados.
 - **Principais Métodos e Funções:**
   * `ensureWarmPool(targetWarmPods = 1)`: Mantém exatamente 1 Pod de reserva em standby (`role=warm-standby`) para garantir aceleração no provisionamento.
-  * `claimPodForTask(projectId, userId, taskId)`: Aloca um Pod exclusivo para a tríade da tarefa. Reivindica do Warm Pool ou cria um Pod sob demanda (`role=user-workspace`), montando o volume isolado `projects/${projectId}/users/${userId}/tasks/${taskId}`.
-  * `releasePodForTask(projectId, userId, taskId)`: Conecta na API do K8s e executa `deleteNamespacedPod` para destruir o container e liberar memória RAM e CPU do nó. Respeita `GRACE_PERIOD_MS = 120_000` (2 minutos em desenvolvimento).
+* `claimPodForTask(projectId, userId, taskId, stageId?)`: Aloca um Pod exclusivo para a tarefa no subcaminho isolado de 4 níveis (`projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}`). Reivindica do Warm Pool ou cria um Pod sob demanda (`role=user-workspace`).
+  * `releasePodForTask(...)`: Conecta na API do K8s e executa `deleteNamespacedPod` para destruir o container e liberar memória RAM e CPU do nó.
   * `cleanProjectPVC(projectId)`: Exclui o PersistentVolumeClaim do projeto após confirmação no GitHub ou exclusão.
   * `updateServiceSelector(...)`: Atualiza dinamicamente o seletor do `code-server-service` no K8s para redirecionar o tráfego do proxy ao Pod correto.
   * `reconcileOrphanPods()` (Sweeper / Garbage Collector): Rotina agendada no boot e a cada 60s que lista os Pods `user-workspace` no K8s e deleta qualquer Pod cujo registro de presença no Redis (`workspace:active:<projectId>:<userId>:<taskId>`) tenha expirado.
 
 
-### 3.3 Módulo `projects` & `tasks` (Papers e Tarefas de Escrita)
+### 3.3 Módulo `projects` & `tasks` (Papers, Etapas/Features e Tarefas de Escrita)
 * `POST /api/v1/projects`
 * `GET /api/v1/projects`
 * `GET /api/v1/projects/:id`
 * `GET /api/v1/projects/:projectId/tasks`
-  * **Descrição:** Retorna a lista de tarefas do projeto enriquecidas com os campos de presença ativa do Redis: `isOccupied: boolean` e `occupiedBy: { id, name } | null`.
+  * **Descrição:** Retorna a lista de tarefas do projeto enriquecidas com os campos de presença ativa do Redis (`isOccupied`, `occupiedBy`) e suporte a tarefas desassinadas (`assignedToId: null`).
+* `POST /api/v1/projects/:projectId/tasks/:taskId/claim`
+  * **Descrição:** Atribui a sub-tarefa/issue ao usuário logado (`assignedToId = req.user.id`).
+* `POST /api/v1/projects/:projectId/tasks/:taskId/unclaim`
+  * **Descrição:** Desassocia o responsável da sub-tarefa/issue (`assignedToId = null`).
 * `POST /api/v1/projects/:projectId/tasks/:taskId/workspace`
-  * **Comportamento & Trava de Ocupação:** Se a tarefa possuir uma sessão ativa no Redis com outro usuário, rejeita a solicitação com **HTTP 409 Conflict** (`TASK_WORKSPACE_OCCUPIED`). Caso livre, provisiona a workspace e atualiza/sincroniza a branch com `origin/<branchName>`.
+  * **Comportamento & Trava de Ocupação:** Se a tarefa possuir uma sessão ativa no Redis com outro usuário, rejeita a solicitação com **HTTP 409 Conflict** (`TASK_WORKSPACE_OCCUPIED`). Caso livre, provisiona a workspace e atualiza/sincroniza a branch com a Feature pai `feature/<stage-slug>`.
 * `GET /api/v1/projects/:id/tasks/:taskId/diff-summary`
   * **Permissão:** Integrante do Projeto (`AUTHOR`, `REVIEWER`, `COORDINATOR`).
   * **Descrição:** Retorna os fatos Git puros (`path`, `status`, `additions`, `deletions`), metadados temporais (`lastSavedAt`, `lastSavedAuthor`) e itens traduzidos de domínio (`category`, `label`, `isTaskScope`) calculados contra o `HEAD` da branch da tarefa.
 * `POST /api/v1/projects/:id/tasks/:taskId/commit`
-  * **Permissão:** Autor atribuído à Tarefa.
+  * **Permissão:** Autor atribuído ou Autor do projeto.
   * **Input Opcional:** `{ "commitMessage": "Descrição manual opcional" }`
-  * **Comportamento:** Copia os arquivos atualizados da workspace `projects/:projectId/users/:userId/tasks/:taskId` (aplicando o filtro relativo sem ignorar pastas `/users/`), executa o commit na branch da tarefa e realiza `git push origin <branchName>`. Atualiza/cria o Draft PR correspondente no GitHub.
+  * **Comportamento:** Copia os arquivos atualizados da workspace `projects/:projectId/users/:userId/stages/:stageId/tasks/:taskId`, executa o commit na branch da sub-tarefa e mescla diretamente na Feature Branch pai (`feature/<stage-slug>`).
+  * **Restrição Estrita de PR:** Solicitacões de Revisão (`PullRequest` / `ReviewRound`) são permitidas **apenas para Feature Branches** (`feature/...` $\rightarrow$ `dev`). Sub-tarefas são integradas na Feature Branch sem exigir PR formal ao Revisor.
 
 ### 3.4 Módulo `compiler` (PDF Oficial de PRs e Artigo Consolidado)
 * `POST /api/v1/projects/:id/compile-master`

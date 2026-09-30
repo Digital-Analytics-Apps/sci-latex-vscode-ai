@@ -63,13 +63,8 @@ export class LiveGithubProvider implements IGithubProvider {
       console.warn('⚠️ Warning creating GitHub Project v2 board:', err);
     }
 
-    // Criar as 4 Issues reais de Work Items iniciais no repositório GitHub
-    const initialTitles = [
-      'Seção 1: Introdução e Trabalhos Relacionados',
-      'Seção 2: Metodologia e Formulação',
-      'Seção 3: Resultados e Experimentos',
-      'Seção 4: Conclusão e Trabalhos Futuros',
-    ];
+    // Nenhuma issue/task é gerada automaticamente na criação do artigo (tabela de tarefas inicia vazia)
+    const initialTitles: string[] = [];
 
     const initialIssues: Array<{
       issueId: bigint;

@@ -38,6 +38,13 @@ export interface CreateProjectInput {
   teamId?: string;
   coAuthorIds?: string[];
   reviewerId?: string;
+  stages?: Array<{
+    title: string;
+    description?: string;
+    plannedStartAt?: string;
+    plannedEndAt?: string;
+    plannedCompletionDate?: string;
+  }>;
 }
 
 export interface ArticleItem {

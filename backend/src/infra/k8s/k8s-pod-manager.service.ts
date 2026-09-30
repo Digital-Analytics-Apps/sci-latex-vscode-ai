@@ -245,7 +245,8 @@ export class K8sPodManagerService {
   async claimPodForTask(
     projectId: string,
     userId: string,
-    taskId: string
+    taskId: string,
+    stageId?: string
   ): Promise<PodClaimResult> {
     const pvcName = await this.ensureProjectPVC(projectId);
 
@@ -301,8 +302,9 @@ export class K8sPodManagerService {
         await k8sApi.deleteNamespacedPod(warmPod.metadata.name, this.namespace).catch(() => {});
       }
 
-      // Define subcaminho isolado por tarefa do usuário: projects/${projectId}/users/${userId}/tasks/${taskId}
-      const userTaskSubPath = `projects/${projectId}/users/${userId}/tasks/${taskId}`;
+      // Define subcaminho isolado por tarefa do usuário: projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}
+      const stageSegment = stageId || 'general';
+      const userTaskSubPath = `projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}`;
 
       // Cria o Pod sob demanda estritamente isolado da Task
       const userSuffix = userId ? userId.slice(0, 6) : 'user';

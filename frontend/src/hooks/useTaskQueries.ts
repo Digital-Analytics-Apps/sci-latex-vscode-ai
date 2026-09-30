@@ -39,3 +39,25 @@ export function useActivateTaskWorkspaceMutation(projectId: string) {
     },
   });
 }
+
+export function useClaimTaskMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => tasksService.claimTask(projectId, taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+}
+
+export function useUnclaimTaskMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => tasksService.unclaimTask(projectId, taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+}

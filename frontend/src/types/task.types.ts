@@ -27,7 +27,7 @@ export interface TaskItem {
 
 export interface CreateTaskInput {
   title: string;
-  assignedToId: string;
+  assignedToId?: string;
   dueDate?: string;
   stageId?: string;
 }

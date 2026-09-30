@@ -3,13 +3,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { env } from '../../config/env';
+import { prisma } from '../../db/prisma';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import {
   IProjectsRepository,
   PrismaProjectsRepository,
 } from '../../repositories/projects.repository';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
-import { prisma } from '../../db/prisma';
 import {
   IWorkspacesRepository,
   PrismaWorkspacesRepository,
@@ -299,12 +299,14 @@ export class EditorProxyService {
     projectId: string;
     userId: string;
     taskId: string;
+    stageId?: string;
     branchName: string;
     targetCommitHash?: string;
     gitRepoPath?: string;
     mode?: string;
   }): Promise<string> {
-    const { projectId, userId, taskId, branchName, targetCommitHash, gitRepoPath, mode } = params;
+    const { projectId, userId, taskId, stageId, branchName, targetCommitHash, gitRepoPath, mode } =
+      params;
 
     // 1. Resolver a URL remota do GitHub ou o diretório host local
     let remoteUrl: string | undefined = undefined;
@@ -329,11 +331,12 @@ export class EditorProxyService {
     const gitFlags = this.gitService.getGitAuthFlags();
     const repoTarget = remoteUrl || hostGitPath || this.gitService.getRepoPath(projectId);
 
-    // 2. Resolver o caminho físico exclusivo do Workspace da Task: projects/${projectId}/users/${userId}/tasks/${taskId}
+    // 2. Resolver o caminho físico exclusivo do Workspace da Task: projects/${projectId}/users/${userId}/stages/${stageId}/tasks/${taskId}
     const taskWorkspaceDir = this.workspacesRepository.getTaskWorkspacePath(
       projectId,
       userId,
-      taskId
+      taskId,
+      stageId
     );
     await fs.mkdir(taskWorkspaceDir, { recursive: true, mode: 0o777 });
 

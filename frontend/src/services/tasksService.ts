@@ -28,4 +28,20 @@ export const tasksService = {
     );
     return response.data;
   },
+
+  // Assinar tarefa (Claim)
+  async claimTask(projectId: string, taskId: string): Promise<TaskItem> {
+    const response = await api.post(
+      `/projects/${projectId}/tasks/${taskId}/claim`,
+    );
+    return response.data.task || response.data;
+  },
+
+  // Desassinar tarefa (Unclaim)
+  async unclaimTask(projectId: string, taskId: string): Promise<TaskItem> {
+    const response = await api.post(
+      `/projects/${projectId}/tasks/${taskId}/unclaim`,
+    );
+    return response.data.task || response.data;
+  },
 };

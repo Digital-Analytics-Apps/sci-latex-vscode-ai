@@ -18,6 +18,15 @@ export const createStageSchema = z.object({
   order: z.number().optional(),
 });
 
+export const reorderStagesSchema = z.object({
+  stages: z.array(
+    z.object({
+      id: z.string().min(1),
+      order: z.number().int(),
+    })
+  ),
+});
+
 export const updateStageSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
@@ -44,6 +53,17 @@ export class ProjectStagesController {
       const body = createStageSchema.parse(request.body);
       const stage = await this.stagesService.createStage(projectId, body);
       return reply.status(201).send(stage);
+    } catch (error: any) {
+      return reply.status(400).send({ message: error.message });
+    }
+  }
+
+  async reorder(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { projectId } = projectParamsSchema.parse(request.params);
+      const body = reorderStagesSchema.parse(request.body);
+      const stages = await this.stagesService.reorderStages(projectId, body.stages);
+      return reply.send(stages);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
     }

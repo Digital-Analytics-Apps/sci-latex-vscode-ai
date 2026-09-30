@@ -1,3 +1,4 @@
+import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -23,6 +24,7 @@ import { projectsService } from "../../../services/projectsService";
 import { showNotification } from "../../../store/slices/notificationSlice";
 import { ArticleTimelineHeader } from "../../../components/common/ArticleTimelineHeader";
 import { AuthorTasksTable } from "../../workspace/components/AuthorTasksTable";
+import { CreateStageModal } from "../../workspace/CreateStageModal";
 import type { TaskItem } from "../../../types/task.types";
 
 interface AuthorDashboardProps {
@@ -54,6 +56,7 @@ export const AuthorDashboard = ({
 }: AuthorDashboardProps) => {
   const dispatch = useDispatch();
   const currentMembers = selectedArticle?.members || [];
+  const [isCreateStageOpen, setIsCreateStageOpen] = useState(false);
 
   const { data: stages = [], refetch: refetchStages } = useQuery({
     queryKey: ["project-stages", activeProjectId],
@@ -81,6 +84,59 @@ export const AuthorDashboard = ({
         err.response?.data?.message ||
         err.message ||
         "Erro ao atualizar etapa.";
+      dispatch(showNotification({ message: msg, severity: "error" }));
+    }
+  };
+
+  const handleReorderStages = async (
+    reorderedList: { id: string; order: number }[],
+  ) => {
+    try {
+      await projectsService.reorderProjectStages(
+        activeProjectId,
+        reorderedList,
+      );
+      refetchStages();
+      dispatch(
+        showNotification({
+          message: "Ordem das etapas de escrita atualizada com sucesso!",
+          severity: "success",
+        }),
+      );
+    } catch {
+      dispatch(
+        showNotification({
+          message: "Erro ao reordenar etapas de escrita.",
+          severity: "error",
+        }),
+      );
+    }
+  };
+
+  const handleDeleteStage = async (stageId: string) => {
+    const targetStage = stages.find((s: any) => s.id === stageId);
+    if (targetStage?.tasks && targetStage.tasks.length > 0) {
+      dispatch(
+        showNotification({
+          message: `Não é possível excluir a etapa "${targetStage.title}" porque ela possui tarefas vinculadas. Remova ou reatribua as tarefas primeiro.`,
+          severity: "warning",
+        }),
+      );
+      return;
+    }
+
+    try {
+      await projectsService.deleteProjectStage(activeProjectId, stageId);
+      refetchStages();
+      dispatch(
+        showNotification({
+          message: "Etapa excluída com sucesso!",
+          severity: "success",
+        }),
+      );
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message || err.message || "Erro ao excluir etapa.";
       dispatch(showNotification({ message: msg, severity: "error" }));
     }
   };
@@ -395,6 +451,9 @@ export const AuthorDashboard = ({
             <ArticleTimelineHeader
               stages={stages}
               onUpdateStageStatus={handleUpdateStageStatus}
+              onDeleteStage={handleDeleteStage}
+              onOpenCreateStage={() => setIsCreateStageOpen(true)}
+              onReorderStages={handleReorderStages}
             />
           )}
 
@@ -404,6 +463,14 @@ export const AuthorDashboard = ({
             provisioningTaskId={provisioningTaskId}
             currentUserId={currentUserId}
             onStartWorkspace={onStartWorkspace}
+          />
+
+          {/* MODAL PARA ADICIONAR NOVA ETAPA DE ESCRITA (FEATURE BRANCH) */}
+          <CreateStageModal
+            open={isCreateStageOpen}
+            onClose={() => setIsCreateStageOpen(false)}
+            projectId={activeProjectId}
+            nextOrder={stages.length + 1}
           />
         </Box>
       )}

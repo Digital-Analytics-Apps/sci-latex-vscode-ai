@@ -42,8 +42,7 @@ describe('GithubIntegrationService', () => {
     expect(integration.githubRepoName).toContain('sci-paper');
 
     const workItems = await service.getArticleWorkItems(project.id);
-    expect(workItems.length).toBeGreaterThan(0);
-    expect(workItems[0].title).toBeDefined();
+    expect(workItems).toEqual([]);
   });
 });
 

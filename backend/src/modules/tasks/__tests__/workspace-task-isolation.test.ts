@@ -183,7 +183,8 @@ describe('Workspace Task Isolation (User + Article + Task)', () => {
     expect(mockK8sPodManager.claimPodForTask).toHaveBeenLastCalledWith(
       testProjectId,
       testUserId,
-      taskConcurrent.id
+      taskConcurrent.id,
+      undefined
     );
   });
 });

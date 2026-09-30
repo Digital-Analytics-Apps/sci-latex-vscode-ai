@@ -108,4 +108,9 @@
   - *Descrição*: Desenvolver componentes `<ArticleTimelineHeader />`, `<GatekeeperLockBadge />` e seletor de etapa no `<CreateTaskModal />`, integrando ao `AuthorDashboard.tsx` e `ManagementDashboard.tsx`.
 - [x] **6.6 Painel de Analítico de Gargalos e Desempenho de Metas**
   - *Descrição*: Desenvolver no `ManagementDashboard.tsx` os relatórios visuais de gargalos por etapa e avanço de metas em relação ao Ciclo Acadêmico ativo.
+- [x] **6.7 Etapas Dinâmicas de Escrita, Branches 4-Level & Governança de Tasks (Assinar/Desassinar)**
+  - *Descrição*: Gestão dinâmica de etapas pelo autor (cada etapa é uma Feature Branch `feature/<stage-slug>`). Estrutura de branches de 4 níveis (`main` <- `dev` <- `feature` <- `task`). Bloqueio de PRs para sub-tarefas (exclusivo para Features). Atribuição opcional de tarefas com botões **Assinar** (Claim) e **Desassinar** (Unclaim). Isolamento de workspace e K8s volume em 4 níveis (`projects/P/users/U/stages/S/tasks/T`).
+- [x] **6.8 Dual View na Régua de Timeline (Modos [Fluxo] vs [Timeline]) & Cronograma Temporal de ProjectStage**
+  - *Descrição*: Adicionado seletor de modo `[Fluxo]` / `[Timeline]` no `<ArticleTimelineHeader />`. No modo Timeline, renderiza o cronograma temporal (Gantt) baseado nos campos `plannedStartAt`, `plannedEndAt`, `startedAt` e `completedAt` de cada `ProjectStage`, preservando as travas de gatekeeper (NIT/Congresso).
+
 

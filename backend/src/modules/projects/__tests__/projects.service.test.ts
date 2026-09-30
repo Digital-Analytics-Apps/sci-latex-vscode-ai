@@ -12,6 +12,7 @@ import {
   UpdateTeamData,
 } from '../../../repositories/teams.repository';
 import { GitService } from '../../../infra/git/git.service';
+import { IProjectStagesRepository } from '../../../repositories/project-stages.repository';
 import { ProjectsService } from '../projects.service';
 
 class InMemoryProjectsRepository implements IProjectsRepository {
@@ -135,6 +136,9 @@ class MockGitService extends GitService {
   async initRepository(projectId: string, _projectTitle: string): Promise<string> {
     return `/storage/git/${projectId}.git`;
   }
+  async createFeatureBranch(_projectId: string, _stageTitle: string): Promise<string> {
+    return 'feature/mock';
+  }
   async commitFile(_params?: any): Promise<string> {
     return 'a1b2c3d4e5f678901234567890abcdef12345678';
   }
@@ -150,17 +154,84 @@ class MockGitService extends GitService {
   }
 }
 
+class InMemoryProjectStagesRepository implements IProjectStagesRepository {
+  public stages: any[] = [];
+
+  async findByProjectId(projectId: string): Promise<any[]> {
+    return this.stages.filter((s) => s.projectId === projectId).sort((a, b) => a.order - b.order);
+  }
+  async findById(id: string): Promise<any> {
+    return this.stages.find((s) => s.id === id) ?? null;
+  }
+  async create(data: any): Promise<any> {
+    const stage = {
+      id: `stage-${Date.now()}-${Math.random()}`,
+      projectId: data.projectId,
+      title: data.title,
+      description: data.description ?? null,
+      order: data.order,
+      status: 'NOT_STARTED',
+      isGatekeeper: data.isGatekeeper ?? false,
+      gatekeeperType: data.gatekeeperType ?? null,
+      plannedStartAt: data.plannedStartAt ? new Date(data.plannedStartAt) : null,
+      plannedEndAt:
+        data.plannedEndAt || data.plannedCompletionDate
+          ? new Date(data.plannedEndAt || data.plannedCompletionDate)
+          : null,
+      plannedCompletionDate:
+        data.plannedCompletionDate || data.plannedEndAt
+          ? new Date(data.plannedCompletionDate || data.plannedEndAt)
+          : null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.stages.push(stage);
+    return stage;
+  }
+  async update(id: string, data: any): Promise<any> {
+    const index = this.stages.findIndex((s) => s.id === id);
+    if (index === -1) throw new Error('STAGE_NOT_FOUND');
+    const updated = { ...this.stages[index], ...data, updatedAt: new Date() };
+    this.stages[index] = updated;
+    return updated;
+  }
+  async delete(id: string): Promise<void> {
+    this.stages = this.stages.filter((s) => s.id !== id);
+  }
+  async autoCreateDefaultStages(): Promise<any[]> {
+    return [];
+  }
+  async reorderStages(
+    projectId: string,
+    stageOrders: { id: string; order: number }[]
+  ): Promise<any[]> {
+    for (const item of stageOrders) {
+      const stage = this.stages.find((s) => s.id === item.id);
+      if (stage) stage.order = item.order;
+    }
+    return this.findByProjectId(projectId);
+  }
+}
+
 describe('ProjectsService', () => {
   let repository: InMemoryProjectsRepository;
   let teamsRepository: InMemoryTeamsRepository;
   let mockGitService: MockGitService;
+  let stagesRepository: InMemoryProjectStagesRepository;
   let projectsService: ProjectsService;
 
   beforeEach(() => {
     repository = new InMemoryProjectsRepository();
     teamsRepository = new InMemoryTeamsRepository();
     mockGitService = new MockGitService();
-    projectsService = new ProjectsService(repository, teamsRepository, mockGitService);
+    stagesRepository = new InMemoryProjectStagesRepository();
+    projectsService = new ProjectsService(
+      repository,
+      teamsRepository,
+      mockGitService,
+      undefined,
+      stagesRepository
+    );
   });
 
   it('should create a project and initialize its Git bare repository', async () => {
@@ -174,6 +245,28 @@ describe('ProjectsService', () => {
     expect(project).toBeDefined();
     expect(project.name).toBe('Paper sobre Sistemas Distribuídos');
     expect(project.gitRepoPath).toContain(project.id);
+  });
+
+  it('should create custom stages and provision feature branches correctly', async () => {
+    const created = await projectsService.createProject('user-1', {
+      name: 'Paper com 4 Etapas Customizadas',
+      teamId: 'team-1',
+      stages: [
+        { title: 'Planejamento e Pesquisa', plannedCompletionDate: new Date('2026-10-29') },
+        { title: 'Desenvolvimento e Experimentos', plannedCompletionDate: new Date('2026-12-02') },
+        { title: 'Escrita da Versão Rascunho', plannedCompletionDate: new Date('2026-12-30') },
+        { title: 'Escrita da Conclusão', plannedCompletionDate: new Date('2027-01-28') },
+      ],
+    });
+
+    const stages = await stagesRepository.findByProjectId(created.id);
+    expect(stages).toHaveLength(6);
+    expect(stages[0].title).toBe('Planejamento e Pesquisa');
+    expect(stages[3].title).toBe('Escrita da Conclusão');
+    expect(stages[4].title).toBe('Parecer do NIT (Gatekeeper 1)');
+    expect(stages[5].title).toBe('Submissão ao Congresso Alvo (Gatekeeper 2)');
+    expect(stages[0].plannedCompletionDate).toBeDefined();
+    expect(stages[3].plannedCompletionDate).toBeDefined();
   });
 
   it('should list projects with optional filters', async () => {

@@ -12,7 +12,13 @@ export interface ProjectStage {
   status: StageStatus;
   isGatekeeper: boolean;
   gatekeeperType?: GatekeeperType | null;
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
   plannedCompletionDate?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   tasks?: TaskSummary[];
 }
 

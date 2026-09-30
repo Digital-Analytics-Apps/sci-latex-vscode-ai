@@ -1,4 +1,5 @@
 import { ProjectStage, StageStatus } from '@prisma/client';
+import { GitService } from '../../infra/git/git.service';
 import {
   CreateStageData,
   IProjectStagesRepository,
@@ -6,7 +7,10 @@ import {
 } from '../../repositories/project-stages.repository';
 
 export class ProjectStagesService {
-  constructor(private readonly stagesRepository: IProjectStagesRepository) {}
+  constructor(
+    private readonly stagesRepository: IProjectStagesRepository,
+    private readonly gitService: GitService = new GitService()
+  ) {}
 
   async listStages(projectId: string): Promise<ProjectStage[]> {
     return this.stagesRepository.findByProjectId(projectId);
@@ -17,18 +21,56 @@ export class ProjectStagesService {
     data: { title: string; order?: number; description?: string }
   ): Promise<ProjectStage> {
     const existingStages = await this.stagesRepository.findByProjectId(projectId);
-    const maxOrder = existingStages.reduce((max, s) => Math.max(max, s.order), 0);
-    const order = data.order ?? maxOrder + 1;
+    const nonGatekeepers = existingStages.filter((s) => !s.isGatekeeper);
+    const gatekeepers = existingStages.filter((s) => s.isGatekeeper);
 
-    const createData: CreateStageData = {
+    // 1. Cria temporariamente a nova etapa com ordem negativa para não violar unique index
+    const newStage = await this.stagesRepository.create({
       projectId,
       title: data.title,
       description: data.description,
-      order,
+      order: -9999,
       isGatekeeper: false,
-    };
+    });
 
-    return this.stagesRepository.create(createData);
+    // 2. Monta a lista completa com a nova etapa de escrita posicionada antes dos Gatekeepers
+    const allWriting = [...nonGatekeepers, newStage];
+    const finalStageOrders: { id: string; order: number }[] = [];
+
+    allWriting.forEach((s, idx) => {
+      finalStageOrders.push({ id: s.id, order: idx + 1 });
+    });
+
+    gatekeepers.forEach((g, idx) => {
+      finalStageOrders.push({ id: g.id, order: allWriting.length + 1 + idx });
+    });
+
+    // 3. Aplica reordenação atômica sem colisões de índice único
+    await this.stagesRepository.reorderStages(projectId, finalStageOrders);
+
+    // 4. Provisiona a Feature Branch correspondente derivada de dev
+    await this.gitService.createFeatureBranch(projectId, data.title).catch((err) => {
+      console.warn(`⚠️ Warning provisioning feature branch for stage "${data.title}":`, err);
+    });
+
+    const updated = await this.stagesRepository.findById(newStage.id);
+    return updated || newStage;
+  }
+
+  async reorderStages(
+    projectId: string,
+    stageOrders: { id: string; order: number }[]
+  ): Promise<ProjectStage[]> {
+    const existingStages = await this.stagesRepository.findByProjectId(projectId);
+    const existingIds = new Set(existingStages.map((s) => s.id));
+
+    for (const item of stageOrders) {
+      if (!existingIds.has(item.id)) {
+        throw new Error(`Etapa ${item.id} não pertence ao projeto.`);
+      }
+    }
+
+    return this.stagesRepository.reorderStages(projectId, stageOrders);
   }
 
   async updateStage(
@@ -103,6 +145,12 @@ export class ProjectStagesService {
     if (stage.isGatekeeper) {
       throw new Error(
         'Não é possível excluir etapas de Gatekeeper obrigatórias (NIT e Congresso Alvo).'
+      );
+    }
+
+    if (stage.tasks && stage.tasks.length > 0) {
+      throw new Error(
+        'STAGE_HAS_TASKS: Não é possível excluir uma etapa que possui tarefas associadas. Remova ou reatribua as tarefas antes de excluir.'
       );
     }
 

@@ -556,12 +556,15 @@ model Release {
    - O Ciclo Acadêmico possui período delimitado (início e término), vínculo com o Gerente criador (`managerId`) e meta global de artigos da unidade.
    - As cotas por time funcionam como guia de planejamento, sendo incentivada a superação da cota (`over-achievement`).
 
-3. **Etapas de Escrita Flexíveis (`ProjectStage`) & Paralelismo:**
-   - O sistema gera presets padrão (Rascunho, Desenvolvimento, Experimentos), mas os Autores possuem liberdade para adicionar, renomear e reordenar etapas customizadas.
-   - Todas as etapas de escrita de conteúdo **possuem execução paralela (`IN_PROGRESS` simultâneo)**.
+3. **Etapas de Escrita Dinâmicas (`ProjectStage` como Features) & Hierarquia de Branches:**
+   - Cada etapa de escrita do artigo representa uma **Feature Branch** (`feature/<stage-slug>`). Os Autores possuem autonomia total para **criar, editar, reordenar e remover etapas de escrita** dinamicamente. Etapas institucionais (Gatekeepers NIT e Congresso) são marcos de processo e não geram branches.
+   - **Hierarquia Estrita de Branches:** `main` $\leftarrow$ `dev` $\leftarrow$ `feature/<stage-slug>` $\leftarrow$ `task/<issue-slug>`.
+   - **Tabela Inicial Vazia & Sub-tarefas:** Na criação de um novo artigo/projeto, as Etapas de Escrita são instanciadas como estruturas, porém a tabela de tarefas inicia **vazia de sub-issues**. O Autor cria sub-tarefas vinculadas a uma Etapa conforme o andamento.
+   - **Governança de Assinatura (Claim/Unclaim):** Sub-tarefas possuem o campo `assignedToId` opcional. Qualquer Autor do projeto pode **Assinar** a tarefa (atribuindo a si próprio) ou **Desassinar** (liberando a tarefa).
 
-4. **Revisão de Pares como Processo Vivo:**
-   - A revisão de pares ocorre continuamente em cada tarefa (`Task`), através do fluxo vivo de Pull Requests (Draft $\rightarrow$ Ready for Review $\rightarrow$ Changes Requested $\rightarrow$ Approved/Merged).
+4. **Revisão de Pares & Restrição Estrita de Pull Requests:**
+   - **Sub-tarefas (Issues):** São salvas e mescladas diretamente pelo Autor na branch da respectiva Feature (`feature/<stage-slug>`).
+   - **Solicitação de Revisão Formal (`PullRequest` / `ReviewRound`):** **Restrita exclusivamente às Feature Branches** (`feature/<stage-slug>` $\rightarrow$ `dev`). O Autor solicita a revisão da Feature concluída tanto aos seus Pares (co-autores) quanto ao Revisor Principal. Somente Feature Branches aprovadas podem ser mescladas em `dev`.
 
 5. **Os Dois Gatekeepers Sequenciais:**
    - **⚖️ Gatekeeper 1 - Análise do NIT:** Bloqueado (`🔒 LOCKED`) enquanto houver etapas/tarefas de conteúdo pendentes (< 100%). Liberado automaticamente quando 100% do conteúdo for mergeado. Solicitação exclusiva dos Autores do artigo.

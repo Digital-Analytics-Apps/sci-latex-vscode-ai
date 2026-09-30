@@ -3,7 +3,7 @@ import { prisma } from '../db/prisma';
 
 export interface CreateTaskData {
   projectId: string;
-  assignedToId: string;
+  assignedToId?: string | null;
   title: string;
   branchName?: string;
   dueDate?: Date;
@@ -16,7 +16,7 @@ export interface UpdateTaskData {
   branchName?: string;
   dueDate?: Date;
   status?: TaskStatus;
-  assignedToId?: string;
+  assignedToId?: string | null;
   stageId?: string;
 }
 

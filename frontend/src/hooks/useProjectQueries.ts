@@ -89,6 +89,58 @@ export function useMergePRMutation(projectId: string) {
   });
 }
 
+// Mutações para gerenciamento dinâmico de etapas de escrita (stages)
+export function useCreateStageMutation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { title: string; order?: number; description?: string }) =>
+      projectsService.createProjectStage(projectId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-stages", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    },
+  });
+}
+
+export function useUpdateStageMutation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      stageId: string;
+      title?: string;
+      order?: number;
+      status?: any;
+    }) =>
+      projectsService.updateProjectStage(projectId, data.stageId, {
+        title: data.title,
+        order: data.order,
+        status: data.status,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-stages", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    },
+  });
+}
+
+export function useDeleteStageMutation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (stageId: string) =>
+      projectsService.deleteProjectStage(projectId, stageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-stages", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    },
+  });
+}
+
 // Mutação para Criar Novo Projeto / Artigo Científico
 export function useCreateProjectMutation() {
   const queryClient = useQueryClient();
@@ -102,6 +154,11 @@ export function useCreateProjectMutation() {
       teamId?: string;
       coAuthorIds?: string[];
       reviewerId?: string;
+      stages?: Array<{
+        title: string;
+        description?: string;
+        plannedCompletionDate?: string;
+      }>;
     }) =>
       projectsService.createProject({
         name: data.name,
@@ -110,6 +167,7 @@ export function useCreateProjectMutation() {
         teamId: data.teamId,
         coAuthorIds: data.coAuthorIds || [],
         reviewerId: data.reviewerId,
+        stages: data.stages,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -118,3 +176,4 @@ export function useCreateProjectMutation() {
     },
   });
 }
+

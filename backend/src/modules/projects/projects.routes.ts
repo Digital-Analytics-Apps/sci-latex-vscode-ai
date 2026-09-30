@@ -7,7 +7,12 @@ import { PrismaProjectsRepository } from '../../repositories/projects.repository
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { ProjectsController } from './projects.controller';
+import {
+  createProjectSchema,
+  postSubmissionSchema,
+  ProjectsController,
+  updateProjectSchema,
+} from './projects.controller';
 import { ProjectsService } from './projects.service';
 
 import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.repository';
@@ -47,18 +52,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         description:
           'Cria um novo artigo científico no banco de dados e provisiona o repositório remoto no GitHub com o template main.tex.',
         security: [{ bearerAuth: [] }],
-        body: z.object({
-          name: z.string().min(2),
-          description: z.string().optional(),
-          teamId: z.string().uuid().optional(),
-          academicPeriodId: z.string().uuid().optional(),
-          targetConferenceName: z.string().optional(),
-          targetConferenceDate: z.string().optional(),
-          backupConferenceName: z.string().optional(),
-          backupConferenceDate: z.string().optional(),
-          coAuthorIds: z.array(z.string()).optional(),
-          reviewerId: z.string().optional(),
-        }),
+        body: createProjectSchema,
       },
     },
     (req, reply) => controller.create(req, reply)
@@ -392,6 +386,30 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
     },
     (req: any, reply) => stagesController.create(req, reply)
+  );
+
+  // PUT /api/v1/projects/:projectId/stages/reorder - Reordenar etapas do artigo em lote
+  app.put(
+    '/:projectId/stages/reorder',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Reordenar etapas do artigo em lote',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+        body: z.object({
+          stages: z.array(
+            z.object({
+              id: z.string(),
+              order: z.number(),
+            })
+          ),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.reorder(req, reply)
   );
 
   // PATCH /api/v1/projects/:projectId/stages/:stageId - Atualizar status ou dados da etapa

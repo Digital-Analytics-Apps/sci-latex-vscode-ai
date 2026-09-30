@@ -18,7 +18,11 @@ import { useEffect, useMemo, useState } from "react";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 import { GenericDataGrid } from "../../../components/common/GenericDataGrid";
 import { useDebounce } from "../../../hooks/useDebounce";
-import { useTasksQuery } from "../../../hooks/useTaskQueries";
+import {
+  useClaimTaskMutation,
+  useTasksQuery,
+  useUnclaimTaskMutation,
+} from "../../../hooks/useTaskQueries";
 import { useUrlFilters } from "../../../hooks/useUrlFilters";
 import { TaskStatus } from "../../../constants/status";
 import type { TaskItem } from "../../../types/task.types";
@@ -78,6 +82,10 @@ export const AuthorTasksTable = ({
     resetFilters();
   };
 
+  // Mutações para Assinar (Claim) e Desassinar (Unclaim) Tarefas
+  const claimTaskMutation = useClaimTaskMutation(projectId);
+  const unclaimTaskMutation = useUnclaimTaskMutation(projectId);
+
   // Busca na API REST diretamente do backend com zero-flicker (placeholderData: keepPreviousData)
   const {
     data: tasks = [],
@@ -125,19 +133,29 @@ export const AuthorTasksTable = ({
         filterable: false,
         align: "right",
         headerAlign: "right",
-        flex: 1.3,
-        minWidth: 180,
+        flex: 1.5,
+        minWidth: 220,
         renderCell: (params) => (
           <TaskActionCell
             row={params.row}
             provisioningTaskId={provisioningTaskId}
             currentUserId={currentUserId}
             onStartWorkspace={onStartWorkspace}
+            onClaimTask={(taskId) => claimTaskMutation.mutate(taskId)}
+            onUnclaimTask={(taskId) => unclaimTaskMutation.mutate(taskId)}
+            isClaiming={claimTaskMutation.isPending}
+            isUnclaiming={unclaimTaskMutation.isPending}
           />
         ),
       },
     ],
-    [provisioningTaskId, currentUserId, onStartWorkspace],
+    [
+      provisioningTaskId,
+      currentUserId,
+      onStartWorkspace,
+      claimTaskMutation,
+      unclaimTaskMutation,
+    ],
   );
 
   return (

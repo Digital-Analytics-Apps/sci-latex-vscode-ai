@@ -7,7 +7,7 @@ import { env } from '../../config/env';
 import { ProjectsService } from './projects.service';
 
 export const createProjectSchema = z.object({
-  name: z.string().min(3),
+  name: z.string().min(2),
   description: z.string().optional(),
   teamId: z.string().uuid().optional(),
   academicPeriodId: z.string().uuid().optional(),
@@ -17,6 +17,18 @@ export const createProjectSchema = z.object({
   backupConferenceDate: z.coerce.date().optional(),
   coAuthorIds: z.array(z.string()).optional(),
   reviewerId: z.string().optional(),
+  stages: z
+    .array(
+      z.object({
+        title: z.string().min(2),
+        description: z.string().optional(),
+        plannedStartAt: z.coerce.date().optional(),
+        plannedEndAt: z.coerce.date().optional(),
+        plannedCompletionDate: z.coerce.date().optional(),
+      })
+    )
+    .min(3)
+    .optional(),
 });
 
 export const updateProjectSchema = z.object({

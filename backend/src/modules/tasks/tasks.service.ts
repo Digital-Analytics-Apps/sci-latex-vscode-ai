@@ -19,7 +19,7 @@ const execAsync = promisify(exec);
 
 export interface CreateTaskDTO {
   projectId: string;
-  assignedToId: string;
+  assignedToId?: string;
   title: string;
   dueDate?: string;
   stageId?: string;
@@ -30,6 +30,22 @@ export class TasksService {
     private readonly tasksRepository: ITasksRepository = new PrismaTasksRepository(),
     private readonly k8sPodManager: K8sPodManagerService = new K8sPodManagerService()
   ) {}
+
+  async claimTask(projectId: string, taskId: string, userId: string) {
+    const task = await this.tasksRepository.findById(taskId);
+    if (task?.projectId !== projectId) {
+      throw new Error('TASK_NOT_FOUND: Tarefa não encontrada.');
+    }
+    return this.tasksRepository.update(taskId, { assignedToId: userId });
+  }
+
+  async unclaimTask(projectId: string, taskId: string) {
+    const task = await this.tasksRepository.findById(taskId);
+    if (task?.projectId !== projectId) {
+      throw new Error('TASK_NOT_FOUND: Tarefa não encontrada.');
+    }
+    return this.tasksRepository.update(taskId, { assignedToId: null });
+  }
 
   // Gera o nome amigável da branch da task: task/<slug>-<uuid>
   private generateTaskBranchName(title: string, taskId: string): string {
@@ -348,11 +364,12 @@ export class TasksService {
       // Ignora erro de preparação de branch no repositório base
     }
 
-    // Invariante 3 & 4: Inicializa o diretório isolado do workspace da tarefa (projects/P/users/U/tasks/T)
+    // Invariante 3 & 4: Inicializa o diretório isolado do workspace da tarefa (projects/P/users/U/stages/S/tasks/T)
     await editorProxyService.ensureTaskWorkspace({
       projectId,
       userId,
       taskId: task.id,
+      stageId: task.stageId || undefined,
       branchName: task.branchName,
       gitRepoPath: project?.gitRepoPath,
     });
@@ -362,25 +379,34 @@ export class TasksService {
 
     try {
       // Reivindica o Pod atômico montado no subcaminho exclusivo da tarefa
-      podResult = await this.k8sPodManager.claimPodForTask(projectId, userId, task.id);
+      podResult = await this.k8sPodManager.claimPodForTask(
+        projectId,
+        userId,
+        task.id,
+        task.stageId || undefined
+      );
     } catch (podErr) {
       console.warn(`⚠️ Error claiming Pod for task ${task.id}:`, podErr);
       podResult = { podName: null };
       workspaceStatus = 'ERROR';
     }
 
-    // Invariante 2 & 7: Upsert do Workspace na chave única composta (projectId, userId, taskId)
+    const stageId = task.stageId || 'general';
+
+    // Invariante 2 & 7: Upsert do Workspace na chave única composta (projectId, userId, stageId, taskId)
     const workspace = await prisma.workspace.upsert({
       where: {
-        projectId_userId_taskId: {
+        projectId_userId_stageId_taskId: {
           projectId,
           userId,
+          stageId,
           taskId: task.id,
         },
       },
       create: {
         projectId,
         userId,
+        stageId,
         taskId: task.id,
         podName: podResult.podName || null,
         status: workspaceStatus,

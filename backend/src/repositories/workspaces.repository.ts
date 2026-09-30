@@ -7,6 +7,7 @@ export interface UpsertWorkspaceData {
   projectId: string;
   userId: string;
   taskId: string;
+  stageId?: string | null;
   podName?: string | null;
   status?: WorkspaceStatus;
 }
@@ -17,29 +18,54 @@ export interface IWorkspacesRepository {
   findByProjectIdUserIdAndTaskId(
     projectId: string,
     userId: string,
-    taskId: string
+    taskId: string,
+    stageId?: string | null
   ): Promise<Workspace | null>;
   updateStatusByProjectId(projectId: string, status: WorkspaceStatus): Promise<void>;
-  getTaskWorkspacePath(projectId: string, userId: string, taskId: string): string;
+  getTaskWorkspacePath(
+    projectId: string,
+    userId: string,
+    taskId: string,
+    stageId?: string | null
+  ): string;
 }
 
 export class PrismaWorkspacesRepository implements IWorkspacesRepository {
-  getTaskWorkspacePath(projectId: string, userId: string, taskId: string): string {
-    return path.resolve(env.STORAGE_PATH, 'projects', projectId, 'users', userId, 'tasks', taskId);
+  getTaskWorkspacePath(
+    projectId: string,
+    userId: string,
+    taskId: string,
+    stageId?: string | null
+  ): string {
+    const stageSegment = stageId || 'general';
+    return path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      projectId,
+      'users',
+      userId,
+      'stages',
+      stageSegment,
+      'tasks',
+      taskId
+    );
   }
 
   async upsertWorkspace(data: UpsertWorkspaceData): Promise<Workspace> {
+    const stageId = data.stageId || 'general';
     return prisma.workspace.upsert({
       where: {
-        projectId_userId_taskId: {
+        projectId_userId_stageId_taskId: {
           projectId: data.projectId,
           userId: data.userId,
+          stageId,
           taskId: data.taskId,
         },
       },
       create: {
         projectId: data.projectId,
         userId: data.userId,
+        stageId,
         taskId: data.taskId,
         podName: data.podName || null,
         status: data.status || 'READY',
@@ -61,11 +87,13 @@ export class PrismaWorkspacesRepository implements IWorkspacesRepository {
   async findByProjectIdUserIdAndTaskId(
     projectId: string,
     userId: string,
-    taskId: string
+    taskId: string,
+    stageId?: string | null
   ): Promise<Workspace | null> {
+    const sId = stageId || 'general';
     return prisma.workspace.findUnique({
       where: {
-        projectId_userId_taskId: { projectId, userId, taskId },
+        projectId_userId_stageId_taskId: { projectId, userId, stageId: sId, taskId },
       },
     });
   }

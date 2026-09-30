@@ -120,6 +120,18 @@ export const projectsService = {
     return response.data;
   },
 
+  // Reordenar etapas do artigo em lote
+  async reorderProjectStages(
+    projectId: string,
+    stages: { id: string; order: number }[],
+  ): Promise<ProjectStage[]> {
+    const response = await api.put(
+      `${PROJETCT_URL}/${projectId}/stages/reorder`,
+      { stages },
+    );
+    return response.data;
+  },
+
   // Excluir etapa de escrita customizada (Etapas Gatekeeper são protegidas)
   async deleteProjectStage(projectId: string, stageId: string): Promise<void> {
     await api.delete(`${PROJETCT_URL}/${projectId}/stages/${stageId}`);

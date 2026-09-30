@@ -8,7 +8,7 @@ export const taskParamsSchema = z.object({
 });
 
 export const createTaskBodySchema = z.object({
-  assignedToId: z.string().min(1),
+  assignedToId: z.string().optional(),
   title: z.string().min(1),
   dueDate: z.string().optional(),
   stageId: z.string().optional(),
@@ -45,6 +45,27 @@ export class TasksController {
       return reply.status(201).send(task);
     } catch (err: any) {
       return reply.status(400).send({ error: 'CREATE_TASK_FAILED', message: err.message });
+    }
+  }
+
+  async claim(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { projectId, taskId } = taskWorkspaceParamsSchema.parse(request.params);
+      const userId = request.user.sub;
+      const task = await this.service.claimTask(projectId, taskId, userId);
+      return reply.send(task);
+    } catch (err: any) {
+      return reply.status(400).send({ error: 'CLAIM_TASK_FAILED', message: err.message });
+    }
+  }
+
+  async unclaim(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { projectId, taskId } = taskWorkspaceParamsSchema.parse(request.params);
+      const task = await this.service.unclaimTask(projectId, taskId);
+      return reply.send(task);
+    } catch (err: any) {
+      return reply.status(400).send({ error: 'UNCLAIM_TASK_FAILED', message: err.message });
     }
   }
 

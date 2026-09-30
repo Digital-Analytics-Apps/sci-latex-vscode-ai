@@ -5,6 +5,10 @@ import path from 'node:path';
 import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { GitService } from '../../infra/git/git.service';
+import {
+  IProjectStagesRepository,
+  PrismaProjectStagesRepository,
+} from '../../repositories/project-stages.repository';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
 import { ITeamsRepository } from '../../repositories/teams.repository';
 import { PrismaWorkspacesRepository } from '../../repositories/workspaces.repository';
@@ -27,6 +31,13 @@ export interface CreateProjectDTO {
   backupConferenceDate?: Date;
   coAuthorIds?: string[];
   reviewerId?: string;
+  stages?: Array<{
+    title: string;
+    description?: string;
+    plannedStartAt?: Date;
+    plannedEndAt?: Date;
+    plannedCompletionDate?: Date;
+  }>;
 }
 
 export interface UpdateProjectDTO {
@@ -61,7 +72,8 @@ export class ProjectsService {
     private projectsRepository: IProjectsRepository,
     private teamsRepository: ITeamsRepository,
     private gitService: GitService,
-    k8sPodManager?: K8sPodManagerService
+    k8sPodManager?: K8sPodManagerService,
+    private stagesRepository: IProjectStagesRepository = new PrismaProjectStagesRepository()
   ) {
     this.k8sPodManager = k8sPodManager || new K8sPodManagerService();
   }
@@ -116,10 +128,57 @@ export class ProjectsService {
         });
     }
 
-    // 2b. Adicionar o criador do projeto como membro (Autor)
+    // 2b. Instanciar Etapas de Escrita (customizadas ou padrão) e Etapas Obrigatórias de Gatekeeper
+    const writingStagesData =
+      data.stages && data.stages.length >= 3
+        ? data.stages
+        : [
+            { title: 'Planejamento e Pesquisa' },
+            { title: 'Desenvolvimento e Experimentos' },
+            { title: 'Escrita da Versão Rascunho' },
+          ];
+
+    for (let i = 0; i < writingStagesData.length; i++) {
+      const s = writingStagesData[i];
+      await this.stagesRepository.create({
+        projectId,
+        title: s.title,
+        description: s.description,
+        plannedStartAt: s.plannedStartAt,
+        plannedEndAt: s.plannedEndAt || s.plannedCompletionDate,
+        plannedCompletionDate: s.plannedCompletionDate || s.plannedEndAt,
+        order: i + 1,
+        isGatekeeper: false,
+      });
+
+      // Provisionar a Feature Branch correspondente (feature/<stage-slug>) derivada de dev
+      await this.gitService.createFeatureBranch(projectId, s.title, gitRepoPath).catch((err) => {
+        console.warn(`⚠️ Warning provisioning feature branch for stage "${s.title}":`, err);
+      });
+    }
+
+    // Criar as 2 etapas obrigatórias de Gatekeeper ao final
+    const baseGatekeeperOrder = writingStagesData.length + 1;
+    await this.stagesRepository.create({
+      projectId,
+      title: 'Parecer do NIT (Gatekeeper 1)',
+      order: baseGatekeeperOrder,
+      isGatekeeper: true,
+      gatekeeperType: 'NIT',
+    });
+
+    await this.stagesRepository.create({
+      projectId,
+      title: 'Submissão ao Congresso Alvo (Gatekeeper 2)',
+      order: baseGatekeeperOrder + 1,
+      isGatekeeper: true,
+      gatekeeperType: 'TARGET_CONFERENCE',
+    });
+
+    // 2c. Adicionar o criador do projeto como membro (Autor)
     await this.projectsRepository.addMember(projectId, userId, Role.AUTHOR).catch(() => {});
 
-    // 2c. Adicionar os co-autores selecionados
+    // 2d. Adicionar os co-autores selecionados
     if (data.coAuthorIds && Array.isArray(data.coAuthorIds)) {
       for (const coAuthorId of data.coAuthorIds) {
         if (coAuthorId && coAuthorId !== userId) {
@@ -135,7 +194,7 @@ export class ProjectsService {
       }
     }
 
-    // 2d. Adicionar o revisor técnico selecionado
+    // 2e. Adicionar o revisor técnico selecionado
     if (data.reviewerId) {
       const userExists = await prisma.user
         .findUnique({ where: { id: data.reviewerId } })

@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
-**Última Atualização:** 29 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Padronização de Modais (`StandardModal`), Refatoração de Ternários Aninhados, Modularização das Abas de Equipes (`manage-team-tabs/`) e Correção de Relações no Backend Prisma** Concluídos com Sucesso. 100% dos testes de compilação TypeScript (Frontend e Backend) e linting passando com 0 erros e 0 warnings.
+**Última Atualização:** 30 de Setembro de 2026  
+**Status Geral do Projeto:** 🟢 **Dual View na Régua de Timeline (`[Fluxo]` vs `[Timeline]`), Atributos Temporais de Execução no Prisma (`ProjectStage`: `plannedStartAt`, `plannedEndAt`, `startedAt`, `completedAt`), Preservação de Stages Customizados na Rota HTTP `POST /api/v1/projects` e Trava de Gatekeepers Preservada Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
 
 ---
 
@@ -12,27 +12,20 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Componente `StandardModal` (`StandardModal.tsx`):**
-    * **Dimensões Fixas por Preset:** Elimina pulos visuais e variações de altura/largura ao alternar abas ou carregar dados (`sm`: 560x560, `md`: 740x640, `lg`: 920x720, `xl`: 1140x780).
-    * **Footer Padronizado:** Botões *Cancelar* e *Salvar / Confirmar* integrados com suporte a `confirmIcon`, `isSubmitting`, `confirmDisabled` e `extraFooterActions` (ex: *Excluir Equipe*).
-    * **100% dos Modais Convertidos:** `ManageTeamModal`, `CreateUserModal`, `CreateAcademicPeriodModal`, `CreateProjectModal`, `AddMemberModal`, `CreateTaskModal`, `SaveProgressModal`, `CreatePRModal`, `ReleaseCandidatesModal`, `NITParecerModal` e `PostSubmissionModal`.
-  * **Modularização & Redução de Complexidade Cognitiva:**
-    * **Subpasta de Abas de Equipe (`manage-team-tabs/`):** As abas do `ManageTeamModal` foram desacopladas em subcomponentes reutilizáveis em `src/features/manager/components/manage-team-tabs/` (`TeamGeneralTab.tsx`, `TeamMembersTab.tsx`, `TeamGoalsTab.tsx`).
-    * **Eliminação de Ternários Aninhados:** Simplificadas as renderizações condicionais e declarações ternárias encadeadas em `SaveProgressModal.tsx`, `StandardModal.tsx`, `ArticleTimelineHeader.tsx`, `ReleaseCandidatesModal.tsx` e `ManageTeamModal.tsx`.
-  * **Correção no Backend Prisma:**
-    * Ajustado [`users.repository.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/repositories/users.repository.ts) e [`users.service.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/users/users.service.ts) alinhando os seletores `_count` e relacionamentos com o schema Prisma (`teamMemberships` e `projects`).
-  * **Especificação, Perfis de Configuração Read-Only & Implementação do Backend (`mode=review`):**
-    * **Diagrama de Sequência e Seção 4.3 na Spec:** Adicionados o diagrama Mermaid do *Fluxo de Injeção Dinâmica* e a **Seção 4.3 (Melhorias de Experiência e Layout Distraction-Free do VS Code UI)** em [`reviewer-view-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/reviewer-view-spec.md).
-    * **Perfis Separados em `docker/code-server/`:** Criados `author.settings.json` (perfil padrão do autor) e `reviewer.settings.json` (perfil do revisor com trava `files.readOnlyInclude: { "**/*": true }`, `editor.stickyScroll.enabled: true`, `breadcrumbs.enabled: true`, `diffEditor.renderSideBySide: true` e `workbench.editor.openSideBySideDirection: "right"`).
-    * **Injeção Dinâmica, Mapeamento de Volumes e Permissões no Linux:** Método `ensureWorkspaceSettings` em [`editor-proxy.service.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/backend/src/modules/editor-proxy/editor-proxy.service.ts) atualizado com busca resiliente por múltiplos caminhos de template (`/app/docker/code-server`, `../docker/code-server`, etc.) e fallback completo com todas as propriedades da UI (Sticky Scroll, Side-by-Side, ocultação de Sidebars e Chat). Mapeado `./docker/code-server` como volume de leitura no [`docker-compose.yml`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docker-compose.yml) do backend e aplicadas permissões `chmod 444` (arquivos) e `chmod 555` (diretórios) quando `mode=review`.
-    * **Containers e Cluster KinD Atualizados:** Recriado o container `sci_latex_backend` com os volumes corretos, purgados pods K8s obsoletos e recarregada a imagem no KinD (`sci-latex-kind`).
-  * **Refatoração do Tema Frontend & Tokens de Cores (`tokens.ts` e `palette.ts`):**
-    * **Padronização Dark/Light Mode:** Paleta MUI refatorada com tokens Tailwind Gray 950 + Acento Sky 400 + acentos semânticos (Emerald/Amber/Red) para os modos escuro e claro, garantindo alta legibilidade e contraste consistente em todos os modais e painéis.
-  * **Qualidade, Linter e Testes:**
+  * **Evolução da Entidade `ProjectStage` & Fix na Rota de Criação de Projetos:**
+    * Adicionados os atributos de ciclo temporal no Prisma (`plannedStartAt`, `plannedEndAt`, `startedAt`, `completedAt`) em `schema.prisma`.
+    * Banco PostgreSQL sincronizado (`npx prisma db push`) e Prisma Client regerado (host e container).
+    * Alinhado o esquema Zod da rota HTTP `POST /api/v1/projects` em `projects.routes.ts` com o `createProjectSchema` de `projects.controller.ts`, garantindo que o array de etapas customizadas `stages` enviadas pelo modal do frontend (com `title` e `plannedCompletionDate`) não seja filtrado pelo Fastify.
+    * **Provisionamento de Feature Branches (`feature/<slug>`):** Passado o parâmetro `gitRepoPath` na criação das etapas em `projects.service.ts` e adicionado fallback de resolução via banco de dados em `GitService.createFeatureBranch`, garantindo que todas as etapas customizadas criem e enviem suas branches `feature/<stage-slug>` para o repositório Git local e GitHub.
+  * **Componente Dual View na Régua de Cabeçalho (`ArticleTimelineHeader.tsx`):**
+    * **Seletor de Modo Dual `[ ░ Fluxo ]` / `[ 📊 Timeline ]`:** Permite alternar instantaneamente entre a visão sequencial de cards (Kanban/D&D) e o cronograma temporal (Gantt).
+    * **Visão Fluxo:** Mantém o drag-and-drop (`@dnd-kit`), a contagem de tarefas por etapa e a trava fixa dos gatekeepers no final (removida a mini-barra redundante "Visão Sequencial").
+    * **Visão Timeline (Gantt Temporal):** Exibe as barras de progresso temporais de cada `ProjectStage` com badges de status: `✓ Concluída` (verde), `▲ Em Andamento (Hoje)` (azul/laranja) e `🔒 Bloqueado (Aguardando etapas de escrita)` (cinza com cadeado para os gatekeepers do NIT e Congresso).
+  * **Qualidade, Linter e Testes Automatizados:**
     * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
-    * **Backend (`npx vitest run`):** 100% dos testes unitários passando.
+    * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
     * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
-    * **Frontend (`npm run lint:fix`):** 0 erros e 0 warnings no ESLint.
+    * **Docker Container (`sci_latex_backend`):** Container Docker reiniciado e operacional em `http://localhost:3333`.
 
 ---
 
@@ -58,6 +51,7 @@
 | **Bloco 2** | Regras de Negócio de PRs, Revisão & Pods Isolados | 🟢 Concluído | [`ROADMAP.md#bloco-2`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) |
 | **Bloco 3** | Frontend ReactJS (Vite, Modais, Services Centralizados) | 🟢 Concluído | [`ROADMAP.md#bloco-3`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) |
 | **Fases 1-4** | Integração GitHub-Native, Projeções & SSE | 🟢 Concluído | [`reports/relatorio-fase-4.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/reports/relatorio-fase-4.md) |
+| **Bloco 6.7** | Etapas Dinâmicas, Branches 4-Level & Claim/Unclaim | 🟢 Concluído | [`ROADMAP.md#bloco-67`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) |
 | **Bloco 4** | Painel Admin em Tempo Real (Live SSE Admin) | 🟡 **A Iniciar** | [`ROADMAP.md#bloco-4`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) |
 | **Bloco 5** | Infraestrutura Futura (Hibernação de Pods & SSH Desktop) | ⚪ Backlog | [`ROADMAP.md#bloco-5`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) |
 

@@ -266,17 +266,19 @@ model Workspace {
   id        String          @id @default(uuid())
   projectId String
   userId    String
+  stageId   String          @default("general")
   taskId    String
   podName   String?
   status    WorkspaceStatus @default(PROVISIONING)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage   ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  task    Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, userId, taskId])
+  @@unique([projectId, userId, stageId, taskId])
 }
 
 enum WorkspaceStatus {
@@ -303,15 +305,20 @@ model ProjectStage {
   title                 String
   description           String?
   order                 Int
+  plannedStartAt        DateTime?
+  plannedEndAt          DateTime?
   plannedCompletionDate DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
   status                StageStatus @default(NOT_STARTED)
   isGatekeeper          Boolean     @default(false)
   gatekeeperType        String? // "NIT" | "TARGET_CONFERENCE" | "BACKUP_CONFERENCE"
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks   Task[]
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks      Task[]
+  workspaces Workspace[]
 
   @@unique([projectId, order])
 }
@@ -319,7 +326,7 @@ model ProjectStage {
 model Task {
   id           String     @id @default(uuid())
   projectId    String
-  assignedToId String
+  assignedToId String?
   stageId      String?
   title        String
   branchName   String
@@ -330,7 +337,7 @@ model Task {
 
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stage        ProjectStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
-  assignee     User          @relation("UserTasks", fields: [assignedToId], references: [id])
+  assignee     User?         @relation("UserTasks", fields: [assignedToId], references: [id])
   pullRequests PullRequest[] @relation("TaskPullRequest")
   workspaces   Workspace[]
 }
