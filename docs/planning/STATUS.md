@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 30 de Setembro de 2026  
-**Status Geral do Projeto:** 🟡 **Em Desenvolvimento: Redesign da Linha do Tempo e Gerenciamento de Artigos (Stepper Horizontal Compacto 1-Linha, Padrão Master-Detail para Detalhes de Etapa e Cabeçalho Enxuto).** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript passando com 0 erros.
+**Status Geral do Projeto:** 🟢 **Redesign da Linha do Tempo e Gerenciamento de Artigos (Stepper Horizontal Compacto 1-Linha, Padrão Master-Detail de Inspeção de Etapas, Progresso Baseado em Tarefas e Cabeçalho Enxuto) Concluído com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
 
 ---
 
@@ -11,16 +11,17 @@
 > [!IMPORTANT]
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
-### 🔍 Estado Atual da Aplicação (Sessão em Andamento)
-  * **Em Execução:** Redesign da interface da página do Autor (`AuthorDashboard.tsx`) e Régua de Etapas (`ArticleTimelineHeader.tsx`).
+### 🔍 Estado Atual da Aplicação
+  * **Redesign da Interface do Autor & Timeline (`AuthorDashboard.tsx` & `ArticleTimelineHeader.tsx`):**
     * **Branch Git Dedicada:** `feature/SLV-redesign-compact-timeline-stepper`
-    * **Objetivo de UX:** Reduzir o gasto vertical de ~600px para ~160px substituindo cards empilhados por Stepper Horizontal de 1 linha + Painel Master-Detail e compondo cabeçalho compacto de 1-2 linhas.
-  * **Evolução Anterior Concluída (`ProjectStage` & Fix de Rotas):**
-    * Adicionados os atributos de ciclo temporal no Prisma (`plannedStartAt`, `plannedEndAt`, `startedAt`, `completedAt`) em `schema.prisma`.
-    * Alinhado o esquema Zod da rota HTTP `POST /api/v1/projects` em `projects.routes.ts` com `createProjectSchema`.
-    * **Provisionamento de Feature Branches (`feature/<slug>`):** Passado `gitRepoPath` em `projects.service.ts` e fallback em `GitService.createFeatureBranch`.
-  * **Qualidade e Testes:**
-    * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes aprovados.
+    * **Redução de Gasto Vertical:** Reduzido o consumo de espaço vertical da timeline e do cabeçalho do artigo de ~600px para **~160px**, eliminando a necessidade de dar zoom out na tela.
+    * **Fita Stepper Horizontal de 1 Linha**: Implementada a régua horizontal enxuta de nós conectados com semântica de ícones (`✓` Concluída, `●` Em Andamento, `○` Pendente, `🔒` Gatekeeper Bloqueado, `⚑` Gatekeeper Liberado).
+    * **Padrão Master-Detail**: Clique em qualquer nó da régua ativa o painel de inspeção detalhada daquela etapa logo abaixo, exibindo prazo (`Início → Fim`), acionadores de governança e barra de progresso calculada diretamente a partir da proporção de tarefas concluídas vinculadas a essa etapa.
+    * **Modo Gantt Temporal Enxuto (`[ 📊 Timeline ]`)**: Cronograma de barras horizontais compacto e proporcional em caixa única.
+    * **Cabeçalho de Artigo Compacto**: Banner de 1-2 linhas de alta densidade reunindo botões de ação (`+ Nova Tarefa`, `Release Candidates`, `+ Membro`) e avatares sobrepostos de membros.
+  * **Qualidade, Linter e Testes Automatizados:**
+    * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
+    * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
     * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
 
 ---
