@@ -37,7 +37,13 @@ class InMemoryProjectStagesRepository implements IProjectStagesRepository {
       status: StageStatus.NOT_STARTED,
       isGatekeeper: data.isGatekeeper ?? false,
       gatekeeperType: data.gatekeeperType ?? null,
-      plannedCompletionDate: null,
+      plannedStartAt: data.plannedStartAt ? new Date(data.plannedStartAt) : null,
+      plannedEndAt: data.plannedEndAt ? new Date(data.plannedEndAt) : null,
+      plannedCompletionDate: data.plannedCompletionDate
+        ? new Date(data.plannedCompletionDate)
+        : null,
+      startedAt: data.startedAt ? new Date(data.startedAt) : null,
+      completedAt: data.completedAt ? new Date(data.completedAt) : null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -49,9 +55,40 @@ class InMemoryProjectStagesRepository implements IProjectStagesRepository {
     const index = this.stages.findIndex((s) => s.id === id);
     if (index === -1) throw new Error('STAGE_NOT_FOUND');
 
-    const updated = {
-      ...this.stages[index],
+    const current = this.stages[index];
+    const updated: ProjectStage = {
+      ...current,
       ...data,
+      plannedStartAt:
+        data.plannedStartAt !== undefined
+          ? data.plannedStartAt
+            ? new Date(data.plannedStartAt)
+            : null
+          : current.plannedStartAt,
+      plannedEndAt:
+        data.plannedEndAt !== undefined
+          ? data.plannedEndAt
+            ? new Date(data.plannedEndAt)
+            : null
+          : current.plannedEndAt,
+      plannedCompletionDate:
+        data.plannedCompletionDate !== undefined
+          ? data.plannedCompletionDate
+            ? new Date(data.plannedCompletionDate)
+            : null
+          : current.plannedCompletionDate,
+      startedAt:
+        data.startedAt !== undefined
+          ? data.startedAt
+            ? new Date(data.startedAt)
+            : null
+          : current.startedAt,
+      completedAt:
+        data.completedAt !== undefined
+          ? data.completedAt
+            ? new Date(data.completedAt)
+            : null
+          : current.completedAt,
       updatedAt: new Date(),
     };
     this.stages[index] = updated;
@@ -74,7 +111,11 @@ class InMemoryProjectStagesRepository implements IProjectStagesRepository {
         status: StageStatus.NOT_STARTED,
         isGatekeeper: def.isGatekeeper,
         gatekeeperType: def.gatekeeperType ?? null,
+        plannedStartAt: null,
+        plannedEndAt: null,
         plannedCompletionDate: null,
+        startedAt: null,
+        completedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

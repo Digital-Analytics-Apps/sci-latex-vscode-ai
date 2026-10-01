@@ -29,9 +29,9 @@
     * **Aba de Release Candidates & Releases Oficiais (Tab 2)**: Listagem de RCs enviadas ao Revisor Técnico, formulário para novas RCs e listagem de Releases Oficiais publicadas na `main`. Botão de publicação oficial protegido por regra de validação (exige 100% das etapas de escrita concluídas).
     * **Aba de Metadados & Git (Tab 3)**: Exibição da URL do repositório, branch base `dev`, conferência-alvo e prazos.
   * **Qualidade, Linter e Testes Automatizados:**
-    * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
+    * **Backend (`npm run build` / `npx tsc`):** 0 erros de compilação.
     * **Backend (`npm test`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
-    * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
+    * **Frontend (`npx tsc -b` & `npm run lint`):** 0 erros de compilação ou linter.
 
 ---
 
