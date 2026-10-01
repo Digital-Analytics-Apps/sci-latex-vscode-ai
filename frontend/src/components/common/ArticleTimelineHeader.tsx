@@ -21,8 +21,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EventIcon from "@mui/icons-material/Event";
 import LockIcon from "@mui/icons-material/Lock";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import ViewWeekIcon from "@mui/icons-material/ViewWeek";
+import FlagIcon from "@mui/icons-material/Flag";
 import {
   Box,
   Button,
@@ -40,37 +42,36 @@ import {
 import React, { useState } from "react";
 import { StageStatus } from "../../constants/status";
 import { type ProjectStage } from "../../services/projectsService";
-import { GatekeeperLockBadge } from "./GatekeeperLockBadge";
 
 interface ArticleTimelineHeaderProps {
   stages: ProjectStage[];
+  selectedStageId?: string | null;
+  onSelectStage?: (stageId: string | null) => void;
   onUpdateStageStatus?: (stageId: string, status: StageStatus) => void;
   onDeleteStage?: (stageId: string) => void;
   onOpenCreateStage?: () => void;
   onReorderStages?: (stages: { id: string; order: number }[]) => void;
 }
 
-interface SortableStageCardProps {
+interface StepperNodeProps {
   stage: ProjectStage;
+  isSelected: boolean;
   isCompleted: boolean;
-  borderColor: string;
-  bgcolor: string;
-  chipLabel: string;
-  chipColor: "success" | "primary" | "default";
-  onUpdateStageStatus?: (stageId: string, status: StageStatus) => void;
-  onDeleteStage?: (stageId: string) => void;
+  isInProgress: boolean;
+  isLocked: boolean;
+  isGatekeeper: boolean;
+  onClick: () => void;
 }
 
-const SortableStageCard = ({
+const SortableStepperNode: React.FC<StepperNodeProps> = ({
   stage,
+  isSelected,
   isCompleted,
-  borderColor,
-  bgcolor,
-  chipLabel,
-  chipColor,
-  onUpdateStageStatus,
-  onDeleteStage,
-}: SortableStageCardProps) => {
+  isInProgress,
+  isLocked,
+  isGatekeeper,
+  onClick,
+}) => {
   const {
     attributes,
     listeners,
@@ -78,7 +79,7 @@ const SortableStageCard = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: stage.id });
+  } = useSortable({ id: stage.id, disabled: isGatekeeper });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -86,145 +87,121 @@ const SortableStageCard = ({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const tasksCount = stage.tasks?.length || 0;
-  const hasTasks = tasksCount > 0;
+  // Ícone e cores semânticas do nó
+  let nodeBg = "grey.800";
+  let nodeBorder = "grey.600";
+  let nodeColor = "grey.400";
+  let icon = <Typography variant="caption" sx={{ fontWeight: 800 }}>{stage.order}</Typography>;
 
-  const formattedDate =
-    stage.plannedCompletionDate || stage.plannedEndAt
-      ? new Date(
-          (stage.plannedCompletionDate || stage.plannedEndAt) as string,
-        ).toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-      : null;
+  if (isCompleted) {
+    nodeBg = "success.dark";
+    nodeBorder = "success.main";
+    nodeColor = "#fff";
+    icon = <CheckCircleIcon sx={{ fontSize: 18 }} />;
+  } else if (isInProgress) {
+    nodeBg = "primary.dark";
+    nodeBorder = "primary.main";
+    nodeColor = "#fff";
+    icon = <PlayArrowIcon sx={{ fontSize: 18 }} />;
+  } else if (isGatekeeper) {
+    if (isLocked) {
+      nodeBg = "rgba(255, 152, 0, 0.15)";
+      nodeBorder = "warning.main";
+      nodeColor = "warning.main";
+      icon = <LockIcon sx={{ fontSize: 16 }} />;
+    } else {
+      nodeBg = "secondary.dark";
+      nodeBorder = "secondary.main";
+      nodeColor = "#fff";
+      icon = <FlagIcon sx={{ fontSize: 16 }} />;
+    }
+  }
 
   return (
     <Box
       ref={setNodeRef}
       style={style}
+      onClick={onClick}
       sx={{
-        minWidth: 220,
-        maxWidth: 260,
-        p: 1.5,
-        borderRadius: 2,
-        border: "1px solid",
-        borderColor,
-        bgcolor,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        cursor: "pointer",
         position: "relative",
+        zIndex: isSelected ? 2 : 1,
+        transition: "transform 0.15s ease",
+        "&:hover": {
+          transform: "scale(1.08)",
+        },
       }}
     >
+      {/* CÍRCULO DO NÓ DA ETAPA */}
       <Box
         sx={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          bgcolor: nodeBg,
+          border: "2px solid",
+          borderColor: isSelected ? "common.white" : nodeBorder,
+          boxShadow: isSelected
+            ? "0 0 0 4px rgba(25, 118, 210, 0.4), 0 4px 12px rgba(0,0,0,0.5)"
+            : isInProgress
+            ? "0 0 10px rgba(25, 118, 210, 0.5)"
+            : "none",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          mb: 1,
+          justifyContent: "center",
+          color: nodeColor,
+          mb: 0.8,
         }}
       >
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-          <Box
-            {...attributes}
-            {...listeners}
-            sx={{
-              cursor: "grab",
-              display: "flex",
-              alignItems: "center",
-              color: "text.secondary",
-              "&:hover": { color: "primary.main" },
-            }}
-            title="Arraste para mover esta etapa"
-          >
-            <DragIndicatorIcon fontSize="small" />
-          </Box>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ fontWeight: "bold" }}
-          >
-            Etapa {stage.order}
-          </Typography>
-        </Stack>
-
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-          <Chip
-            size="small"
-            label={chipLabel}
-            color={chipColor}
-            variant={isCompleted ? "filled" : "outlined"}
-          />
-          {onDeleteStage && (
-            <Tooltip
-              title={
-                hasTasks
-                  ? `Esta etapa possui ${tasksCount} tarefa(s) associada(s) e não pode ser excluída.`
-                  : "Excluir etapa customizada"
-              }
-            >
-              <span>
-                <IconButton
-                  size="small"
-                  color="error"
-                  disabled={hasTasks}
-                  onClick={() => onDeleteStage(stage.id)}
-                  sx={{ p: 0.2 }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-        </Stack>
+        {icon}
       </Box>
 
+      {/* RÓTULO RESUMIDO */}
       <Typography
-        variant="subtitle2"
-        noWrap
+        variant="caption"
+        sx={{
+          fontWeight: isSelected || isInProgress ? 700 : 500,
+          color: isSelected
+            ? "primary.light"
+            : isCompleted
+            ? "success.light"
+            : isInProgress
+            ? "text.primary"
+            : "text.secondary",
+          fontSize: "0.72rem",
+          textAlign: "center",
+          maxWidth: 110,
+          lineHeight: 1.2,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
         title={stage.title}
-        sx={{ fontWeight: "bold", mb: 0.5 }}
       >
-        {stage.title}
+        {stage.order}. {stage.title.replace(/ \(Gatekeeper \d+\)/, "")}
       </Typography>
 
-      {formattedDate && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
+      {/* ALÇA DE DRAG E DROP PARA ETAPAS CUSTOMIZADAS */}
+      {!isGatekeeper && (
+        <Box
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
           sx={{
-            fontSize: "0.75rem",
+            cursor: "grab",
             display: "flex",
             alignItems: "center",
-            gap: 0.5,
-            mb: 0.5,
+            color: "text.disabled",
+            mt: 0.2,
+            "&:hover": { color: "primary.main" },
           }}
+          title="Arraste para reordenar esta etapa"
         >
-          <EventIcon sx={{ fontSize: 13 }} /> Previsto: {formattedDate}
-        </Typography>
-      )}
-
-      {hasTasks && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontSize: "0.7rem", display: "block" }}
-        >
-          📋 {tasksCount} tarefa(s) associada(s)
-        </Typography>
-      )}
-
-      {onUpdateStageStatus && !isCompleted && (
-        <Box sx={{ mt: 1.5, display: "flex", gap: 1 }}>
-          <Button
-            size="small"
-            variant="outlined"
-            color="success"
-            startIcon={<CheckCircleIcon />}
-            onClick={() => onUpdateStageStatus(stage.id, StageStatus.COMPLETED)}
-            sx={{ fontSize: "0.7rem", py: 0.2 }}
-          >
-            Concluir
-          </Button>
+          <DragIndicatorIcon sx={{ fontSize: 13 }} />
         </Box>
       )}
     </Box>
@@ -233,35 +210,47 @@ const SortableStageCard = ({
 
 export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
   stages,
+  selectedStageId: externalSelectedStageId,
+  onSelectStage,
   onUpdateStageStatus,
   onDeleteStage,
   onOpenCreateStage,
   onReorderStages,
 }) => {
   const [viewMode, setViewMode] = useState<"FLOW" | "TIMELINE">("FLOW");
+  const [internalSelectedStageId, setInternalSelectedStageId] = useState<string | null>(null);
 
   if (!stages || stages.length === 0) return null;
+
+  const activeSelectedStageId =
+    externalSelectedStageId !== undefined
+      ? externalSelectedStageId
+      : internalSelectedStageId || stages.find((s) => s.status === StageStatus.IN_PROGRESS)?.id || stages[0].id;
+
+  const handleStageClick = (stageId: string) => {
+    if (externalSelectedStageId === undefined) {
+      setInternalSelectedStageId(stageId);
+    }
+    if (onSelectStage) {
+      onSelectStage(stageId === activeSelectedStageId ? null : stageId);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    })
   );
 
   const customStages = stages.filter((s) => !s.isGatekeeper);
   const gatekeeperStages = stages.filter((s) => s.isGatekeeper);
 
   const totalStages = stages.length;
-  const completedStages = stages.filter(
-    (s) => s.status === StageStatus.COMPLETED,
-  ).length;
+  const completedStages = stages.filter((s) => s.status === StageStatus.COMPLETED).length;
   const progressPercent = Math.round((completedStages / totalStages) * 100);
 
-  // Verifica se todas as etapas de escrita anteriores estão concluídas para habilitar os gatekeepers
-  const writingStagesCompleted = customStages.every(
-    (s) => s.status === StageStatus.COMPLETED,
-  );
+  const writingStagesCompleted = customStages.every((s) => s.status === StageStatus.COMPLETED);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -273,9 +262,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
     if (oldIndex !== -1 && newIndex !== -1) {
       const reorderedCustom = arrayMove(customStages, oldIndex, newIndex);
       if (onReorderStages) {
-        onReorderStages(
-          reorderedCustom.map((s, idx) => ({ id: s.id, order: idx + 1 })),
-        );
+        onReorderStages(reorderedCustom.map((s, idx) => ({ id: s.id, order: idx + 1 })));
       }
     }
   };
@@ -285,36 +272,47 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
     return new Date(dateStr).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
+      year: "numeric",
     });
   };
 
+  // Etapa atualmente selecionada para o painel de detalhes (Master-Detail)
+  const selectedStage = stages.find((s) => s.id === activeSelectedStageId) || stages[0];
+  const stageTasks = selectedStage.tasks || [];
+  const completedStageTasks = stageTasks.filter((t: any) => t.status === "COMPLETED" || t.status === "DONE").length;
+  const stageTaskPercent = stageTasks.length > 0 ? Math.round((completedStageTasks / stageTasks.length) * 100) : 0;
+  const isSelectedStageCompleted = selectedStage.status === StageStatus.COMPLETED;
+  const isSelectedStageGatekeeper = selectedStage.isGatekeeper;
+  const isSelectedStageLocked = isSelectedStageGatekeeper && !writingStagesCompleted && !isSelectedStageCompleted;
+
   return (
-    <Card variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
-      <CardContent sx={{ pb: "16px !important" }}>
-        {/* CABEÇALHO DO PAINEL COM TOGGLE DE VISÃO (FLUXO vs TIMELINE) */}
+    <Card variant="outlined" sx={{ mb: 2.5, borderRadius: 2, boxShadow: 1, bgcolor: "background.paper" }}>
+      <CardContent sx={{ p: 2, pb: "16px !important" }}>
+        {/* CABEÇALHO DO PAINEL DE LINHA DO TEMPO */}
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 2,
+            mb: 1.5,
             flexWrap: "wrap",
-            gap: 1.5,
+            gap: 1,
           }}
         >
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              {viewMode === "FLOW"
-                ? "Fluxo Rastreável de Escrita e Governança"
-                : "Linha do Tempo Temporal & Cronograma do Artigo"}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: "0.95rem" }}>
+              {viewMode === "FLOW" ? "Fluxo Sequencial & Governança" : "Cronograma Temporal de Execução"}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Progresso do Artigo: {completedStages} de {totalStages} etapas
-              concluídas ({progressPercent}%)
-            </Typography>
+            <Chip
+              label={`${completedStages}/${totalStages} Concluídas (${progressPercent}%)`}
+              size="small"
+              color={progressPercent === 100 ? "success" : "primary"}
+              variant="outlined"
+              sx={{ fontWeight: 700, fontSize: "0.72rem", height: 22 }}
+            />
           </Box>
 
-          <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
             {/* TOGGLE FLUXO VS TIMELINE */}
             <ToggleButtonGroup
               value={viewMode}
@@ -322,37 +320,24 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
               onChange={(_, next) => next && setViewMode(next)}
               size="small"
               color="primary"
+              sx={{ height: 28 }}
             >
-              <ToggleButton
-                value="FLOW"
-                sx={{ fontWeight: 700, gap: 0.5, px: 1.5 }}
-              >
-                <ViewWeekIcon fontSize="small" /> Fluxo
+              <ToggleButton value="FLOW" sx={{ fontWeight: 700, gap: 0.5, px: 1.2, fontSize: "0.75rem" }}>
+                <ViewWeekIcon sx={{ fontSize: 15 }} /> Fluxo
               </ToggleButton>
-              <ToggleButton
-                value="TIMELINE"
-                sx={{ fontWeight: 700, gap: 0.5, px: 1.5 }}
-              >
-                <TimelineIcon fontSize="small" /> Timeline
+              <ToggleButton value="TIMELINE" sx={{ fontWeight: 700, gap: 0.5, px: 1.2, fontSize: "0.75rem" }}>
+                <TimelineIcon sx={{ fontSize: 15 }} /> Timeline
               </ToggleButton>
             </ToggleButtonGroup>
-
-            <Box sx={{ width: 120 }}>
-              <LinearProgress
-                variant="determinate"
-                value={progressPercent}
-                sx={{ height: 8, borderRadius: 4 }}
-              />
-            </Box>
 
             {onOpenCreateStage && (
               <Button
                 variant="contained"
                 color="primary"
                 size="small"
-                startIcon={<AddIcon />}
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 onClick={onOpenCreateStage}
-                sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+                sx={{ fontWeight: 700, whiteSpace: "nowrap", height: 28, fontSize: "0.75rem" }}
               >
                 + Nova Etapa
               </Button>
@@ -360,326 +345,280 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
           </Stack>
         </Box>
 
-        {/* MODALIDADE 1: VISÃO DE FLUXO (KANBAN / CARDS REORDENÁVEIS) */}
+        {/* MODALIDADE 1: VISÃO DE FLUXO (STEPPER HORIZONTAL COMPACTO) */}
         {viewMode === "FLOW" && (
-          <>
-            {/* CARDS DAS ETAPAS DE ESCRITA E GATEKEEPERS */}
-            <Stack
-              direction="row"
-              spacing={1.5}
+          <Box>
+            {/* STEPPER RIBBON DE 1 LINHA DE ALTURA */}
+            <Box
               sx={{
+                position: "relative",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                pt: 1,
+                pb: 1.5,
+                px: 1,
                 overflowX: "auto",
-                pb: 1,
-                pt: 0.5,
-                "&::-webkit-scrollbar": { height: 6 },
+                "&::-webkit-scrollbar": { height: 4 },
                 "&::-webkit-scrollbar-thumb": {
-                  borderRadius: 3,
-                  backgroundColor: "rgba(0,0,0,0.2)",
+                  borderRadius: 2,
+                  backgroundColor: "rgba(255,255,255,0.15)",
                 },
               }}
             >
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={customStages.map((s) => s.id)}
-                  strategy={horizontalListSortingStrategy}
-                >
+              {/* LINHA CONECTORA HORIZONTAL DE FUNDO */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 28,
+                  left: 40,
+                  right: 40,
+                  height: 3,
+                  bgcolor: "divider",
+                  zIndex: 0,
+                  borderRadius: 1.5,
+                }}
+              />
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={customStages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
                   {customStages.map((stage) => {
                     const isCompleted = stage.status === StageStatus.COMPLETED;
-                    const isInProgress =
-                      stage.status === StageStatus.IN_PROGRESS;
-
-                    let borderColor = "divider";
-                    if (isCompleted) {
-                      borderColor = "success.main";
-                    } else if (isInProgress) {
-                      borderColor = "primary.main";
-                    }
-
-                    let bgcolor = "background.paper";
-                    if (isCompleted) {
-                      bgcolor = "success.50";
-                    } else if (isInProgress) {
-                      bgcolor = "action.hover";
-                    }
-
-                    let chipLabel = "Pendente";
-                    if (isCompleted) {
-                      chipLabel = "Concluída";
-                    } else if (isInProgress) {
-                      chipLabel = "Em Andamento";
-                    }
-
-                    let chipColor: "success" | "primary" | "default" =
-                      "default";
-                    if (isCompleted) {
-                      chipColor = "success";
-                    } else if (isInProgress) {
-                      chipColor = "primary";
-                    }
+                    const isInProgress = stage.status === StageStatus.IN_PROGRESS;
+                    const isSelected = stage.id === activeSelectedStageId;
 
                     return (
-                      <SortableStageCard
+                      <SortableStepperNode
                         key={stage.id}
                         stage={stage}
+                        isSelected={isSelected}
                         isCompleted={isCompleted}
-                        borderColor={borderColor}
-                        bgcolor={bgcolor}
-                        chipLabel={chipLabel}
-                        chipColor={chipColor}
-                        onUpdateStageStatus={onUpdateStageStatus}
-                        onDeleteStage={onDeleteStage}
+                        isInProgress={isInProgress}
+                        isLocked={false}
+                        isGatekeeper={false}
+                        onClick={() => handleStageClick(stage.id)}
                       />
                     );
                   })}
                 </SortableContext>
               </DndContext>
 
-              {/* GATEKEEPERS FIXOS NO FINAL (NIT E CONGRESSO) */}
+              {/* GATEKEEPERS FIXOS NO FINAL */}
               {gatekeeperStages.map((stage) => {
-                const formattedGatekeeperDate = formatDateShort(
-                  stage.plannedEndAt || stage.plannedCompletionDate,
-                );
+                const isCompleted = stage.status === StageStatus.COMPLETED;
+                const isInProgress = stage.status === StageStatus.IN_PROGRESS;
+                const isSelected = stage.id === activeSelectedStageId;
+                const isLocked = !writingStagesCompleted && !isCompleted;
 
                 return (
-                  <Box
+                  <SortableStepperNode
                     key={stage.id}
-                    sx={{
-                      minWidth: 220,
-                      maxWidth: 260,
-                      p: 1.5,
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      bgcolor: "background.paper",
-                      position: "relative",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        mb: 1,
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ fontWeight: "bold" }}
-                      >
-                        Etapa {stage.order} (Fixa)
-                      </Typography>
-
-                      <GatekeeperLockBadge
-                        isGatekeeper={stage.isGatekeeper}
-                        gatekeeperType={stage.gatekeeperType}
-                        status={stage.status}
-                        title={stage.title}
-                      />
-                    </Box>
-
-                    <Typography
-                      variant="subtitle2"
-                      noWrap
-                      title={stage.title}
-                      sx={{ fontWeight: "bold", mb: 0.5 }}
-                    >
-                      {stage.title}
-                    </Typography>
-
-                    {formattedGatekeeperDate && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          fontSize: "0.75rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.5,
-                        }}
-                      >
-                        <EventIcon sx={{ fontSize: 13 }} /> Data Limite:{" "}
-                        {formattedGatekeeperDate}
-                      </Typography>
-                    )}
-                  </Box>
+                    stage={stage}
+                    isSelected={isSelected}
+                    isCompleted={isCompleted}
+                    isInProgress={isInProgress}
+                    isLocked={isLocked}
+                    isGatekeeper={true}
+                    onClick={() => handleStageClick(stage.id)}
+                  />
                 );
               })}
-            </Stack>
-          </>
+            </Box>
+
+            {/* PAINEL MASTER-DETAIL: DETALHES DA ETAPA SELECIONADA */}
+            {selectedStage && (
+              <Box
+                sx={{
+                  mt: 1.5,
+                  p: 1.8,
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: isSelectedStageCompleted
+                    ? "success.main"
+                    : isSelectedStageLocked
+                    ? "warning.main"
+                    : "primary.main",
+                  bgcolor: isSelectedStageCompleted
+                    ? "rgba(46, 125, 50, 0.08)"
+                    : isSelectedStageLocked
+                    ? "rgba(237, 108, 2, 0.08)"
+                    : "rgba(25, 118, 210, 0.08)",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 1,
+                    mb: 1,
+                  }}
+                >
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.primary" }}>
+                      Etapa {selectedStage.order}: {selectedStage.title}
+                    </Typography>
+                    {isSelectedStageCompleted && (
+                      <Chip label="✓ Concluída" color="success" size="small" sx={{ fontWeight: 700, height: 20 }} />
+                    )}
+                    {selectedStage.status === StageStatus.IN_PROGRESS && (
+                      <Chip label="▲ Em Andamento" color="primary" size="small" sx={{ fontWeight: 700, height: 20 }} />
+                    )}
+                    {isSelectedStageLocked && (
+                      <Chip
+                        icon={<LockIcon sx={{ fontSize: 13 }} />}
+                        label="🔒 Bloqueada (Gatekeeper)"
+                        color="warning"
+                        size="small"
+                        sx={{ fontWeight: 700, height: 20 }}
+                      />
+                    )}
+                  </Stack>
+
+                  {/* DATAS DA ETAPA */}
+                  {(selectedStage.plannedStartAt || selectedStage.plannedEndAt || selectedStage.plannedCompletionDate) && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <EventIcon sx={{ fontSize: 14 }} /> Prazo:{" "}
+                      {formatDateShort(selectedStage.plannedStartAt || selectedStage.createdAt)} →{" "}
+                      {formatDateShort(selectedStage.plannedEndAt || selectedStage.plannedCompletionDate)}
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* PROGRESSO DE TAREFAS DA ETAPA */}
+                <Box sx={{ mb: 1 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.4 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      📋 Progresso de Tarefas: <strong>{completedStageTasks} de {stageTasks.length} concluídas</strong> ({stageTaskPercent}%)
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={stageTaskPercent}
+                    color={isSelectedStageCompleted ? "success" : "primary"}
+                    sx={{ height: 6, borderRadius: 3 }}
+                  />
+                </Box>
+
+                {/* AÇÕES DA ETAPA */}
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, pt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                    {selectedStage.description || "Sem descrição adicional definida."}
+                  </Typography>
+
+                  <Stack direction="row" spacing={1}>
+                    {onUpdateStageStatus && !isSelectedStageCompleted && !isSelectedStageLocked && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        startIcon={<CheckCircleIcon sx={{ fontSize: 15 }} />}
+                        onClick={() => onUpdateStageStatus(selectedStage.id, StageStatus.COMPLETED)}
+                        sx={{ fontSize: "0.72rem", py: 0.2, height: 26, fontWeight: 700 }}
+                      >
+                        Concluir Etapa
+                      </Button>
+                    )}
+
+                    {onDeleteStage && !isSelectedStageGatekeeper && (
+                      <Tooltip
+                        title={
+                          stageTasks.length > 0
+                            ? `Esta etapa possui ${stageTasks.length} tarefa(s) associada(s) e não pode ser excluída.`
+                            : "Excluir etapa customizada"
+                        }
+                      >
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            disabled={stageTasks.length > 0}
+                            onClick={() => onDeleteStage(selectedStage.id)}
+                            startIcon={<DeleteIcon sx={{ fontSize: 14 }} />}
+                            sx={{ fontSize: "0.72rem", py: 0.2, height: 26, fontWeight: 700 }}
+                          >
+                            Excluir
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Box>
+              </Box>
+            )}
+          </Box>
         )}
 
-        {/* MODALIDADE 2: VISÃO DE TIMELINE TEMPORAL (GANTT & CRONOGRAMA) */}
+        {/* MODALIDADE 2: VISÃO DE TIMELINE TEMPORAL (GANTT HORIZONTAL ENXUTO) */}
         {viewMode === "TIMELINE" && (
-          <Box sx={{ mt: 2 }}>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 700,
-                color: "text.secondary",
-                mb: 2,
-                display: "block",
-              }}
-            >
-              📅 Cronograma Temporal de Execução por Etapa (ProjectStage):
+          <Box sx={{ pt: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mb: 1.5, display: "block" }}>
+              📅 Distribuição Temporal das Etapas do Artigo:
             </Typography>
 
-            <Stack spacing={2}>
+            <Stack spacing={1}>
               {stages.map((stage) => {
                 const isCompleted = stage.status === StageStatus.COMPLETED;
                 const isInProgress = stage.status === StageStatus.IN_PROGRESS;
                 const isGatekeeper = stage.isGatekeeper;
-                const isLocked =
-                  isGatekeeper && !writingStagesCompleted && !isCompleted;
+                const isLocked = isGatekeeper && !writingStagesCompleted && !isCompleted;
 
-                const startDateStr = formatDateShort(
-                  stage.plannedStartAt || stage.createdAt,
-                );
-                const endDateStr = formatDateShort(
-                  stage.plannedEndAt || stage.plannedCompletionDate,
-                );
+                const startDateStr = formatDateShort(stage.plannedStartAt || stage.createdAt);
+                const endDateStr = formatDateShort(stage.plannedEndAt || stage.plannedCompletionDate);
 
                 return (
                   <Box
                     key={stage.id}
                     sx={{
-                      p: 2,
-                      borderRadius: 2,
+                      p: 1.2,
+                      borderRadius: 1.5,
                       border: "1px solid",
                       borderColor: isCompleted
                         ? "success.light"
                         : isInProgress
-                          ? "primary.light"
-                          : isLocked
-                            ? "grey.300"
-                            : "divider",
+                        ? "primary.light"
+                        : isLocked
+                        ? "grey.700"
+                        : "divider",
                       bgcolor: isCompleted
-                        ? "success.50"
+                        ? "rgba(46, 125, 50, 0.06)"
                         : isInProgress
-                          ? "action.hover"
-                          : isLocked
-                            ? "action.disabledBackground"
-                            : "background.paper",
+                        ? "rgba(25, 118, 210, 0.06)"
+                        : "background.paper",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1.5,
+                      flexWrap: "wrap",
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 1,
-                        mb: 1,
-                      }}
-                    >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Chip
-                          label={`Etapa ${stage.order}`}
-                          size="small"
-                          color={isGatekeeper ? "warning" : "default"}
-                          variant="outlined"
-                          sx={{ fontWeight: 700 }}
-                        />
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 700 }}
-                        >
-                          {stage.title}
-                        </Typography>
-                      </Box>
-
-                      {/* BADGE DE STATUS DA TIMELINE */}
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        {isCompleted && (
-                          <Chip
-                            icon={<CheckCircleIcon fontSize="small" />}
-                            label="✓ Concluída"
-                            color="success"
-                            size="small"
-                            sx={{ fontWeight: 700 }}
-                          />
-                        )}
-
-                        {isInProgress && (
-                          <Chip
-                            label="▲ Em Andamento (Hoje)"
-                            color="primary"
-                            size="small"
-                            sx={{ fontWeight: 700 }}
-                          />
-                        )}
-
-                        {isLocked && (
-                          <Chip
-                            icon={<LockIcon fontSize="small" />}
-                            label="🔒 Bloqueado (Aguardando etapas de escrita)"
-                            color="default"
-                            size="small"
-                            sx={{ fontWeight: 700 }}
-                          />
-                        )}
-
-                        {!isCompleted && !isInProgress && !isLocked && (
-                          <Chip
-                            label="Pendente"
-                            variant="outlined"
-                            size="small"
-                            sx={{ fontWeight: 700 }}
-                          />
-                        )}
-                      </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 200 }}>
+                      <Chip
+                        label={`E${stage.order}`}
+                        size="small"
+                        color={isGatekeeper ? "warning" : "default"}
+                        sx={{ fontWeight: 800, height: 20, fontSize: "0.7rem" }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 700, fontSize: "0.8rem" }} noWrap title={stage.title}>
+                        {stage.title}
+                      </Typography>
                     </Box>
 
-                    {/* BARRA TEMPORAL GANTT */}
-                    <Box sx={{ mt: 1 }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          mb: 0.5,
-                        }}
-                      >
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontWeight: 600 }}
-                        >
-                          Início: {startDateStr || "Não definido"}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontWeight: 600 }}
-                        >
-                          Término Previsto: {endDateStr || "Não definido"}
-                        </Typography>
-                      </Box>
-
+                    <Box sx={{ flex: 1, minWidth: 150, maxWidth: 350 }}>
                       <LinearProgress
                         variant="determinate"
                         value={isCompleted ? 100 : isInProgress ? 50 : 0}
-                        color={
-                          isCompleted
-                            ? "success"
-                            : isInProgress
-                              ? "primary"
-                              : "inherit"
-                        }
-                        sx={{
-                          height: 10,
-                          borderRadius: 5,
-                          bgcolor: isLocked ? "grey.300" : "grey.200",
-                        }}
+                        color={isCompleted ? "success" : isInProgress ? "primary" : "inherit"}
+                        sx={{ height: 8, borderRadius: 4 }}
                       />
                     </Box>
+
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: "0.72rem" }}>
+                      {startDateStr || "Início"} → {endDateStr || "Fim previsto"}
+                    </Typography>
                   </Box>
                 );
               })}

@@ -152,6 +152,19 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
   - **Gestão Dinâmica de Etapas (Features):** Modais e ações para criar, editar, reordenar e remover etapas de escrita customizadas.
   - **Restrição do Modal de PR:** O modal de solicitação de revisão (`CreatePRModal`) permite selecionar apenas a **Feature Branch** da Etapa (`feature/<stage-slug>` $\rightarrow$ `dev`) para revisão entre pares ou revisor principal. Sub-tarefas são integradas diretamente pelo autor na Feature Branch sem exigir PR formal.
 
+### 6.5 Régua de Etapas & Linha do Tempo Compacta (`<ArticleTimelineHeader />`)
+* **Localização:** `src/components/common/ArticleTimelineHeader.tsx`
+* **Descrição:** Componente de governança das etapas de escrita e gatekeepers do artigo.
+* **Redesign Enxuto de 1 Linha (Stepper Ribbon)**:
+  - Substitui cards empilhados por uma fita horizontal compacta de nós conectados.
+  - **Semântica Visual dos Nós**: `✓` Concluída (Verde Emerald), `●` Em Andamento (Azul Cyan Glow), `○` Pendente (Slate), `🔒` Gatekeeper Bloqueado (Amber/Slate), `⚑` Gatekeeper Liberado.
+* **Padrão Master-Detail (Painel de Etapa Selecionada)**:
+  - Clique em qualquer nó da régua seleciona a etapa (`selectedStageId`).
+  - Painel de detalhes compacto renderizado diretamente abaixo (~100px) com progresso real baseado no percentual de tarefas concluídas vinculadas àquela etapa.
+* **Modos Dual (`[ ░ Fluxo ]` vs `[ 📊 Timeline ]`)**:
+  - **Modo Fluxo**: Focado na ordem sequencial, D&D com `@dnd-kit` e avanço dos gatekeepers (NIT e Congresso).
+  - **Modo Timeline**: Gantt temporal horizontal relativo por prazos de entrega com indicador `▲ Hoje`.
+
 ---
 
 ### 6.4 Especificação Obrigatória do Padrão DataGrid com Filtros de URL (`DataGrid URL-Filter Pattern`)

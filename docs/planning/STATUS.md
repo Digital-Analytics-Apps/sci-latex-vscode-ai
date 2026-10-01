@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 30 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Dual View na Régua de Timeline (`[Fluxo]` vs `[Timeline]`), Atributos Temporais de Execução no Prisma (`ProjectStage`: `plannedStartAt`, `plannedEndAt`, `startedAt`, `completedAt`), Preservação de Stages Customizados na Rota HTTP `POST /api/v1/projects` e Trava de Gatekeepers Preservada Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
+**Status Geral do Projeto:** 🟡 **Em Desenvolvimento: Redesign da Linha do Tempo e Gerenciamento de Artigos (Stepper Horizontal Compacto 1-Linha, Padrão Master-Detail para Detalhes de Etapa e Cabeçalho Enxuto).** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript passando com 0 erros.
 
 ---
 
@@ -11,21 +11,17 @@
 > [!IMPORTANT]
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
-### 🔍 Estado Atual da Aplicação
-  * **Evolução da Entidade `ProjectStage` & Fix na Rota de Criação de Projetos:**
+### 🔍 Estado Atual da Aplicação (Sessão em Andamento)
+  * **Em Execução:** Redesign da interface da página do Autor (`AuthorDashboard.tsx`) e Régua de Etapas (`ArticleTimelineHeader.tsx`).
+    * **Branch Git Dedicada:** `feature/SLV-redesign-compact-timeline-stepper`
+    * **Objetivo de UX:** Reduzir o gasto vertical de ~600px para ~160px substituindo cards empilhados por Stepper Horizontal de 1 linha + Painel Master-Detail e compondo cabeçalho compacto de 1-2 linhas.
+  * **Evolução Anterior Concluída (`ProjectStage` & Fix de Rotas):**
     * Adicionados os atributos de ciclo temporal no Prisma (`plannedStartAt`, `plannedEndAt`, `startedAt`, `completedAt`) em `schema.prisma`.
-    * Banco PostgreSQL sincronizado (`npx prisma db push`) e Prisma Client regerado (host e container).
-    * Alinhado o esquema Zod da rota HTTP `POST /api/v1/projects` em `projects.routes.ts` com o `createProjectSchema` de `projects.controller.ts`, garantindo que o array de etapas customizadas `stages` enviadas pelo modal do frontend (com `title` e `plannedCompletionDate`) não seja filtrado pelo Fastify.
-    * **Provisionamento de Feature Branches (`feature/<slug>`):** Passado o parâmetro `gitRepoPath` na criação das etapas em `projects.service.ts` e adicionado fallback de resolução via banco de dados em `GitService.createFeatureBranch`, garantindo que todas as etapas customizadas criem e enviem suas branches `feature/<stage-slug>` para o repositório Git local e GitHub.
-  * **Componente Dual View na Régua de Cabeçalho (`ArticleTimelineHeader.tsx`):**
-    * **Seletor de Modo Dual `[ ░ Fluxo ]` / `[ 📊 Timeline ]`:** Permite alternar instantaneamente entre a visão sequencial de cards (Kanban/D&D) e o cronograma temporal (Gantt).
-    * **Visão Fluxo:** Mantém o drag-and-drop (`@dnd-kit`), a contagem de tarefas por etapa e a trava fixa dos gatekeepers no final (removida a mini-barra redundante "Visão Sequencial").
-    * **Visão Timeline (Gantt Temporal):** Exibe as barras de progresso temporais de cada `ProjectStage` com badges de status: `✓ Concluída` (verde), `▲ Em Andamento (Hoje)` (azul/laranja) e `🔒 Bloqueado (Aguardando etapas de escrita)` (cinza com cadeado para os gatekeepers do NIT e Congresso).
-  * **Qualidade, Linter e Testes Automatizados:**
-    * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
-    * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
+    * Alinhado o esquema Zod da rota HTTP `POST /api/v1/projects` em `projects.routes.ts` com `createProjectSchema`.
+    * **Provisionamento de Feature Branches (`feature/<slug>`):** Passado `gitRepoPath` em `projects.service.ts` e fallback em `GitService.createFeatureBranch`.
+  * **Qualidade e Testes:**
+    * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes aprovados.
     * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
-    * **Docker Container (`sci_latex_backend`):** Container Docker reiniciado e operacional em `http://localhost:3333`.
 
 ---
 

@@ -13,6 +13,8 @@ import {
   Chip,
   Grid,
   LinearProgress,
+  Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +59,7 @@ export const AuthorDashboard = ({
   const dispatch = useDispatch();
   const currentMembers = selectedArticle?.members || [];
   const [isCreateStageOpen, setIsCreateStageOpen] = useState(false);
+  const [selectedStageFilterId, setSelectedStageFilterId] = useState<string | null>(null);
 
   const { data: stages = [], refetch: refetchStages } = useQuery({
     queryKey: ["project-stages", activeProjectId],
@@ -279,169 +282,113 @@ export const AuthorDashboard = ({
       ) : (
         /* NIVEL 2: TELA INTERNA DO ARTIGO SELECIONADO & SUAS TAREFAS */
         <Box>
-          <Button
-            variant="text"
-            color="primary"
-            startIcon={<ArrowBackIcon />}
-            onClick={onClearArticle}
-            sx={{ mb: 2, fontWeight: 700 }}
-          >
-            Voltar para Meus Artigos
-          </Button>
-
+          {/* CABEÇALHO DENSO E COMPACTO DO ARTIGO */}
           <Card
             variant="outlined"
-            sx={{ mb: 3, boxShadow: 1, borderRadius: 2 }}
+            sx={{ mb: 2, boxShadow: 1, borderRadius: 2, bgcolor: "background.paper" }}
           >
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: 1.8, pb: "14px !important" }}>
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                  gap: 2,
-                }}
-              >
-                <Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      mb: 1,
-                    }}
-                  >
-                    <ArticleIcon color="primary" fontSize="medium" />
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                      {selectedArticle?.title || "Artigo Selecionado"}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    component="div"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
-                  >
-                    Conferência-Alvo:{" "}
-                    <strong>
-                      {selectedArticle?.conference || "IEEE Transactions"}
-                    </strong>{" "}
-                    | Papel:{" "}
-                    <Chip
-                      label={selectedArticle?.role || "Autor"}
-                      size="small"
-                      color="primary"
-                      sx={{ ml: 0.5, fontWeight: 700 }}
-                    />
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Repositório Git:{" "}
-                    <code>
-                      {selectedArticle?.repo || "github.com/org/latex-repo"}
-                    </code>{" "}
-                    | Branch Base: <code>dev</code>
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", gap: 1.5 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={onOpenCreateTask}
-                  >
-                    + Nova Tarefa
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    size="small"
-                    startIcon={<ArticleIcon />}
-                    onClick={onOpenRCModal}
-                  >
-                    Release Candidates
-                  </Button>
-                </Box>
-              </Box>
-
-              {/* SEÇÃO DE MEMBROS PERTENCENTES AO ARTIGO */}
-              <Box
-                sx={{
-                  mt: 2,
-                  pt: 1.5,
-                  borderTop: "1px dashed rgba(255, 255, 255, 0.12)",
-                  display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
                   flexWrap: "wrap",
                   gap: 1.5,
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 700,
-                      color: "text.secondary",
-                      mr: 0.5,
-                    }}
+                {/* LADO ESQUERDO: NAVEGAÇÃO E METADADOS DO ARTIGO */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", flex: 1 }}>
+                  <Button
+                    variant="text"
+                    color="primary"
+                    size="small"
+                    startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+                    onClick={onClearArticle}
+                    sx={{ fontWeight: 700, px: 1, py: 0.2, minWidth: "auto", fontSize: "0.8rem" }}
                   >
-                    👥 Membros do Artigo ({currentMembers.length}):
+                    Voltar
+                  </Button>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <ArticleIcon color="primary" sx={{ fontSize: 22 }} />
+                    <Typography variant="h6" sx={{ fontWeight: 800, fontSize: "1.1rem", lineHeight: 1.2 }}>
+                      {selectedArticle?.title || "Artigo Selecionado"}
+                    </Typography>
+                    <Chip
+                      label={selectedArticle?.role || "Autor"}
+                      size="small"
+                      color="primary"
+                      sx={{ fontWeight: 700, height: 20, fontSize: "0.7rem" }}
+                    />
+                  </Box>
+
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: "0.75rem" }}>
+                    • Conferência: <strong>{selectedArticle?.conference || "IEEE Transactions"}</strong> • Git: <code>{selectedArticle?.repo || "repo"}</code> (dev)
                   </Typography>
-                  {currentMembers.length > 0 ? (
-                    currentMembers.map((m: any) => {
-                      const u = m.user || { name: "Membro", email: "" };
-                      const roleColor =
-                        m.role === Role.REVIEWER ? "secondary" : "primary";
-                      const roleLabel =
-                        m.role === Role.REVIEWER ? "Revisor" : "Autor";
-                      return (
-                        <Chip
-                          key={m.id || m.userId}
-                          avatar={
+                </Box>
+
+                {/* LADO DIREITO: BARRA UNIFICADA DE AÇÕES E MEMBROS */}
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                  {/* AVATARES COMPACTOS DOS MEMBROS */}
+                  {currentMembers.length > 0 && (
+                    <Stack direction="row" spacing={-0.8} sx={{ mr: 0.5 }}>
+                      {currentMembers.map((m: any) => {
+                        const u = m.user || { name: "Membro", email: "" };
+                        const roleLabel = m.role === Role.REVIEWER ? "Revisor" : "Autor";
+                        return (
+                          <Tooltip key={m.id || m.userId} title={`${u.name} (${roleLabel})`}>
                             <Avatar
-                              sx={{ width: 22, height: 22, fontSize: 11 }}
+                              sx={{
+                                width: 26,
+                                height: 26,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                border: "2px solid #1e1e2d",
+                                bgcolor: m.role === Role.REVIEWER ? "secondary.main" : "primary.main",
+                              }}
                             >
                               {u.name?.[0] || "U"}
                             </Avatar>
-                          }
-                          label={`${u.name} (${roleLabel})`}
-                          size="small"
-                          variant="outlined"
-                          color={roleColor}
-                          sx={{ fontWeight: 600, fontSize: 12 }}
-                        />
-                      );
-                    })
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">
-                      Nenhum membro adicional associado.
-                    </Typography>
+                          </Tooltip>
+                        );
+                      })}
+                    </Stack>
                   )}
-                </Box>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  size="small"
-                  startIcon={<PersonAddIcon fontSize="small" />}
-                  onClick={onOpenAddMember}
-                  sx={{
-                    fontWeight: 700,
-                    textTransform: "none",
-                    fontSize: 13,
-                  }}
-                >
-                  + Adicionar Membro
-                </Button>
+
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    startIcon={<PersonAddIcon sx={{ fontSize: 15 }} />}
+                    onClick={onOpenAddMember}
+                    sx={{ fontWeight: 700, textTransform: "none", fontSize: "0.75rem", height: 28 }}
+                  >
+                    + Membro
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                    onClick={onOpenCreateTask}
+                    sx={{ fontWeight: 700, fontSize: "0.75rem", height: 28 }}
+                  >
+                    + Nova Tarefa
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    size="small"
+                    startIcon={<ArticleIcon sx={{ fontSize: 15 }} />}
+                    onClick={onOpenRCModal}
+                    sx={{ fontWeight: 700, fontSize: "0.75rem", height: 28 }}
+                  >
+                    Release Candidates
+                  </Button>
+                </Stack>
               </Box>
             </CardContent>
           </Card>
@@ -450,6 +397,8 @@ export const AuthorDashboard = ({
           {stages.length > 0 && (
             <ArticleTimelineHeader
               stages={stages}
+              selectedStageId={selectedStageFilterId}
+              onSelectStage={(stageId) => setSelectedStageFilterId(stageId)}
               onUpdateStageStatus={handleUpdateStageStatus}
               onDeleteStage={handleDeleteStage}
               onOpenCreateStage={() => setIsCreateStageOpen(true)}
