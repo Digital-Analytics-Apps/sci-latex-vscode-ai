@@ -4,6 +4,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArticleIcon from "@mui/icons-material/Article";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Avatar,
   Box,
@@ -27,6 +28,7 @@ import { showNotification } from "../../../store/slices/notificationSlice";
 import { ArticleTimelineHeader } from "../../../components/common/ArticleTimelineHeader";
 import { AuthorTasksTable } from "../../workspace/components/AuthorTasksTable";
 import { CreateStageModal } from "../../workspace/CreateStageModal";
+import { ProjectSettingsModal } from "../../workspace/ProjectSettingsModal";
 import type { TaskItem } from "../../../types/task.types";
 
 interface AuthorDashboardProps {
@@ -59,6 +61,7 @@ export const AuthorDashboard = ({
   const dispatch = useDispatch();
   const currentMembers = selectedArticle?.members || [];
   const [isCreateStageOpen, setIsCreateStageOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedStageFilterId, setSelectedStageFilterId] = useState<string | null>(null);
 
   const { data: stages = [], refetch: refetchStages } = useQuery({
@@ -360,6 +363,17 @@ export const AuthorDashboard = ({
                     variant="outlined"
                     color="primary"
                     size="small"
+                    startIcon={<SettingsIcon sx={{ fontSize: 15 }} />}
+                    onClick={() => setIsSettingsOpen(true)}
+                    sx={{ fontWeight: 700, textTransform: "none", fontSize: "0.75rem", height: 28 }}
+                  >
+                    ⚙️ Configurações
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
                     startIcon={<PersonAddIcon sx={{ fontSize: 15 }} />}
                     onClick={onOpenAddMember}
                     sx={{ fontWeight: 700, textTransform: "none", fontSize: "0.75rem", height: 28 }}
@@ -402,6 +416,7 @@ export const AuthorDashboard = ({
               onUpdateStageStatus={handleUpdateStageStatus}
               onDeleteStage={handleDeleteStage}
               onOpenCreateStage={() => setIsCreateStageOpen(true)}
+              onOpenSettings={() => setIsSettingsOpen(true)}
               onReorderStages={handleReorderStages}
             />
           )}
@@ -420,6 +435,20 @@ export const AuthorDashboard = ({
             onClose={() => setIsCreateStageOpen(false)}
             projectId={activeProjectId}
             nextOrder={stages.length + 1}
+          />
+
+          {/* MODAL DE CONFIGURAÇÕES DO PROJETO (CRUD DE ETAPAS, D&D E METADADOS) */}
+          <ProjectSettingsModal
+            open={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            projectId={activeProjectId}
+            projectDetails={selectedArticle}
+            stages={stages}
+            onRefetchStages={refetchStages}
+            onOpenCreateStage={() => setIsCreateStageOpen(true)}
+            onUpdateStageStatus={handleUpdateStageStatus}
+            onDeleteStage={handleDeleteStage}
+            onReorderStages={handleReorderStages}
           />
         </Box>
       )}

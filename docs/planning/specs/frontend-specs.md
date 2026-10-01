@@ -165,6 +165,13 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
   - **Modo Fluxo**: Focado na ordem sequencial, D&D com `@dnd-kit` e avanço dos gatekeepers (NIT e Congresso).
   - **Modo Timeline**: Gantt temporal horizontal relativo por prazos de entrega com indicador `▲ Hoje`.
 
+### 6.6 Modal de Configurações do Projeto & Governança (`<ProjectSettingsModal />`)
+* **Localização:** `src/features/workspace/ProjectSettingsModal.tsx`
+* **Descrição:** Encapsula todo o gerenciamento de etapas de escrita e metadados do artigo em uma caixa de diálogo dedicada, mantendo a tela principal limpa e desobstruída.
+* **Abas do Modal**:
+  - **Aba 1 (Etapas de Escrita & Drag & Drop)**: Permite reordenar a sequência de etapas customizadas via drag and drop (`@dnd-kit`), alterar status, excluir etapas sem tarefas e acionar a criação de novas etapas (`+ Nova Etapa`).
+  - **Aba 2 (Metadados & Congresso)**: Formulário para atualização do título do artigo, resumo executivo, nome da conferência-alvo e data prevista de submissão via `projectsService.updateProject`.
+
 ---
 
 ### 6.4 Especificação Obrigatória do Padrão DataGrid com Filtros de URL (`DataGrid URL-Filter Pattern`)

@@ -25,6 +25,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import ViewWeekIcon from "@mui/icons-material/ViewWeek";
 import FlagIcon from "@mui/icons-material/Flag";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
   Button,
@@ -49,6 +50,7 @@ interface ArticleTimelineHeaderProps {
   onUpdateStageStatus?: (stageId: string, status: StageStatus) => void;
   onDeleteStage?: (stageId: string) => void;
   onOpenCreateStage?: () => void;
+  onOpenSettings?: () => void;
   onReorderStages?: (stages: { id: string; order: number }[]) => void;
 }
 
@@ -214,6 +216,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
   onUpdateStageStatus,
   onDeleteStage,
   onOpenCreateStage,
+  onOpenSettings,
   onReorderStages,
 }) => {
   const [viewMode, setViewMode] = useState<"FLOW" | "TIMELINE">("FLOW");
@@ -328,6 +331,19 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                 <TimelineIcon sx={{ fontSize: 15 }} /> Timeline
               </ToggleButton>
             </ToggleButtonGroup>
+
+            {onOpenSettings && (
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<SettingsIcon sx={{ fontSize: 15 }} />}
+                onClick={onOpenSettings}
+                sx={{ fontWeight: 700, whiteSpace: "nowrap", height: 28, fontSize: "0.75rem" }}
+              >
+                ⚙️ Configurar Etapas
+              </Button>
+            )}
 
             {onOpenCreateStage && (
               <Button

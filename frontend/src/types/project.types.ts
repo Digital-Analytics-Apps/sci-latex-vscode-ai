@@ -33,6 +33,7 @@ export interface ProjectListItem {
 
 export interface CreateProjectInput {
   name: string;
+  description?: string;
   targetConferenceName?: string;
   targetConferenceDate?: string;
   teamId?: string;
