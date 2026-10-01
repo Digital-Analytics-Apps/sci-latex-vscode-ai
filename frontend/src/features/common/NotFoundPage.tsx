@@ -64,8 +64,8 @@ export const NotFoundPage = () => {
           color="text.secondary"
           sx={{ mb: 4, lineHeight: 1.6 }}
         >
-          A página que você está procurando não existe, foi removida ou o endereço
-          digitado está incorreto.
+          A página que você está procurando não existe, foi removida ou o
+          endereço digitado está incorreto.
         </Typography>
 
         <Button

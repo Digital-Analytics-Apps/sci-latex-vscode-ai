@@ -28,4 +28,3 @@ export const RoleLayoutResolver: React.FC<{ children?: React.ReactNode }> = ({
       return <AuthorLayout>{content}</AuthorLayout>;
   }
 };
-

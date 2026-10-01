@@ -1,11 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Card, CardContent, Typography } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { ptBR } from "@mui/x-data-grid/locales";
 import React from "react";

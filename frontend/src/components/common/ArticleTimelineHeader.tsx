@@ -1,46 +1,32 @@
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  horizontalListSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import DeleteIcon from "@mui/icons-material/Delete";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import EventIcon from "@mui/icons-material/Event";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import FlagIcon from "@mui/icons-material/Flag";
 import LockIcon from "@mui/icons-material/Lock";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import TimelineIcon from "@mui/icons-material/Timeline";
-import ViewWeekIcon from "@mui/icons-material/ViewWeek";
-import FlagIcon from "@mui/icons-material/Flag";
-import SettingsIcon from "@mui/icons-material/Settings";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
+  Avatar,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  Collapse,
+  IconButton,
   LinearProgress,
+  Paper,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
 import React, { useState } from "react";
-import { StageStatus } from "../../constants/status";
+import { StageStatus, TaskStatus } from "../../constants/status";
 import { type ProjectStage } from "../../services/projectsService";
+import { StandardModal } from "./StandardModal";
 
 interface ArticleTimelineHeaderProps {
   stages: ProjectStage[];
@@ -63,7 +49,7 @@ interface StepperNodeProps {
   onClick: () => void;
 }
 
-const SortableStepperNode: React.FC<StepperNodeProps> = ({
+const StepperNode: React.FC<StepperNodeProps> = ({
   stage,
   isSelected,
   isCompleted,
@@ -72,26 +58,15 @@ const SortableStepperNode: React.FC<StepperNodeProps> = ({
   isGatekeeper,
   onClick,
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: stage.id, disabled: isGatekeeper });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
   // Ícone e cores semânticas do nó
   let nodeBg = "grey.800";
   let nodeBorder = "grey.600";
   let nodeColor = "grey.400";
-  let icon = <Typography variant="caption" sx={{ fontWeight: 800 }}>{stage.order}</Typography>;
+  let icon = (
+    <Typography variant="caption" sx={{ fontWeight: 800 }}>
+      {stage.order}
+    </Typography>
+  );
 
   if (isCompleted) {
     nodeBg = "success.dark";
@@ -119,8 +94,6 @@ const SortableStepperNode: React.FC<StepperNodeProps> = ({
 
   return (
     <Box
-      ref={setNodeRef}
-      style={style}
       onClick={onClick}
       sx={{
         display: "flex",
@@ -147,8 +120,8 @@ const SortableStepperNode: React.FC<StepperNodeProps> = ({
           boxShadow: isSelected
             ? "0 0 0 4px rgba(25, 118, 210, 0.4), 0 4px 12px rgba(0,0,0,0.5)"
             : isInProgress
-            ? "0 0 10px rgba(25, 118, 210, 0.5)"
-            : "none",
+              ? "0 0 10px rgba(25, 118, 210, 0.5)"
+              : "none",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -167,10 +140,10 @@ const SortableStepperNode: React.FC<StepperNodeProps> = ({
           color: isSelected
             ? "primary.light"
             : isCompleted
-            ? "success.light"
-            : isInProgress
-            ? "text.primary"
-            : "text.secondary",
+              ? "success.light"
+              : isInProgress
+                ? "text.primary"
+                : "text.secondary",
           fontSize: "0.72rem",
           textAlign: "center",
           maxWidth: 110,
@@ -184,26 +157,6 @@ const SortableStepperNode: React.FC<StepperNodeProps> = ({
       >
         {stage.order}. {stage.title.replace(/ \(Gatekeeper \d+\)/, "")}
       </Typography>
-
-      {/* ALÇA DE DRAG E DROP PARA ETAPAS CUSTOMIZADAS */}
-      {!isGatekeeper && (
-        <Box
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          sx={{
-            cursor: "grab",
-            display: "flex",
-            alignItems: "center",
-            color: "text.disabled",
-            mt: 0.2,
-            "&:hover": { color: "primary.main" },
-          }}
-          title="Arraste para reordenar esta etapa"
-        >
-          <DragIndicatorIcon sx={{ fontSize: 13 }} />
-        </Box>
-      )}
     </Box>
   );
 };
@@ -212,20 +165,25 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
   stages,
   selectedStageId: externalSelectedStageId,
   onSelectStage,
-  onUpdateStageStatus,
-  onDeleteStage,
-  onOpenSettings,
-  onReorderStages,
 }) => {
-  const [viewMode, setViewMode] = useState<"FLOW" | "TIMELINE">("FLOW");
-  const [internalSelectedStageId, setInternalSelectedStageId] = useState<string | null>(null);
+  const [internalSelectedStageId, setInternalSelectedStageId] = useState<
+    string | null
+  >(null);
+  const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
+
+  // Controle dos Accordions por Etapa no Modal
+  const [expandedStageIds, setExpandedStageIds] = useState<
+    Record<string, boolean>
+  >({});
 
   if (!stages || stages.length === 0) return null;
 
   const activeSelectedStageId =
     externalSelectedStageId !== undefined
       ? externalSelectedStageId
-      : internalSelectedStageId || stages.find((s) => s.status === StageStatus.IN_PROGRESS)?.id || stages[0].id;
+      : internalSelectedStageId ||
+        stages.find((s) => s.status === StageStatus.IN_PROGRESS)?.id ||
+        stages[0].id;
 
   const handleStageClick = (stageId: string) => {
     if (externalSelectedStageId === undefined) {
@@ -236,396 +194,634 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
     }
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const toggleExpandStage = (stageId: string) => {
+    setExpandedStageIds((prev) => ({
+      ...prev,
+      [stageId]: !prev[stageId],
+    }));
+  };
 
   const customStages = stages.filter((s) => !s.isGatekeeper);
   const gatekeeperStages = stages.filter((s) => s.isGatekeeper);
 
   const totalStages = stages.length;
-  const completedStages = stages.filter((s) => s.status === StageStatus.COMPLETED).length;
+  const completedStages = stages.filter(
+    (s) => s.status === StageStatus.COMPLETED,
+  ).length;
   const progressPercent = Math.round((completedStages / totalStages) * 100);
 
-  const writingStagesCompleted = customStages.every((s) => s.status === StageStatus.COMPLETED);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = customStages.findIndex((s) => s.id === active.id);
-    const newIndex = customStages.findIndex((s) => s.id === over.id);
-
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const reorderedCustom = arrayMove(customStages, oldIndex, newIndex);
-      if (onReorderStages) {
-        onReorderStages(reorderedCustom.map((s, idx) => ({ id: s.id, order: idx + 1 })));
-      }
-    }
-  };
+  const writingStagesCompleted = customStages.every(
+    (s) => s.status === StageStatus.COMPLETED,
+  );
 
   const formatDateShort = (dateStr?: string | null) => {
     if (!dateStr) return null;
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: "UTC",
     });
   };
 
-  // Etapa atualmente selecionada para o painel de detalhes (Master-Detail)
-  const selectedStage = stages.find((s) => s.id === activeSelectedStageId) || stages[0];
-  const stageTasks = selectedStage.tasks || [];
-  const completedStageTasks = stageTasks.filter((t: any) => t.status === "COMPLETED" || t.status === "DONE").length;
-  const stageTaskPercent = stageTasks.length > 0 ? Math.round((completedStageTasks / stageTasks.length) * 100) : 0;
-  const isSelectedStageCompleted = selectedStage.status === StageStatus.COMPLETED;
-  const isSelectedStageGatekeeper = selectedStage.isGatekeeper;
-  const isSelectedStageLocked = isSelectedStageGatekeeper && !writingStagesCompleted && !isSelectedStageCompleted;
-
   return (
-    <Card variant="outlined" sx={{ mb: 2.5, borderRadius: 2, boxShadow: 1, bgcolor: "background.paper" }}>
-      <CardContent sx={{ p: 2, pb: "16px !important" }}>
-        {/* CABEÇALHO DO PAINEL DE LINHA DO TEMPO */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1.5,
-            flexWrap: "wrap",
-            gap: 1,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: "0.95rem" }}>
-              {viewMode === "FLOW" ? "Fluxo Sequencial & Governança" : "Cronograma Temporal de Execução"}
-            </Typography>
-            <Chip
-              label={`${completedStages}/${totalStages} Concluídas (${progressPercent}%)`}
-              size="small"
-              color={progressPercent === 100 ? "success" : "primary"}
-              variant="outlined"
-              sx={{ fontWeight: 700, fontSize: "0.72rem", height: 22 }}
-            />
-          </Box>
+    <>
+      <Card
+        variant="outlined"
+        sx={{
+          mb: 2.5,
+          borderRadius: 2,
+          boxShadow: 1,
+          bgcolor: "background.paper",
+        }}
+      >
+        <CardContent sx={{ p: 2, pb: "16px !important" }}>
+          {/* CABEÇALHO DO PAINEL DE LINHA DO TEMPO */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1.5,
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+              >
+                Fluxo Sequencial & Governança
+              </Typography>
+              <Chip
+                label={`${completedStages}/${totalStages} Concluídas (${progressPercent}%)`}
+                size="small"
+                color={progressPercent === 100 ? "success" : "primary"}
+                variant="outlined"
+                sx={{ fontWeight: 700, fontSize: "0.72rem", height: 22 }}
+              />
+            </Box>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-            {/* TOGGLE FLUXO VS TIMELINE */}
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={(_, next) => next && setViewMode(next)}
-              size="small"
-              color="primary"
-              sx={{ height: 28 }}
-            >
-              <ToggleButton value="FLOW" sx={{ fontWeight: 700, gap: 0.5, px: 1.2, fontSize: "0.75rem" }}>
-                <ViewWeekIcon sx={{ fontSize: 15 }} /> Fluxo
-              </ToggleButton>
-              <ToggleButton value="TIMELINE" sx={{ fontWeight: 700, gap: 0.5, px: 1.2, fontSize: "0.75rem" }}>
-                <TimelineIcon sx={{ fontSize: 15 }} /> Timeline
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            {onOpenSettings && (
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
               <Button
                 variant="outlined"
                 color="primary"
                 size="small"
-                startIcon={<SettingsIcon sx={{ fontSize: 15 }} />}
-                onClick={onOpenSettings}
-                sx={{ fontWeight: 700, whiteSpace: "nowrap", height: 28, fontSize: "0.75rem" }}
+                startIcon={<TimelineIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setIsTimelineModalOpen(true)}
+                sx={{ fontWeight: 700, fontSize: "0.75rem", height: 28 }}
               >
-                Gerenciar Etapas
+                Timeline Ampla
               </Button>
-            )}
-          </Stack>
-        </Box>
-
-        {/* MODALIDADE 1: VISÃO DE FLUXO (STEPPER HORIZONTAL COMPACTO) */}
-        {viewMode === "FLOW" && (
-          <Box>
-            {/* STEPPER RIBBON DE 1 LINHA DE ALTURA */}
-            <Box
-              sx={{
-                position: "relative",
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                pt: 1,
-                pb: 1.5,
-                px: 1,
-                overflowX: "auto",
-                "&::-webkit-scrollbar": { height: 4 },
-                "&::-webkit-scrollbar-thumb": {
-                  borderRadius: 2,
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                },
-              }}
-            >
-              {/* LINHA CONECTORA HORIZONTAL DE FUNDO */}
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 28,
-                  left: 40,
-                  right: 40,
-                  height: 3,
-                  bgcolor: "divider",
-                  zIndex: 0,
-                  borderRadius: 1.5,
-                }}
-              />
-
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={customStages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
-                  {customStages.map((stage) => {
-                    const isCompleted = stage.status === StageStatus.COMPLETED;
-                    const isInProgress = stage.status === StageStatus.IN_PROGRESS;
-                    const isSelected = stage.id === activeSelectedStageId;
-
-                    return (
-                      <SortableStepperNode
-                        key={stage.id}
-                        stage={stage}
-                        isSelected={isSelected}
-                        isCompleted={isCompleted}
-                        isInProgress={isInProgress}
-                        isLocked={false}
-                        isGatekeeper={false}
-                        onClick={() => handleStageClick(stage.id)}
-                      />
-                    );
-                  })}
-                </SortableContext>
-              </DndContext>
-
-              {/* GATEKEEPERS FIXOS NO FINAL */}
-              {gatekeeperStages.map((stage) => {
-                const isCompleted = stage.status === StageStatus.COMPLETED;
-                const isInProgress = stage.status === StageStatus.IN_PROGRESS;
-                const isSelected = stage.id === activeSelectedStageId;
-                const isLocked = !writingStagesCompleted && !isCompleted;
-
-                return (
-                  <SortableStepperNode
-                    key={stage.id}
-                    stage={stage}
-                    isSelected={isSelected}
-                    isCompleted={isCompleted}
-                    isInProgress={isInProgress}
-                    isLocked={isLocked}
-                    isGatekeeper={true}
-                    onClick={() => handleStageClick(stage.id)}
-                  />
-                );
-              })}
-            </Box>
-
-            {/* PAINEL MASTER-DETAIL: DETALHES DA ETAPA SELECIONADA */}
-            {selectedStage && (
-              <Box
-                sx={{
-                  mt: 1.5,
-                  p: 1.8,
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: isSelectedStageCompleted
-                    ? "success.main"
-                    : isSelectedStageLocked
-                    ? "warning.main"
-                    : "primary.main",
-                  bgcolor: isSelectedStageCompleted
-                    ? "rgba(46, 125, 50, 0.08)"
-                    : isSelectedStageLocked
-                    ? "rgba(237, 108, 2, 0.08)"
-                    : "rgba(25, 118, 210, 0.08)",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: 1,
-                    mb: 1,
-                  }}
-                >
-                  <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.primary" }}>
-                      Etapa {selectedStage.order}: {selectedStage.title}
-                    </Typography>
-                    {isSelectedStageCompleted && (
-                      <Chip label="✓ Concluída" color="success" size="small" sx={{ fontWeight: 700, height: 20 }} />
-                    )}
-                    {selectedStage.status === StageStatus.IN_PROGRESS && (
-                      <Chip label="▲ Em Andamento" color="primary" size="small" sx={{ fontWeight: 700, height: 20 }} />
-                    )}
-                    {isSelectedStageLocked && (
-                      <Chip
-                        icon={<LockIcon sx={{ fontSize: 13 }} />}
-                        label="🔒 Bloqueada (Gatekeeper)"
-                        color="warning"
-                        size="small"
-                        sx={{ fontWeight: 700, height: 20 }}
-                      />
-                    )}
-                  </Stack>
-
-                  {/* DATAS DA ETAPA */}
-                  {(selectedStage.plannedStartAt || selectedStage.plannedEndAt || selectedStage.plannedCompletionDate) && (
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <EventIcon sx={{ fontSize: 14 }} /> Prazo:{" "}
-                      {formatDateShort(selectedStage.plannedStartAt || selectedStage.createdAt)} →{" "}
-                      {formatDateShort(selectedStage.plannedEndAt || selectedStage.plannedCompletionDate)}
-                    </Typography>
-                  )}
-                </Box>
-
-                {/* PROGRESSO DE TAREFAS DA ETAPA */}
-                <Box sx={{ mb: 1 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.4 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                      📋 Progresso de Tarefas: <strong>{completedStageTasks} de {stageTasks.length} concluídas</strong> ({stageTaskPercent}%)
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={stageTaskPercent}
-                    color={isSelectedStageCompleted ? "success" : "primary"}
-                    sx={{ height: 6, borderRadius: 3 }}
-                  />
-                </Box>
-
-                {/* AÇÕES DA ETAPA */}
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, pt: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
-                    {selectedStage.description || "Sem descrição adicional definida."}
-                  </Typography>
-
-                  <Stack direction="row" spacing={1}>
-                    {onUpdateStageStatus && !isSelectedStageCompleted && !isSelectedStageLocked && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        startIcon={<CheckCircleIcon sx={{ fontSize: 15 }} />}
-                        onClick={() => onUpdateStageStatus(selectedStage.id, StageStatus.COMPLETED)}
-                        sx={{ fontSize: "0.72rem", py: 0.2, height: 26, fontWeight: 700 }}
-                      >
-                        Concluir Etapa
-                      </Button>
-                    )}
-
-                    {onDeleteStage && !isSelectedStageGatekeeper && (
-                      <Tooltip
-                        title={
-                          stageTasks.length > 0
-                            ? `Esta etapa possui ${stageTasks.length} tarefa(s) associada(s) e não pode ser excluída.`
-                            : "Excluir etapa customizada"
-                        }
-                      >
-                        <span>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            disabled={stageTasks.length > 0}
-                            onClick={() => onDeleteStage(selectedStage.id)}
-                            startIcon={<DeleteIcon sx={{ fontSize: 14 }} />}
-                            sx={{ fontSize: "0.72rem", py: 0.2, height: 26, fontWeight: 700 }}
-                          >
-                            Excluir
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    )}
-                  </Stack>
-                </Box>
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* MODALIDADE 2: VISÃO DE TIMELINE TEMPORAL (GANTT HORIZONTAL ENXUTO) */}
-        {viewMode === "TIMELINE" && (
-          <Box sx={{ pt: 0.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mb: 1.5, display: "block" }}>
-              📅 Distribuição Temporal das Etapas do Artigo:
-            </Typography>
-
-            <Stack spacing={1}>
-              {stages.map((stage) => {
-                const isCompleted = stage.status === StageStatus.COMPLETED;
-                const isInProgress = stage.status === StageStatus.IN_PROGRESS;
-                const isGatekeeper = stage.isGatekeeper;
-                const isLocked = isGatekeeper && !writingStagesCompleted && !isCompleted;
-
-                const startDateStr = formatDateShort(stage.plannedStartAt || stage.createdAt);
-                const endDateStr = formatDateShort(stage.plannedEndAt || stage.plannedCompletionDate);
-
-                return (
-                  <Box
-                    key={stage.id}
-                    sx={{
-                      p: 1.2,
-                      borderRadius: 1.5,
-                      border: "1px solid",
-                      borderColor: isCompleted
-                        ? "success.light"
-                        : isInProgress
-                        ? "primary.light"
-                        : isLocked
-                        ? "grey.700"
-                        : "divider",
-                      bgcolor: isCompleted
-                        ? "rgba(46, 125, 50, 0.06)"
-                        : isInProgress
-                        ? "rgba(25, 118, 210, 0.06)"
-                        : "background.paper",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 1.5,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 200 }}>
-                      <Chip
-                        label={`E${stage.order}`}
-                        size="small"
-                        color={isGatekeeper ? "warning" : "default"}
-                        sx={{ fontWeight: 800, height: 20, fontSize: "0.7rem" }}
-                      />
-                      <Typography variant="caption" sx={{ fontWeight: 700, fontSize: "0.8rem" }} noWrap title={stage.title}>
-                        {stage.title}
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ flex: 1, minWidth: 150, maxWidth: 350 }}>
-                      <LinearProgress
-                        variant="determinate"
-                        value={isCompleted ? 100 : isInProgress ? 50 : 0}
-                        color={isCompleted ? "success" : isInProgress ? "primary" : "inherit"}
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: "0.72rem" }}>
-                      {startDateStr || "Início"} → {endDateStr || "Fim previsto"}
-                    </Typography>
-                  </Box>
-                );
-              })}
             </Stack>
           </Box>
-        )}
-      </CardContent>
-    </Card>
+
+          {/* STEPPER RIBBON DE 1 LINHA DE ALTURA (SEM DRAG AND DROP) */}
+          <Box
+            sx={{
+              position: "relative",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              pt: 1,
+              pb: 1.5,
+              px: 1,
+              overflowX: "auto",
+              "&::-webkit-scrollbar": { height: 4 },
+              "&::-webkit-scrollbar-thumb": {
+                borderRadius: 2,
+                backgroundColor: "rgba(255,255,255,0.15)",
+              },
+            }}
+          >
+            {/* LINHA CONECTORA HORIZONTAL DE FUNDO */}
+            <Box
+              sx={{
+                position: "absolute",
+                top: 28,
+                left: 40,
+                right: 40,
+                height: 3,
+                bgcolor: "divider",
+                zIndex: 0,
+                borderRadius: 1.5,
+              }}
+            />
+
+            {customStages.map((stage) => {
+              const isCompleted = stage.status === StageStatus.COMPLETED;
+              const isInProgress = stage.status === StageStatus.IN_PROGRESS;
+              const isSelected = stage.id === activeSelectedStageId;
+
+              return (
+                <StepperNode
+                  key={stage.id}
+                  stage={stage}
+                  isSelected={isSelected}
+                  isCompleted={isCompleted}
+                  isInProgress={isInProgress}
+                  isLocked={false}
+                  isGatekeeper={false}
+                  onClick={() => handleStageClick(stage.id)}
+                />
+              );
+            })}
+
+            {/* GATEKEEPERS FIXOS NO FINAL */}
+            {gatekeeperStages.map((stage) => {
+              const isCompleted = stage.status === StageStatus.COMPLETED;
+              const isInProgress = stage.status === StageStatus.IN_PROGRESS;
+              const isSelected = stage.id === activeSelectedStageId;
+              const isLocked = !writingStagesCompleted && !isCompleted;
+
+              return (
+                <StepperNode
+                  key={stage.id}
+                  stage={stage}
+                  isSelected={isSelected}
+                  isCompleted={isCompleted}
+                  isInProgress={isInProgress}
+                  isLocked={isLocked}
+                  isGatekeeper={true}
+                  onClick={() => handleStageClick(stage.id)}
+                />
+              );
+            })}
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* MODAL DE TIMELINE AMPLA EM TELA CHEIA (FULL-SCREEN EXPERIENCE) */}
+      <StandardModal
+        open={isTimelineModalOpen}
+        onClose={() => setIsTimelineModalOpen(false)}
+        title="Visão Ampla do Cronograma & Timeline do Projeto"
+        subtitle="Cronograma detalhado por etapa com inspeção de tarefas vinculadas e validação de prazos"
+        icon={<TimelineIcon color="primary" sx={{ fontSize: 26 }} />}
+        size="xl"
+        width="96vw"
+        height="90vh"
+        hideFooter={false}
+        showConfirm={false}
+        cancelText="Fechar"
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {/* HEADER RESUMO DE PROGRESSO */}
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: 2,
+              bgcolor: "background.paper",
+              border: "1px solid",
+              borderColor: "divider",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 2,
+              boxShadow: 1,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontWeight: 600 }}
+              >
+                Progresso Geral do Fluxo Sequencial
+              </Typography>
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: 800, color: "primary.main" }}
+              >
+                {completedStages} de {totalStages} Etapas Concluídas (
+                {progressPercent}%)
+              </Typography>
+            </Box>
+
+            <Box sx={{ width: 280 }}>
+              <LinearProgress
+                variant="determinate"
+                value={progressPercent}
+                color={progressPercent === 100 ? "success" : "primary"}
+                sx={{ height: 10, borderRadius: 5, mb: 0.8 }}
+              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                align="right"
+                sx={{ display: "block", fontWeight: 600 }}
+              >
+                {totalStages - completedStages} etapa(s) pendente(s) • Clique em
+                uma etapa para ver as tarefas
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* LISTA DE ETAPAS EXPANSÍVEIS (ACCORDIONS DE TAREFAS E VALIDAÇÃO DE DATAS) */}
+          <Stack spacing={2}>
+            {stages.map((stage) => {
+              const isCompleted = stage.status === StageStatus.COMPLETED;
+              const isInProgress = stage.status === StageStatus.IN_PROGRESS;
+              const isGatekeeper = stage.isGatekeeper;
+              const isLocked =
+                isGatekeeper && !writingStagesCompleted && !isCompleted;
+              const isExpanded = Boolean(expandedStageIds[stage.id]);
+
+              const startDateStr = formatDateShort(
+                stage.plannedStartAt || stage.createdAt,
+              );
+              const stageDeadlineStr =
+                stage.plannedCompletionDate || stage.plannedEndAt;
+              const endDateStr = formatDateShort(stageDeadlineStr);
+
+              const stageTasks: any[] = stage.tasks || [];
+              const tasksCount = stageTasks.length;
+
+              let statusColor: "success" | "primary" | "warning" | "default" =
+                "default";
+              let statusLabel = "Pendente";
+
+              if (isCompleted) {
+                statusColor = "success";
+                statusLabel = "Concluída";
+              } else if (isInProgress) {
+                statusColor = "primary";
+                statusLabel = "Em Progresso";
+              } else if (isLocked) {
+                statusColor = "warning";
+                statusLabel = "Bloqueada (Gatekeeper)";
+              }
+
+              return (
+                <Card
+                  key={stage.id}
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 2,
+                    borderColor: isCompleted
+                      ? "success.main"
+                      : isInProgress
+                        ? "primary.main"
+                        : isLocked
+                          ? "warning.main"
+                          : "divider",
+                    bgcolor: isCompleted
+                      ? "rgba(46, 125, 50, 0.03)"
+                      : isInProgress
+                        ? "rgba(25, 118, 210, 0.03)"
+                        : "background.paper",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                    {/* CABEÇALHO DA ETAPA (CLICKABLE ACCORDION HEADER) */}
+                    <Box
+                      onClick={() => toggleExpandStage(stage.id)}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        gap: 2,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.5,
+                          flex: 1,
+                        }}
+                      >
+                        <Chip
+                          label={`Etapa ${stage.order}`}
+                          size="small"
+                          color={isGatekeeper ? "warning" : "primary"}
+                          variant={isGatekeeper ? "filled" : "outlined"}
+                          sx={{ fontWeight: 800 }}
+                        />
+                        <Typography
+                          variant="h6"
+                          sx={{ fontWeight: 700, fontSize: "1rem" }}
+                        >
+                          {stage.title}
+                        </Typography>
+                        <Chip
+                          icon={<AssignmentIcon sx={{ fontSize: 14 }} />}
+                          label={`${tasksCount} Tarefa(s)`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 700, fontSize: "0.72rem" }}
+                        />
+                      </Box>
+
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                        sx={{ alignItems: "center" }}
+                      >
+                        <Chip
+                          label={statusLabel}
+                          color={statusColor}
+                          size="small"
+                          sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                        />
+                        <IconButton size="small" color="primary">
+                          <ExpandMoreIcon
+                            sx={{
+                              transform: isExpanded
+                                ? "rotate(180deg)"
+                                : "rotate(0deg)",
+                              transition: "transform 0.2s ease",
+                            }}
+                          />
+                        </IconButton>
+                      </Stack>
+                    </Box>
+
+                    {stage.description && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1, mb: 1 }}
+                      >
+                        {stage.description}
+                      </Typography>
+                    )}
+
+                    {/* DATAS DA ETAPA */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 2,
+                        flexWrap: "wrap",
+                        pt: 1,
+                        mt: 1,
+                        borderTop: "1px dashed",
+                        borderColor: "divider",
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={3}
+                        sx={{ alignItems: "center" }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.8,
+                          }}
+                        >
+                          <CalendarMonthIcon
+                            sx={{ fontSize: 16, color: "text.secondary" }}
+                          />
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontWeight: 600 }}
+                          >
+                            Início:{" "}
+                            <strong>
+                              {startDateStr || "Não especificado"}
+                            </strong>
+                          </Typography>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.8,
+                          }}
+                        >
+                          <AccessTimeIcon
+                            sx={{ fontSize: 16, color: "text.secondary" }}
+                          />
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontWeight: 600 }}
+                          >
+                            Término Previsto (Data Limite):{" "}
+                            <strong>{endDateStr || "Não especificado"}</strong>
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <Box sx={{ width: 160 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={isCompleted ? 100 : isInProgress ? 50 : 0}
+                          color={
+                            isCompleted
+                              ? "success"
+                              : isInProgress
+                                ? "primary"
+                                : "inherit"
+                          }
+                          sx={{ height: 6, borderRadius: 3 }}
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* CONTEÚDO EXPANSÍVEL (ACCORDION): LISTAGEM DE TAREFAS VINCULADAS & VALIDAÇÃO DE DATAS */}
+                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                      <Box
+                        sx={{
+                          mt: 2,
+                          pt: 2,
+                          borderTop: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 700, mb: 1.5 }}
+                        >
+                          📋 Tarefas da Etapa {stage.order} ({tasksCount}):
+                        </Typography>
+
+                        {tasksCount === 0 ? (
+                          <Paper
+                            variant="outlined"
+                            sx={{
+                              p: 2,
+                              textAlign: "center",
+                              color: "text.secondary",
+                            }}
+                          >
+                            Nenhuma tarefa vinculada diretamente a esta etapa.
+                          </Paper>
+                        ) : (
+                          <Stack spacing={1.2}>
+                            {stageTasks.map((task: any) => {
+                              const taskDueDateStr = task.dueDate;
+                              const formattedTaskDueDate =
+                                formatDateShort(taskDueDateStr);
+
+                              // Regra de Validação de Datas: A data da tarefa NÃO pode ser maior que o prazo limite da etapa
+                              const isTaskOverdueStageDeadline = Boolean(
+                                taskDueDateStr &&
+                                stageDeadlineStr &&
+                                new Date(taskDueDateStr) >
+                                  new Date(stageDeadlineStr),
+                              );
+
+                              const assigneeName =
+                                typeof task.assignee === "object" &&
+                                task.assignee
+                                  ? task.assignee.name
+                                  : typeof task.assignee === "string"
+                                    ? task.assignee
+                                    : "Não atribuído";
+
+                              return (
+                                <Paper
+                                  key={task.id}
+                                  variant="outlined"
+                                  sx={{
+                                    p: 1.5,
+                                    borderRadius: 1.5,
+                                    bgcolor: isTaskOverdueStageDeadline
+                                      ? "rgba(211, 47, 47, 0.06)"
+                                      : "background.paper",
+                                    borderColor: isTaskOverdueStageDeadline
+                                      ? "error.main"
+                                      : "divider",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 1.5,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 1.5,
+                                      flex: 1,
+                                      minWidth: 240,
+                                    }}
+                                  >
+                                    <Avatar
+                                      sx={{
+                                        width: 24,
+                                        height: 24,
+                                        fontSize: 11,
+                                        bgcolor: "primary.main",
+                                      }}
+                                    >
+                                      {assigneeName?.[0]?.toUpperCase() || "T"}
+                                    </Avatar>
+                                    <Box>
+                                      <Typography
+                                        variant="subtitle2"
+                                        sx={{
+                                          fontWeight: 700,
+                                          fontSize: "0.85rem",
+                                        }}
+                                      >
+                                        {task.title}
+                                      </Typography>
+                                      {task.branchName && (
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                          sx={{ fontFamily: "monospace" }}
+                                        >
+                                          🌿 {task.branchName} • Autor:{" "}
+                                          {assigneeName}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  </Box>
+
+                                  <Stack
+                                    direction="row"
+                                    spacing={1.5}
+                                    sx={{ alignItems: "center" }}
+                                  >
+                                    {/* SE EXCEDER A DATA LIMITE DA ETAPA -> EXIBE ALERTA VERMELHO */}
+                                    {isTaskOverdueStageDeadline ? (
+                                      <Tooltip
+                                        title={`A data limite da tarefa (${formattedTaskDueDate}) ultrapassa o prazo final da etapa (${endDateStr}). Ajuste o prazo da tarefa.`}
+                                      >
+                                        <Chip
+                                          icon={
+                                            <WarningAmberIcon
+                                              sx={{ fontSize: 14 }}
+                                            />
+                                          }
+                                          label={`⚠️ Excede o limite da etapa (${endDateStr})`}
+                                          color="error"
+                                          size="small"
+                                          sx={{
+                                            fontWeight: 700,
+                                            fontSize: "0.72rem",
+                                          }}
+                                        />
+                                      </Tooltip>
+                                    ) : (
+                                      <Chip
+                                        label={`📅 Vencimento: ${formattedTaskDueDate || "Sem prazo"}`}
+                                        size="small"
+                                        variant="outlined"
+                                        color={
+                                          task.status === TaskStatus.MERGED
+                                            ? "success"
+                                            : "default"
+                                        }
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: "0.72rem",
+                                        }}
+                                      />
+                                    )}
+
+                                    <Chip
+                                      label={
+                                        task.status === TaskStatus.MERGED
+                                          ? "Concluída"
+                                          : task.status ===
+                                              TaskStatus.IN_PROGRESS
+                                            ? "Em Andamento"
+                                            : "Pendente"
+                                      }
+                                      size="small"
+                                      color={
+                                        task.status === TaskStatus.MERGED
+                                          ? "success"
+                                          : "default"
+                                      }
+                                      sx={{
+                                        fontWeight: 700,
+                                        fontSize: "0.7rem",
+                                      }}
+                                    />
+                                  </Stack>
+                                </Paper>
+                              );
+                            })}
+                          </Stack>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Stack>
+        </Box>
+      </StandardModal>
+    </>
   );
 };

@@ -117,7 +117,15 @@ export const projectsService = {
   async updateProjectStage(
     projectId: string,
     stageId: string,
-    data: { title?: string; order?: number; status?: StageStatus },
+    data: {
+      title?: string;
+      description?: string;
+      order?: number;
+      status?: StageStatus;
+      plannedCompletionDate?: string | null;
+      plannedStartAt?: string | null;
+      plannedEndAt?: string | null;
+    },
   ): Promise<ProjectStage> {
     const response = await api.patch(
       `${PROJETCT_URL}/${projectId}/stages/${stageId}`,

@@ -191,8 +191,8 @@ export function NITParecerModal({
           <>
             <Alert severity="info" variant="outlined">
               O departamento do NIT realiza a análise de patenteabilidade e
-              sigilo de forma offline/externa. Registre aqui o envio da cópia
-              do artigo em PDF para acompanhamento do processo.
+              sigilo de forma offline/externa. Registre aqui o envio da cópia do
+              artigo em PDF para acompanhamento do processo.
             </Alert>
 
             {pdfUrl && (
@@ -224,10 +224,7 @@ export function NITParecerModal({
             )}
 
             <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{ mb: 0.5, fontWeight: 600 }}
-              >
+              <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
                 Data e Hora do Envio *
               </Typography>
               <TextField
@@ -241,10 +238,7 @@ export function NITParecerModal({
             </Box>
 
             <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{ mb: 0.5, fontWeight: 600 }}
-              >
+              <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
                 Observações de Envio / Protocolo (Opcional)
               </Typography>
               <TextField
@@ -334,10 +328,7 @@ export function NITParecerModal({
             </FormControl>
 
             <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{ mb: 0.5, fontWeight: 600 }}
-              >
+              <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 600 }}>
                 Parecer Técnico / Justificativa do NIT *
               </Typography>
               <TextField

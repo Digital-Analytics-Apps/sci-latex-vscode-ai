@@ -24,6 +24,7 @@ export interface UpdateStageData {
   description?: string;
   plannedStartAt?: Date | string | null;
   plannedEndAt?: Date | string | null;
+  plannedCompletionDate?: Date | string | null;
   startedAt?: Date | string | null;
   completedAt?: Date | string | null;
 }
@@ -60,11 +61,8 @@ export class PrismaProjectStagesRepository implements IProjectStagesRepository {
       where: { projectId },
       include: {
         tasks: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            assignedToId: true,
+          include: {
+            assignee: true,
           },
         },
       },
@@ -184,11 +182,8 @@ export class PrismaProjectStagesRepository implements IProjectStagesRepository {
         where: { projectId },
         include: {
           tasks: {
-            select: {
-              id: true,
-              title: true,
-              status: true,
-              assignedToId: true,
+            include: {
+              assignee: true,
             },
           },
         },

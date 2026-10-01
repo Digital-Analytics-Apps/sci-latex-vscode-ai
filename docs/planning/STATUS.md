@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 30 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Modal de Configurações do Projeto (`ProjectSettingsModal`), Stepper Horizontal Compacto 1-Linha, Padrão Master-Detail de Inspeção de Etapas, Ocultação de Boas-Vindas nas Sub-páginas e Atualização de Metadados Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
+**Status Geral do Projeto:** 🟢 **Modal Único de Configurações (`ProjectSettingsModal`), Gestão de Membros & Coautores, Integração de Release Candidates (RCs) e Releases Oficiais na Main, Modal de Timeline Ampla em Tela Cheia com Accordion de Tarefas e Validação de Prazos, Tags de Etapa Personalizadas por Cor do Tema na Tabela Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
 
 ---
 
@@ -12,16 +12,25 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Redesign da Interface do Autor & Timeline (`AuthorDashboard.tsx`, `DashboardPage.tsx` & `ArticleTimelineHeader.tsx`):**
-    * **Branch Git Dedicada:** `feature/SLV-redesign-compact-timeline-stepper`
-    * **Redução de Gasto Vertical:** Reduzido o consumo de espaço vertical da timeline e do cabeçalho do artigo de ~600px para **~160px**, eliminando a necessidade de dar zoom out na tela.
-    * **Ocultação do Header Global de Boas-Vindas nas Sub-páginas (`DashboardPage.tsx`)**: Exibido exclusivamente na lista principal de artigos.
-    * **Remoção de Poluição Visual & Botão `+ Nova Etapa` Centralizado no Modal**: O botão de criação de novas etapas foi movido exclusivamente para o `ProjectSettingsModal` e os ícones duplicados de engrenagem (`⚙️ ⚙️`) foram corrigidos para o padrão MUI `<SettingsIcon />`.
-    * **Fita Stepper Horizontal de 1 Linha**: Régua enxuta de nós conectados com ícones semânticos (`✓`, `●`, `○`, `🔒`, `⚑`).
-    * **Padrão Master-Detail**: Clique em qualquer nó seleciona a etapa e abre o painel de detalhes compacto diretamente abaixo.
+  * **Modal de Timeline Ampla em Tela Cheia (`ArticleTimelineHeader.tsx` & Backend):**
+    * **Resolução do Erro HTTP 400 no Backend**: Identificada e corrigida a inconsistência de schema Prisma em `PrismaProjectStagesRepository.findByProjectId`, onde a tentativa de inclusão do atributo inexistente `avatarUrl` na relação `assignee` causava a falha `400 Bad Request` no endpoint `/api/v1/projects/:id/stages`.
+    * **Exibição Correta das Tarefas por Etapa**: Com a rota `/stages` retornando 200 OK, as tarefas reais da etapa (ex: *"Inciar a pesquisa de artigos relacionados"* com `dueDate: 22/10/2026`) são carregadas perfeitamente dentro dos accordions no modal e na régua da timeline.
+    * **Visualização Full-Screen**: Configurado modal em tela cheia (`size="xl" width="96vw" height="90vh"`) para oferecer um painel de Gantt / Timeline abrangente.
+    * **Accordion de Tarefas por Etapa**: Cada card de etapa no modal expande/recolhe ao clicar, exibindo todas as tarefas (`stage.tasks`) vinculadas à etapa com branch, autor e prazo de vencimento (`task.dueDate`).
+    * **Validação de Prazos Limite**: Implementada validação de datas: se `task.dueDate > stage.plannedCompletionDate`, o sistema exibe um alerta de aviso destacado (`⚠️ Excede o limite da etapa (DD/MM/AAAA)`) impedindo extrapolações sem notificação.
+  * **Melhorias de UX na Tabela de Tarefas (`AuthorTasksTable.tsx` & `TaskDataGridCells.tsx`):**
+    * **Tag de Etapa Personalizada na Coluna 1**: Adicionada tag (`Chip`) com a cor do tema correspondente a cada etapa (Etapa 1: Azul, Etapa 2: Roxo, Etapa 3: Verde Água, Gatekeepers: Laranja).
+    * **Posicionamento & Formatação**: A tag é exibida **após** o título da tarefa (`[Título da Tarefa] [Nome da Etapa]`), mostrando apenas o nome da etapa sem o prefixo `"Etapa X:"`.
+    * **Botão `+ Nova Tarefa` Reposicionado**: Movido para a barra de buscas da tabela, posicionado lado a lado com o filtro de *Status da Tarefa*.
+    * **Ações de Assinar / Desassinar Inline**: Integradas na coluna *Autor Responsável* com avatares em 30px e botões destacados (`Assinar` / `Desassinar`).
+  * **Centralização no Modal de Configurações (`ProjectSettingsModal.tsx` & `AuthorDashboard.tsx`):**
+    * **Remoção de Poluição do Header**: O cabeçalho do artigo exibe apenas os Avatares de membros e o ícone único da engrenagem (`<SettingsIcon />`), removendo botões isolados.
+    * **Aba de Membros & Coautores (Tab 1)**: Listagem de colaboradores e inclusão via `+ Adicionar Membro`.
+    * **Aba de Release Candidates & Releases Oficiais (Tab 2)**: Listagem de RCs enviadas ao Revisor Técnico, formulário para novas RCs e listagem de Releases Oficiais publicadas na `main`. Botão de publicação oficial protegido por regra de validação (exige 100% das etapas de escrita concluídas).
+    * **Aba de Metadados & Git (Tab 3)**: Exibição da URL do repositório, branch base `dev`, conferência-alvo e prazos.
   * **Qualidade, Linter e Testes Automatizados:**
     * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
-    * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
+    * **Backend (`npm test`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
     * **Frontend (`npx tsc -b`):** 0 erros de compilação TypeScript.
 
 ---

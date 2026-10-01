@@ -38,4 +38,11 @@ export const releasesService = {
     });
     return response.data.release;
   },
+
+  // Buscar Releases Oficiais publicadas do projeto
+  async getReleases(projectId: string) {
+    if (!projectId) return [];
+    const response = await api.get(`/projects/${projectId}/releases`);
+    return response.data.releases || response.data || [];
+  },
 };

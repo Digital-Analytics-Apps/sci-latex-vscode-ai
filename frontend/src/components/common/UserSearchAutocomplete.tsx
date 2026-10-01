@@ -43,8 +43,7 @@ export interface MultiUserSearchProps extends BaseUserSearchProps {
 }
 
 export type UserSearchAutocompleteProps =
-  | SingleUserSearchProps
-  | MultiUserSearchProps;
+  SingleUserSearchProps | MultiUserSearchProps;
 
 export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
   const {
@@ -122,12 +121,12 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
       (u) => u.email === singleValue || u.id === singleValue,
     );
     if (found) return found;
-    return ({
+    return {
       id: "",
       name: singleValue,
       email: singleValue,
       role: "AUTHOR",
-    } as unknown) as UserMemberItem;
+    } as unknown as UserMemberItem;
   }, [filteredUsers, singleValue]);
 
   // MODO MÚLTIPLO (Seleção de vários usuários)
@@ -426,4 +425,3 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
     />
   );
 };
-

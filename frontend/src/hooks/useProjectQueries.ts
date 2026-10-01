@@ -94,11 +94,16 @@ export function useCreateStageMutation(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { title: string; order?: number; description?: string }) =>
-      projectsService.createProjectStage(projectId, data),
+    mutationFn: (data: {
+      title: string;
+      order?: number;
+      description?: string;
+    }) => projectsService.createProjectStage(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project-stages", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-stages", projectId],
+      });
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
     },
   });
@@ -121,7 +126,9 @@ export function useUpdateStageMutation(projectId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project-stages", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-stages", projectId],
+      });
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
     },
   });
@@ -135,7 +142,9 @@ export function useDeleteStageMutation(projectId: string) {
       projectsService.deleteProjectStage(projectId, stageId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project-stages", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-stages", projectId],
+      });
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
     },
   });
@@ -176,4 +185,3 @@ export function useCreateProjectMutation() {
     },
   });
 }
-

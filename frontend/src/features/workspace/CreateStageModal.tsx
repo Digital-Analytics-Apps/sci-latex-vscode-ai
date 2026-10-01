@@ -96,8 +96,20 @@ export const CreateStageModal = ({
           required
         />
 
-        <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: "action.hover", border: "1px dashed", borderColor: "divider" }}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+        <Box
+          sx={{
+            p: 1.5,
+            borderRadius: 1,
+            bgcolor: "action.hover",
+            border: "1px dashed",
+            borderColor: "divider",
+          }}
+        >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mb: 0.5 }}
+          >
             🌿 Branch Git de Feature Associada à Etapa:
           </Typography>
           <Chip

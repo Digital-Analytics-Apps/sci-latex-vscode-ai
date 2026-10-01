@@ -80,7 +80,8 @@ export const CreateTaskModal = ({
       return;
     }
 
-    const finalAssignedToId = assignedToId || selectedGlobalAssignee?.id || undefined;
+    const finalAssignedToId =
+      assignedToId || selectedGlobalAssignee?.id || undefined;
 
     setIsSubmitting(true);
     try {
@@ -97,10 +98,12 @@ export const CreateTaskModal = ({
       const assignedMember = finalAssignedToId
         ? articleMembers.find(
             (m) =>
-              m.userId === finalAssignedToId || m.user?.id === finalAssignedToId,
+              m.userId === finalAssignedToId ||
+              m.user?.id === finalAssignedToId,
           )
         : null;
-      const assignedName = assignedMember?.user?.name || selectedGlobalAssignee?.name;
+      const assignedName =
+        assignedMember?.user?.name || selectedGlobalAssignee?.name;
       const notificationMsg = assignedName
         ? `Nova Tarefa "${title}" atribuída para ${assignedName} com sucesso!`
         : `Nova Tarefa "${title}" criada com sucesso (não atribuída)!`;
@@ -292,4 +295,3 @@ export const CreateTaskModal = ({
     </StandardModal>
   );
 };
-

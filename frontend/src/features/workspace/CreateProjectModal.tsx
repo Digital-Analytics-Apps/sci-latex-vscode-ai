@@ -57,19 +57,22 @@ const DEFAULT_INITIAL_STAGES: StageFormItem[] = [
   {
     id: "stage-default-1",
     title: "Planejamento e Pesquisa",
-    description: "Mapeamento inicial de bibliografia, hipóteses e estruturação TeX",
+    description:
+      "Mapeamento inicial de bibliografia, hipóteses e estruturação TeX",
     plannedCompletionDate: "",
   },
   {
     id: "stage-default-2",
     title: "Desenvolvimento e Experimentos",
-    description: "Execução dos experimentos, análise de dados e geração de gráficos",
+    description:
+      "Execução dos experimentos, análise de dados e geração de gráficos",
     plannedCompletionDate: "",
   },
   {
     id: "stage-default-3",
     title: "Escrita da Versão Rascunho",
-    description: "Redação completa das seções de introdução, método e resultados",
+    description:
+      "Redação completa das seções de introdução, método e resultados",
     plannedCompletionDate: "",
   },
 ];
@@ -88,11 +91,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [stages, setStages] = useState<StageFormItem[]>(DEFAULT_INITIAL_STAGES);
 
   // Co-Autores
-  const [selectedCoAuthors, setSelectedCoAuthors] = useState<UserMemberItem[]>([]);
+  const [selectedCoAuthors, setSelectedCoAuthors] = useState<UserMemberItem[]>(
+    [],
+  );
 
   // Revisor Técnico
   const [reviewerSearchText, setReviewerSearchText] = useState("");
-  const [selectedReviewer, setSelectedReviewer] = useState<UserMemberItem | null>(null);
+  const [selectedReviewer, setSelectedReviewer] =
+    useState<UserMemberItem | null>(null);
 
   const {
     register,
@@ -114,7 +120,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const selectedTemplate = watch("template");
-   
+
   const submissionDeadline = watch("submissionDeadline");
 
   const handleNextStep0 = async () => {
@@ -143,7 +149,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     if (stages.length < 3) {
       dispatch(
         showNotification({
-          message: "É obrigatório manter no mínimo 3 etapas de escrita antes dos gatekeepers.",
+          message:
+            "É obrigatório manter no mínimo 3 etapas de escrita antes dos gatekeepers.",
           severity: "warning",
         }),
       );
@@ -173,7 +180,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     if (stages.length <= 3) {
       dispatch(
         showNotification({
-          message: "Não é possível remover. É obrigatório manter no mínimo 3 etapas de escrita.",
+          message:
+            "Não é possível remover. É obrigatório manter no mínimo 3 etapas de escrita.",
           severity: "warning",
         }),
       );
@@ -182,7 +190,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     setStages((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const handleUpdateStage = (id: string, field: keyof StageFormItem, value: string) => {
+  const handleUpdateStage = (
+    id: string,
+    field: keyof StageFormItem,
+    value: string,
+  ) => {
     setStages((prev) =>
       prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
     );
@@ -296,7 +308,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       {activeStep === 0 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            Informe os metadados do artigo, a conferência-alvo e o template LaTeX oficial do evento.
+            Informe os metadados do artigo, a conferência-alvo e o template
+            LaTeX oficial do evento.
           </Typography>
 
           <TextField
@@ -368,18 +381,28 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       {activeStep === 1 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Alert severity="info" sx={{ py: 0.5, fontSize: 13 }}>
-            Configure as etapas de escrita do seu artigo e defina as datas previstas. É obrigatório manter no mínimo 3 etapas de escrita antes das 2 etapas obrigatórias de gatekeeper.
+            Configure as etapas de escrita do seu artigo e defina as datas
+            previstas. É obrigatório manter no mínimo 3 etapas de escrita antes
+            das 2 etapas obrigatórias de gatekeeper.
           </Alert>
 
           <Typography
             variant="subtitle2"
-            sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}
+            sx={{
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
           >
             <TimelineIcon color="primary" fontSize="small" />
             Etapas de Escrita do Artigo ({stages.length}):
           </Typography>
 
-          <Stack spacing={1.5} sx={{ maxHeight: 320, overflowY: "auto", pr: 0.5 }}>
+          <Stack
+            spacing={1.5}
+            sx={{ maxHeight: 320, overflowY: "auto", pr: 0.5 }}
+          >
             {stages.map((stage, index) => (
               <Card
                 key={stage.id}
@@ -399,7 +422,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       gap: 1.5,
                     }}
                   >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        flex: 1,
+                      }}
+                    >
                       <Chip
                         label={`Etapa ${index + 1}`}
                         size="small"
@@ -425,7 +455,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       slotProps={{ inputLabel: { shrink: true } }}
                       value={stage.plannedCompletionDate || ""}
                       onChange={(e) =>
-                        handleUpdateStage(stage.id, "plannedCompletionDate", e.target.value)
+                        handleUpdateStage(
+                          stage.id,
+                          "plannedCompletionDate",
+                          e.target.value,
+                        )
                       }
                       sx={{ width: 170 }}
                     />
@@ -459,41 +493,74 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             startIcon={<AddIcon />}
             onClick={handleAddStage}
             size="small"
-            sx={{ alignSelf: "flex-start", textTransform: "none", fontWeight: 700 }}
+            sx={{
+              alignSelf: "flex-start",
+              textTransform: "none",
+              fontWeight: 700,
+            }}
           >
             + Adicionar Etapa de Escrita
           </Button>
 
           {/* FIXAS: ETAPAS DE GATEKEEPER */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 1, color: "text.secondary" }}>
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 700, mt: 1, color: "text.secondary" }}
+          >
             Etapas Obrigatórias de Trava (Gatekeepers):
           </Typography>
 
           <Stack spacing={1}>
-            <Card variant="outlined" sx={{ bgcolor: "action.hover", opacity: 0.85 }}>
+            <Card
+              variant="outlined"
+              sx={{ bgcolor: "action.hover", opacity: 0.85 }}
+            >
               <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <LockIcon color="action" fontSize="small" />
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       Parecer do NIT (Gatekeeper 1)
                     </Typography>
                   </Box>
-                  <Chip label="🔒 Fixo / Automático" size="small" variant="filled" />
+                  <Chip
+                    label="🔒 Fixo / Automático"
+                    size="small"
+                    variant="filled"
+                  />
                 </Box>
               </CardContent>
             </Card>
 
-            <Card variant="outlined" sx={{ bgcolor: "action.hover", opacity: 0.85 }}>
+            <Card
+              variant="outlined"
+              sx={{ bgcolor: "action.hover", opacity: 0.85 }}
+            >
               <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <LockIcon color="action" fontSize="small" />
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       Submissão ao Congresso Alvo (Gatekeeper 2)
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 700 }}
+                  >
                     Data limite: {submissionDeadline || "Não configurada"}
                   </Typography>
                 </Box>
@@ -507,7 +574,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       {activeStep === 2 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
           <Typography variant="body2" color="text.secondary">
-            Associe os co-autores e o revisor técnico digitando na pesquisa (mínimo de 3 caracteres para buscar na API).
+            Associe os co-autores e o revisor técnico digitando na pesquisa
+            (mínimo de 3 caracteres para buscar na API).
           </Typography>
 
           <Box>

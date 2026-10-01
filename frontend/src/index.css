@@ -11,9 +11,15 @@
   --social-bg: rgba(243, 244, 246, 0.8);
   --shadow: none;
 
-  --sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --heading: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --sans:
+    "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    sans-serif;
+  --heading:
+    "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    sans-serif;
+  --mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;

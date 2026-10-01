@@ -20,7 +20,6 @@ import { ReviewsListPage } from "../reviewer/ReviewsListPage";
 import { AddMemberModal } from "../workspace/AddMemberModal";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateTaskModal } from "../workspace/CreateTaskModal";
-import { ReleaseCandidatesModal } from "../workspace/ReleaseCandidatesModal";
 import { ManagerDashboardPage } from "../manager/ManagerDashboardPage";
 import { AuthorDashboard } from "./components/AuthorDashboard";
 import { ManagementDashboard } from "./components/ManagementDashboard";
@@ -87,7 +86,6 @@ export const DashboardPage = () => {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [isRCModalOpen, setIsRCModalOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 
   const { data: projects, isLoading } = useProjectsList();
@@ -186,7 +184,6 @@ export const DashboardPage = () => {
           onClearArticle={handleClearArticle}
           onStartWorkspace={handleStartWorkspace}
           onOpenCreateTask={() => setIsCreateTaskOpen(true)}
-          onOpenRCModal={() => setIsRCModalOpen(true)}
           onOpenAddMember={() => setIsAddMemberOpen(true)}
         />
       )}
@@ -216,12 +213,6 @@ export const DashboardPage = () => {
         onClose={() => setIsCreateTaskOpen(false)}
         projectId={activeProjectId}
         members={currentMembers}
-      />
-
-      <ReleaseCandidatesModal
-        open={isRCModalOpen}
-        onClose={() => setIsRCModalOpen(false)}
-        projectId={activeProjectId}
       />
 
       <AddMemberModal
