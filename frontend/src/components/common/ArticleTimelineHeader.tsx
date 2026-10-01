@@ -15,7 +15,6 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
@@ -215,7 +214,6 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
   onSelectStage,
   onUpdateStageStatus,
   onDeleteStage,
-  onOpenCreateStage,
   onOpenSettings,
   onReorderStages,
 }) => {
@@ -341,20 +339,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                 onClick={onOpenSettings}
                 sx={{ fontWeight: 700, whiteSpace: "nowrap", height: 28, fontSize: "0.75rem" }}
               >
-                ⚙️ Configurar Etapas
-              </Button>
-            )}
-
-            {onOpenCreateStage && (
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                onClick={onOpenCreateStage}
-                sx={{ fontWeight: 700, whiteSpace: "nowrap", height: 28, fontSize: "0.75rem" }}
-              >
-                + Nova Etapa
+                Gerenciar Etapas
               </Button>
             )}
           </Stack>

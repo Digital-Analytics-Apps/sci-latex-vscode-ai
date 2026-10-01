@@ -367,7 +367,7 @@ export const AuthorDashboard = ({
                     onClick={() => setIsSettingsOpen(true)}
                     sx={{ fontWeight: 700, textTransform: "none", fontSize: "0.75rem", height: 28 }}
                   >
-                    ⚙️ Configurações
+                    Configurações
                   </Button>
 
                   <Button
