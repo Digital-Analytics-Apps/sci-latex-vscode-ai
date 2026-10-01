@@ -2,7 +2,7 @@
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
 **Última Atualização:** 30 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Redesign da Linha do Tempo e Gerenciamento de Artigos (Stepper Horizontal Compacto 1-Linha, Padrão Master-Detail de Inspeção de Etapas, Progresso Baseado em Tarefas e Cabeçalho Enxuto) Concluído com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
+**Status Geral do Projeto:** 🟢 **Modal de Configurações do Projeto (`ProjectSettingsModal`), Stepper Horizontal Compacto 1-Linha, Padrão Master-Detail de Inspeção de Etapas, Ocultação de Boas-Vindas nas Sub-páginas e Atualização de Metadados Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
 
 ---
 
@@ -12,13 +12,15 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
+  * **Modal de Configurações do Projeto (`ProjectSettingsModal.tsx`):**
+    * Encapsulado todo o CRUD de etapas de escrita, Drag & Drop (`@dnd-kit`), alteração de status e edição de metadados da conferência em um modal dedicado acionado pelo botão `⚙️ Configurações` (no cabeçalho do artigo e na régua da timeline).
+    * Mantida a tela principal limpa, enxuta e focada na navegação e tabela de tarefas.
   * **Redesign da Interface do Autor & Timeline (`AuthorDashboard.tsx`, `DashboardPage.tsx` & `ArticleTimelineHeader.tsx`):**
     * **Branch Git Dedicada:** `feature/SLV-redesign-compact-timeline-stepper`
     * **Redução de Gasto Vertical:** Reduzido o consumo de espaço vertical da timeline e do cabeçalho do artigo de ~600px para **~160px**, eliminando a necessidade de dar zoom out na tela.
-    * **Ocultação do Header Global de Boas-Vindas nas Sub-páginas (`DashboardPage.tsx`)**: O bloco de boas-vindas ("Olá, Gilson Russo 👋") e o botão "+ Novo Artigo Científico" agora são exibidos **exclusivamente na página principal de listagem de artigos** (`!effectiveSelectedArticleId`). Ao entrar na tela de gerenciamento de um artigo específico, esse bloco superior é ocultado automaticamente, economizando ainda mais espaço vertical.
-    * **Fita Stepper Horizontal de 1 Linha**: Implementada a régua horizontal enxuta de nós conectados com semântica de ícones (`✓` Concluída, `●` Em Andamento, `○` Pendente, `🔒` Gatekeeper Bloqueado, `⚑` Gatekeeper Liberado).
-    * **Padrão Master-Detail**: Clique em qualquer nó da régua ativa o painel de inspeção detalhada daquela etapa logo abaixo.
-    * **Cabeçalho de Artigo Compacto**: Banner de 1-2 linhas de alta densidade reunindo botões de ação e avatares sobrepostos de membros.
+    * **Ocultação do Header Global de Boas-Vindas nas Sub-páginas (`DashboardPage.tsx`)**: Exibido exclusivamente na lista principal de artigos.
+    * **Fita Stepper Horizontal de 1 Linha**: Régua enxuta de nós conectados com ícones semânticos (`✓`, `●`, `○`, `🔒`, `⚑`).
+    * **Padrão Master-Detail**: Clique em qualquer nó seleciona a etapa e abre o painel de detalhes compacto diretamente abaixo.
   * **Qualidade, Linter e Testes Automatizados:**
     * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
     * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
