@@ -12,13 +12,13 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Redesign da Interface do Autor & Timeline (`AuthorDashboard.tsx` & `ArticleTimelineHeader.tsx`):**
+  * **Redesign da Interface do Autor & Timeline (`AuthorDashboard.tsx`, `DashboardPage.tsx` & `ArticleTimelineHeader.tsx`):**
     * **Branch Git Dedicada:** `feature/SLV-redesign-compact-timeline-stepper`
     * **Redução de Gasto Vertical:** Reduzido o consumo de espaço vertical da timeline e do cabeçalho do artigo de ~600px para **~160px**, eliminando a necessidade de dar zoom out na tela.
+    * **Ocultação do Header Global de Boas-Vindas nas Sub-páginas (`DashboardPage.tsx`)**: O bloco de boas-vindas ("Olá, Gilson Russo 👋") e o botão "+ Novo Artigo Científico" agora são exibidos **exclusivamente na página principal de listagem de artigos** (`!effectiveSelectedArticleId`). Ao entrar na tela de gerenciamento de um artigo específico, esse bloco superior é ocultado automaticamente, economizando ainda mais espaço vertical.
     * **Fita Stepper Horizontal de 1 Linha**: Implementada a régua horizontal enxuta de nós conectados com semântica de ícones (`✓` Concluída, `●` Em Andamento, `○` Pendente, `🔒` Gatekeeper Bloqueado, `⚑` Gatekeeper Liberado).
-    * **Padrão Master-Detail**: Clique em qualquer nó da régua ativa o painel de inspeção detalhada daquela etapa logo abaixo, exibindo prazo (`Início → Fim`), acionadores de governança e barra de progresso calculada diretamente a partir da proporção de tarefas concluídas vinculadas a essa etapa.
-    * **Modo Gantt Temporal Enxuto (`[ 📊 Timeline ]`)**: Cronograma de barras horizontais compacto e proporcional em caixa única.
-    * **Cabeçalho de Artigo Compacto**: Banner de 1-2 linhas de alta densidade reunindo botões de ação (`+ Nova Tarefa`, `Release Candidates`, `+ Membro`) e avatares sobrepostos de membros.
+    * **Padrão Master-Detail**: Clique em qualquer nó da régua ativa o painel de inspeção detalhada daquela etapa logo abaixo.
+    * **Cabeçalho de Artigo Compacto**: Banner de 1-2 linhas de alta densidade reunindo botões de ação e avatares sobrepostos de membros.
   * **Qualidade, Linter e Testes Automatizados:**
     * **Backend (`npx tsc --noEmit`):** 0 erros de compilação.
     * **Backend (`npx vitest run`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
