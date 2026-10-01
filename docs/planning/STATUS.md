@@ -12,13 +12,11 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Modal de Configurações do Projeto (`ProjectSettingsModal.tsx`):**
-    * Encapsulado todo o CRUD de etapas de escrita, Drag & Drop (`@dnd-kit`), alteração de status e edição de metadados da conferência em um modal dedicado acionado pelo botão `⚙️ Configurações` (no cabeçalho do artigo e na régua da timeline).
-    * Mantida a tela principal limpa, enxuta e focada na navegação e tabela de tarefas.
   * **Redesign da Interface do Autor & Timeline (`AuthorDashboard.tsx`, `DashboardPage.tsx` & `ArticleTimelineHeader.tsx`):**
     * **Branch Git Dedicada:** `feature/SLV-redesign-compact-timeline-stepper`
     * **Redução de Gasto Vertical:** Reduzido o consumo de espaço vertical da timeline e do cabeçalho do artigo de ~600px para **~160px**, eliminando a necessidade de dar zoom out na tela.
     * **Ocultação do Header Global de Boas-Vindas nas Sub-páginas (`DashboardPage.tsx`)**: Exibido exclusivamente na lista principal de artigos.
+    * **Remoção de Poluição Visual & Botão `+ Nova Etapa` Centralizado no Modal**: O botão de criação de novas etapas foi movido exclusivamente para o `ProjectSettingsModal` e os ícones duplicados de engrenagem (`⚙️ ⚙️`) foram corrigidos para o padrão MUI `<SettingsIcon />`.
     * **Fita Stepper Horizontal de 1 Linha**: Régua enxuta de nós conectados com ícones semânticos (`✓`, `●`, `○`, `🔒`, `⚑`).
     * **Padrão Master-Detail**: Clique em qualquer nó seleciona a etapa e abre o painel de detalhes compacto diretamente abaixo.
   * **Qualidade, Linter e Testes Automatizados:**
