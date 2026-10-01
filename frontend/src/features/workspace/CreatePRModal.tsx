@@ -1,10 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import SendIcon from "@mui/icons-material/Send";
-import {
-  Box,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
@@ -198,9 +194,7 @@ export const CreatePRModal = ({
     >
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
         {/* Card Fixo de Tarefa Vinculada à Workspace (Componente Reutilizável) */}
-        <ActiveTaskCard
-          title={activeTask?.title || "Tarefa Atual do Artigo"}
-        />
+        <ActiveTaskCard title={activeTask?.title || "Tarefa Atual do Artigo"} />
 
         {/* Seleção de Nível/Tipo de Revisão (Componente Reutilizável) */}
         <ReviewTypeSelector

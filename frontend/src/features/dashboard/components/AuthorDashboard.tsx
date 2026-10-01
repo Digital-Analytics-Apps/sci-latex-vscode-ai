@@ -1,9 +1,8 @@
 import { useState } from "react";
-import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArticleIcon from "@mui/icons-material/Article";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Avatar,
   Box,
@@ -12,19 +11,108 @@ import {
   CardContent,
   Chip,
   Grid,
+  IconButton,
   LinearProgress,
+  Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { useDispatch } from "react-redux";
 import { Role } from "../../../constants/roles";
-import { StageStatus } from "../../../constants/status";
 import type { ArticleItem } from "../../../services/articlesService";
-import { projectsService } from "../../../services/projectsService";
-import { showNotification } from "../../../store/slices/notificationSlice";
+import { StageStatus } from "../../../constants/status";
+import {
+  projectsService,
+  type ProjectStage,
+} from "../../../services/projectsService";
+
+const DEFAULT_FALLBACK_STAGES: ProjectStage[] = [
+  {
+    id: "stage-default-1",
+    projectId: "demo",
+    order: 1,
+    title: "Planejamento e Pesquisa",
+    description:
+      "Mapeamento inicial de bibliografia, hipóteses e estruturação TeX",
+    status: StageStatus.IN_PROGRESS,
+    isGatekeeper: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plannedStartAt: new Date().toISOString(),
+    plannedCompletionDate: new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+    plannedEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [],
+  },
+  {
+    id: "stage-default-2",
+    projectId: "demo",
+    order: 2,
+    title: "Desenvolvimento e Experimentos",
+    description:
+      "Execução de testes, geração de gráficos e tabelas de resultados",
+    status: StageStatus.NOT_STARTED,
+    isGatekeeper: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plannedCompletionDate: new Date(
+      Date.now() + 60 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+    tasks: [],
+  },
+  {
+    id: "stage-default-3",
+    projectId: "demo",
+    order: 3,
+    title: "Escrita da Versão Rascunho",
+    description: "Redação de Seções, Introdução, Metodologia e Conclusão",
+    status: StageStatus.NOT_STARTED,
+    isGatekeeper: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plannedCompletionDate: new Date(
+      Date.now() + 90 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+    tasks: [],
+  },
+  {
+    id: "stage-default-4",
+    projectId: "demo",
+    order: 4,
+    title: "Parecer do NIT (Gatekeeper 1)",
+    description: "Validação institucional, propriedade intelectual e submissão",
+    status: StageStatus.NOT_STARTED,
+    isGatekeeper: true,
+    gatekeeperType: "NIT",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plannedCompletionDate: new Date(
+      Date.now() + 105 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+    tasks: [],
+  },
+  {
+    id: "stage-default-5",
+    projectId: "demo",
+    order: 5,
+    title: "Submissão ao Congresso Alvo (Gatekeeper 2)",
+    description: "Envio final à conferência científica",
+    status: StageStatus.NOT_STARTED,
+    isGatekeeper: true,
+    gatekeeperType: "TARGET_CONFERENCE",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plannedCompletionDate: new Date(
+      Date.now() + 120 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+    tasks: [],
+  },
+];
 import { ArticleTimelineHeader } from "../../../components/common/ArticleTimelineHeader";
 import { AuthorTasksTable } from "../../workspace/components/AuthorTasksTable";
 import { CreateStageModal } from "../../workspace/CreateStageModal";
+import { ProjectSettingsModal } from "../../workspace/ProjectSettingsModal";
 import type { TaskItem } from "../../../types/task.types";
 
 interface AuthorDashboardProps {
@@ -37,7 +125,6 @@ interface AuthorDashboardProps {
   onClearArticle: () => void;
   onStartWorkspace: (task: TaskItem) => void;
   onOpenCreateTask: () => void;
-  onOpenRCModal: () => void;
   onOpenAddMember: () => void;
 }
 
@@ -51,12 +138,14 @@ export const AuthorDashboard = ({
   onClearArticle,
   onStartWorkspace,
   onOpenCreateTask,
-  onOpenRCModal,
   onOpenAddMember,
 }: AuthorDashboardProps) => {
-  const dispatch = useDispatch();
   const currentMembers = selectedArticle?.members || [];
   const [isCreateStageOpen, setIsCreateStageOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedStageFilterId, setSelectedStageFilterId] = useState<
+    string | null
+  >(null);
 
   const { data: stages = [], refetch: refetchStages } = useQuery({
     queryKey: ["project-stages", activeProjectId],
@@ -64,82 +153,8 @@ export const AuthorDashboard = ({
     enabled: Boolean(activeProjectId && !activeProjectId.startsWith("demo-")),
   });
 
-  const handleUpdateStageStatus = async (
-    stageId: string,
-    status: StageStatus,
-  ) => {
-    try {
-      await projectsService.updateProjectStage(activeProjectId, stageId, {
-        status,
-      });
-      refetchStages();
-      dispatch(
-        showNotification({
-          message: "Status da etapa de escrita atualizado com sucesso!",
-          severity: "success",
-        }),
-      );
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Erro ao atualizar etapa.";
-      dispatch(showNotification({ message: msg, severity: "error" }));
-    }
-  };
-
-  const handleReorderStages = async (
-    reorderedList: { id: string; order: number }[],
-  ) => {
-    try {
-      await projectsService.reorderProjectStages(
-        activeProjectId,
-        reorderedList,
-      );
-      refetchStages();
-      dispatch(
-        showNotification({
-          message: "Ordem das etapas de escrita atualizada com sucesso!",
-          severity: "success",
-        }),
-      );
-    } catch {
-      dispatch(
-        showNotification({
-          message: "Erro ao reordenar etapas de escrita.",
-          severity: "error",
-        }),
-      );
-    }
-  };
-
-  const handleDeleteStage = async (stageId: string) => {
-    const targetStage = stages.find((s: any) => s.id === stageId);
-    if (targetStage?.tasks && targetStage.tasks.length > 0) {
-      dispatch(
-        showNotification({
-          message: `Não é possível excluir a etapa "${targetStage.title}" porque ela possui tarefas vinculadas. Remova ou reatribua as tarefas primeiro.`,
-          severity: "warning",
-        }),
-      );
-      return;
-    }
-
-    try {
-      await projectsService.deleteProjectStage(activeProjectId, stageId);
-      refetchStages();
-      dispatch(
-        showNotification({
-          message: "Etapa excluída com sucesso!",
-          severity: "success",
-        }),
-      );
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message || err.message || "Erro ao excluir etapa.";
-      dispatch(showNotification({ message: msg, severity: "error" }));
-    }
-  };
+  const effectiveStages =
+    stages && stages.length > 0 ? stages : DEFAULT_FALLBACK_STAGES;
 
   return (
     <Box>
@@ -279,183 +294,151 @@ export const AuthorDashboard = ({
       ) : (
         /* NIVEL 2: TELA INTERNA DO ARTIGO SELECIONADO & SUAS TAREFAS */
         <Box>
-          <Button
-            variant="text"
-            color="primary"
-            startIcon={<ArrowBackIcon />}
-            onClick={onClearArticle}
-            sx={{ mb: 2, fontWeight: 700 }}
-          >
-            Voltar para Meus Artigos
-          </Button>
-
+          {/* CABEÇALHO DENSO E COMPACTO DO ARTIGO */}
           <Card
             variant="outlined"
-            sx={{ mb: 3, boxShadow: 1, borderRadius: 2 }}
+            sx={{
+              mb: 2,
+              boxShadow: 1,
+              borderRadius: 2,
+              bgcolor: "background.paper",
+            }}
           >
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: 1.8, pb: "14px !important" }}>
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                  gap: 2,
-                }}
-              >
-                <Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      mb: 1,
-                    }}
-                  >
-                    <ArticleIcon color="primary" fontSize="medium" />
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                      {selectedArticle?.title || "Artigo Selecionado"}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    component="div"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
-                  >
-                    Conferência-Alvo:{" "}
-                    <strong>
-                      {selectedArticle?.conference || "IEEE Transactions"}
-                    </strong>{" "}
-                    | Papel:{" "}
-                    <Chip
-                      label={selectedArticle?.role || "Autor"}
-                      size="small"
-                      color="primary"
-                      sx={{ ml: 0.5, fontWeight: 700 }}
-                    />
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Repositório Git:{" "}
-                    <code>
-                      {selectedArticle?.repo || "github.com/org/latex-repo"}
-                    </code>{" "}
-                    | Branch Base: <code>dev</code>
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", gap: 1.5 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={onOpenCreateTask}
-                  >
-                    + Nova Tarefa
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    size="small"
-                    startIcon={<ArticleIcon />}
-                    onClick={onOpenRCModal}
-                  >
-                    Release Candidates
-                  </Button>
-                </Box>
-              </Box>
-
-              {/* SEÇÃO DE MEMBROS PERTENCENTES AO ARTIGO */}
-              <Box
-                sx={{
-                  mt: 2,
-                  pt: 1.5,
-                  borderTop: "1px dashed rgba(255, 255, 255, 0.12)",
-                  display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
                   flexWrap: "wrap",
                   gap: 1.5,
                 }}
               >
+                {/* LADO ESQUERDO: NAVEGAÇÃO E METADADOS DO ARTIGO */}
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 1,
+                    gap: 1.5,
                     flexWrap: "wrap",
+                    flex: 1,
                   }}
                 >
-                  <Typography
-                    variant="caption"
+                  <Button
+                    variant="text"
+                    color="primary"
+                    size="small"
+                    startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+                    onClick={onClearArticle}
                     sx={{
                       fontWeight: 700,
-                      color: "text.secondary",
-                      mr: 0.5,
+                      px: 1,
+                      py: 0.2,
+                      minWidth: "auto",
+                      fontSize: "0.8rem",
                     }}
                   >
-                    👥 Membros do Artigo ({currentMembers.length}):
+                    Voltar
+                  </Button>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <ArticleIcon color="primary" sx={{ fontSize: 22 }} />
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: "1.1rem",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {selectedArticle?.title || "Artigo Selecionado"}
+                    </Typography>
+                    <Chip
+                      label={selectedArticle?.role || "Autor"}
+                      size="small"
+                      color="primary"
+                      sx={{ fontWeight: 700, height: 20, fontSize: "0.7rem" }}
+                    />
+                  </Box>
+
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 500, fontSize: "0.75rem" }}
+                  >
+                    • Conferência:{" "}
+                    <strong>
+                      {selectedArticle?.conference || "IEEE Transactions"}
+                    </strong>
                   </Typography>
-                  {currentMembers.length > 0 ? (
-                    currentMembers.map((m: any) => {
-                      const u = m.user || { name: "Membro", email: "" };
-                      const roleColor =
-                        m.role === Role.REVIEWER ? "secondary" : "primary";
-                      const roleLabel =
-                        m.role === Role.REVIEWER ? "Revisor" : "Autor";
-                      return (
-                        <Chip
-                          key={m.id || m.userId}
-                          avatar={
+                </Box>
+
+                {/* LADO DIREITO: BARRA UNIFICADA DE AÇÕES E MEMBROS */}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: "center" }}
+                >
+                  {/* AVATARES COMPACTOS DOS MEMBROS */}
+                  {currentMembers.length > 0 && (
+                    <Stack direction="row" spacing={-0.8} sx={{ mr: 0.5 }}>
+                      {currentMembers.map((m: any) => {
+                        const u = m.user || { name: "Membro", email: "" };
+                        const roleLabel =
+                          m.role === Role.REVIEWER ? "Revisor" : "Autor";
+                        return (
+                          <Tooltip
+                            key={m.id || m.userId}
+                            title={`${u.name} (${roleLabel})`}
+                          >
                             <Avatar
-                              sx={{ width: 22, height: 22, fontSize: 11 }}
+                              sx={{
+                                width: 26,
+                                height: 26,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                border: "2px solid #1e1e2d",
+                                bgcolor:
+                                  m.role === Role.REVIEWER
+                                    ? "secondary.main"
+                                    : "primary.main",
+                              }}
                             >
                               {u.name?.[0] || "U"}
                             </Avatar>
-                          }
-                          label={`${u.name} (${roleLabel})`}
-                          size="small"
-                          variant="outlined"
-                          color={roleColor}
-                          sx={{ fontWeight: 600, fontSize: 12 }}
-                        />
-                      );
-                    })
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">
-                      Nenhum membro adicional associado.
-                    </Typography>
+                          </Tooltip>
+                        );
+                      })}
+                    </Stack>
                   )}
-                </Box>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  size="small"
-                  startIcon={<PersonAddIcon fontSize="small" />}
-                  onClick={onOpenAddMember}
-                  sx={{
-                    fontWeight: 700,
-                    textTransform: "none",
-                    fontSize: 13,
-                  }}
-                >
-                  + Adicionar Membro
-                </Button>
+
+                  <Tooltip title="Configurações & Governança do Projeto">
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => setIsSettingsOpen(true)}
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "primary.main",
+                        borderRadius: 1.5,
+                        px: 1,
+                        height: 28,
+                      }}
+                    >
+                      <SettingsIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
               </Box>
             </CardContent>
           </Card>
 
           {/* RÉGUA DE TIMELINE E GATEKEEPERS DA ETAPA DE ESCRITA */}
-          {stages.length > 0 && (
-            <ArticleTimelineHeader
-              stages={stages}
-              onUpdateStageStatus={handleUpdateStageStatus}
-              onDeleteStage={handleDeleteStage}
-              onOpenCreateStage={() => setIsCreateStageOpen(true)}
-              onReorderStages={handleReorderStages}
-            />
-          )}
+          <ArticleTimelineHeader
+            stages={effectiveStages}
+            selectedStageId={selectedStageFilterId}
+            onSelectStage={(stageId) => setSelectedStageFilterId(stageId)}
+          />
 
           {/* LISTA DE TAREFAS EM DATAGRID DO ARTIGO SELECIONADO */}
           <AuthorTasksTable
@@ -463,6 +446,7 @@ export const AuthorDashboard = ({
             provisioningTaskId={provisioningTaskId}
             currentUserId={currentUserId}
             onStartWorkspace={onStartWorkspace}
+            onOpenCreateTask={onOpenCreateTask}
           />
 
           {/* MODAL PARA ADICIONAR NOVA ETAPA DE ESCRITA (FEATURE BRANCH) */}
@@ -471,6 +455,18 @@ export const AuthorDashboard = ({
             onClose={() => setIsCreateStageOpen(false)}
             projectId={activeProjectId}
             nextOrder={stages.length + 1}
+          />
+
+          {/* MODAL DE CONFIGURAÇÕES DO PROJETO (CRUD DE ETAPAS, MEMBROS, D&D E METADADOS) */}
+          <ProjectSettingsModal
+            open={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            projectId={activeProjectId}
+            projectDetails={selectedArticle}
+            stages={stages}
+            onRefetchStages={refetchStages}
+            onOpenCreateStage={() => setIsCreateStageOpen(true)}
+            onOpenAddMember={onOpenAddMember}
           />
         </Box>
       )}

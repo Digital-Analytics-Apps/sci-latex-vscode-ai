@@ -46,14 +46,14 @@ export const darkPalette: PaletteOptions = {
   grey: colors.gray,
   background: {
     default: darkTokens.background.default, // #030712 (Gray 950)
-    paper: darkTokens.background.paper,     // #111827 (Gray 900)
+    paper: darkTokens.background.paper, // #111827 (Gray 900)
   },
   text: {
-    primary: darkTokens.text.primary,       // #f9fafb (Gray 50)
-    secondary: darkTokens.text.secondary,   // #d1d5db (Gray 300)
-    disabled: darkTokens.text.disabled,     // #6b7280 (Gray 500)
+    primary: darkTokens.text.primary, // #f9fafb (Gray 50)
+    secondary: darkTokens.text.secondary, // #d1d5db (Gray 300)
+    disabled: darkTokens.text.disabled, // #6b7280 (Gray 500)
   },
-  divider: darkTokens.border.default,       // #1f2937 (Gray 800)
+  divider: darkTokens.border.default, // #1f2937 (Gray 800)
   action: {
     active: darkTokens.primary.main,
     hover: "rgba(56, 189, 248, 0.08)",
@@ -103,14 +103,14 @@ export const lightPalette: PaletteOptions = {
   grey: colors.gray,
   background: {
     default: lightTokens.background.default, // #ffffff (White)
-    paper: lightTokens.background.paper,     // #ffffff (White)
+    paper: lightTokens.background.paper, // #ffffff (White)
   },
   text: {
-    primary: lightTokens.text.primary,       // #030712 (Gray 950 - Alta Legibilidade)
-    secondary: lightTokens.text.secondary,   // #4b5563 (Gray 600)
-    disabled: lightTokens.text.disabled,     // #9ca3af (Gray 400)
+    primary: lightTokens.text.primary, // #030712 (Gray 950 - Alta Legibilidade)
+    secondary: lightTokens.text.secondary, // #4b5563 (Gray 600)
+    disabled: lightTokens.text.disabled, // #9ca3af (Gray 400)
   },
-  divider: lightTokens.border.default,       // #e5e7eb (Gray 200)
+  divider: lightTokens.border.default, // #e5e7eb (Gray 200)
   action: {
     active: lightTokens.primary.main,
     hover: "rgba(2, 132, 199, 0.08)",

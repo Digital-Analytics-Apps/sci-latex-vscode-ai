@@ -152,6 +152,26 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
   - **Gestão Dinâmica de Etapas (Features):** Modais e ações para criar, editar, reordenar e remover etapas de escrita customizadas.
   - **Restrição do Modal de PR:** O modal de solicitação de revisão (`CreatePRModal`) permite selecionar apenas a **Feature Branch** da Etapa (`feature/<stage-slug>` $\rightarrow$ `dev`) para revisão entre pares ou revisor principal. Sub-tarefas são integradas diretamente pelo autor na Feature Branch sem exigir PR formal.
 
+### 6.5 Régua de Etapas & Linha do Tempo Compacta (`<ArticleTimelineHeader />`)
+* **Localização:** `src/components/common/ArticleTimelineHeader.tsx`
+* **Descrição:** Componente de governança das etapas de escrita e gatekeepers do artigo.
+* **Redesign Enxuto de 1 Linha (Stepper Ribbon)**:
+  - Substitui cards empilhados por uma fita horizontal compacta de nós conectados.
+  - **Semântica Visual dos Nós**: `✓` Concluída (Verde Emerald), `●` Em Andamento (Azul Cyan Glow), `○` Pendente (Slate), `🔒` Gatekeeper Bloqueado (Amber/Slate), `⚑` Gatekeeper Liberado.
+* **Padrão Master-Detail (Painel de Etapa Selecionada)**:
+  - Clique em qualquer nó da régua seleciona a etapa (`selectedStageId`).
+  - Painel de detalhes compacto renderizado diretamente abaixo (~100px) com progresso real baseado no percentual de tarefas concluídas vinculadas àquela etapa.
+* **Modos Dual (`[ ░ Fluxo ]` vs `[ 📊 Timeline ]`)**:
+  - **Modo Fluxo**: Focado na ordem sequencial, D&D com `@dnd-kit` e avanço dos gatekeepers (NIT e Congresso).
+  - **Modo Timeline**: Gantt temporal horizontal relativo por prazos de entrega com indicador `▲ Hoje`.
+
+### 6.6 Modal de Configurações do Projeto & Governança (`<ProjectSettingsModal />`)
+* **Localização:** `src/features/workspace/ProjectSettingsModal.tsx`
+* **Descrição:** Encapsula todo o gerenciamento de etapas de escrita e metadados do artigo em uma caixa de diálogo dedicada, mantendo a tela principal limpa e desobstruída.
+* **Abas do Modal**:
+  - **Aba 1 (Etapas de Escrita & Drag & Drop)**: Permite reordenar a sequência de etapas customizadas via drag and drop (`@dnd-kit`), alterar status, excluir etapas sem tarefas e acionar a criação de novas etapas (`+ Nova Etapa`).
+  - **Aba 2 (Metadados & Congresso)**: Formulário para atualização do título do artigo, resumo executivo, nome da conferência-alvo e data prevista de submissão via `projectsService.updateProject`.
+
 ---
 
 ### 6.4 Especificação Obrigatória do Padrão DataGrid com Filtros de URL (`DataGrid URL-Filter Pattern`)

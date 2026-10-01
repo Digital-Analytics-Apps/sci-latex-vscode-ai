@@ -1,11 +1,5 @@
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import {
-  Box,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-} from "@mui/material";
+import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
@@ -134,13 +128,10 @@ export const AddMemberModal = ({
             onChange={(e) => setRole(e.target.value as Role)}
           >
             <MenuItem value={Role.AUTHOR}>Co-Autor (AUTHOR)</MenuItem>
-            <MenuItem value={Role.REVIEWER}>
-              Revisor de Par (REVIEWER)
-            </MenuItem>
+            <MenuItem value={Role.REVIEWER}>Revisor de Par (REVIEWER)</MenuItem>
           </Select>
         </FormControl>
       </Box>
     </StandardModal>
   );
 };
-

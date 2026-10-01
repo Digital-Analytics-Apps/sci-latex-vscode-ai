@@ -34,7 +34,18 @@ export function usePublishReleaseMutation(projectId: string) {
       queryClient.invalidateQueries({
         queryKey: ["release-candidates", projectId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["releases", projectId],
+      });
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
+  });
+}
+
+export function useReleasesQuery(projectId: string) {
+  return useQuery({
+    queryKey: ["releases", projectId],
+    queryFn: () => releasesService.getReleases(projectId),
+    enabled: Boolean(projectId),
   });
 }

@@ -30,8 +30,14 @@ export const AppRoutes = () => {
             <Route path="articles" element={<InstitutionalProjectsView />} />
             <Route path="teams" element={<TeamsManagementView />} />
             <Route path="manager" element={<ManagerOverviewView />} />
-            <Route path="manager/academic-periods" element={<AcademicPeriodsView />} />
-            <Route path="manager/articles" element={<InstitutionalProjectsView />} />
+            <Route
+              path="manager/academic-periods"
+              element={<AcademicPeriodsView />}
+            />
+            <Route
+              path="manager/articles"
+              element={<InstitutionalProjectsView />}
+            />
             <Route path="manager/teams" element={<TeamsManagementView />} />
           </Route>
 
@@ -52,4 +58,3 @@ export const AppRoutes = () => {
     </Routes>
   );
 };
-

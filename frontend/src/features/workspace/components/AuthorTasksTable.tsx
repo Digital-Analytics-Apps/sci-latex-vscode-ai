@@ -1,3 +1,4 @@
+import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
@@ -39,6 +40,7 @@ export interface AuthorTasksTableProps {
   provisioningTaskId: string | null;
   currentUserId?: string;
   onStartWorkspace: (task: TaskItem) => void;
+  onOpenCreateTask?: () => void;
 }
 
 const DEFAULT_AUTHOR_TASK_FILTERS = {
@@ -51,6 +53,7 @@ export const AuthorTasksTable = ({
   provisioningTaskId,
   currentUserId,
   onStartWorkspace,
+  onOpenCreateTask,
 }: AuthorTasksTableProps) => {
   const { filters, setFilters, apiParams, resetFilters } = useUrlFilters(
     DEFAULT_AUTHOR_TASK_FILTERS,
@@ -108,9 +111,18 @@ export const AuthorTasksTable = ({
       {
         field: "assignee",
         headerName: "Autor Responsável",
-        flex: 1.2,
-        minWidth: 180,
-        renderCell: (params) => <TaskAssigneeCell row={params.row} />,
+        flex: 1.8,
+        minWidth: 250,
+        renderCell: (params) => (
+          <TaskAssigneeCell
+            row={params.row}
+            currentUserId={currentUserId}
+            onClaimTask={(taskId) => claimTaskMutation.mutate(taskId)}
+            onUnclaimTask={(taskId) => unclaimTaskMutation.mutate(taskId)}
+            isClaiming={claimTaskMutation.isPending}
+            isUnclaiming={unclaimTaskMutation.isPending}
+          />
+        ),
       },
       {
         field: "dueDate",
@@ -134,17 +146,13 @@ export const AuthorTasksTable = ({
         align: "right",
         headerAlign: "right",
         flex: 1.5,
-        minWidth: 220,
+        minWidth: 200,
         renderCell: (params) => (
           <TaskActionCell
             row={params.row}
             provisioningTaskId={provisioningTaskId}
             currentUserId={currentUserId}
             onStartWorkspace={onStartWorkspace}
-            onClaimTask={(taskId) => claimTaskMutation.mutate(taskId)}
-            onUnclaimTask={(taskId) => unclaimTaskMutation.mutate(taskId)}
-            isClaiming={claimTaskMutation.isPending}
-            isUnclaiming={unclaimTaskMutation.isPending}
           />
         ),
       },
@@ -187,7 +195,7 @@ export const AuthorTasksTable = ({
             gridTemplateColumns: {
               xs: "1fr",
               sm: "1fr 1fr",
-              md: isFiltered ? "2fr 1.5fr auto" : "2fr 1.5fr",
+              md: "2fr 1.5fr auto auto",
             },
             gap: 2,
             alignItems: "center",
@@ -229,6 +237,19 @@ export const AuthorTasksTable = ({
             </Select>
           </FormControl>
 
+          {onOpenCreateTask && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon fontSize="small" />}
+              onClick={onOpenCreateTask}
+              sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
+            >
+              Nova Tarefa
+            </Button>
+          )}
+
           {isFiltered && (
             <Button
               variant="outlined"
@@ -256,6 +277,7 @@ export const AuthorTasksTable = ({
                 pageSizeOptions={[5, 10, 25]}
                 height={height}
                 width={width}
+                rowHeight={64}
                 emptyMessage="Nenhuma tarefa encontrada para este artigo com os filtros selecionados."
               />
             )}

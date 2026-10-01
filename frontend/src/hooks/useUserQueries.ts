@@ -13,7 +13,11 @@ export function useUserSearchQuery(search: string = "", role?: string) {
   });
 }
 
-export function useUsersListQuery(filters?: { search?: string; role?: string; teamId?: string }) {
+export function useUsersListQuery(filters?: {
+  search?: string;
+  role?: string;
+  teamId?: string;
+}) {
   const search = filters?.search || "";
   const role = filters?.role || "";
   const teamId = filters?.teamId || "";

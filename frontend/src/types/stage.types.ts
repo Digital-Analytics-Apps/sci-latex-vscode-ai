@@ -30,6 +30,7 @@ export interface CreateStageInput {
 
 export interface UpdateStageInput {
   title?: string;
+  description?: string;
   order?: number;
   status?: StageStatus;
 }

@@ -124,17 +124,12 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
               />
             </Box>
             {rc.feedback && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mb: 1 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Parecer do Revisor: {rc.feedback}
               </Typography>
             )}
             <Typography variant="caption" color="text.secondary">
-              Submetido em:{" "}
-              {new Date(rc.createdAt).toLocaleDateString("pt-BR")}
+              Submetido em: {new Date(rc.createdAt).toLocaleDateString("pt-BR")}
             </Typography>
           </Paper>
         ))}

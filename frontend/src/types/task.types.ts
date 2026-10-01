@@ -20,7 +20,13 @@ export interface TaskItem {
   assignee: string;
   assignedToId?: string;
   stageId?: string;
-  stage?: { id: string; title: string; order: number };
+  stage?: {
+    id: string;
+    title: string;
+    order: number;
+    isGatekeeper?: boolean;
+    gatekeeperType?: string | null;
+  };
   isOccupied?: boolean;
   occupiedBy?: { id: string; name: string } | null;
 }

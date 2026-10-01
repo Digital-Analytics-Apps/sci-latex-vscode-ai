@@ -20,7 +20,6 @@ import { ReviewsListPage } from "../reviewer/ReviewsListPage";
 import { AddMemberModal } from "../workspace/AddMemberModal";
 import { CreateProjectModal } from "../workspace/CreateProjectModal";
 import { CreateTaskModal } from "../workspace/CreateTaskModal";
-import { ReleaseCandidatesModal } from "../workspace/ReleaseCandidatesModal";
 import { ManagerDashboardPage } from "../manager/ManagerDashboardPage";
 import { AuthorDashboard } from "./components/AuthorDashboard";
 import { ManagementDashboard } from "./components/ManagementDashboard";
@@ -87,7 +86,6 @@ export const DashboardPage = () => {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [isRCModalOpen, setIsRCModalOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 
   const { data: projects, isLoading } = useProjectsList();
@@ -130,40 +128,42 @@ export const DashboardPage = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header Geral de Boas-Vindas */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Box>
-          <Typography variant="h2" component="h1" sx={{ fontWeight: 700 }}>
-            Olá, {user?.name || "Pesquisador"} 👋
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Seja bem-vindo à Plataforma de Escrita Científica.
-          </Typography>
-        </Box>
+      {/* Header Geral de Boas-Vindas (Exibido apenas na página principal / lista de artigos) */}
+      {!effectiveSelectedArticleId && (
+        <Box
+          sx={{
+            mb: 3,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Box>
+            <Typography variant="h2" component="h1" sx={{ fontWeight: 700 }}>
+              Olá, {user?.name || "Pesquisador"} 👋
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Seja bem-vindo à Plataforma de Escrita Científica.
+            </Typography>
+          </Box>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          {(user?.role === Role.AUTHOR ||
-            user?.role === Role.COORDINATOR ||
-            user?.role === Role.ADMIN) && (
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              Novo Artigo Científico
-            </Button>
-          )}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            {(user?.role === Role.AUTHOR ||
+              user?.role === Role.COORDINATOR ||
+              user?.role === Role.ADMIN) && (
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                Novo Artigo Científico
+              </Button>
+            )}
+          </Box>
         </Box>
-      </Box>
+      )}
 
       {/* Indicador de Carregamento de Projetos */}
       {isLoading && (
@@ -184,7 +184,6 @@ export const DashboardPage = () => {
           onClearArticle={handleClearArticle}
           onStartWorkspace={handleStartWorkspace}
           onOpenCreateTask={() => setIsCreateTaskOpen(true)}
-          onOpenRCModal={() => setIsRCModalOpen(true)}
           onOpenAddMember={() => setIsAddMemberOpen(true)}
         />
       )}
@@ -214,12 +213,6 @@ export const DashboardPage = () => {
         onClose={() => setIsCreateTaskOpen(false)}
         projectId={activeProjectId}
         members={currentMembers}
-      />
-
-      <ReleaseCandidatesModal
-        open={isRCModalOpen}
-        onClose={() => setIsRCModalOpen(false)}
-        projectId={activeProjectId}
       />
 
       <AddMemberModal

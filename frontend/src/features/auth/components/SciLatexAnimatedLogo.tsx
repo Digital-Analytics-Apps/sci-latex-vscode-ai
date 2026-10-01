@@ -54,7 +54,12 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
             <stop offset="1" stopColor="#08224B" />
           </linearGradient>
           <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="10" stdDeviation="12" floodOpacity="0.14" />
+            <feDropShadow
+              dx="0"
+              dy="10"
+              stdDeviation="12"
+              floodOpacity="0.14"
+            />
           </filter>
           <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="5" result="blur" />
@@ -128,25 +133,131 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
               transform: isHovered ? "scale(1.04)" : "scale(1)",
             }}
           >
-            <line x1="400" y1="65" x2="400" y2="95" stroke="#0EA5E9" strokeWidth="5" transform="rotate(0 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(30 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(60 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="95" stroke="#0EA5E9" strokeWidth="5" transform="rotate(90 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(120 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(150 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="95" stroke="#0EA5E9" strokeWidth="5" transform="rotate(180 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(210 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(240 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="95" stroke="#0EA5E9" strokeWidth="5" transform="rotate(270 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(300 400 400)" />
-            <line x1="400" y1="65" x2="400" y2="85" stroke="#38BDF8" strokeWidth="3" opacity="0.85" transform="rotate(330 400 400)" />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="95"
+              stroke="#0EA5E9"
+              strokeWidth="5"
+              transform="rotate(0 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(30 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(60 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="95"
+              stroke="#0EA5E9"
+              strokeWidth="5"
+              transform="rotate(90 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(120 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(150 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="95"
+              stroke="#0EA5E9"
+              strokeWidth="5"
+              transform="rotate(180 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(210 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(240 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="95"
+              stroke="#0EA5E9"
+              strokeWidth="5"
+              transform="rotate(270 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(300 400 400)"
+            />
+            <line
+              x1="400"
+              y1="65"
+              x2="400"
+              y2="85"
+              stroke="#38BDF8"
+              strokeWidth="3"
+              opacity="0.85"
+              transform="rotate(330 400 400)"
+            />
           </g>
 
           {/* AI brain (High Top-Center) */}
           <g
             className="brain-wrap"
             style={{
-              transform: isHovered ? "translateY(-165px) scale(1.08)" : "translateY(-120px)",
+              transform: isHovered
+                ? "translateY(-165px) scale(1.08)"
+                : "translateY(-120px)",
             }}
           >
             <g className="brain" filter="url(#shadow)">
@@ -176,20 +287,71 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
           <g
             className="doc-wrap"
             style={{
-              transform: isHovered ? "translateY(20px) scale(0.96)" : "translateY(0)",
+              transform: isHovered
+                ? "translateY(20px) scale(0.96)"
+                : "translateY(0)",
             }}
           >
             <g className="document" filter="url(#shadow)">
               <path d="M295 230 H455 L505 280 V570 H295 Z" fill="#fff" />
               <path d="M455 230 V280 H505" fill="#DCEAFF" />
               <path d="M455 230 L505 280 H455 Z" fill="#C9DDF7" />
-              <rect x="325" y="305" width="115" height="13" rx="6" fill="#0B3F86" />
-              <rect x="325" y="335" width="145" height="10" rx="5" fill="#9DB9D8" />
-              <rect x="325" y="380" width="140" height="10" rx="5" fill="#AFC5DE" />
-              <rect x="325" y="405" width="120" height="10" rx="5" fill="#AFC5DE" />
-              <rect x="325" y="430" width="150" height="13" rx="6" fill="#0B3F86" />
-              <rect x="325" y="460" width="125" height="10" rx="5" fill="#AFC5DE" />
-              <rect x="325" y="485" width="95" height="10" rx="5" fill="#AFC5DE" />
+              <rect
+                x="325"
+                y="305"
+                width="115"
+                height="13"
+                rx="6"
+                fill="#0B3F86"
+              />
+              <rect
+                x="325"
+                y="335"
+                width="145"
+                height="10"
+                rx="5"
+                fill="#9DB9D8"
+              />
+              <rect
+                x="325"
+                y="380"
+                width="140"
+                height="10"
+                rx="5"
+                fill="#AFC5DE"
+              />
+              <rect
+                x="325"
+                y="405"
+                width="120"
+                height="10"
+                rx="5"
+                fill="#AFC5DE"
+              />
+              <rect
+                x="325"
+                y="430"
+                width="150"
+                height="13"
+                rx="6"
+                fill="#0B3F86"
+              />
+              <rect
+                x="325"
+                y="460"
+                width="125"
+                height="10"
+                rx="5"
+                fill="#AFC5DE"
+              />
+              <rect
+                x="325"
+                y="485"
+                width="95"
+                height="10"
+                rx="5"
+                fill="#AFC5DE"
+              />
               {/* Animated writing scribble stroke */}
               <path
                 className="pen-scribble"
@@ -206,11 +368,20 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
           <g
             className="code-wrap"
             style={{
-              transform: isHovered ? "translate(-65px, 45px) scale(1.06)" : "translate(0, 0)",
+              transform: isHovered
+                ? "translate(-65px, 45px) scale(1.06)"
+                : "translate(0, 0)",
             }}
           >
             <g className="code-window" filter="url(#shadow)">
-              <rect x="130" y="450" width="235" height="185" rx="22" fill="url(#codeGrad)" />
+              <rect
+                x="130"
+                y="450"
+                width="235"
+                height="185"
+                rx="22"
+                fill="url(#codeGrad)"
+              />
               <circle cx="160" cy="478" r="7" fill="#20A9F4" />
               <circle cx="183" cy="478" r="7" fill="#20A9F4" />
               <circle cx="206" cy="478" r="7" fill="#20A9F4" />
@@ -222,7 +393,12 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              <path d="M250 525 V585" stroke="#1697F3" strokeWidth="20" strokeLinecap="round" />
+              <path
+                d="M250 525 V585"
+                stroke="#1697F3"
+                strokeWidth="20"
+                strokeLinecap="round"
+              />
             </g>
           </g>
 
@@ -230,12 +406,27 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
           <g
             className="tasks-wrap"
             style={{
-              transform: isHovered ? "translate(65px, -45px) scale(1.06)" : "translate(0, 0)",
+              transform: isHovered
+                ? "translate(65px, -45px) scale(1.06)"
+                : "translate(0, 0)",
             }}
           >
             <g className="tasks" filter="url(#shadow)">
-              <rect x="560" y="310" width="165" height="145" rx="20" fill="#10B98E" />
-              <g fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <rect
+                x="560"
+                y="310"
+                width="165"
+                height="145"
+                rx="20"
+                fill="#10B98E"
+              />
+              <g
+                fill="none"
+                stroke="#fff"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path className="check1" d="M580 345 L593 358 L615 333" />
                 <path className="check2" d="M580 385 L593 398 L615 373" />
                 <path className="check3" d="M580 425 L593 438 L615 413" />
@@ -252,7 +443,9 @@ export const SciLatexAnimatedLogo: React.FC<SciLatexAnimatedLogoProps> = ({
           <g
             className="pen-wrap"
             style={{
-              transform: isHovered ? "translate(60px, 60px) rotate(18deg)" : "translate(0, 0)",
+              transform: isHovered
+                ? "translate(60px, 60px) rotate(18deg)"
+                : "translate(0, 0)",
             }}
           >
             <g className="pen" filter="url(#shadow)">
