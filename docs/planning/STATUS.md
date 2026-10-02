@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
-**Última Atualização:** 30 de Setembro de 2026  
-**Status Geral do Projeto:** 🟢 **Modal Único de Configurações (`ProjectSettingsModal`), Gestão de Membros & Coautores, Integração de Release Candidates (RCs) e Releases Oficiais na Main, Modal de Timeline Ampla em Tela Cheia com Accordion de Tarefas e Validação de Prazos, Tags de Etapa Personalizadas por Cor do Tema na Tabela Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
+**Última Atualização:** 01 de Outubro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura 100% Orientada a Personas (`src/features/author`, `src/features/reviewer`, `src/features/manager`, `src/features/coordinator`), Eliminação Completa da Pasta Genérica `src/features/dashboard/`, Componentes Compartilhados em `src/components/common/`, Tabela DataGrid de Artigos do Autor e Rotas Declarativas Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
 
 ---
 
@@ -12,22 +12,26 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Modal de Timeline Ampla em Tela Cheia (`ArticleTimelineHeader.tsx` & Backend):**
-    * **Resolução do Erro HTTP 400 no Backend**: Identificada e corrigida a inconsistência de schema Prisma em `PrismaProjectStagesRepository.findByProjectId`, onde a tentativa de inclusão do atributo inexistente `avatarUrl` na relação `assignee` causava a falha `400 Bad Request` no endpoint `/api/v1/projects/:id/stages`.
-    * **Exibição Correta das Tarefas por Etapa**: Com a rota `/stages` retornando 200 OK, as tarefas reais da etapa (ex: *"Inciar a pesquisa de artigos relacionados"* com `dueDate: 22/10/2026`) são carregadas perfeitamente dentro dos accordions no modal e na régua da timeline.
-    * **Visualização Full-Screen**: Configurado modal em tela cheia (`size="xl" width="96vw" height="90vh"`) para oferecer um painel de Gantt / Timeline abrangente.
-    * **Accordion de Tarefas por Etapa**: Cada card de etapa no modal expande/recolhe ao clicar, exibindo todas as tarefas (`stage.tasks`) vinculadas à etapa com branch, autor e prazo de vencimento (`task.dueDate`).
-    * **Validação de Prazos Limite**: Implementada validação de datas: se `task.dueDate > stage.plannedCompletionDate`, o sistema exibe um alerta de aviso destacado (`⚠️ Excede o limite da etapa (DD/MM/AAAA)`) impedindo extrapolações sem notificação.
-  * **Melhorias de UX na Tabela de Tarefas (`AuthorTasksTable.tsx` & `TaskDataGridCells.tsx`):**
-    * **Tag de Etapa Personalizada na Coluna 1**: Adicionada tag (`Chip`) com a cor do tema correspondente a cada etapa (Etapa 1: Azul, Etapa 2: Roxo, Etapa 3: Verde Água, Gatekeepers: Laranja).
-    * **Posicionamento & Formatação**: A tag é exibida **após** o título da tarefa (`[Título da Tarefa] [Nome da Etapa]`), mostrando apenas o nome da etapa sem o prefixo `"Etapa X:"`.
-    * **Botão `+ Nova Tarefa` Reposicionado**: Movido para a barra de buscas da tabela, posicionado lado a lado com o filtro de *Status da Tarefa*.
-    * **Ações de Assinar / Desassinar Inline**: Integradas na coluna *Autor Responsável* com avatares em 30px e botões destacados (`Assinar` / `Desassinar`).
-  * **Centralização no Modal de Configurações (`ProjectSettingsModal.tsx` & `AuthorDashboard.tsx`):**
-    * **Remoção de Poluição do Header**: O cabeçalho do artigo exibe apenas os Avatares de membros e o ícone único da engrenagem (`<SettingsIcon />`), removendo botões isolados.
-    * **Aba de Membros & Coautores (Tab 1)**: Listagem de colaboradores e inclusão via `+ Adicionar Membro`.
-    * **Aba de Release Candidates & Releases Oficiais (Tab 2)**: Listagem de RCs enviadas ao Revisor Técnico, formulário para novas RCs e listagem de Releases Oficiais publicadas na `main`. Botão de publicação oficial protegido por regra de validação (exige 100% das etapas de escrita concluídas).
-    * **Aba de Metadados & Git (Tab 3)**: Exibição da URL do repositório, branch base `dev`, conferência-alvo e prazos.
+  * **Arquitetura Orientada a Personas em `src/features/` & Eliminação da Pasta `dashboard/`:**
+    * **Remoção da pasta `src/features/dashboard/`**: Eliminada a pasta genérica `dashboard/` e o orquestrador acoplado `DashboardPage.tsx`.
+    * **Estruturação por Persona em `src/features/`**:
+      1. `src/features/author/`: Contém `AuthorArticlesPage.tsx` (Nível 1 - Listagem DataGrid de Artigos) e `ArticleDetailPage.tsx` (Nível 2 - Detalhes do Artigo e Tarefas).
+      2. `src/features/reviewer/`: Contém `ReviewsListPage.tsx` e `ReviewDetailPage.tsx`.
+      3. `src/features/manager/`: Contém `ManagerDashboardPage.tsx` e suas seções.
+      4. `src/features/coordinator/`: Contém `CoordinatorDashboardPage.tsx`.
+    * **Centralização de Componentes Comuns em `src/components/common/`**: Cartões e gráficos reutilizados entre personas (ex: `ManagementDashboard.tsx`) agora residem exclusivamente em `src/components/common/`.
+    * **Roteador com Resolvedor por Persona (`PersonaRootResolver.tsx`)**: O roteamento nativo em `src/routes/index.tsx` utiliza o `<RoleLayoutResolver />` e o `<PersonaRootResolver />` para renderizar diretamente a página da persona logada.
+  * **Regras de Negócio de Atribuição de Tarefa, Branch & Workspace (`TaskDataGridCells.tsx`):**
+    * **Inicialização Exclusiva por Autor Assinado:** Apenas o autor atualmente assinado na tarefa (`assignedToId === currentUserId`) visualiza e aciona o botão **"🚀 Iniciar Workspace"**.
+    * **Checkout Automático da Branch Remota (`branchName`):** Quando um novo autor assume a tarefa (via "Assinar") e inicia o workspace, o backend/pod provisiona o ambiente e executa o `checkout`/`fetch` da branch exata da tarefa (`task.branchName`), baixando todo o trabalho remoto acumulado.
+    * **Indicador de Sessão Ativa (`isOccupied` / Redis Presence):** A indicação `🔒 Em uso por [Nome]` foi movida para a coluna de **Ação**, substituindo o texto *"Aguardando atribuição"* quando o workspace estiver aberto ao vivo por outro autor. Na coluna de autor, o botão "Assinar" permanece desabilitado enquanto a sessão estiver ativa.
+  * **Transformação da Tabela Principal do Autor (Nível 1) & Skill `datagrid-table-standard`:**
+    * **Tabela `GenericDataGrid` & `AutoSizer`**: Exibição dos artigos padronizada em `AuthorArticlesPage.tsx` com renderização declarativa usando `createTitleSubtitleColumn`, `createChipColumn`, `createProgressColumn`, `createAvatarStackColumn` e `createActionsColumn`.
+    * **Suíte de Filtros Reutilizáveis (`TableFilters.tsx`)**: Criados componentes genéricos em `src/components/common/TableFilters.tsx` (`TableFilterBar`, `TableSearchInput`, `TableSelectFilter`, `ClearFiltersButton`) que estendem nativamente as interfaces MUI (`TextFieldProps`, `SelectProps`, `ButtonProps`, `PaperProps`) repassando `...restProps`.
+    * **Desacoplamento de Métricas (`MetricCard.tsx`)**: Criado `src/components/common/MetricCard.tsx` com `<MetricCard />` e `<DeadlineStatusChip />`. Removido o orquestrador legados `ManagementDashboard.tsx` e refatorada a visão do gerente (`OverviewSection.tsx`).
+    * **Criação da Skill `datagrid-table-standard`**: Criada a skill obrigatória em `~/.gemini/config/skills/datagrid-table-standard/SKILL.md` e documentada na especificação do frontend (`frontend-specs.md` Seções 6.8 e 6.9) com regras de tipagem estrita (zero `any`, extensão de props MUI e generics `<TRow extends GridValidRowModel>`).
+  * **Tratamento Estrito de Promessas (`@typescript-eslint/no-floating-promises`):**
+    * Aplicado o operador `void` em chamadas `navigate(...)` e callbacks de eventos de clique (`void onClaimTask(...)`, `void onUnclaimTask(...)`, `void onStartWorkspace(...)`).
   * **Qualidade, Linter e Testes Automatizados:**
     * **Backend (`npm run build` / `npx tsc`):** 0 erros de compilação.
     * **Backend (`npm test`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.

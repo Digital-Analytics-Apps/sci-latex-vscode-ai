@@ -1,12 +1,14 @@
 import { Route, Routes } from "react-router-dom";
+import { NotFoundPage } from "../components/common/NotFoundPage";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { LoginPage } from "../features/auth/LoginPage";
-import { NotFoundPage } from "../features/common/NotFoundPage";
+import { ArticleDetailPage } from "../features/author/ArticleDetailPage";
+import { AuthorArticlesPage } from "../features/author/AuthorArticlesPage";
 import { CoordinatorDashboardPage } from "../features/coordinator/CoordinatorDashboardPage";
-import { DashboardPage } from "../features/dashboard/DashboardPage";
 import {
   AcademicPeriodsView,
   InstitutionalProjectsView,
+  ManagerDashboardPage,
   ManagerOverviewView,
   TeamsManagementView,
 } from "../features/manager/ManagerDashboardPage";
@@ -14,6 +16,7 @@ import { ReviewDetailPage } from "../features/reviewer/ReviewDetailPage";
 import { ReviewsListPage } from "../features/reviewer/ReviewsListPage";
 import { WorkspacePage } from "../features/workspace/WorkspacePage";
 import { RoleLayoutResolver } from "../layouts/RoleLayoutResolver";
+import { PersonaRootResolver } from "./PersonaRootResolver";
 
 export const AppRoutes = () => {
   return (
@@ -23,9 +26,9 @@ export const AppRoutes = () => {
       {/* Rotas Protegidas envolvidas pelo Resolvedor de Layout por Perfil */}
       <Route element={<ProtectedRoute />}>
         <Route element={<RoleLayoutResolver />}>
-          {/* Rota do Dashboard Principal com Rotas Filhas para Navegação Declarativa */}
-          <Route path="/" element={<DashboardPage />}>
-            <Route index element={<ManagerOverviewView />} />
+          {/* Rota Raiz resolvedora de persona */}
+          <Route path="/" element={<PersonaRootResolver />}>
+            <Route index element={<PersonaRootResolver />} />
             <Route path="academic-periods" element={<AcademicPeriodsView />} />
             <Route path="articles" element={<InstitutionalProjectsView />} />
             <Route path="teams" element={<TeamsManagementView />} />
@@ -41,15 +44,18 @@ export const AppRoutes = () => {
             <Route path="manager/teams" element={<TeamsManagementView />} />
           </Route>
 
-          {/* Rotas de Workspace, Revisões e Coordenação */}
+          {/* Rotas por Persona */}
+          <Route path="/articles" element={<AuthorArticlesPage />} />
+          <Route path="/articles/:projectId" element={<ArticleDetailPage />} />
+          <Route path="/reviews" element={<ReviewsListPage />} />
+          <Route path="/reviews/:prId" element={<ReviewDetailPage />} />
+          <Route path="/coordinator" element={<CoordinatorDashboardPage />} />
+          <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route path="/workspace/:projectId" element={<WorkspacePage />} />
           <Route
             path="/workspace/:projectId/task/:taskId"
             element={<WorkspacePage />}
           />
-          <Route path="/reviews" element={<ReviewsListPage />} />
-          <Route path="/reviews/:prId" element={<ReviewDetailPage />} />
-          <Route path="/coordinator" element={<CoordinatorDashboardPage />} />
         </Route>
       </Route>
 

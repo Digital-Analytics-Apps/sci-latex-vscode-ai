@@ -39,7 +39,7 @@ export interface AuthorTasksTableProps {
   projectId: string;
   provisioningTaskId: string | null;
   currentUserId?: string;
-  onStartWorkspace: (task: TaskItem) => void;
+  onStartWorkspace: (task: TaskItem) => void | Promise<void>;
   onOpenCreateTask?: () => void;
 }
 

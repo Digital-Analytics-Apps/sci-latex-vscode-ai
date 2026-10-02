@@ -120,15 +120,6 @@ export const TaskTitleBranchCell = ({ row }: { row: TaskItem }) => {
             }}
           />
         )}
-        {row.isOccupied && row.occupiedBy && (
-          <Chip
-            label={`🔒 Em uso por ${row.occupiedBy.name}`}
-            size="small"
-            color="warning"
-            variant="outlined"
-            sx={{ height: 18, fontSize: "0.65rem", fontWeight: 600 }}
-          />
-        )}
       </Box>
     </Box>
   );
@@ -158,6 +149,8 @@ export const TaskAssigneeCell = ({
       (typeof row.assignee === "object" && !(row.assignee as any).name));
 
   const isAssignedToMe = row.assignedToId === currentUserId;
+  const isOccupied = Boolean(row.isOccupied && row.occupiedBy);
+  const occupiedByName = row.occupiedBy?.name || "outro autor";
 
   if (isUnassigned) {
     return (
@@ -173,31 +166,55 @@ export const TaskAssigneeCell = ({
             borderColor: "divider",
           }}
         />
-        {onClaimTask && (
-          <Button
-            variant="outlined"
-            color="primary"
-            size="small"
-            disabled={isClaiming}
-            startIcon={
-              isClaiming ? (
-                <CircularProgress size={14} color="inherit" />
-              ) : (
-                <HowToRegIcon sx={{ fontSize: 16 }} />
-              )
-            }
-            onClick={() => onClaimTask(row.id)}
-            sx={{
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              py: 0.3,
-              px: 1.2,
-              height: 28,
-            }}
-          >
-            {isClaiming ? "Assinando..." : "Assinar"}
-          </Button>
-        )}
+        {onClaimTask &&
+          (isOccupied ? (
+            <Tooltip
+              title={`🔒 Em uso por ${occupiedByName}. O workspace está aberto no momento.`}
+            >
+              <span>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  size="small"
+                  disabled
+                  startIcon={<LockIcon sx={{ fontSize: 16 }} />}
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    py: 0.3,
+                    px: 1.2,
+                    height: 28,
+                  }}
+                >
+                  Ocupado
+                </Button>
+              </span>
+            </Tooltip>
+          ) : (
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              disabled={isClaiming}
+              startIcon={
+                isClaiming ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <HowToRegIcon sx={{ fontSize: 16 }} />
+                )
+              }
+              onClick={() => void onClaimTask(row.id)}
+              sx={{
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                py: 0.3,
+                px: 1.2,
+                height: 28,
+              }}
+            >
+              {isClaiming ? "Assinando..." : "Assinar"}
+            </Button>
+          ))}
       </Box>
     );
   }
@@ -257,31 +274,78 @@ export const TaskAssigneeCell = ({
       </Box>
 
       {isAssignedToMe && onUnclaimTask && (
-        <Tooltip title="Desassinar tarefa (liberar para outros autores)">
-          <Button
-            variant="outlined"
-            color="secondary"
-            size="small"
-            disabled={isUnclaiming}
-            startIcon={
-              isUnclaiming ? (
-                <CircularProgress size={14} color="inherit" />
-              ) : (
-                <PersonRemoveIcon sx={{ fontSize: 16 }} />
-              )
-            }
-            onClick={() => onUnclaimTask(row.id)}
-            sx={{
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              py: 0.3,
-              px: 1.2,
-              height: 28,
-              minWidth: "auto",
-            }}
-          >
-            {isUnclaiming ? "Saindo..." : "Desassinar"}
-          </Button>
+        <Tooltip
+          title={
+            isOccupied
+              ? `🔒 Workspace aberto por ${occupiedByName}. Feche a sessão antes de desassinar.`
+              : "Desassinar tarefa (liberar para outros autores)"
+          }
+        >
+          <span>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              disabled={isUnclaiming || isOccupied}
+              startIcon={
+                isUnclaiming ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : isOccupied ? (
+                  <LockIcon sx={{ fontSize: 16 }} />
+                ) : (
+                  <PersonRemoveIcon sx={{ fontSize: 16 }} />
+                )
+              }
+              onClick={() => void onUnclaimTask(row.id)}
+              sx={{
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                py: 0.3,
+                px: 1.2,
+                height: 28,
+                minWidth: "auto",
+              }}
+            >
+              {isUnclaiming ? "Saindo..." : "Desassinar"}
+            </Button>
+          </span>
+        </Tooltip>
+      )}
+
+      {!isAssignedToMe && onClaimTask && (
+        <Tooltip
+          title={
+            isOccupied
+              ? `🔒 Workspace aberto no momento por ${occupiedByName}.`
+              : "Assumir esta tarefa e criar/abrir seu workspace na branch remota"
+          }
+        >
+          <span>
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              disabled={isClaiming || isOccupied}
+              startIcon={
+                isClaiming ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <HowToRegIcon sx={{ fontSize: 16 }} />
+                )
+              }
+              onClick={() => void onClaimTask(row.id)}
+              sx={{
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                py: 0.3,
+                px: 1.2,
+                height: 28,
+                minWidth: "auto",
+              }}
+            >
+              {isClaiming ? "Assinando..." : "Assinar"}
+            </Button>
+          </span>
         </Tooltip>
       )}
     </Box>
@@ -370,15 +434,12 @@ export const TaskActionCell = ({
   row: TaskItem;
   provisioningTaskId: string | null;
   currentUserId?: string;
-  onStartWorkspace: (task: TaskItem) => void;
+  onStartWorkspace: (task: TaskItem) => void | Promise<void>;
   onClaimTask?: (taskId: string) => void;
   onUnclaimTask?: (taskId: string) => void;
   isClaiming?: boolean;
   isUnclaiming?: boolean;
 }) => {
-  const isOccupiedByOther =
-    row.isOccupied && row.occupiedBy && row.occupiedBy.id !== currentUserId;
-
   const isMerged = row.status === TaskStatus.MERGED;
   const isProvisioning = provisioningTaskId === row.id;
   const isAssignedToMe = row.assignedToId === currentUserId;
@@ -398,21 +459,6 @@ export const TaskActionCell = ({
     );
   }
 
-  if (isOccupiedByOther) {
-    return (
-      <Button
-        variant="outlined"
-        color="warning"
-        size="small"
-        disabled
-        startIcon={<LockIcon fontSize="small" />}
-        sx={{ fontWeight: 600 }}
-      >
-        🔒 Em uso por {row.occupiedBy?.name}
-      </Button>
-    );
-  }
-
   // Tarefa atribuída ao usuário atual: Botão Iniciar Workspace
   if (isAssignedToMe) {
     return (
@@ -428,7 +474,7 @@ export const TaskActionCell = ({
             <LaunchIcon fontSize="small" />
           )
         }
-        onClick={() => onStartWorkspace(row)}
+        onClick={() => void onStartWorkspace(row)}
         sx={{ fontWeight: 700 }}
       >
         {isProvisioning ? "⚡ Provisionando..." : "🚀 Iniciar Workspace"}
@@ -436,7 +482,22 @@ export const TaskActionCell = ({
     );
   }
 
-  // Tarefa não atribuída ou atribuída a outro autor
+  // Tarefa não atribuída ao usuário atual
+  if (row.isOccupied && row.occupiedBy) {
+    return (
+      <Button
+        variant="outlined"
+        color="warning"
+        size="small"
+        disabled
+        startIcon={<LockIcon fontSize="small" />}
+        sx={{ fontWeight: 600 }}
+      >
+        Em uso por {row.occupiedBy.name}
+      </Button>
+    );
+  }
+
   return (
     <Typography
       variant="caption"

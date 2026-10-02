@@ -10,6 +10,8 @@ export interface ProjectDetails {
   gitRepoPath: string;
   teamId: string;
   submissionStatus: SubmissionStatus;
+  targetConferenceName?: string | null;
+  targetConferenceDate?: string | null;
   stages?: ProjectStage[];
   tasks?: TaskSummary[];
   members: ProjectMember[];

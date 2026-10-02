@@ -138,6 +138,12 @@ Notificações enviadas pelo servidor (conclusão de PDF, aprovação do NIT, li
 * **Internacionalização**: Importação nativa de `ptBR` do pacote `@mui/x-data-grid` para textos de controle de página e rodapés em Português.
 * **Renderização Customizada de Células (`renderCell`)**: Utilização de renderizadores fortemente tipados via `GridColDef[]` para exibição de Avatares, Chips de status (`PRStatus`, `NITStatus`), badges de branch e botões de ação contextuais.
 
+### 6.2 Helpers de Definição de Colunas DataGrid (`src/components/common/dataGridColumns.tsx`)
+Para evitar código redundante e garantir coerência visual em toda a aplicação, a definição de colunas deve utilizar os helpers de fábrica exportados por `dataGridColumns.tsx`:
+* **`createBoldColumn(config)`**: Constrói colunas com tipografia em negrito (`fontWeight: 700`), ideal para Nomes de Equipes, Projetos ou Títulos de Artigos.
+* **`createChipColumn(config, getChipProps)`**: Constrói colunas estilizadas com o componente `<Chip size="small" />` (para Status da Submissão, Papéis de Usuário, Badges de Contagem).
+* **`createDateColumn(config)`**: Constrói colunas com formatação automática de datas para o padrão Português (`pt-BR`).
+
 ### 6.3 DataGrid de Tarefas do Autor (`<AuthorTasksTable />`)
 * **Localização:** `src/features/workspace/components/AuthorTasksTable.tsx` & `src/features/workspace/components/TaskDataGridCells.tsx`
 * **Descrição:** Tabela padronizada para a visão do Autor com `<GenericDataGrid<TaskItem>>` e `<AutoSizer>`.
@@ -205,14 +211,24 @@ Todas as tabelas de listagem da plataforma que possuam filtros (busca textual, s
 
 ---
 
-### 6.5 Arquitetura do Dashboard Adaptativo por Papel (`Dashboard Role-Based Architecture`)
+### 6.5 Arquitetura Orientada a Personas & Eliminação de Pasta Genérica (`Persona Feature-Driven Architecture`)
 
-A tela principal do Dashboard (`src/features/dashboard/DashboardPage.tsx`) funciona exclusivamente como um **Container/Orquestrador Top-Level**, delegando a renderização visual das personas para componentes especializados em `src/features/dashboard/components/`:
+A aplicação adota uma organização estritamente modular por **Feature/Persona** em `src/features/`, eliminando pastas de dashboard acopladas:
 
-1. **`AuthorDashboard.tsx`:** Componente responsável pela visão do Autor (`Role.AUTHOR`), gerenciando a transição fluida entre Nível 1 (Galeria de Cards de Artigos) e Nível 2 (Painel Interno do Artigo Selecionado, Lista de Membros e `<AuthorTasksTable />`).
-2. **`ManagementDashboard.tsx`:** Componente responsável pela visão de Gestão (`Role.COORDINATOR`, `Role.MANAGER`, `Role.ADMIN`), gerenciando os cards de métricas e KPIs de submissão e pareceres.
-3. **`ReviewsListPage.tsx`:** Componente responsável pela visão do Revisor de Pares (`Role.REVIEWER`).
-4. **Navegação Atômica e `{ replace: true }`:** Trocas de estado ou navegações a partir do Dashboard utilizam `{ replace: true }` no `useSearchParams` e no `navigate` para evitar empilhamento desnecessário no histórico do navegador.
+1. **`src/features/author/` (Persona Autor):**
+   - **`AuthorArticlesPage.tsx`**: Tabela DataGrid de Artigos Científicos (`/` e `/articles`).
+   - **`ArticleDetailPage.tsx`**: Painel Interno do Artigo Selecionado com régua Stepper/Timeline (`ArticleTimelineHeader`), lista de membros e `<AuthorTasksTable />` (`/articles/:projectId`).
+2. **`src/features/reviewer/` (Persona Revisor):**
+   - **`ReviewsListPage.tsx`**: Fila de solicitações de revisão (`/reviews`).
+   - **`ReviewDetailPage.tsx`**: Leitor comparativo de Diffs TeX e visualizador PDF (`/reviews/:prId`).
+3. **`src/features/manager/` (Persona Gerente):**
+   - **`ManagerDashboardPage.tsx`**: Visão executiva de metas, cotas por time e gargalos (`/manager`).
+4. **`src/features/coordinator/` (Persona Coordenador):**
+   - **`CoordinatorDashboardPage.tsx`**: Matriz de prazos e atribuições da equipe de pesquisa (`/coordinator`).
+5. **Componentes Compartilhados (`src/components/common/`):**
+   - Todos os componentes genéricos ou compartilhados entre personas (ex: `ManagementDashboard.tsx`, `GenericDataGrid.tsx`, `dataGridColumns.tsx`, `StatusChips.tsx`) residem exclusivamente em `src/components/common/`.
+6. **Roteamento & Resolvedores de Layout (`src/layouts/RoleLayoutResolver.tsx` & `src/routes/`):**
+   - O roteador principal em `src/routes/index.tsx` utiliza o `<RoleLayoutResolver />` para envolver as rotas da persona logada no seu layout correspondente (`AuthorLayout`, `ManagerLayout`, `CoordinatorLayout`, `ReviewerLayout`), dispensando containers/dashboard intermedios.
 
 ---
 
@@ -244,8 +260,44 @@ Em conformidade com as regras de UI/UX da plataforma, **100% das telas de listag
    - **Tabela DataGrid da Fila de Revisões (`<ReviewerQueueDataGrid />`):** Envelopada em `<AutoSizer>` + `useUrlFilters`, listando os PRs pendentes de parecer (`UNDER_REVIEW`), autor, branch e ação `"🔍 Avaliar Diff"`.
 
 4. **Visão do Autor (`Role.AUTHOR`):**
-   - **Nível 1:** Cards de Meus Artigos Científicos (`<Card variant="outlined">`).
-   - **Nível 2:** Painel do Artigo + Tabela DataGrid de Tarefas (`<AuthorTasksTable />`) utilizando `<GenericDataGrid>`, `<AutoSizer>`, `useUrlFilters` e botões relacionais de workspace.
+   - **Nível 1:** Tabela DataGrid de Meus Artigos Científicos (`<GenericDataGrid<ArticleItem>>`) em `src/features/author/AuthorArticlesPage.tsx` envelopada em `<AutoSizer>` com busca textual e filtro por papel.
+   - **Nível 2:** Painel do Artigo + Tabela DataGrid de Tarefas em `src/features/author/ArticleDetailPage.tsx` utilizando `<GenericDataGrid>`, `<AutoSizer>`, `useUrlFilters` e botões relacionais de workspace.
+
+---
+
+### 6.8 Utilitários e Helpers de Fábrica para Colunas de DataGrid (`src/components/common/dataGridColumns.tsx`)
+
+Para garantir reutilização de código, padronização visual e legibilidade declarativa das colunas em DataGrids de todas as personas, o módulo `dataGridColumns.tsx` fornece funções de fábrica tipadas:
+
+- **`createTitleSubtitleColumn`**: Renderiza título principal em destaque (`subtitle2`), subtítulo em tom suave (`caption`) e ícone contextual/emoji opcional (ex: ícones de tarefas ou artigos).
+- **`createProgressColumn`**: Renderiza barra de progresso linear (`LinearProgress`) com rótulo descritivo e percentual numérico formatado (`X%`).
+- **`createChipColumn`**: Renderiza Chips estilizados (`Chip`) para status e papéis com suporte a variantes (`filled`/`outlined`) e esquema de cores temáticas (`primary`, `secondary`, `success`, `info`).
+- **`createAvatarStackColumn`**: Renderiza uma pilha sobreposta de Avatares (`Avatar`) com Tooltips contendo nome e papel dos membros da equipe ou autores.
+- **`createActionsColumn`**: Suporta a passagem de uma função de renderização JSX ou um array flexível de definições de ação (`DataGridActionItem[]`), renderizando automaticamente um agrupamento `<Stack>` de botões com controle de visibilidade, desativação, variante e rotas.
+- **`createDateColumn` & `createBoldColumn`**: Utilitários para formatação de datas no padrão PT-BR e destaques em negrito.
+
+---
+
+### 6.9 Diretriz Técnica & Skill de Criação de Tabelas (`datagrid-table-standard`)
+
+Todas as tabelas de listagem da plataforma devem aderir estritamente ao padrão estabelecido na skill `datagrid-table-standard`:
+
+1. **Tipagem Estrita e Zero `any`**:
+   - É **estritamente proibido** utilizar `any` no mapeamento de dados ou nas funções auxiliares de renderização (ex: `(m: any)`, `(row: any)`).
+   - O parâmetro genérico do modelo de dados (`TRow`) deve ser explicitamente fornecido em cada chamada aos utilitários (`createTitleSubtitleColumn<ArticleItem>`, `createAvatarStackColumn<ArticleItem>`).
+   - Evitar fallbacks desnecessários (como `|| []` ou `|| "Membro"`) quando a propriedade da interface TypeScript já for garantida como não-nula.
+
+2. **Dimensionamento Responsivo com `<AutoSizer>`**:
+   - Toda `<GenericDataGrid>` deve ser envelopada por `<AutoSizer>` dentro de um container com altura definida (`<CardContent sx={{ p: 0, height: 600, width: "100%" }}>`).
+   - As dimensões `height` e `width` providas por `<AutoSizer renderProp={({ height, width }) => ... }>` devem ser obrigatoriamente repassadas à grid.
+
+3. **Sincronização de Filtros via URL (`useUrlFilters`)**:
+   - Os parâmetros de busca textual, seletores de papel/status e paginação devem obrigatoriamente sincronizar seus estados com a URL, permitindo compartilhamento direto de links filtrados.
+
+4. **Componentes Reutilizáveis de Filtro (`src/components/common/tableFilters.tsx`)**:
+   - Toda barra de filtros de tabelas deve utilizar os componentes padronizados: `<TableFilterBar>` (container grid), `<TableSearchInput>` (campo de busca com ícone), `<TableSelectFilter>` (dropdown de seleção por papel/status/ciclo) e `<ClearFiltersButton>` (botão de reset com ícone `<FilterListOffIcon>`).
+
+
 
 
 

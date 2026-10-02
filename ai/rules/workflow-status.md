@@ -13,7 +13,13 @@ If your implementation introduces or modifies:
 - Database tables or fields (`schema.prisma`) -> Update [`docs/planning/specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md).
 - Frontend UI components, state management, or services -> Update [`docs/planning/specs/frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md).
 
-## 3. Mandatory Task Completion Checklist
+## 3. Workspace Ownership & Occupation Lock Rules
+- **Task Workspace Execution:** Only the author currently assigned to a task (`assignedToId === currentUserId`) can see and launch the **"🚀 Iniciar Workspace"** button.
+- **Branch Sync:** When an assigned author launches a workspace, the system creates/claims a dedicated workspace and performs `git clone`/`fetch` & `checkout` of the exact task branch (`task.branchName`).
+- **Live Occupation Lock (`isOccupied`):** If an author is actively inside the workspace/editor (`isOccupied === true`), **"Assinar"** and **"Desassinar"** actions are locked (`🔒 Em uso por [Nome]`) to prevent accidental unassignment or concurrent overwrites.
+- **Reassignment Flow (`isOccupied === false`):** When no active workspace session is live, another author can claim the task, becoming the assigned author and gaining access to launch the workspace on that task's remote branch.
+
+## 4. Mandatory Task Completion Checklist
 Upon finishing or pausing work:
 1. Ensure all tests pass (`npm test`) and typecheck passes with 0 errors (`npx tsc --noEmit`).
 2. Update Jira issue: Transition to `Fazendo` (`21`) at start, and to `Feito` (`31`) upon completion, filling textual Summary & Description (Problem & Solution).
