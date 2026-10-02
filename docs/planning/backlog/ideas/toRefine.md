@@ -40,7 +40,19 @@ Este documento reúne propostas de melhoria de UX, novas funcionalidades e refin
   * Mapeamento de modelo Prisma: Relação 1-para-N entre `ProjectStage` -> `Task` -> `SubTask`.
   * Visualização de diff TeX e comentários da revisão por sub-seção do artigo.
 
+## 📅 5. Linha do Tempo Visual & Progresso por Datas (Gantt Chart de Etapas e Tarefas)
+* **Descrição:** Evoluir a linha do tempo do artigo (`ArticleTimelineHeader` e modais) para um cronograma visual no estilo Gantt, onde a duração de cada etapa define o limite de 100% e as tarefas individuais são dispostas proporcionalmente em sua linha temporal.
+* **Mecanismo da Etapa (Nível 1):**
+  * **Janela Temporal:** Exibir a **Data Inicial (`plannedStartAt`)** e a **Data Limite (`plannedCompletionDate`)** de cada etapa.
+  * **Marco de 100%:** O limite final da etapa marca a conclusão total (100%).
+  * **Resumo Percentual:** Exibir um indicador percentual dinâmico do avanço acumulado da etapa (ex: `75% concluído • Falta 25% para a entrega`).
+* **Mecanismo das Tarefas na Etapa (Nível 2):**
+  * **Distribuição Temporal:** Cada tarefa é posicionada na régua da etapa de acordo com sua **Data Inicial (`startDate`)** e **Data Limite (`dueDate`)**.
+  * **Barra de Progresso da Tarefa:**
+    * **Em Andamento (`IN_PROGRESS`):** A barra da tarefa exibe o percentual do tempo decorrido em relação ao tempo total da tarefa (evidenciando o tempo restante até o 100%).
+    * **Concluída (`MERGED`):** A barra da tarefa é preenchida completamente (100% sólida em verde de sucesso).
+* **Objetivo de UX:** Dar clareza sobre prazos, sobreposições de tarefas e ritmo de escrita antes do término da etapa ou submissão aos Gatekeepers. e nao precisariamos de mostra em cards como esta hoje. 
+
 ---
 
 *Nota: Este documento serve como especificação inicial para refinamento e estimativa antes do desenvolvimento.*
-
