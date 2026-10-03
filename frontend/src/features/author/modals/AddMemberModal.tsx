@@ -3,12 +3,12 @@ import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
-import { UserSearchAutocomplete } from "../../components/common/UserSearchAutocomplete";
-import { Role } from "../../constants/roles";
-import { api } from "../../services/api";
-import { type UserMemberItem } from "../../services/usersService";
-import { showNotification } from "../../store/slices/notificationSlice";
+import { StandardModal } from "../../../components/common/StandardModal";
+import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
+import { Role } from "../../../constants/roles";
+import { api } from "../../../services/api";
+import { type UserMemberItem } from "../../../services/usersService";
+import { showNotification } from "../../../store/slices/notificationSlice";
 
 interface AddMemberModalProps {
   open: boolean;

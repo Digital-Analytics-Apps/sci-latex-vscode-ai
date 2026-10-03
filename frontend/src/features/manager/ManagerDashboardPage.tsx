@@ -11,7 +11,7 @@ import { useTeamsQuery } from "../../hooks/useTeamQueries";
 import type { AcademicPeriod } from "../../types/academic-period.types";
 import type { ProjectListItem } from "../../types/project.types";
 import type { TeamItem } from "../../types/team.types";
-import { CreateProjectModal } from "../workspace/CreateProjectModal";
+import { CreateProjectModal } from "../author/modals/CreateProjectModal";
 import { AcademicPeriodsSection } from "./components/AcademicPeriodsSection";
 import { CreateAcademicPeriodModal } from "./components/CreateAcademicPeriodModal";
 import { CreateUserModal } from "./components/CreateUserModal";

@@ -4,8 +4,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   IconButton,
   LinearProgress,
   Stack,
@@ -13,10 +11,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArticleTimelineHeader } from "../../components/common/ArticleTimelineHeader";
+import { PageContainer } from "../../components/common/PageContainer";
 import { UserAvatarStack } from "../../components/common/UserAvatarStack";
 import { StageStatus } from "../../constants/status";
 import { useProjectDetails } from "../../hooks/useProjectQueries";
@@ -28,11 +27,11 @@ import {
 import type { RootState } from "../../store";
 import { showNotification } from "../../store/slices/notificationSlice";
 import type { TaskItem } from "../../types/task.types";
-import { AddMemberModal } from "../workspace/AddMemberModal";
-import { AuthorTasksTable } from "../workspace/components/AuthorTasksTable";
-import { CreateStageModal } from "../workspace/CreateStageModal";
-import { CreateTaskModal } from "../workspace/CreateTaskModal";
-import { ProjectSettingsModal } from "../workspace/ProjectSettingsModal";
+import { AuthorTasksTable } from "./components/AuthorTasksTable";
+import { AddMemberModal } from "./modals/AddMemberModal";
+import { CreateStageModal } from "./modals/CreateStageModal";
+import { CreateTaskModal } from "./modals/CreateTaskModal";
+import { ProjectSettingsModal } from "./modals/ProjectSettingsModal";
 
 const DEFAULT_FALLBACK_STAGES: ProjectStage[] = [
   {
@@ -152,27 +151,34 @@ export const ArticleDetailPage = () => {
 
   const activateWorkspaceMutation = useActivateTaskWorkspaceMutation(projectId);
 
-  const handleStartWorkspace = async (task: TaskItem) => {
-    setProvisioningTaskId(task.id);
-    try {
-      await activateWorkspaceMutation.mutateAsync(task.id);
-      void navigate(`/workspace/${task.projectId}/task/${task.id}`, {
-        replace: true,
-      });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      dispatch(
-        showNotification({
-          message:
-            error?.response?.data?.message ||
-            "Erro ao inicializar workspace no Pod.",
-          severity: "error",
-        }),
-      );
-    } finally {
-      setProvisioningTaskId(null);
-    }
-  };
+  const handleStartWorkspace = useCallback(
+    async (task: TaskItem) => {
+      setProvisioningTaskId(task.id);
+      try {
+        await activateWorkspaceMutation.mutateAsync(task.id);
+        void navigate(`/workspace/${task.projectId}/task/${task.id}`, {
+          replace: true,
+        });
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } };
+        dispatch(
+          showNotification({
+            message:
+              error?.response?.data?.message ||
+              "Erro ao inicializar workspace no Pod.",
+            severity: "error",
+          }),
+        );
+      } finally {
+        setProvisioningTaskId(null);
+      }
+    },
+    [activateWorkspaceMutation, dispatch, navigate],
+  );
+
+  const handleOpenCreateTask = useCallback(() => {
+    setIsCreateTaskOpen(true);
+  }, []);
 
   if (isProjectLoading) {
     return (
@@ -183,109 +189,98 @@ export const ArticleDetailPage = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <PageContainer>
       {/* CABEÇALHO DENSO E COMPACTO DO ARTIGO SELECIONADO */}
-      <Card
-        variant="outlined"
+      <Box
         sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1.5,
           mb: 2,
-          boxShadow: 1,
-          borderRadius: 2,
-          bgcolor: "background.paper",
         }}
       >
-        <CardContent sx={{ p: 1.8, pb: "14px !important" }}>
-          <Box
+        {/* LADO ESQUERDO: NAVEGAÇÃO E METADADOS DO ARTIGO */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            flexWrap: "wrap",
+            flex: 1,
+          }}
+        >
+          <Button
+            variant="text"
+            color="primary"
+            size="small"
+            startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+            onClick={() => navigate("/articles")}
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 1.5,
+              fontWeight: 700,
+              px: 1,
+              py: 0.2,
+              minWidth: "auto",
+              fontSize: "0.8rem",
             }}
           >
-            {/* LADO ESQUERDO: NAVEGAÇÃO E METADADOS DO ARTIGO */}
-            <Box
+            Voltar
+          </Button>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <ArticleIcon color="primary" sx={{ fontSize: 22 }} />
+            <Typography
+              variant="h6"
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                flexWrap: "wrap",
-                flex: 1,
+                fontWeight: 800,
+                fontSize: "1.1rem",
+                lineHeight: 1.2,
               }}
             >
-              <Button
-                variant="text"
-                color="primary"
-                size="small"
-                startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
-                onClick={() => navigate("/articles")}
-                sx={{
-                  fontWeight: 700,
-                  px: 1,
-                  py: 0.2,
-                  minWidth: "auto",
-                  fontSize: "0.8rem",
-                }}
-              >
-                Voltar
-              </Button>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <ArticleIcon color="primary" sx={{ fontSize: 22 }} />
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: "1.1rem",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {projectDetails?.name || "Artigo Científico"}
-                </Typography>
-              </Box>
-
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 500, fontSize: "0.75rem" }}
-              >
-                • Conferência:{" "}
-                <strong>
-                  {projectDetails?.targetConferenceName || "IEEE Transactions"}
-                </strong>
-              </Typography>
-            </Box>
-
-            {/* LADO DIREITO: BARRA UNIFICADA DE AÇÕES E MEMBROS */}
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              {/* AVATARES COMPACTOS DOS MEMBROS */}
-              <UserAvatarStack
-                members={currentMembers}
-                avatarSize={26}
-                sx={{ mr: 0.5 }}
-              />
-
-              <Tooltip title="Configurações & Governança do Projeto">
-                <IconButton
-                  color="primary"
-                  size="small"
-                  onClick={() => setIsSettingsOpen(true)}
-                  sx={{
-                    border: "1px solid",
-                    borderColor: "primary.main",
-                    borderRadius: 1.5,
-                    px: 1,
-                    height: 28,
-                  }}
-                >
-                  <SettingsIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
-            </Stack>
+              {projectDetails?.name || "Artigo Científico"}
+            </Typography>
           </Box>
-        </CardContent>
-      </Card>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 500, fontSize: "0.75rem" }}
+          >
+            • Conferência:{" "}
+            <strong>
+              {projectDetails?.targetConferenceName || "IEEE Transactions"}
+            </strong>
+          </Typography>
+        </Box>
+
+        {/* LADO DIREITO: BARRA UNIFICADA DE AÇÕES E MEMBROS */}
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          {/* AVATARES COMPACTOS DOS MEMBROS */}
+          <UserAvatarStack
+            members={currentMembers}
+            avatarSize={26}
+            sx={{ mr: 0.5 }}
+          />
+
+          <Tooltip title="Configurações & Governança do Projeto">
+            <IconButton
+              color="primary"
+              size="small"
+              onClick={() => setIsSettingsOpen(true)}
+              sx={{
+                border: "1px solid",
+                borderColor: "primary.main",
+                borderRadius: 1.5,
+                px: 1,
+                height: 28,
+              }}
+            >
+              <SettingsIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
 
       {/* RÉGUA DE TIMELINE E GATEKEEPERS DA ETAPA DE ESCRITA */}
       <ArticleTimelineHeader
@@ -300,7 +295,7 @@ export const ArticleDetailPage = () => {
         provisioningTaskId={provisioningTaskId}
         currentUserId={user?.id}
         onStartWorkspace={handleStartWorkspace}
-        onOpenCreateTask={() => setIsCreateTaskOpen(true)}
+        onOpenCreateTask={handleOpenCreateTask}
       />
 
       {/* MODAL PARA ADICIONAR NOVA ETAPA DE ESCRITA (FEATURE BRANCH) */}
@@ -337,6 +332,6 @@ export const ArticleDetailPage = () => {
         onClose={() => setIsAddMemberOpen(false)}
         projectId={projectId}
       />
-    </Box>
+    </PageContainer>
   );
 };

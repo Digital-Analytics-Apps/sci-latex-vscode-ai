@@ -7,6 +7,10 @@ export interface TaskSummary {
   assignedToId?: string;
   branchName?: string;
   stageId?: string;
+  startDate?: string;
+  dueDate?: string;
+  progress?: number;
+  isMerged?: boolean;
 }
 
 export interface TaskItem {
@@ -16,10 +20,14 @@ export interface TaskItem {
   title: string;
   branchName: string;
   status: TaskStatus;
+  startDate?: string;
   dueDate: string;
   assignee: string;
   assignedToId?: string;
   stageId?: string;
+  progress?: number;
+  isMerged?: boolean;
+  prUrl?: string;
   stage?: {
     id: string;
     title: string;

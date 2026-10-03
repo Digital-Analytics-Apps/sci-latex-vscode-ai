@@ -2,9 +2,9 @@ import AddTaskIcon from "@mui/icons-material/AddTask";
 import { Box, Chip, TextField, Typography } from "@mui/material";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
-import { useCreateStageMutation } from "../../hooks/useProjectQueries";
-import { showNotification } from "../../store/slices/notificationSlice";
+import { StandardModal } from "../../../components/common/StandardModal";
+import { useCreateStageMutation } from "../../../hooks/useProjectQueries";
+import { showNotification } from "../../../store/slices/notificationSlice";
 
 interface CreateStageModalProps {
   open: boolean;

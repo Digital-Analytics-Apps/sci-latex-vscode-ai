@@ -2,21 +2,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import GavelIcon from "@mui/icons-material/Gavel";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import SearchIcon from "@mui/icons-material/Search";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  FormControl,
-  Grid,
-  InputAdornment,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
-  TextField,
-} from "@mui/material";
+import { Grid } from "@mui/material";
 import type { GridColDef, GridPaginationModel } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -24,10 +10,16 @@ import { AutoSizer } from "react-virtualized-auto-sizer";
 import { createDateColumn } from "../../components/common/dataGridColumns";
 import { GenericDataGrid } from "../../components/common/GenericDataGrid";
 import { MetricCard } from "../../components/common/MetricCard";
+import { PageContainer } from "../../components/common/PageContainer";
 import {
   NITStatusChip,
   PRStatusChip,
 } from "../../components/common/StatusChips";
+import { TableContainer } from "../../components/common/TableContainer";
+import {
+  TableHeaderToolbar,
+  type TableSelectOption,
+} from "../../components/common/TableFilters";
 import { WelcomeHeader } from "../../components/common/WelcomeHeader";
 import { useDashboardSummaryQuery } from "../../hooks/useDashboardQueries";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -179,6 +171,42 @@ export const ReviewsListPage = () => {
     return found ? found.value : filters.nitStatus;
   }, [filters.nitStatus, nitStatusOptions]);
 
+  const projectSelectOptions = useMemo<TableSelectOption[]>(
+    () => [
+      { value: "all", label: `Todos os Projetos (${projectsList.length})` },
+      ...projectsList.map((p) => ({ value: p.id, label: p.name })),
+    ],
+    [projectsList],
+  );
+
+  const fullPrStatusOptions = useMemo<TableSelectOption[]>(() => {
+    const opts = [
+      { value: "ALL", label: "Todos os Status" },
+      ...prStatusOptions,
+    ];
+    if (
+      !opts.some((o) => o.value === currentStatusValue) &&
+      currentStatusValue !== "ALL"
+    ) {
+      opts.push({ value: currentStatusValue, label: currentStatusValue });
+    }
+    return opts;
+  }, [currentStatusValue, prStatusOptions]);
+
+  const fullNitStatusOptions = useMemo<TableSelectOption[]>(() => {
+    const opts = [
+      { value: "ALL", label: "Todos os Pareceres" },
+      ...nitStatusOptions,
+    ];
+    if (
+      !opts.some((o) => o.value === currentNitStatusValue) &&
+      currentNitStatusValue !== "ALL"
+    ) {
+      opts.push({ value: currentNitStatusValue, label: currentNitStatusValue });
+    }
+    return opts;
+  }, [currentNitStatusValue, nitStatusOptions]);
+
   const isFiltered = useMemo(() => {
     return (
       filters.projectId !== "all" ||
@@ -315,7 +343,7 @@ export const ReviewsListPage = () => {
   );
 
   return (
-    <Box sx={{ p: 3, width: "100%", margin: "0 auto" }}>
+    <PageContainer>
       <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration + AI. Avalie as seções dos artigos científicos submetidos pelos Autores, inspecione diffs TeX." />
 
       {/* Cards de Métricas (KPIs) */}
@@ -349,146 +377,64 @@ export const ReviewsListPage = () => {
         ))}
       </Grid>
 
-      {/* Painel de Busca & Filtros Externos Sincronizados com a URL */}
-      <Paper
-        variant="outlined"
-        sx={{ p: 2, mb: 3, bgcolor: "background.paper" }}
-      >
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "1fr 1fr",
-              md: isFiltered
-                ? "2fr 1.2fr 1.2fr 1.2fr auto"
-                : "2fr 1.2fr 1.2fr 1.2fr",
-            },
-            gap: 2,
-            alignItems: "center",
-          }}
-        >
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Buscar por Título, Autor, Projeto ou ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          <FormControl fullWidth size="small">
-            <InputLabel>Projeto</InputLabel>
-            <Select
-              value={filters.projectId}
-              label="Projeto"
-              onChange={(e) =>
-                setFilters({ projectId: e.target.value, page: 1 })
+      {/* Tabela Acadêmica de Solicitações com GenericDataGrid & AutoSizer com Header Integrado */}
+      <TableContainer>
+        <AutoSizer
+          renderProp={({ height, width }) => (
+            <GenericDataGrid<PullRequestDetail>
+              headerToolbarContent={
+                <TableHeaderToolbar
+                  searchProps={{
+                    placeholder: "Buscar por Título, Autor, Projeto ou ID...",
+                    value: searchTerm,
+                    onChange: setSearchTerm,
+                  }}
+                  selectFilters={[
+                    {
+                      id: "project",
+                      label: "Projeto",
+                      value: filters.projectId,
+                      onChange: (projectId) =>
+                        setFilters({ projectId, page: 1 }),
+                      options: projectSelectOptions,
+                    },
+                    {
+                      id: "prStatus",
+                      label: "Status do PR",
+                      value: currentStatusValue,
+                      onChange: (status) => setFilters({ status, page: 1 }),
+                      options: fullPrStatusOptions,
+                    },
+                    {
+                      id: "nitStatus",
+                      label: "Parecer NIT",
+                      value: currentNitStatusValue,
+                      onChange: (nitStatus) =>
+                        setFilters({ nitStatus, page: 1 }),
+                      options: fullNitStatusOptions,
+                    },
+                  ]}
+                  clearFiltersProps={{
+                    visible: isFiltered,
+                    onClear: handleResetFilters,
+                  }}
+                />
               }
-            >
-              <MenuItem value="all">
-                Todos os Projetos ({projectsList.length})
-              </MenuItem>
-              {projectsList.map((p) => (
-                <MenuItem key={p.id} value={p.id}>
-                  {p.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small">
-            <InputLabel>Status do PR</InputLabel>
-            <Select
-              value={currentStatusValue}
-              label="Status do PR"
-              onChange={(e) => setFilters({ status: e.target.value, page: 1 })}
-            >
-              <MenuItem value="ALL">Todos os Status</MenuItem>
-              {prStatusOptions.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-              {!prStatusOptions.some((o) => o.value === currentStatusValue) &&
-                currentStatusValue !== "ALL" && (
-                  <MenuItem value={currentStatusValue}>
-                    {currentStatusValue}
-                  </MenuItem>
-                )}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small">
-            <InputLabel>Parecer NIT</InputLabel>
-            <Select
-              value={currentNitStatusValue}
-              label="Parecer NIT"
-              onChange={(e) =>
-                setFilters({ nitStatus: e.target.value, page: 1 })
-              }
-            >
-              <MenuItem value="ALL">Todos os Pareceres</MenuItem>
-              {nitStatusOptions.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-              {!nitStatusOptions.some(
-                (o) => o.value === currentNitStatusValue,
-              ) &&
-                currentNitStatusValue !== "ALL" && (
-                  <MenuItem value={currentNitStatusValue}>
-                    {currentNitStatusValue}
-                  </MenuItem>
-                )}
-            </Select>
-          </FormControl>
-
-          {isFiltered && (
-            <Button
-              variant="outlined"
-              color="secondary"
-              size="small"
-              onClick={handleResetFilters}
-              sx={{ whiteSpace: "nowrap", height: 40 }}
-            >
-              Limpar Filtros
-            </Button>
+              rows={reviews}
+              columns={columns}
+              getRowId={(row) => row.id}
+              loading={isLoading || isFetching}
+              totalCount={totalCount}
+              paginationModel={paginationModel}
+              onPaginationModelChange={handlePaginationModelChange}
+              pageSizeOptions={[5, 10, 25, 50]}
+              height={height}
+              width={width}
+              emptyMessage="Nenhuma solicitação de revisão encontrada com os filtros selecionados."
+            />
           )}
-        </Box>
-      </Paper>
-
-      {/* Tabela Acadêmica de Solicitações com GenericDataGrid & AutoSizer */}
-      <Card variant="outlined">
-        <CardContent sx={{ p: 0, height: 570, width: "100%" }}>
-          <AutoSizer
-            renderProp={({ height = 520, width }) => (
-              <GenericDataGrid<PullRequestDetail>
-                rows={reviews}
-                columns={columns}
-                getRowId={(row) => row.id}
-                loading={isLoading || isFetching}
-                totalCount={totalCount}
-                paginationModel={paginationModel}
-                onPaginationModelChange={handlePaginationModelChange}
-                pageSizeOptions={[5, 10, 25, 50]}
-                height={height}
-                width={width}
-                emptyMessage="Nenhuma solicitação de revisão encontrada com os filtros selecionados."
-              />
-            )}
-          />
-        </CardContent>
-      </Card>
-    </Box>
+        />
+      </TableContainer>
+    </PageContainer>
   );
 };

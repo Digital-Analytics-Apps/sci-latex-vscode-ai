@@ -1,12 +1,10 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { Box, Button, Card, CardContent } from "@mui/material";
+import { Button } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AutoSizer } from "react-virtualized-auto-sizer";
-import { GenericDataGrid } from "../../components/common/GenericDataGrid";
-import { WelcomeHeader } from "../../components/common/WelcomeHeader";
 import {
   createActionsColumn,
   createAvatarStackColumn,
@@ -14,14 +12,14 @@ import {
   createProgressColumn,
   createTitleSubtitleColumn,
 } from "../../components/common/dataGridColumns";
-import {
-  ClearFiltersButton,
-  TableFilterBar,
-  TableSearchInput,
-} from "../../components/common/TableFilters";
+import { GenericDataGrid } from "../../components/common/GenericDataGrid";
+import { PageContainer } from "../../components/common/PageContainer";
+import { TableContainer } from "../../components/common/TableContainer";
+import { TableHeaderToolbar } from "../../components/common/TableFilters";
+import { WelcomeHeader } from "../../components/common/WelcomeHeader";
 import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
 import type { ArticleItem } from "../../services/articlesService";
-import { CreateProjectModal } from "../workspace/CreateProjectModal";
+import { CreateProjectModal } from "./modals/CreateProjectModal";
 
 export const AuthorArticlesPage = () => {
   const navigate = useNavigate();
@@ -138,57 +136,62 @@ export const AuthorArticlesPage = () => {
     [navigate],
   );
 
-  return (
-    <Box sx={{ p: 4 }}>
-      <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration + AI. Selecione um artigo para gerenciar suas tarefas e acessar o workspace." />
-
-      {/* Painel de Busca & Filtros por Papel */}
-      <TableFilterBar>
-        <TableSearchInput
-          placeholder="Buscar artigo por Título ou Conferência..."
-          value={searchArticleQuery}
-          onChange={setSearchArticleQuery}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={() => setIsCreateModalOpen(true)}
-          sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700, width: 120 }}
-        >
-          Novo Artigo
-        </Button>
-
-        <ClearFiltersButton
-          visible={searchArticleQuery.trim() !== "" || roleFilter !== "ALL"}
-          onClick={() => {
+  const headerToolbarNode = useMemo(
+    () => (
+      <TableHeaderToolbar
+        sx={{ borderBottom: "none", p: 2 }}
+        searchProps={{
+          placeholder: "Buscar artigo por Título ou Conferência...",
+          value: searchArticleQuery,
+          onChange: setSearchArticleQuery,
+        }}
+        actions={
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setIsCreateModalOpen(true)}
+            sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
+          >
+            Novo Artigo
+          </Button>
+        }
+        clearFiltersProps={{
+          visible: searchArticleQuery.trim() !== "" || roleFilter !== "ALL",
+          onClear: () => {
             setSearchArticleQuery("");
             setRoleFilter("ALL");
-          }}
-        />
-      </TableFilterBar>
+          },
+        }}
+      />
+    ),
+    [searchArticleQuery, roleFilter],
+  );
 
-      {/* Tabela de Artigos em DataGrid com AutoSizer */}
-      <Card variant="outlined">
-        <CardContent sx={{ p: 0, height: 680, width: "100%" }}>
-          <AutoSizer
-            renderProp={({ height = 600, width }) => (
-              <GenericDataGrid<ArticleItem>
-                rows={filteredArticles}
-                columns={articleColumns}
-                getRowId={(row) => row.id}
-                loading={isLoading}
-                pageSizeOptions={[5, 10, 25]}
-                height={height}
-                width={width}
-                rowHeight={64}
-                emptyMessage="Nenhum artigo científico encontrado com os filtros selecionados."
-              />
-            )}
-          />
-        </CardContent>
-      </Card>
+  return (
+    <PageContainer>
+      <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration + AI. Selecione um artigo para gerenciar suas tarefas e acessar o workspace." />
+
+      {/* Container flexível para o AutoSizer medir a altura exata disponível */}
+      <TableContainer sx={{ mt: 2 }}>
+        <AutoSizer
+          renderProp={({ height, width }) => (
+            <GenericDataGrid<ArticleItem>
+              headerToolbarContent={headerToolbarNode}
+              rows={filteredArticles}
+              columns={articleColumns}
+              getRowId={(row) => row.id}
+              loading={isLoading}
+              pageSizeOptions={[5, 10, 25]}
+              height={height}
+              width={width}
+              rowHeight={64}
+              emptyMessage="Nenhum artigo científico encontrado com os filtros selecionados."
+            />
+          )}
+        />
+      </TableContainer>
 
       {/* Modal de Criação de Novo Artigo */}
       <CreateProjectModal
@@ -196,6 +199,6 @@ export const AuthorArticlesPage = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onArticleCreated={(articleId) => navigate(`/articles/${articleId}`)}
       />
-    </Box>
+    </PageContainer>
   );
 };

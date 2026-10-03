@@ -30,27 +30,27 @@ const getStageColorStyle = (order?: number, isGatekeeper?: boolean) => {
   const themeStageColors = [
     {
       bg: "rgba(14, 165, 233, 0.15)",
-      color: colors.sky[300],
+      color: colors.sky[700],
       borderColor: colors.sky[700],
     }, // Etapa 1 - Sky Blue
     {
       bg: "rgba(168, 85, 247, 0.15)",
-      color: colors.purple[300],
+      color: colors.purple[700],
       borderColor: colors.purple[700],
     }, // Etapa 2 - Purple
     {
       bg: "rgba(20, 184, 166, 0.15)",
-      color: colors.teal[300],
+      color: colors.teal[700],
       borderColor: colors.teal[700],
     }, // Etapa 3 - Teal
     {
       bg: "rgba(16, 185, 129, 0.15)",
-      color: colors.emerald[300],
+      color: colors.emerald[700],
       borderColor: colors.emerald[700],
     }, // Etapa 4 - Emerald
     {
       bg: "rgba(249, 115, 22, 0.15)",
-      color: colors.orange[300],
+      color: colors.orange[700],
       borderColor: colors.orange[700],
     }, // Etapa 5 - Orange
   ];
@@ -96,7 +96,6 @@ export const TaskTitleBranchCell = ({ row }: { row: TaskItem }) => {
           sx={{
             height: 20,
             fontSize: "0.68rem",
-            fontWeight: 700,
             borderRadius: 1,
             bgcolor: style.bg,
             color: style.color,

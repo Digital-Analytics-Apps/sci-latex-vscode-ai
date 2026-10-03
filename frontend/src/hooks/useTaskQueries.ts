@@ -8,8 +8,9 @@ import { tasksService } from "../services/tasksService";
 import type { CreateTaskInput } from "../types/task.types";
 
 export function useTasksQuery(projectId: string, params?: Record<string, any>) {
+  const paramsKey = JSON.stringify(params || {});
   return useQuery({
-    queryKey: ["tasks", projectId, params],
+    queryKey: ["tasks", projectId, paramsKey],
     queryFn: () => tasksService.getTasksByProject(projectId, params),
     enabled: Boolean(projectId),
     placeholderData: keepPreviousData,

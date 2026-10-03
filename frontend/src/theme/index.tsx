@@ -7,11 +7,11 @@ import React, {
   useState,
 } from "react";
 import { componentsOverrides } from "./components";
-import { darkPalette, lightPalette } from "./palette";
-import { sciLatexTokens, tailwindFonts } from "./tokens";
+import { getPalette } from "./palette";
+import { getSciLatexTokens, tailwindFonts, type ThemePreset } from "./tokens";
 import { typography } from "./typography";
 
-// Re-export Tokens e Cores do SCI-LaTeX
+// Re-export Tokens, Cores e Tipos do SCI-LaTeX
 export * from "./tokens";
 
 // Importação das fontes 100% locais (Self-Hosted, sem chamadas externas CDN)
@@ -30,27 +30,39 @@ import "@fontsource/plus-jakarta-sans/700.css";
 
 type ColorMode = "dark" | "light";
 
+// ============================================================================
+// CONFIGURAÇÃO DO TEMA ATIVO DO PROJETO (Azul Cobalto Único)
+// ============================================================================
+export const ACTIVE_THEME_PRESET: ThemePreset = "blue";
+
 interface ThemeContextType {
   mode: ColorMode;
+  preset: ThemePreset;
   toggleColorMode: () => void;
   setMode: (mode: ColorMode) => void;
+  setPreset: (preset: ThemePreset) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   mode: "dark",
+  preset: "blue",
   toggleColorMode: () => {},
   setMode: () => {},
+  setPreset: () => {},
 });
 
 export const useColorMode = () => useContext(ThemeContext);
 
-export const ThemeContextProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const ThemeContextProvider: React.FC<{
+  children: React.ReactNode;
+  defaultPreset?: ThemePreset;
+}> = ({ children, defaultPreset = "blue" }) => {
   const [mode, setModeState] = useState<ColorMode>(() => {
     const saved = localStorage.getItem("theme_mode");
     return saved === "light" || saved === "dark" ? saved : "dark";
   });
+
+  const [preset, setPresetState] = useState<ThemePreset>(defaultPreset);
 
   const toggleColorMode = () => {
     setModeState((prev) => {
@@ -65,11 +77,17 @@ export const ThemeContextProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.setItem("theme_mode", newMode);
   };
 
+  const setPreset = (newPreset: ThemePreset) => {
+    setPresetState(newPreset);
+    localStorage.setItem("theme_preset", newPreset);
+  };
+
   useEffect(() => {
     const root = document.documentElement;
-    const tokens = sciLatexTokens[mode];
+    const tokens = getSciLatexTokens(mode, preset);
 
     root.setAttribute("data-theme", mode);
+    root.setAttribute("data-theme-preset", preset);
     root.style.setProperty("--font-sans", tailwindFonts.sans);
     root.style.setProperty("--font-mono", tailwindFonts.mono);
 
@@ -81,10 +99,10 @@ export const ThemeContextProvider: React.FC<{ children: React.ReactNode }> = ({
     root.style.setProperty("--primary-main", tokens.primary.main);
     root.style.setProperty("--code-bg", tokens.code.background);
     root.style.setProperty("--code-fg", tokens.code.foreground);
-  }, [mode]);
+  }, [mode, preset]);
 
   const theme = useMemo(() => {
-    const palette = mode === "dark" ? darkPalette : lightPalette;
+    const palette = getPalette(mode, preset);
     return createTheme({
       cssVariables: true,
       palette,
@@ -94,10 +112,12 @@ export const ThemeContextProvider: React.FC<{ children: React.ReactNode }> = ({
       },
       components: componentsOverrides,
     });
-  }, [mode]);
+  }, [mode, preset]);
 
   return (
-    <ThemeContext.Provider value={{ mode, toggleColorMode, setMode }}>
+    <ThemeContext.Provider
+      value={{ mode, preset, toggleColorMode, setMode, setPreset }}
+    >
       <ThemeProvider theme={theme}>
         <CssBaseline />
         {children}

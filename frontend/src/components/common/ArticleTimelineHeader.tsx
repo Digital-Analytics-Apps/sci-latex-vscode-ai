@@ -254,7 +254,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                 variant="subtitle1"
                 sx={{ fontWeight: 700, fontSize: "0.95rem" }}
               >
-                Fluxo Sequencial & Governança
+                Fluxo Sequencial
               </Typography>
               <Chip
                 label={`${completedStages}/${totalStages} Concluídas (${progressPercent}%)`}

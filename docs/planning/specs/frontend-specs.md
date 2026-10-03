@@ -19,7 +19,8 @@ src/
 ├── features/               # Módulos Funcionais e Telas por Domínio
 │   ├── auth/               # Página de Login e componente de Proteção de Rota (RBAC)
 │   ├── dashboard/          # Dashboard principal unificado com navegação por persona e seletor de projetos
-│   ├── workspace/          # Workspace do Autor: Iframe code-server + Topbar de Ações + Status de Prazo + Modais
+│   ├── workspace/          # Workspace do Autor (Sessão IDE): Iframe code-server + Topbar de Ações + Modais de Sessão (SaveProgressModal, CreatePRModal)
+│   ├── author/             # Persona Autor: AuthorArticlesPage, ArticleDetailPage, AuthorTasksTable, TaskDataGridCells, Modais (AddMemberModal, CreateProjectModal, CreateStageModal, CreateTaskModal, ProjectSettingsModal, ReleaseCandidatesModal)
 │   ├── reviewer/           # Dashboard do Revisor (ReviewDataGridCells) + Comparador Side-by-Side (Diff LaTeX + PDF Viewer) + Modal NIT
 │   ├── coordinator/        # Dashboard do Coordenador: Matriz de Prazos da Equipe + Gestão de Cronograma
 │   ├── manager/            # Dashboard do Gerente: Filtro de Período Acadêmico + Métricas Globais
@@ -145,7 +146,7 @@ Para evitar código redundante e garantir coerência visual em toda a aplicaçã
 * **`createDateColumn(config)`**: Constrói colunas com formatação automática de datas para o padrão Português (`pt-BR`).
 
 ### 6.3 DataGrid de Tarefas do Autor (`<AuthorTasksTable />`)
-* **Localização:** `src/features/workspace/components/AuthorTasksTable.tsx` & `src/features/workspace/components/TaskDataGridCells.tsx`
+* **Localização:** `src/features/author/components/AuthorTasksTable.tsx` & `src/features/author/components/TaskDataGridCells.tsx`
 * **Descrição:** Tabela padronizada para a visão do Autor com `<GenericDataGrid<TaskItem>>` e `<AutoSizer>`.
 * **Filtros com Debounce & REST API:** Integração direta com `useUrlFilters` e `useDebounce` (400ms), repassando parâmetros filtrados (`search`, `status`) para a API REST sem realizar filtragem em memória no cliente.
 * **Células Especializadas:**
@@ -172,7 +173,7 @@ Para evitar código redundante e garantir coerência visual em toda a aplicaçã
   - **Modo Timeline**: Gantt temporal horizontal relativo por prazos de entrega com indicador `▲ Hoje`.
 
 ### 6.6 Modal de Configurações do Projeto & Governança (`<ProjectSettingsModal />`)
-* **Localização:** `src/features/workspace/ProjectSettingsModal.tsx`
+* **Localização:** `src/features/author/modals/ProjectSettingsModal.tsx`
 * **Descrição:** Encapsula todo o gerenciamento de etapas de escrita e metadados do artigo em uma caixa de diálogo dedicada, mantendo a tela principal limpa e desobstruída.
 * **Abas do Modal**:
   - **Aba 1 (Etapas de Escrita & Drag & Drop)**: Permite reordenar a sequência de etapas customizadas via drag and drop (`@dnd-kit`), alterar status, excluir etapas sem tarefas e acionar a criação de novas etapas (`+ Nova Etapa`).

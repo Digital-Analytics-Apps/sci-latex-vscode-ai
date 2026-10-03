@@ -294,72 +294,95 @@ export const colors = {
 // Alias para compatibilidade
 export const tailwindColors = colors;
 
-// Camada Semântica de Design Tokens do SCI-LaTeX
-export const sciLatexTokens = {
-  light: {
+export type ThemePreset = "blue";
+
+// Gerador da Camada Semântica de Design Tokens do SCI-LaTeX
+export const getSciLatexTokens = (
+  mode: "light" | "dark",
+  _preset: ThemePreset = "blue",
+) => {
+  if (mode === "light") {
+    return {
+      background: {
+        default: colors.slate[50], // #f8fafc - Fundo suave descansado
+        paper: colors.white, // #ffffff - Cards flutuantes limpos
+        subtle: colors.slate[100], // #f1f5f9
+        muted: colors.slate[200], // #e2e8f0
+      },
+      text: {
+        primary: colors.slate[800], // #1e293b - Sem preto absoluto
+        secondary: colors.slate[500], // #64748b - Subtítulos descansados
+        muted: colors.slate[400], // #94a3b8
+        disabled: colors.slate[300], // #cbd5e1
+      },
+      border: {
+        default: "rgba(226, 232, 240, 0.8)", // Borda ultra-suave
+        strong: colors.slate[300],
+      },
+      primary: {
+        main: colors.blue[600], // #2563eb - Cobalt Blue
+        hover: colors.blue[700], // #1d4ed8
+        active: colors.blue[800], // #1e40af
+        light: colors.blue[50], // #eff6ff
+        contrast: colors.white,
+      },
+      secondary: {
+        main: colors.indigo[600],
+        hover: colors.indigo[700],
+        active: colors.indigo[800],
+        light: colors.indigo[50],
+        contrast: colors.white,
+      },
+      success: {
+        main: colors.emerald[600],
+        light: colors.emerald[50],
+      },
+      warning: {
+        main: colors.amber[600],
+        light: colors.amber[50],
+      },
+      error: {
+        main: colors.red[600],
+        light: colors.red[50],
+      },
+      code: {
+        background: colors.slate[900],
+        foreground: colors.slate[100],
+      },
+    };
+  }
+
+  // Mode === "dark"
+  return {
     background: {
-      default: colors.white,
-      paper: colors.white,
-      subtle: colors.gray[50],
-      muted: colors.gray[100],
+      default: colors.slate[900], // #0f172a
+      paper: colors.slate[800], // #1e293b
+      subtle: colors.slate[800],
+      muted: colors.slate[700],
     },
     text: {
-      primary: colors.gray[950],
-      secondary: colors.gray[600],
-      muted: colors.gray[500],
-      disabled: colors.gray[400],
+      primary: colors.slate[50], // #f8fafc
+      secondary: colors.slate[400], // #94a3b8
+      muted: colors.slate[500],
+      disabled: colors.slate[600],
     },
     border: {
-      default: colors.gray[200],
-      strong: colors.gray[300],
+      default: "rgba(51, 65, 85, 0.6)",
+      strong: colors.slate[700],
     },
     primary: {
-      main: colors.sky[600],
-      hover: colors.sky[700],
-      active: colors.sky[800],
-      light: colors.sky[50],
+      main: colors.blue[500], // #3b82f6
+      hover: colors.blue[400], // #60a5fa
+      active: colors.blue[300], // #93c5fd
+      light: colors.blue[950], // #172554
       contrast: colors.white,
     },
-    success: {
-      main: colors.emerald[600],
-      light: colors.emerald[50],
-    },
-    warning: {
-      main: colors.amber[600],
-      light: colors.amber[50],
-    },
-    error: {
-      main: colors.red[600],
-      light: colors.red[50],
-    },
-    code: {
-      background: colors.gray[950],
-      foreground: colors.gray[100],
-    },
-  },
-  dark: {
-    background: {
-      default: colors.gray[950],
-      paper: colors.gray[900],
-      subtle: colors.gray[900],
-      muted: colors.gray[800],
-    },
-    text: {
-      primary: colors.gray[50],
-      secondary: colors.gray[300],
-      muted: colors.gray[400],
-      disabled: colors.gray[500],
-    },
-    border: {
-      default: colors.gray[800],
-      strong: colors.gray[700],
-    },
-    primary: {
-      main: colors.sky[400],
-      hover: colors.sky[300],
-      active: colors.sky[200],
-      light: colors.sky[950],
-      contrast: colors.gray[950],
+    secondary: {
+      main: colors.indigo[400],
+      hover: colors.indigo[300],
+      active: colors.indigo[200],
+      light: colors.indigo[950],
+      contrast: colors.white,
     },
     success: {
       main: colors.emerald[400],
@@ -375,9 +398,15 @@ export const sciLatexTokens = {
     },
     code: {
       background: colors.black,
-      foreground: colors.gray[100],
+      foreground: colors.slate[100],
     },
-  },
+  };
+};
+
+// Retrocompatibilidade para export sciLatexTokens
+export const sciLatexTokens = {
+  light: getSciLatexTokens("light", "blue"),
+  dark: getSciLatexTokens("dark", "blue"),
 } as const;
 
 export const tailwindFonts = {

@@ -12,14 +12,14 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
+import { StandardModal } from "../../../components/common/StandardModal";
 import {
   useCreateRCMutation,
   usePublishReleaseMutation,
   useReleaseCandidatesQuery,
-} from "../../hooks/useReleaseQueries";
-import { showNotification } from "../../store/slices/notificationSlice";
-import type { ReleaseCandidateItem } from "../../types/release-candidate.types";
+} from "../../../hooks/useReleaseQueries";
+import { showNotification } from "../../../store/slices/notificationSlice";
+import type { ReleaseCandidateItem } from "../../../types/release-candidate.types";
 
 interface ReleaseCandidatesModalProps {
   open: boolean;

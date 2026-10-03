@@ -1,49 +1,10 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import Brightness7Icon from "@mui/icons-material/Brightness7";
-import LogoutIcon from "@mui/icons-material/Logout";
-import RateReviewIcon from "@mui/icons-material/RateReview";
-import SignalCellularAltIcon from "@mui/icons-material/SignalCellularAlt";
-import {
-  AppBar,
-  Avatar,
-  Box,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Stack,
-  Toolbar,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Chip } from "@mui/material";
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { useSSEEventSource } from "../hooks/useSSEEventSource";
-import type { RootState } from "../store";
-import { logout } from "../store/slices/authSlice";
-import { useColorMode } from "../theme";
+import { AppHeaderBar } from "../components/common/AppHeaderBar";
 
 export const ReviewerLayout: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const user = useSelector((state: RootState) => state.auth.user);
-  const { mode, toggleColorMode } = useColorMode();
-  const { isConnected } = useSSEEventSource();
-
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) =>
-    setAnchorEl(event.currentTarget);
-  const handleCloseUserMenu = () => setAnchorEl(null);
-
-  const handleLogout = () => {
-    handleCloseUserMenu();
-    dispatch(logout());
-  };
-
   return (
     <Box
       sx={{
@@ -54,109 +15,17 @@ export const ReviewerLayout: React.FC<{ children: React.ReactNode }> = ({
         overflow: "hidden",
       }}
     >
-      {/* Header do Revisor */}
-      <AppBar
-        position="static"
-        color="default"
-        sx={{ bgcolor: "background.paper" }}
-      >
-        <Toolbar
-          variant="dense"
-          sx={{ justifyContent: "space-between", gap: 2 }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <RateReviewIcon
-              color="primary"
-              sx={{ cursor: "pointer" }}
-              onClick={() => navigate("/")}
-            />
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 700, cursor: "pointer" }}
-              onClick={() => navigate("/")}
-            >
-              Painel de Revisão
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Tooltip
-              title={
-                isConnected
-                  ? "Conexão Real-time SSE Ativa"
-                  : "Desconectado do SSE"
-              }
-            >
-              <Chip
-                icon={<SignalCellularAltIcon fontSize="small" />}
-                label={isConnected ? "Real-time SSE" : "Offline"}
-                size="small"
-                color={isConnected ? "success" : "default"}
-                variant="outlined"
-              />
-            </Tooltip>
-
-            <Tooltip title="Alternar Modo Claro / Escuro">
-              <IconButton
-                onClick={toggleColorMode}
-                size="small"
-                color="inherit"
-              >
-                {mode === "dark" ? (
-                  <Brightness7Icon fontSize="small" />
-                ) : (
-                  <Brightness4Icon fontSize="small" />
-                )}
-              </IconButton>
-            </Tooltip>
-
-            <IconButton onClick={handleOpenUserMenu} size="small" sx={{ p: 0 }}>
-              <Avatar
-                sx={{
-                  width: 28,
-                  height: 28,
-                  bgcolor: "secondary.main",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {user?.name?.charAt(0).toUpperCase() || "R"}
-              </Avatar>
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleCloseUserMenu}
-              transformOrigin={{ horizontal: "right", vertical: "top" }}
-              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-            >
-              <Stack sx={{ px: 2, py: 1, gap: 1 }}>
-                <Typography variant="subtitle2">{user?.name}</Typography>
-                <Stack
-                  direction={"row"}
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                >
-                  <Typography variant="subtitle2">Perfil Ativo:</Typography>
-                  <Chip
-                    icon={<ArticleIcon fontSize="small" />}
-                    label={`${user?.role}`}
-                    color="primary"
-                    variant="outlined"
-                    sx={{ fontWeight: 700 }}
-                  />
-                </Stack>
-              </Stack>
-              <MenuItem
-                onClick={handleLogout}
-                sx={{ gap: 1, color: "error.main" }}
-              >
-                <LogoutIcon fontSize="small" />
-                Sair
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Toolbar>
-      </AppBar>
+      {/* Topbar Padronizada do Revisor com nome da aplicação */}
+      <AppHeaderBar
+        extraHeaderActions={
+          <Chip
+            label="Painel de Revisão"
+            size="small"
+            color="secondary"
+            variant="outlined"
+          />
+        }
+      />
 
       <Box
         sx={{ flexGrow: 1, overflow: "hidden", bgcolor: "background.default" }}

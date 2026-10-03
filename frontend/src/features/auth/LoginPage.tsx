@@ -15,6 +15,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
@@ -39,8 +40,8 @@ export const LoginPage: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: "user@google.com",
+      password: "123456",
     },
   });
 
@@ -53,7 +54,7 @@ export const LoginPage: React.FC = () => {
       const token = response.data.accessToken || response.data.token;
       const user = response.data.user;
       dispatch(setCredentials({ token, user }));
-      navigate("/");
+      void navigate("/", { replace: true });
     } catch (err: any) {
       setErrorMessage(
         err.response?.data?.message ||
@@ -86,8 +87,8 @@ export const LoginPage: React.FC = () => {
           transform: "translateX(-50%)",
           width: "750px",
           height: "750px",
-          background:
-            "radial-gradient(circle, rgba(14, 165, 233, 0.22) 0%, rgba(0,0,0,0) 70%)",
+          background: (theme) =>
+            `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.22)} 0%, rgba(0,0,0,0) 70%)`,
           pointerEvents: "none",
         }}
       />
@@ -108,12 +109,12 @@ export const LoginPage: React.FC = () => {
             backdropFilter: "blur(18px)",
             borderColor: "divider",
             borderRadius: 5,
-            bgcolor:
-              mode === "dark"
-                ? "rgba(17, 24, 39, 0.90)"
-                : "rgba(255, 255, 255, 0.97)",
-            boxShadow:
-              mode === "dark"
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark"
+                ? alpha(theme.palette.background.paper, 0.92)
+                : alpha(theme.palette.background.paper, 0.97),
+            boxShadow: (theme) =>
+              theme.palette.mode === "dark"
                 ? "0 30px 60px -15px rgba(0, 0, 0, 0.7)"
                 : "0 30px 60px -15px rgba(0, 0, 0, 0.09)",
           }}
@@ -164,7 +165,7 @@ export const LoginPage: React.FC = () => {
                     variant="overline"
                     sx={{ fontWeight: 700, letterSpacing: 1 }}
                   >
-                    SCI-LaTeX Web Platform
+                    SCIA — Scientific Collaboration + AI
                   </Typography>
                 </Box>
 
@@ -178,7 +179,7 @@ export const LoginPage: React.FC = () => {
                     lineHeight: 1.25,
                   }}
                 >
-                  Escrita Científica Self-Hosted
+                  Write. Collaborate. Review. Advance.
                 </Typography>
 
                 <Typography
@@ -186,9 +187,8 @@ export const LoginPage: React.FC = () => {
                   color="text.secondary"
                   sx={{ lineHeight: 1.6, maxWidth: 460, fontSize: "1rem" }}
                 >
-                  Plataforma integrada de alta performance para escrita
-                  acadêmica em LaTeX, auditoria de projetos científicos e gestão
-                  colaborativa de artigos e revisões por pares.
+                  Workspace colaborativo de escrita científica em LaTeX, revisão
+                  por pares, controle de prazos e governança institucional.
                 </Typography>
               </Box>
 

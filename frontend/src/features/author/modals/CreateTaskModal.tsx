@@ -14,15 +14,15 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
-import { Role } from "../../constants/roles";
-import { useDebounce } from "../../hooks/useDebounce";
-import { useProjectDetails } from "../../hooks/useProjectQueries";
-import { useUserSearchQuery } from "../../hooks/useUserQueries";
-import { type ProjectMember } from "../../services/projectsService";
-import { tasksService } from "../../services/tasksService";
-import { type UserMemberItem } from "../../services/usersService";
-import { showNotification } from "../../store/slices/notificationSlice";
+import { StandardModal } from "../../../components/common/StandardModal";
+import { Role } from "../../../constants/roles";
+import { useDebounce } from "../../../hooks/useDebounce";
+import { useProjectDetails } from "../../../hooks/useProjectQueries";
+import { useUserSearchQuery } from "../../../hooks/useUserQueries";
+import { type ProjectMember } from "../../../services/projectsService";
+import { tasksService } from "../../../services/tasksService";
+import { type UserMemberItem } from "../../../services/usersService";
+import { showNotification } from "../../../store/slices/notificationSlice";
 
 interface CreateTaskModalProps {
   open: boolean;

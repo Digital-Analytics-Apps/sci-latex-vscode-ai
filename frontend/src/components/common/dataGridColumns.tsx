@@ -270,7 +270,7 @@ export function createActionsColumn<
     sortable: false,
     filterable: false,
     align: "right",
-    headerAlign: "right",
+    headerAlign: "center",
     ...config,
     renderCell: (params: GridRenderCellParams<TRow>) => {
       const result =

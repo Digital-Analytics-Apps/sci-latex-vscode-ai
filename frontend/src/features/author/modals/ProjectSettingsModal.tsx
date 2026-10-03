@@ -50,20 +50,20 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
-import { StageStatus } from "../../constants/status";
+import { StandardModal } from "../../../components/common/StandardModal";
+import { StageStatus } from "../../../constants/status";
 import {
   useCreateRCMutation,
   usePublishReleaseMutation,
   useReleaseCandidatesQuery,
   useReleasesQuery,
-} from "../../hooks/useReleaseQueries";
+} from "../../../hooks/useReleaseQueries";
 import {
   projectsService,
   type ProjectStage,
-} from "../../services/projectsService";
-import { showNotification } from "../../store/slices/notificationSlice";
-import type { ReleaseCandidateItem } from "../../types/release-candidate.types";
+} from "../../../services/projectsService";
+import { showNotification } from "../../../store/slices/notificationSlice";
+import type { ReleaseCandidateItem } from "../../../types/release-candidate.types";
 
 interface ProjectSettingsModalProps {
   open: boolean;

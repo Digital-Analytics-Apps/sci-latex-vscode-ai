@@ -1,49 +1,11 @@
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import Brightness7Icon from "@mui/icons-material/Brightness7";
-import LogoutIcon from "@mui/icons-material/Logout";
-import SignalCellularAltIcon from "@mui/icons-material/SignalCellularAlt";
-import {
-  AppBar,
-  Avatar,
-  Box,
-  Chip,
-  FormControl,
-  IconButton,
-  Menu,
-  MenuItem,
-  Select,
-  Toolbar,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-import React from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { useSSEEventSource } from "../hooks/useSSEEventSource";
-import type { RootState } from "../store";
-import { logout } from "../store/slices/authSlice";
-import { useColorMode } from "../theme";
+import { Box, Chip, FormControl, MenuItem, Select } from "@mui/material";
+import React, { useState } from "react";
+import { AppHeaderBar } from "../components/common/AppHeaderBar";
 
 export const ManagerLayout: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const user = useSelector((state: RootState) => state.auth.user);
-  const { mode, toggleColorMode } = useColorMode();
-  const { isConnected } = useSSEEventSource();
-  const [academicPeriod, setAcademicPeriod] = React.useState("2026-2027");
-
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) =>
-    setAnchorEl(event.currentTarget);
-  const handleCloseUserMenu = () => setAnchorEl(null);
-
-  const handleLogout = () => {
-    handleCloseUserMenu();
-    dispatch(logout());
-  };
+  const [academicPeriod, setAcademicPeriod] = useState("2026-2027");
 
   return (
     <Box
@@ -55,29 +17,16 @@ export const ManagerLayout: React.FC<{ children: React.ReactNode }> = ({
         overflow: "hidden",
       }}
     >
-      <AppBar
-        position="static"
-        color="default"
-        sx={{ bgcolor: "background.paper" }}
-      >
-        <Toolbar
-          variant="dense"
-          sx={{ justifyContent: "space-between", gap: 2 }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <AssessmentIcon
+      {/* Topbar Padronizada do Gerente com nome da aplicação */}
+      <AppHeaderBar
+        extraHeaderActions={
+          <>
+            <Chip
+              label="Dashboard Executivo"
+              size="small"
               color="warning"
-              sx={{ cursor: "pointer" }}
-              onClick={() => navigate("/")}
+              variant="outlined"
             />
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 700, cursor: "pointer" }}
-              onClick={() => navigate("/")}
-            >
-              Dashboard Executivo & Relatórios
-            </Typography>
-
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <Select
                 value={academicPeriod}
@@ -89,76 +38,9 @@ export const ManagerLayout: React.FC<{ children: React.ReactNode }> = ({
                 <MenuItem value="2025-2026">Ciclo Acadêmico 2025/2026</MenuItem>
               </Select>
             </FormControl>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Tooltip
-              title={
-                isConnected
-                  ? "Conexão Real-time SSE Ativa"
-                  : "Desconectado do SSE"
-              }
-            >
-              <Chip
-                icon={<SignalCellularAltIcon fontSize="small" />}
-                label={isConnected ? "Real-time SSE" : "Offline"}
-                size="small"
-                color={isConnected ? "success" : "default"}
-                variant="outlined"
-              />
-            </Tooltip>
-
-            <Tooltip title="Alternar Modo Claro / Escuro">
-              <IconButton
-                onClick={toggleColorMode}
-                size="small"
-                color="inherit"
-              >
-                {mode === "dark" ? (
-                  <Brightness7Icon fontSize="small" />
-                ) : (
-                  <Brightness4Icon fontSize="small" />
-                )}
-              </IconButton>
-            </Tooltip>
-
-            <IconButton onClick={handleOpenUserMenu} size="small" sx={{ p: 0 }}>
-              <Avatar
-                sx={{
-                  width: 28,
-                  height: 28,
-                  bgcolor: "warning.main",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {user?.name?.charAt(0).toUpperCase() || "M"}
-              </Avatar>
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleCloseUserMenu}
-              transformOrigin={{ horizontal: "right", vertical: "top" }}
-              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-            >
-              <Box sx={{ px: 2, py: 1 }}>
-                <Typography variant="subtitle2">{user?.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Perfil: {user?.role}
-                </Typography>
-              </Box>
-              <MenuItem
-                onClick={handleLogout}
-                sx={{ gap: 1, color: "error.main" }}
-              >
-                <LogoutIcon fontSize="small" />
-                Sair
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Toolbar>
-      </AppBar>
+          </>
+        }
+      />
 
       <Box
         sx={{

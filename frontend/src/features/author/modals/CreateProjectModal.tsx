@@ -30,15 +30,15 @@ import {
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
-import { UserSearchAutocomplete } from "../../components/common/UserSearchAutocomplete";
-import { useCreateProjectMutation } from "../../hooks/useProjectQueries";
+import { StandardModal } from "../../../components/common/StandardModal";
+import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
+import { useCreateProjectMutation } from "../../../hooks/useProjectQueries";
 import {
   type CreateProjectFormData,
   createProjectSchema,
-} from "../../schemas/project.schema";
-import { type UserMemberItem } from "../../services/usersService";
-import { showNotification } from "../../store/slices/notificationSlice";
+} from "../../../schemas/project.schema";
+import { type UserMemberItem } from "../../../services/usersService";
+import { showNotification } from "../../../store/slices/notificationSlice";
 
 interface CreateProjectModalProps {
   open: boolean;
