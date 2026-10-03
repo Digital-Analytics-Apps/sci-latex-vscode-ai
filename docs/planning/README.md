@@ -1,6 +1,6 @@
 # 📚 Central de Planejamento & Documentação (`docs/planning`)
 
-Bem-vindo à Central de Documentação e Planejamento do **`sci-latex-vscode`**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
+Bem-vindo à Central de Documentação e Planejamento do **SCIA — Scientific Collaboration + AI**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
 
 ---
 

@@ -140,7 +140,7 @@ export const AuthorArticlesPage = () => {
 
   return (
     <Box sx={{ p: 4 }}>
-      <WelcomeHeader subtitle="Seja bem-vindo à Plataforma de Escrita Científica. Selecione um artigo para gerenciar suas tarefas e acessar o workspace." />
+      <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration + AI. Selecione um artigo para gerenciar suas tarefas e acessar o workspace." />
 
       {/* Painel de Busca & Filtros por Papel */}
       <TableFilterBar>
@@ -171,7 +171,7 @@ export const AuthorArticlesPage = () => {
 
       {/* Tabela de Artigos em DataGrid com AutoSizer */}
       <Card variant="outlined">
-        <CardContent sx={{ p: 0, height: 650, width: "100%" }}>
+        <CardContent sx={{ p: 0, height: 680, width: "100%" }}>
           <AutoSizer
             renderProp={({ height = 600, width }) => (
               <GenericDataGrid<ArticleItem>

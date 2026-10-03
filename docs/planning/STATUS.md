@@ -1,7 +1,7 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
-**Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
-**Última Atualização:** 01 de Outubro de 2026  
+**Projeto:** SCIA — Scientific Collaboration + AI (`sci-latex-vscode`)  
+**Última Atualização:** 02 de Outubro de 2026  
 **Status Geral do Projeto:** 🟢 **Arquitetura 100% Orientada a Personas (`src/features/author`, `src/features/reviewer`, `src/features/manager`, `src/features/coordinator`), Eliminação Completa da Pasta Genérica `src/features/dashboard/`, Componentes Compartilhados em `src/components/common/`, Tabela DataGrid de Artigos do Autor e Rotas Declarativas Concluídos com Sucesso.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
 
 ---

@@ -91,7 +91,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {...restCardProps}
     >
       <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {icon}
           <Typography
             variant="subtitle2"
@@ -102,7 +102,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           </Typography>
         </Box>
 
-        <Typography variant="h3" sx={{ fontWeight: 800, color, mb: 0.5 }}>
+        <Typography variant="h3" sx={{ fontWeight: 800, color }}>
           {isLoading ? <CircularProgress size={28} /> : value}
         </Typography>
 

@@ -75,7 +75,7 @@ export const ReviewerLayout: React.FC<{ children: React.ReactNode }> = ({
               sx={{ fontWeight: 700, cursor: "pointer" }}
               onClick={() => navigate("/")}
             >
-              Painel de Revisão & Parecer NIT
+              Painel de Revisão
             </Typography>
           </Box>
 

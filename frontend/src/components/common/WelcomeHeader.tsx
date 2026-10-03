@@ -22,7 +22,7 @@ export interface WelcomeHeaderProps {
 export const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({
   userName,
   title,
-  subtitle = "Seja bem-vindo à Plataforma de Escrita Científica.",
+  subtitle = "Seja bem-vindo ao SCIA — Scientific Collaboration + AI.",
   chipLabel,
   chipColor = "primary",
   action,

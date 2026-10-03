@@ -9,25 +9,28 @@ import {
   Card,
   CardContent,
   FormControl,
+  Grid,
   InputAdornment,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   TextField,
-  Typography,
 } from "@mui/material";
 import type { GridColDef, GridPaginationModel } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AutoSizer } from "react-virtualized-auto-sizer";
+import { createDateColumn } from "../../components/common/dataGridColumns";
 import { GenericDataGrid } from "../../components/common/GenericDataGrid";
+import { MetricCard } from "../../components/common/MetricCard";
 import {
   NITStatusChip,
   PRStatusChip,
 } from "../../components/common/StatusChips";
-import { useDebounce } from "../../hooks/useDebounce";
+import { WelcomeHeader } from "../../components/common/WelcomeHeader";
 import { useDashboardSummaryQuery } from "../../hooks/useDashboardQueries";
+import { useDebounce } from "../../hooks/useDebounce";
 import { useProjectsList } from "../../hooks/useProjectQueries";
 import {
   NITStatus,
@@ -36,7 +39,6 @@ import {
   usePendingReviews,
 } from "../../hooks/useReviewQueries";
 import { useUrlFilters } from "../../hooks/useUrlFilters";
-import { createDateColumn } from "../../components/common/dataGridColumns";
 import {
   AuthorCell,
   ProjectCell,
@@ -98,9 +100,10 @@ export const ReviewsListPage = () => {
   const { data, isLoading, isFetching } = usePendingReviews(apiParams);
 
   // Busca cirúrgica de métricas de KPI do Dashboard calculadas no backend (Prisma)
-  const { data: dashboardSummary } = useDashboardSummaryQuery({
-    projectId: filters.projectId,
-  });
+  const { data: dashboardSummary, isLoading: isLoadingDashboard } =
+    useDashboardSummaryQuery({
+      projectId: filters.projectId,
+    });
 
   const { data: allProjects = [] } = useProjectsList();
 
@@ -197,6 +200,41 @@ export const ReviewsListPage = () => {
     };
   }, [dashboardSummary?.metrics]);
 
+  // Configuração declarativa dos cards de métricas (DRY)
+  const metricCards = useMemo(
+    () => [
+      {
+        id: "pending-review",
+        title: "Em Avaliação",
+        value: metrics.pendingReview,
+        icon: <HourglassEmptyIcon color="warning" />,
+        color: "warning.main",
+      },
+      {
+        id: "waiting-nit",
+        title: "Pendente NIT",
+        value: metrics.waitingNIT,
+        icon: <GavelIcon color="info" />,
+        color: "info.main",
+      },
+      {
+        id: "approved",
+        title: "Seções Aprovadas",
+        value: metrics.approved,
+        icon: <CheckCircleIcon color="success" />,
+        color: "success.main",
+      },
+      {
+        id: "changes-requested",
+        title: "Ajustes Solicitados",
+        value: metrics.changesRequested,
+        icon: <FilterListIcon color="action" />,
+        color: "error.main",
+      },
+    ],
+    [metrics],
+  );
+
   // Modelo de Paginação conectado aos Filtros da URL
   const paginationModel = useMemo<GridPaginationModel>(() => {
     return {
@@ -278,173 +316,38 @@ export const ReviewsListPage = () => {
 
   return (
     <Box sx={{ p: 3, width: "100%", margin: "0 auto" }}>
-      {/* Cabeçalho da Página */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{ fontWeight: 700, mb: 0.5 }}
-          >
-            Painel de Revisão
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Avalie as seções dos artigos científicos submetidos pelos Autores,
-            inspecione diffs TeX.
-          </Typography>
-        </Box>
-      </Box>
+      <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration + AI. Avalie as seções dos artigos científicos submetidos pelos Autores, inspecione diffs TeX." />
 
       {/* Cards de Métricas (KPIs) */}
-      <Box
+      <Grid
+        direction="row"
+        container
         sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, 1fr)",
-            md: "repeat(4, 1fr)",
-          },
           gap: 2,
           mb: 3,
         }}
       >
-        <Card
-          variant="outlined"
-          sx={{ borderColor: "warning.main", bgcolor: "background.paper" }}
-        >
-          <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-            <Box
+        {metricCards.map((card) => (
+          <Grid key={card.id} sx={{ flexGrow: 1 }}>
+            <MetricCard
+              title={card.title}
+              value={card.value}
+              icon={card.icon}
+              color={card.color}
+              isLoading={isLoadingDashboard}
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                "& .MuiCardContent-root": {
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  gap: 2,
+                },
               }}
-            >
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ textTransform: "uppercase", fontWeight: 700 }}
-                >
-                  Em Avaliação
-                </Typography>
-                <Typography
-                  variant="h4"
-                  sx={{ fontWeight: 700, color: "warning.main" }}
-                >
-                  {metrics.pendingReview}
-                </Typography>
-              </Box>
-              <HourglassEmptyIcon color="warning" sx={{ fontSize: 32 }} />
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card
-          variant="outlined"
-          sx={{ borderColor: "info.main", bgcolor: "background.paper" }}
-        >
-          <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ textTransform: "uppercase", fontWeight: 700 }}
-                >
-                  Pendente NIT
-                </Typography>
-                <Typography
-                  variant="h4"
-                  sx={{ fontWeight: 700, color: "info.main" }}
-                >
-                  {metrics.waitingNIT}
-                </Typography>
-              </Box>
-              <GavelIcon color="info" sx={{ fontSize: 32 }} />
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card
-          variant="outlined"
-          sx={{ borderColor: "success.main", bgcolor: "background.paper" }}
-        >
-          <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ textTransform: "uppercase", fontWeight: 700 }}
-                >
-                  Seções Aprovadas
-                </Typography>
-                <Typography
-                  variant="h4"
-                  sx={{ fontWeight: 700, color: "success.main" }}
-                >
-                  {metrics.approved}
-                </Typography>
-              </Box>
-              <CheckCircleIcon color="success" sx={{ fontSize: 32 }} />
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card
-          variant="outlined"
-          sx={{ borderColor: "divider", bgcolor: "background.paper" }}
-        >
-          <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ textTransform: "uppercase", fontWeight: 700 }}
-                >
-                  Ajustes Solicitados
-                </Typography>
-                <Typography
-                  variant="h4"
-                  sx={{ fontWeight: 700, color: "error.main" }}
-                >
-                  {metrics.changesRequested}
-                </Typography>
-              </Box>
-              <FilterListIcon color="action" sx={{ fontSize: 32 }} />
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
+            />
+          </Grid>
+        ))}
+      </Grid>
 
       {/* Painel de Busca & Filtros Externos Sincronizados com a URL */}
       <Paper
@@ -566,7 +469,7 @@ export const ReviewsListPage = () => {
 
       {/* Tabela Acadêmica de Solicitações com GenericDataGrid & AutoSizer */}
       <Card variant="outlined">
-        <CardContent sx={{ p: 0, height: 520, width: "100%" }}>
+        <CardContent sx={{ p: 0, height: 570, width: "100%" }}>
           <AutoSizer
             renderProp={({ height = 520, width }) => (
               <GenericDataGrid<PullRequestDetail>

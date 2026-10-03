@@ -1,6 +1,6 @@
 # 📄 Documento de Requisitos do Produto (PRD)
 
-**Produto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
+**Produto:** SCIA — Scientific Collaboration + AI (Plataforma Web Self-Hosted)  
 **Versão:** 2.0 (Consolidada)  
 **Status:** Em Desenvolvimento Ativo  
 
@@ -16,7 +16,7 @@ Pesquisadores e grupos de acadêmicos enfrentam desafios ao redigir artigos cien
 * Dificuldade no acompanhamento de prazos rígidos de conferências científicas e gerenciamento de congressos alvos e congressos backups.
 
 ### A Solução
-O **`sci-latex-vscode`** é uma plataforma web **100% Self-Hosted** que disponibiliza um editor VS Code (`code-server`) totalmente embutido em um ambiente seguro e controlado (via **Kubernetes - KinD**), com:
+O **SCIA (Scientific Collaboration + AI)** é uma plataforma web **100% Self-Hosted** que disponibiliza um editor VS Code (`code-server`) totalmente embutido em um ambiente seguro e controlado (via **Kubernetes - KinD**), com:
 * **Provisionamento Git Automatizado:** Repositórios criados no GitHub via Conta de Serviço (sem necessidade de chaves SSH para os usuários).
 * **Compilação TeX Nativa:** Visualização instantânea de PDF lado a lado com auto-build no salvamento.
 * **Fluxo de Revisão e NIT:** Módulo de Pull Requests, diff visual LaTeX, painel de comentários por linha e registro de parecer institucional NIT.

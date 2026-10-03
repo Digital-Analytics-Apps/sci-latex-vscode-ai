@@ -68,7 +68,7 @@ export const AuthorLayout: React.FC<{ children: React.ReactNode }> = ({
               sx={{ fontWeight: 700, color: "primary.main", cursor: "pointer" }}
               onClick={() => navigate("/")}
             >
-              SCI-LaTeX Workspace
+              SCIA — Scientific Collaboration + AI
             </Typography>
           </Box>
 
