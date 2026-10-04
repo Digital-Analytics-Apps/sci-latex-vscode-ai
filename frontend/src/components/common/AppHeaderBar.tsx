@@ -140,7 +140,7 @@ export const AppHeaderBar = ({
 
           <IconButton onClick={handleOpenUserMenu} size="small" sx={{ p: 0 }}>
             <UserAvatar
-              user={user}
+              user={user ?? undefined}
               role={user?.role}
               size={28}
               showTooltip={false}

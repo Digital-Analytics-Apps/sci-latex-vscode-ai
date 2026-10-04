@@ -12,6 +12,8 @@ export interface ProjectDetails {
   submissionStatus: SubmissionStatus;
   targetConferenceName?: string | null;
   targetConferenceDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   stages?: ProjectStage[];
   tasks?: TaskSummary[];
   members: ProjectMember[];

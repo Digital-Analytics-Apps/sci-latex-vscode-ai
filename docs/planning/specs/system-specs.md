@@ -442,16 +442,20 @@ enum WorkspaceStatus {
 model Task {
   id            String         @id @default(uuid())
   projectId     String
-  assignedToId  String
+  assignedToId  String?
+  stageId       String?
   title         String
   branchName    String
   status        TaskStatus     @default(NOT_STARTED)
+  startDate     DateTime?
+  startedAt     DateTime?
   dueDate       DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee      User           @relation("UserTasks", fields: [assignedToId], references: [id])
+  stage         ProjectStage?  @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  assignee      User?          @relation("UserTasks", fields: [assignedToId], references: [id])
   pullRequests  PullRequest[]  @relation("TaskPullRequest")
   workspaces    Workspace[]
 }

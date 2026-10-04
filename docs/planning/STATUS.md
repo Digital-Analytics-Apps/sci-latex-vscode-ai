@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration + AI (`sci-latex-vscode`)  
-**Última Atualização:** 03 de Outubro de 2026  
-**Status Geral do Projeto:** 🟢 **Arquitetura Orientada a Personas (`src/features/author`, `src/features/reviewer`, `src/features/manager`, `src/features/coordinator`), Organização DDD do Domínio de Autor (`src/features/author/components` & `src/features/author/modals`), Desacoplamento Estrito do Módulo Workspace (`src/features/workspace` focado 100% na Sessão IDE), Padronização DataGrid + Filtros com `useTableFilters` e Correção do Flashing/Re-render.** 100% dos testes Vitest (18 suítes / 63 testes) e compilações TypeScript (backend & frontend) passando com 0 erros.
+**Última Atualização:** 04 de Outubro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura Orientada a Personas & Linha do Tempo Gantt Refatorada com Propagação no Banco.** Adicionados os campos `startedAt` e `startDate` no modelo Prisma `Task`, propagação automática de status `IN_PROGRESS` e `startedAt` para a Etapa Pai (`ProjectStage`) no backend, eliminação de mascaramento de dados no frontend, tipagens fortes DTO em `task.types.ts` e `project.types.ts`, e estilização das barras do Gantt com RGBA visíveis e marcos verticais. 100% dos builds TypeScript (backend & frontend) e linter sem erros.
 
 ---
 
@@ -12,29 +12,18 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Reorganização DDD por Domínio de Autor & Padronização de Componentes Comuns:**
-    * **Criação do Componente Reutilizável de Topbar (`AppHeaderBar.tsx`)**:
-      * Criado [`src/components/common/AppHeaderBar.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/components/common/AppHeaderBar.tsx) encapsulando o padrão visual do `AuthorLayout`: marca clicável com navegação `/`, chip de status SSE em tempo real, alternador de tema claro/escuro (`useColorMode`), avatar do usuário com iniciais e menu dropdown de perfil e logout.
-      * Refatorados todos os layouts de persona ([`AuthorLayout.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/layouts/AuthorLayout.tsx), [`CoordinatorLayout.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/layouts/CoordinatorLayout.tsx), [`ManagerLayout.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/layouts/ManagerLayout.tsx), [`ReviewerLayout.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/layouts/ReviewerLayout.tsx)) para utilizar `<AppHeaderBar />` eliminando duplicidade de código.
-    * **Criação dos Containers Reutilizáveis de Layout (`PageContainer` & `TableContainer`)**:
-      * Criados [`src/components/common/PageContainer.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/components/common/PageContainer.tsx) e [`src/components/common/TableContainer.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/components/common/TableContainer.tsx) para padronizar o layout flexbox coluna e medição exata do `<AutoSizer>`.
-    * **Limpeza Cirúrgica do Módulo `workspace`**: A pasta `src/features/workspace/` foi isolada para concentrar **exclusivamente** os componentes da sessão ativa do editor IDE (`WorkspacePage.tsx`, `CodeServerIframe.tsx`, `SaveProgressModal.tsx`, `CreatePRModal.tsx`).
-    * **Migração das Células & Tabela de Tarefas para Autor (`src/features/author/components/`)**:
-      * `AuthorTasksTable.tsx` e `TaskDataGridCells.tsx` foram movidos para `src/features/author/components/`, alinhando-se à governança do artigo do autor.
-    * **Migração dos Modais de Governança para Autor (`src/features/author/modals/`)**:
-      * `AddMemberModal.tsx`, `CreateProjectModal.tsx`, `CreateStageModal.tsx`, `CreateTaskModal.tsx`, `ProjectSettingsModal.tsx` e `ReleaseCandidatesModal.tsx` foram reestruturados sob `src/features/author/modals/`.
-    * **Atualização Geral de Importações**: Todas as referências em `ArticleDetailPage.tsx`, `AuthorArticlesPage.tsx` e `ManagerDashboardPage.tsx` foram atualizadas.
-  * **Estabilização de Desempenho & Resolução de Re-renders / Flashing nos Filtros:**
-    * **Correção do Loop Layout/Feedback no `AutoSizer`**: Refatorado o container `<GenericDataGrid>` para utilizar layout Flexbox (`height: height`, `flex: "0 0 auto"` no header, `flex: 1, minHeight: 0` no `CardContent`), prevenindo que a adição de `headerToolbarContent` altere recursivamente o cálculo de altura do `AutoSizer`.
-    * **Correção do Flashing no Reset de Busca (`useTableFilters`)**: Ajustado o hook `useTableFilters.ts` para ignorar timers de debounce pendentes quando `searchTerm === ""`, limpando instantaneamente a URL sem repassar valores defasados.
-    * **Estabilização de Referência `apiParams` (`useUrlFilters`)**: Implementada comparação em memória via `useRef` e `JSON.stringify` no `useUrlFilters.ts`, garantindo que o objeto `apiParams` mantenha igualdade referencial e não dispare re-execuções desnecessárias no TanStack Query.
-  * **Padrão Declarativo de Filtros (`TableHeaderFilterToolbar` & `useTableFilters`):**
-    * Refatorado o componente `TableHeaderFilterToolbar<TFilterState>` em `src/components/common/TableFilters.tsx` para tipagem genérica forte e suporte a slots declarativos (`search`, `selectFilters`, `actions`, `clearFilters`).
-    * Atualizado o standard em `~/.gemini/config/skills/datagrid-table-standard/SKILL.md`.
-  * **Qualidade, Linter e Testes Automatizados:**
-    * **Backend (`npm run build` / `npx tsc`):** 0 erros de compilação.
-    * **Backend (`npm test`):** 100% das 18 suítes e 63 testes unitários/integração aprovados.
-    * **Frontend (`npx tsc --noEmit` & `npm run lint`):** 0 erros de compilação ou linter em todo o projeto.
+  * **Persistência de Início de Tarefas & Propagação no Banco (Backend/Prisma):**
+    * **Schema Prisma (`backend/prisma/schema.prisma`)**: Adicionados os campos `startDate DateTime?` e `startedAt DateTime?` no modelo `Task`. Executados `npx prisma db push` e `npx prisma generate` para sincronização completa com o banco PostgreSQL.
+    * **Propagação de Status em `tasks.service.ts`**: Ao iniciar o workspace de uma tarefa (`startTaskWorkspace`), o backend atualiza a `Task` (`status: IN_PROGRESS`, `startedAt: now`, `startDate: now`) e propaga o status para a Etapa Pai (`ProjectStage` com `status: IN_PROGRESS`, `startedAt: now`).
+    * **Integridade da Arquitetura**: Eliminados os fallbacks artificiais do frontend (`isStageStarted` e `startDateStr`), garantindo que o Gantt reflita estritamente o estado real do banco de dados sem ocultar bugs.
+  * **Tipagem Forte DTOs & Compilação TypeScript:**
+    * **`task.types.ts`**: Atualizadas as interfaces `TaskItem` e `TaskSummary` incluindo `startedAt?: string`, `startDate?: string`, `createdAt?: string`, `updatedAt?: string`, `dueDate?: string` opcional e o array de `pullRequests`.
+    * **`project.types.ts`**: Adicionados `createdAt?: string | null` e `updatedAt?: string | null` em `ProjectDetails`.
+    * **Verificação de Compilação**: Executados `npm run build` no backend e `npm run build` no frontend com **0 erros de compilação** e **0 warnings no ESLint**.
+  * **Visão de Linha do Tempo & Gráfico de Gantt Interativo (AI-Powered GanttView):**
+    * **Componentes de Gantt (`src/features/author/components/gantt/`)**: Refatorados [`GanttTimelineView.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttTimelineView.tsx), [`GanttChartGrid.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttChartGrid.tsx), [`GanttHeaderStats.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttHeaderStats.tsx), [`GanttTableTree.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttTableTree.tsx), [`GanttTaskDetailDrawer.tsx`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttTaskDetailDrawer.tsx) e [`ganttUtils.ts`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/ganttUtils.ts).
+    * Preenchimento gradativo do tempo decorrido com RGBA visível (`rgba(99, 102, 241, 0.35)` em progresso e `rgba(34, 197, 94, 0.35)` concluídas), bordas pontilhadas para tarefas não iniciadas.
+    * Marcos verticais: **Início Artigo** (`projectCreatedAt`), **Hoje** e **Submissão ao Congresso Target**.
 
 ---
 

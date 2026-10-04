@@ -6,6 +6,8 @@ export interface CreateTaskData {
   assignedToId?: string | null;
   title: string;
   branchName?: string;
+  startDate?: Date;
+  startedAt?: Date;
   dueDate?: Date;
   status?: TaskStatus;
   stageId?: string;
@@ -14,6 +16,8 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   branchName?: string;
+  startDate?: Date;
+  startedAt?: Date;
   dueDate?: Date;
   status?: TaskStatus;
   assignedToId?: string | null;

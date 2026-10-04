@@ -144,8 +144,8 @@ export const TaskAssigneeCell = ({
   const isUnassigned =
     !row.assignedToId &&
     (!row.assignee ||
-      row.assignee === "Não atribuído" ||
-      (typeof row.assignee === "object" && !(row.assignee as any).name));
+      (typeof row.assignee === "string" && row.assignee === "Não atribuído") ||
+      (typeof row.assignee === "object" && !(row.assignee as { name?: string }).name));
 
   const isAssignedToMe = row.assignedToId === currentUserId;
   const isOccupied = Boolean(row.isOccupied && row.occupiedBy);

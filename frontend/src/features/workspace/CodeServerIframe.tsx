@@ -34,7 +34,7 @@ export const CodeServerIframe = ({
         width: "100%",
         height: "100%",
         position: "relative",
-        bgcolor: "#0b0f17",
+        // bgcolor: "#0b0f17",
       }}
     >
       {isLoading && (

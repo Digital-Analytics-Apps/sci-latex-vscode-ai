@@ -327,7 +327,7 @@ export class TasksService {
       }
     }
 
-    if (!task || task.projectId !== projectId) {
+    if (task?.projectId !== projectId) {
       throw new Error('TASK_NOT_FOUND: A tarefa especificada não foi encontrada no projeto.');
     }
 
@@ -418,11 +418,28 @@ export class TasksService {
       },
     });
 
-    // Se o status da task ainda era NOT_STARTED, avança para IN_PROGRESS
+    // Se o status da task ainda era NOT_STARTED, avança para IN_PROGRESS e salva a data de início real no banco
+    const now = new Date();
     if (task.status === TaskStatus.NOT_STARTED) {
       task = await this.tasksRepository.update(task.id, {
         status: TaskStatus.IN_PROGRESS,
+        startedAt: task.startedAt ?? now,
+        startDate: task.startDate ?? now,
       });
+    }
+
+    // Propaga o início para a Etapa Pai (ProjectStage) no banco de dados se ela ainda estiver NOT_STARTED
+    if (task.stageId) {
+      const parentStage = await prisma.projectStage.findUnique({ where: { id: task.stageId } });
+      if (parentStage?.status === 'NOT_STARTED') {
+        await prisma.projectStage.update({
+          where: { id: task.stageId },
+          data: {
+            status: 'IN_PROGRESS',
+            startedAt: parentStage.startedAt ?? now,
+          },
+        });
+      }
     }
 
     // Atualiza o status da issue no GitHub Project v2 para "In Progress"
@@ -431,7 +448,7 @@ export class TasksService {
       .catch(() => null);
 
     if (integration?.githubProjectV2Id) {
-      const issueMatch = task.branchName.match(/^task\/(\d+)-/);
+      const issueMatch = new RegExp(/^task\/(\d+)-/).exec(task.branchName);
       if (issueMatch) {
         const issueNumber = Number.parseInt(issueMatch[1], 10);
         try {

@@ -32,11 +32,11 @@ export const UserAvatar = ({
   ...restAvatarProps
 }: UserAvatarProps) => {
   const name = member?.user?.name || user?.name || nameProp;
-  if (!name) return null;
+  if (!name || typeof name !== "string") return null;
 
   const role = member?.role || user?.role || roleProp;
   const title = tooltipTitle || (role ? `${name} (${role})` : name);
-  const initial = name[0].toUpperCase();
+  const initial = name.charAt(0).toUpperCase();
   const avatarId = member?.userId || member?.id || user?.id || name;
 
   // Usa cor determinística se explicitado ou se for membro de lista; caso contrário usa cor padrão do tema

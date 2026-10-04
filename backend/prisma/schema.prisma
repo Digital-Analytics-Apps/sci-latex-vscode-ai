@@ -331,6 +331,8 @@ model Task {
   title        String
   branchName   String
   status       TaskStatus @default(NOT_STARTED)
+  startDate    DateTime?
+  startedAt    DateTime?
   dueDate      DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

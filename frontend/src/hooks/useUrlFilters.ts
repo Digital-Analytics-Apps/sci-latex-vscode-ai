@@ -9,19 +9,31 @@ import {
 export function useUrlFilters<T extends Record<string, any>>(defaultValues: T) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Parse current state from URL search params using defaultValues
-  const filters: T = useMemo(() => {
-    return parseUrlParams(searchParams, defaultValues);
-  }, [searchParams, defaultValues]);
+  // Garante referência estável para defaultValues baseada na serialização JSON
+  const defaultValuesSerialized = JSON.stringify(defaultValues);
+  const stableDefaultValues: T = useMemo(
+    () => JSON.parse(defaultValuesSerialized),
+    [defaultValuesSerialized],
+  );
 
-  // Update filters state & sync with URL while preserving unmanaged search params
+  // Parse do estado atual a partir dos parâmetros de busca da URL
+  const filters: T = useMemo(() => {
+    return parseUrlParams(searchParams, stableDefaultValues);
+  }, [searchParams, stableDefaultValues]);
+
+  // Limpeza cirúrgica de parâmetros para chamadas de API (React Query / Axios) com referência estável
+  const apiParams = useMemo(() => {
+    return buildCleanApiParams(filters, stableDefaultValues);
+  }, [filters, stableDefaultValues]);
+
+  // Atualiza os filtros e sincroniza com a URL preservando parâmetros não gerenciados
   const setFilters = useCallback(
     (newFilters: Partial<T> | ((prev: T) => Partial<T>)) => {
       setSearchParams(
         (prevSearchParams) => {
           const currentFilters = parseUrlParams(
             prevSearchParams,
-            defaultValues,
+            stableDefaultValues,
           );
           const updated =
             typeof newFilters === "function"
@@ -35,39 +47,37 @@ export function useUrlFilters<T extends Record<string, any>>(defaultValues: T) {
 
           return serializeToSearchParams(
             merged,
-            defaultValues,
+            stableDefaultValues,
             prevSearchParams,
           );
         },
         { replace: true },
       );
     },
-    [setSearchParams, defaultValues],
+    [setSearchParams, stableDefaultValues],
   );
 
-  // Clean params object for React Query / Axios API calls
-  const apiParams = useMemo(() => {
-    return buildCleanApiParams(filters, defaultValues);
-  }, [filters, defaultValues]);
-
-  // Resets ONLY managed filter keys, keeping other URL params (like article/projectId) intact
+  // Reseta APENAS as chaves gerenciadas de filtro, mantendo outros parâmetros da URL intactos
   const resetFilters = useCallback(() => {
     setSearchParams(
       (prevSearchParams) => {
         const nextParams = new URLSearchParams(prevSearchParams);
-        for (const key of Object.keys(defaultValues)) {
+        for (const key of Object.keys(stableDefaultValues)) {
           nextParams.delete(key);
         }
         return nextParams;
       },
       { replace: true },
     );
-  }, [setSearchParams, defaultValues]);
+  }, [setSearchParams, stableDefaultValues]);
 
-  return {
-    filters,
-    setFilters,
-    apiParams,
-    resetFilters,
-  };
+  return useMemo(
+    () => ({
+      filters,
+      setFilters,
+      apiParams,
+      resetFilters,
+    }),
+    [filters, setFilters, apiParams, resetFilters],
+  );
 }
