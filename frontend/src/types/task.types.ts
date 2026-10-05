@@ -54,6 +54,7 @@ export interface TaskItem {
   };
   isOccupied?: boolean;
   occupiedBy?: { id: string; name: string } | null;
+  isBlockedByPrevious?: boolean;
 }
 
 export interface CreateTaskInput {

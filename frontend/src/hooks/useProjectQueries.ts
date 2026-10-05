@@ -5,6 +5,7 @@ import {
   type ProjectListItem,
   projectsService,
 } from "../services/projectsService";
+import type { CreateStageInput } from "../types/stage.types";
 
 // Hook para buscar a lista de projetos/artigos aos quais o usuário tem acesso
 export function useProjectsList(filters?: {
@@ -46,8 +47,8 @@ export function useSaveProgressMutation(projectId: string) {
   return useMutation({
     mutationFn: (data: { taskId: string; commitMessage?: string }) =>
       projectsService.saveProgress(projectId, data.taskId, data.commitMessage),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
 }
@@ -59,9 +60,9 @@ export function useCreatePRMutation(projectId: string) {
   return useMutation({
     mutationFn: (data: CreatePRFormData) =>
       projectsService.createPullRequest(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
     },
   });
 }
@@ -82,9 +83,9 @@ export function useMergePRMutation(projectId: string) {
   return useMutation({
     mutationFn: (pullRequestId: string) =>
       projectsService.mergePullRequest(pullRequestId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
     },
   });
 }
@@ -94,17 +95,14 @@ export function useCreateStageMutation(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: {
-      title: string;
-      order?: number;
-      description?: string;
-    }) => projectsService.createProjectStage(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({
+    mutationFn: (data: CreateStageInput) =>
+      projectsService.createProjectStage(projectId, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      await queryClient.invalidateQueries({
         queryKey: ["project-stages", projectId],
       });
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
     },
   });
 }
@@ -124,12 +122,12 @@ export function useUpdateStageMutation(projectId: string) {
         order: data.order,
         status: data.status,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      await queryClient.invalidateQueries({
         queryKey: ["project-stages", projectId],
       });
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
     },
   });
 }
@@ -140,12 +138,12 @@ export function useDeleteStageMutation(projectId: string) {
   return useMutation({
     mutationFn: (stageId: string) =>
       projectsService.deleteProjectStage(projectId, stageId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      await queryClient.invalidateQueries({
         queryKey: ["project-stages", projectId],
       });
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
     },
   });
 }
@@ -178,10 +176,25 @@ export function useCreateProjectMutation() {
         reviewerId: data.reviewerId,
         stages: data.stages,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["articles"] });
-      queryClient.invalidateQueries({ queryKey: ["user-articles"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await queryClient.invalidateQueries({ queryKey: ["articles"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-articles"] });
+    },
+  });
+}
+
+// Mutação para Adicionar Membro ao Artigo
+export function useAddProjectMemberMutation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { userId: string; role: string }) =>
+      projectsService.addProjectMember(projectId, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-articles"] });
     },
   });
 }

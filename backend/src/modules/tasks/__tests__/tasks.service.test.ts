@@ -74,10 +74,11 @@ describe('TasksService (Unit Tests)', () => {
       projectId: 'proj-1',
       assignedToId: 'user-1',
       title: 'Escrever a Introdução',
+      stageId: 'stage-1',
     });
 
     expect(mockTasksRepository.create).toHaveBeenCalled();
-    expect(result.branchName).toBe('task/escrever-a-introducao-proj-1');
+    expect(result.branchName).toMatch(/^task\/escrever-a-introducao-[a-f0-9-]{6}$/);
   });
 
   it('should list tasks for a project', async () => {
@@ -95,8 +96,22 @@ describe('TasksService (Unit Tests)', () => {
       assignedToId: undefined,
     });
     expect(result).toEqual([
-      { id: 'task-1', title: 'Task 1', projectId: 'proj-1', isOccupied: false, occupiedBy: null },
-      { id: 'task-2', title: 'Task 2', projectId: 'proj-1', isOccupied: false, occupiedBy: null },
+      {
+        id: 'task-1',
+        title: 'Task 1',
+        projectId: 'proj-1',
+        isOccupied: false,
+        occupiedBy: null,
+        isBlockedByPrevious: false,
+      },
+      {
+        id: 'task-2',
+        title: 'Task 2',
+        projectId: 'proj-1',
+        isOccupied: false,
+        occupiedBy: null,
+        isBlockedByPrevious: false,
+      },
     ]);
   });
 });

@@ -145,10 +145,13 @@ export const TaskAssigneeCell = ({
     !row.assignedToId &&
     (!row.assignee ||
       (typeof row.assignee === "string" && row.assignee === "Não atribuído") ||
-      (typeof row.assignee === "object" && !(row.assignee as { name?: string }).name));
+      (typeof row.assignee === "object" &&
+        !(row.assignee as { name?: string }).name));
 
   const isAssignedToMe = row.assignedToId === currentUserId;
-  const isOccupied = Boolean(row.isOccupied && row.occupiedBy);
+  const isOccupiedByOther = Boolean(
+    row.isOccupied && row.occupiedBy && row.occupiedBy.id !== currentUserId,
+  );
   const occupiedByName = row.occupiedBy?.name || "outro autor";
 
   if (isUnassigned) {
@@ -166,7 +169,7 @@ export const TaskAssigneeCell = ({
           }}
         />
         {onClaimTask &&
-          (isOccupied ? (
+          (isOccupiedByOther ? (
             <Tooltip
               title={`🔒 Em uso por ${occupiedByName}. O workspace está aberto no momento.`}
             >
@@ -202,7 +205,7 @@ export const TaskAssigneeCell = ({
                   <HowToRegIcon sx={{ fontSize: 16 }} />
                 )
               }
-              onClick={() => void onClaimTask(row.id)}
+              onClick={() => onClaimTask(row.id)}
               sx={{
                 fontWeight: 700,
                 fontSize: "0.75rem",
@@ -275,8 +278,8 @@ export const TaskAssigneeCell = ({
       {isAssignedToMe && onUnclaimTask && (
         <Tooltip
           title={
-            isOccupied
-              ? `🔒 Workspace aberto por ${occupiedByName}. Feche a sessão antes de desassinar.`
+            isOccupiedByOther
+              ? `🔒 Workspace aberto por ${occupiedByName}.`
               : "Desassinar tarefa (liberar para outros autores)"
           }
         >
@@ -285,11 +288,11 @@ export const TaskAssigneeCell = ({
               variant="outlined"
               color="secondary"
               size="small"
-              disabled={isUnclaiming || isOccupied}
+              disabled={isUnclaiming || isOccupiedByOther}
               startIcon={
                 isUnclaiming ? (
                   <CircularProgress size={14} color="inherit" />
-                ) : isOccupied ? (
+                ) : isOccupiedByOther ? (
                   <LockIcon sx={{ fontSize: 16 }} />
                 ) : (
                   <PersonRemoveIcon sx={{ fontSize: 16 }} />
@@ -314,7 +317,7 @@ export const TaskAssigneeCell = ({
       {!isAssignedToMe && onClaimTask && (
         <Tooltip
           title={
-            isOccupied
+            isOccupiedByOther
               ? `🔒 Workspace aberto no momento por ${occupiedByName}.`
               : "Assumir esta tarefa e criar/abrir seu workspace na branch remota"
           }
@@ -324,7 +327,7 @@ export const TaskAssigneeCell = ({
               variant="outlined"
               color="primary"
               size="small"
-              disabled={isClaiming || isOccupied}
+              disabled={isClaiming || isOccupiedByOther}
               startIcon={
                 isClaiming ? (
                   <CircularProgress size={14} color="inherit" />
@@ -458,6 +461,25 @@ export const TaskActionCell = ({
     );
   }
 
+  if (row.isBlockedByPrevious) {
+    return (
+      <Tooltip title="🔒 Esta sub-tarefa precisa aguardar a conclusão e merge da sub-tarefa anterior da mesma etapa.">
+        <span>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            disabled
+            startIcon={<LockIcon fontSize="small" />}
+            sx={{ fontWeight: 600, fontSize: "0.75rem" }}
+          >
+            Aguardando Anterior
+          </Button>
+        </span>
+      </Tooltip>
+    );
+  }
+
   // Tarefa atribuída ao usuário atual: Botão Iniciar Workspace
   if (isAssignedToMe) {
     return (
@@ -482,7 +504,7 @@ export const TaskActionCell = ({
   }
 
   // Tarefa não atribuída ao usuário atual
-  if (row.isOccupied && row.occupiedBy) {
+  if (row.isOccupied && row.occupiedBy && row.occupiedBy.id !== currentUserId) {
     return (
       <Button
         variant="outlined"

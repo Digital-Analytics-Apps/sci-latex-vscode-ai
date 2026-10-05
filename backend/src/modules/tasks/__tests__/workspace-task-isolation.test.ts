@@ -57,6 +57,7 @@ describe('Workspace Task Isolation (User + Article + Task)', () => {
     const taskA = {
       id: 'task-a-111',
       projectId: testProjectId,
+      assignedToId: testUserId,
       title: 'Task A - Introdução',
       branchName: 'task/111-introducao',
       status: 'NOT_STARTED',
@@ -64,6 +65,7 @@ describe('Workspace Task Isolation (User + Article + Task)', () => {
     const taskB = {
       id: 'task-b-222',
       projectId: testProjectId,
+      assignedToId: testUserId,
       title: 'Task B - Metodologia',
       branchName: 'task/222-metodologia',
       status: 'NOT_STARTED',
@@ -132,6 +134,7 @@ describe('Workspace Task Isolation (User + Article + Task)', () => {
     const taskA = {
       id: 'task-a-333',
       projectId: testProjectId,
+      assignedToId: testUserId,
       title: 'Task A - Referencial',
       branchName: 'task/333-referencial',
       status: 'IN_PROGRESS',
@@ -166,6 +169,7 @@ describe('Workspace Task Isolation (User + Article + Task)', () => {
     const taskConcurrent = {
       id: 'task-conc-444',
       projectId: testProjectId,
+      assignedToId: testUserId,
       title: 'Task Concorrente',
       branchName: 'task/444-concorrente',
       status: 'NOT_STARTED',

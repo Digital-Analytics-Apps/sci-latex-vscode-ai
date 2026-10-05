@@ -55,7 +55,7 @@ export class ClassificationService {
   // Classifica a lista de alterações e verifica se há modificações além do arquivo principal
   classifyDiffFacts(
     facts: RawFileDiffFact[],
-    taskTitle?: string
+    _taskTitle?: string
   ): { classifiedFiles: ClassifiedFileDiff[]; hasChangesInOtherFiles: boolean } {
     const classifiedFiles = facts.map((fact) => this.classifyFile(fact));
 

@@ -48,7 +48,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { StandardModal } from "../../../components/common/StandardModal";
 import { StageStatus } from "../../../constants/status";
@@ -78,6 +78,61 @@ interface ProjectSettingsModalProps {
   onDeleteStage?: (stageId: string) => void;
   onReorderStages?: (stages: { id: string; order: number }[]) => void;
 }
+
+function getStagePlannedDateString(stage: ProjectStage): string {
+  const rawDate = stage.plannedCompletionDate || stage.plannedEndAt;
+  if (!rawDate) return "";
+  return new Date(rawDate).toISOString().split("T")[0];
+}
+
+function getGatekeeperStatusChipProps(
+  status: StageStatus,
+  isLocked: boolean,
+): { label: string; color: "success" | "warning" | "default" } {
+  if (status === StageStatus.COMPLETED) {
+    return { label: "✓ Aprovada", color: "success" };
+  }
+  if (isLocked) {
+    return {
+      label: "🔒 Bloqueada (Aguardando etapas de escrita)",
+      color: "warning",
+    };
+  }
+  return { label: "Pendente", color: "default" };
+}
+
+function getRcStatusChipProps(status: string): {
+  label: string;
+  color: "success" | "error" | "warning";
+} {
+  if (status === "APPROVED") {
+    return { label: "✓ Aprovada", color: "success" };
+  }
+  if (status === "CHANGES_REQUESTED") {
+    return { label: "Ajustes Solicitados", color: "error" };
+  }
+  return { label: "Em Avaliação", color: "warning" };
+}
+
+const EmptyStateCard = ({ message }: { message: string }) => (
+  <Paper
+    variant="outlined"
+    sx={{
+      p: 2,
+      textAlign: "center",
+      color: "text.secondary",
+      borderRadius: 2,
+    }}
+  >
+    {message}
+  </Paper>
+);
+
+const LoadingStateSpinner = () => (
+  <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+    <CircularProgress size={24} />
+  </Box>
+);
 
 interface SortableStageRowProps {
   stage: ProjectStage;
@@ -117,6 +172,8 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
+
+  const plannedDateValue = getStagePlannedDateString(stage);
 
   return (
     <Paper
@@ -285,15 +342,7 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
                   shrink: true,
                 },
               }}
-              value={
-                stage.plannedCompletionDate
-                  ? new Date(stage.plannedCompletionDate)
-                      .toISOString()
-                      .split("T")[0]
-                  : stage.plannedEndAt
-                    ? new Date(stage.plannedEndAt).toISOString().split("T")[0]
-                    : ""
-              }
+              value={plannedDateValue}
               onChange={(e) =>
                 onUpdateStageField?.(
                   stage.id,
@@ -356,7 +405,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const membersList = projectDetails?.members || [];
 
   // Sincroniza estado rascunho sempre que o modal abre
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalStages(stages || []);
@@ -489,9 +538,32 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
     e.preventDefault();
     setIsSaving(true);
     try {
-      // 1. Processa remoções de etapas
-      for (const stageId of deletedStageIds) {
-        await projectsService.deleteProjectStage(projectId, stageId);
+      // TODO / NOTE: A data limite da etapa não pode ser maior que a data de submissão do artigo (targetConferenceDate/backupConferenceDate).
+      // No futuro, avaliar se esta data também deverá ser estritamente menor/respeitar a data do NIT.
+      if (targetConferenceDate) {
+        for (const localStage of localStages) {
+          const sDate =
+            localStage.plannedCompletionDate || localStage.plannedEndAt;
+          if (sDate && new Date(sDate) > new Date(targetConferenceDate)) {
+            dispatch(
+              showNotification({
+                message: `A data limite da etapa "${localStage.title}" não pode ser maior que a data de submissão do artigo.`,
+                severity: "error",
+              }),
+            );
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+
+      // 1. Processa remoções de etapas em paralelo
+      if (deletedStageIds.length > 0) {
+        await Promise.all(
+          deletedStageIds.map((stageId) =>
+            projectsService.deleteProjectStage(projectId, stageId),
+          ),
+        );
       }
 
       // 2. Atualiza reordenação de etapas customizadas
@@ -504,17 +576,21 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
         await projectsService.reorderProjectStages(projectId, reorderList);
       }
 
-      // 3. Atualiza dados, status e prazos de etapas alteradas
-      for (const localStage of localStages) {
-        const orig = stages.find((s) => s.id === localStage.id);
-        if (
-          orig &&
-          (orig.status !== localStage.status ||
-            orig.title !== localStage.title ||
-            orig.description !== localStage.description ||
-            orig.plannedCompletionDate !== localStage.plannedCompletionDate)
-        ) {
-          await projectsService.updateProjectStage(projectId, localStage.id, {
+      // 3. Atualiza dados, status e prazos de etapas alteradas em paralelo
+      const updatePromises = localStages
+        .filter((localStage) => {
+          const orig = stages.find((s) => s.id === localStage.id);
+          return (
+            orig &&
+            (orig.status !== localStage.status ||
+              orig.title !== localStage.title ||
+              orig.description !== localStage.description ||
+              orig.plannedCompletionDate !== localStage.plannedCompletionDate)
+          );
+        })
+        .map((localStage) => {
+          const orig = stages.find((s) => s.id === localStage.id)!;
+          return projectsService.updateProjectStage(projectId, localStage.id, {
             title:
               localStage.title !== orig.title ? localStage.title : undefined,
             description:
@@ -528,7 +604,10 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 ? localStage.plannedCompletionDate
                 : undefined,
           });
-        }
+        });
+
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
       }
 
       // 4. Atualiza metadados do projeto
@@ -689,6 +768,10 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 const isLocked =
                   !writingStagesCompleted &&
                   stage.status !== StageStatus.COMPLETED;
+                const chipProps = getGatekeeperStatusChipProps(
+                  stage.status,
+                  isLocked,
+                );
                 return (
                   <Paper
                     key={stage.id}
@@ -716,20 +799,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                     </Box>
 
                     <Chip
-                      label={
-                        stage.status === StageStatus.COMPLETED
-                          ? "✓ Aprovada"
-                          : isLocked
-                            ? "🔒 Bloqueada (Aguardando etapas de escrita)"
-                            : "Pendente"
-                      }
-                      color={
-                        stage.status === StageStatus.COMPLETED
-                          ? "success"
-                          : isLocked
-                            ? "warning"
-                            : "default"
-                      }
+                      label={chipProps.label}
+                      color={chipProps.color}
                       size="small"
                       sx={{ fontWeight: 700 }}
                     />
@@ -777,18 +848,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
           <Stack spacing={1.5}>
             {membersList.length === 0 ? (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 3,
-                  textAlign: "center",
-                  color: "text.secondary",
-                  borderRadius: 2,
-                }}
-              >
-                Nenhum membro adicional vinculado. Clique no botão acima para
-                adicionar autores ou revisores.
-              </Paper>
+              <EmptyStateCard message="Nenhum membro adicional vinculado. Clique no botão acima para adicionar autores ou revisores." />
             ) : (
               membersList.map((m: any) => {
                 const u = m.user || { name: "Membro", email: "" };
@@ -901,76 +961,70 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               </Tooltip>
             </Box>
 
-            {isLoadingReleases ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : !officialReleases || officialReleases.length === 0 ? (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  textAlign: "center",
-                  color: "text.secondary",
-                  borderRadius: 2,
-                }}
-              >
-                Nenhuma Release Oficial publicada na branch main até o momento.
-              </Paper>
-            ) : (
-              <Stack spacing={1}>
-                {officialReleases.map((rel: any) => (
-                  <Paper
-                    key={rel.id}
-                    variant="outlined"
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      borderColor: "success.main",
-                      bgcolor: "rgba(46, 125, 50, 0.04)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+            {(() => {
+              if (isLoadingReleases) {
+                return <LoadingStateSpinner />;
+              }
+              if (!officialReleases || officialReleases.length === 0) {
+                return (
+                  <EmptyStateCard message="Nenhuma Release Oficial publicada na branch main até o momento." />
+                );
+              }
+              return (
+                <Stack spacing={1}>
+                  {officialReleases.map((rel: any) => (
+                    <Paper
+                      key={rel.id}
+                      variant="outlined"
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        borderColor: "success.main",
+                        bgcolor: "rgba(46, 125, 50, 0.04)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
                     >
-                      <Chip
-                        label={rel.versionTag || "v1.0"}
-                        color="success"
-                        size="small"
-                        sx={{ fontWeight: 800 }}
-                      />
-                      <Box>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 700, lineHeight: 1.2 }}
-                        >
-                          {rel.title || "Release Oficial do Artigo"}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontFamily: "monospace" }}
-                        >
-                          SHA: {rel.commitSha}
-                        </Typography>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                      >
+                        <Chip
+                          label={rel.versionTag || "v1.0"}
+                          color="success"
+                          size="small"
+                          sx={{ fontWeight: 800 }}
+                        />
+                        <Box>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: 700, lineHeight: 1.2 }}
+                          >
+                            {rel.title || "Release Oficial do Artigo"}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontFamily: "monospace" }}
+                          >
+                            SHA: {rel.commitSha}
+                          </Typography>
+                        </Box>
                       </Box>
-                    </Box>
 
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontWeight: 600 }}
-                    >
-                      Publicado em:{" "}
-                      {new Date(rel.createdAt).toLocaleDateString("pt-BR")}
-                    </Typography>
-                  </Paper>
-                ))}
-              </Stack>
-            )}
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        Publicado em:{" "}
+                        {new Date(rel.createdAt).toLocaleDateString("pt-BR")}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </Stack>
+              );
+            })()}
           </Box>
 
           <Divider />
@@ -987,89 +1041,83 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               </Typography>
             </Box>
 
-            {isLoadingRCs ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : !releaseCandidates || releaseCandidates.length === 0 ? (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  textAlign: "center",
-                  color: "text.secondary",
-                  borderRadius: 2,
-                }}
-              >
-                Nenhuma Release Candidate gerada para este artigo até o momento.
-              </Paper>
-            ) : (
-              <Stack spacing={1.5}>
-                {releaseCandidates.map((rc: ReleaseCandidateItem) => (
-                  <Paper
-                    key={rc.id}
-                    variant="outlined"
-                    sx={{ p: 2, borderRadius: 2 }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 1,
-                      }}
-                    >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            {(() => {
+              if (isLoadingRCs) {
+                return <LoadingStateSpinner />;
+              }
+              if (!releaseCandidates || releaseCandidates.length === 0) {
+                return (
+                  <EmptyStateCard message="Nenhuma Release Candidate gerada para este artigo até o momento." />
+                );
+              }
+              return (
+                <Stack spacing={1.5}>
+                  {releaseCandidates.map((rc: ReleaseCandidateItem) => {
+                    const rcChipProps = getRcStatusChipProps(rc.status);
+                    return (
+                      <Paper
+                        key={rc.id}
+                        variant="outlined"
+                        sx={{ p: 2, borderRadius: 2 }}
                       >
-                        <LocalOfferIcon color="primary" sx={{ fontSize: 18 }} />
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 800 }}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 1,
+                          }}
                         >
-                          {rc.versionTag}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <LocalOfferIcon
+                              color="primary"
+                              sx={{ fontSize: 18 }}
+                            />
+                            <Typography
+                              variant="subtitle2"
+                              sx={{ fontWeight: 800 }}
+                            >
+                              {rc.versionTag}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={rcChipProps.label}
+                            color={rcChipProps.color}
+                            size="small"
+                            sx={{ fontWeight: 700 }}
+                          />
+                        </Box>
+                        {rc.feedback && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 1 }}
+                          >
+                            💬 <strong>Parecer do Revisor:</strong>{" "}
+                            {rc.feedback}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary">
+                          Submetido em:{" "}
+                          {new Date(rc.createdAt).toLocaleDateString("pt-BR")}{" "}
+                          às{" "}
+                          {new Date(rc.createdAt).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </Typography>
-                      </Box>
-                      <Chip
-                        label={
-                          rc.status === "APPROVED"
-                            ? "✓ Aprovada"
-                            : rc.status === "CHANGES_REQUESTED"
-                              ? "Ajustes Solicitados"
-                              : "Em Avaliação"
-                        }
-                        size="small"
-                        color={
-                          rc.status === "APPROVED"
-                            ? "success"
-                            : rc.status === "CHANGES_REQUESTED"
-                              ? "error"
-                              : "warning"
-                        }
-                        sx={{ fontWeight: 700 }}
-                      />
-                    </Box>
-                    {rc.feedback && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 1 }}
-                      >
-                        💬 <strong>Parecer do Revisor:</strong> {rc.feedback}
-                      </Typography>
-                    )}
-                    <Typography variant="caption" color="text.secondary">
-                      Submetido em:{" "}
-                      {new Date(rc.createdAt).toLocaleDateString("pt-BR")} às{" "}
-                      {new Date(rc.createdAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Typography>
-                  </Paper>
-                ))}
-              </Stack>
-            )}
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              );
+            })()}
           </Box>
 
           <Divider />
@@ -1175,8 +1223,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                   fontSize: "0.78rem",
                 }}
               >
-                {projectDetails?.repo ||
-                  "https://github.com/gilsonrusso/sci-paper-detecao-com-agentes-03-fe835b2f"}
+                {projectDetails?.repo || projectDetails?.gitRepoPath}
               </Typography>
               <Chip
                 label="Branch Base: dev"

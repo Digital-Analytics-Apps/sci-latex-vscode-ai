@@ -18,11 +18,10 @@ export const editorProxyRoutes: FastifyPluginAsyncZod = async (app) => {
     rewritePrefix: '/',
   });
 
-  app.addHook('onRequest', verifyJwt);
-
   app.get(
     '/:projectId',
     {
+      onRequest: [verifyJwt],
       schema: {
         tags: ['EditorProxy'],
         summary: 'VS Code Web Editor Proxy para Workspace de Escrita LaTeX',
@@ -34,6 +33,7 @@ export const editorProxyRoutes: FastifyPluginAsyncZod = async (app) => {
         }),
         querystring: z.object({
           taskId: z.string().optional(),
+          stageId: z.string().optional(),
           branchName: z.string().optional(),
           mode: z.string().optional(),
           token: z.string().optional(),

@@ -78,7 +78,7 @@ describe('EditorProxyService', () => {
 
     expect(result.project).toBe(mockProject);
     expect(result.targetBranch).toBe('task/secao-introducao-123456');
-    expect(mockK8sPodManager.claimPodForTask).toHaveBeenCalledWith('p1', 'u1', 't1');
+    expect(mockK8sPodManager.claimPodForTask).toHaveBeenCalledWith('p1', 'u1', 't1', undefined);
     expect(mockWorkspacesRepo.upsertWorkspace).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: 'p1',

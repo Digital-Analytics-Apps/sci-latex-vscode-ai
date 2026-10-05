@@ -1,4 +1,5 @@
 import { exec } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -8,11 +9,6 @@ import { prisma } from '../../db/prisma';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
 import { editorProxyService } from '../editor-proxy/editor-proxy.service';
-import {
-  getGithubProvider,
-  githubIntegrationService,
-} from '../github-integration/github-integration.service';
-
 import { redisService } from '../../infra/redis/redis.service';
 
 const execAsync = promisify(exec);
@@ -66,32 +62,26 @@ export class TasksService {
 
   // 1. Criar nova Task associada ao autor
   async createTask(dto: CreateTaskDTO) {
-    const integration = await prisma.githubIntegration.findFirst({
-      where: { articleId: dto.projectId },
-    });
-
-    let issueNumber = 1;
-    if (integration) {
-      const count = await prisma.githubIssueProjection.count({
-        where: { githubRepositoryId: integration.githubRepositoryId },
-      });
-      issueNumber = count + 1;
+    if (!dto.stageId) {
+      throw new Error(
+        'TASK_STAGE_REQUIRED: A sub-tarefa deve obrigatoriamente estar associada a uma etapa de escrita.'
+      );
     }
 
-    const slug = dto.title
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/[\s_]+/g, '-')
-      .replace(/-+/g, '-')
-      .slice(0, 30)
-      .replace(/^-+|-+$/g, '');
+    if (dto.dueDate) {
+      const parentStage = await prisma.projectStage.findUnique({ where: { id: dto.stageId } });
+      if (parentStage) {
+        const stageMaxDate = parentStage.plannedCompletionDate || parentStage.plannedEndAt;
+        if (stageMaxDate && new Date(dto.dueDate) > new Date(stageMaxDate)) {
+          throw new Error(
+            'TASK_DUE_DATE_EXCEEDS_STAGE: A data limite da sub-tarefa não pode ser posterior à data limite da etapa.'
+          );
+        }
+      }
+    }
 
-    const branchName = integration
-      ? `task/${issueNumber}-${slug || 'item'}`
-      : this.generateTaskBranchName(dto.title, dto.projectId);
+    const tempId = crypto.randomUUID();
+    const branchName = this.generateTaskBranchName(dto.title, tempId);
 
     const task = await this.tasksRepository.create({
       projectId: dto.projectId,
@@ -102,23 +92,6 @@ export class TasksService {
       status: TaskStatus.NOT_STARTED,
       stageId: dto.stageId,
     });
-
-    if (integration) {
-      const fakeIssueId = BigInt(Date.now());
-      await prisma.githubIssueProjection.upsert({
-        where: { githubIssueId: fakeIssueId },
-        create: {
-          githubIssueId: fakeIssueId,
-          githubRepositoryId: integration.githubRepositoryId,
-          issueNumber,
-          title: dto.title,
-          state: 'open',
-          htmlUrl: `https://github.com/org/${integration.githubRepoName}/issues/${issueNumber}`,
-          updatedAt: new Date(),
-        },
-        update: {},
-      });
-    }
 
     return task;
   }
@@ -137,112 +110,6 @@ export class TasksService {
       stageId: filters?.stageId,
     });
 
-    let integration = await prisma.githubIntegration.findFirst({
-      where: { articleId: projectId },
-    });
-
-    if (!integration) {
-      const project = await prisma.project.findUnique({ where: { id: projectId } });
-      if (project) {
-        integration = await githubIntegrationService
-          .setupArticleGithubIntegration(projectId, project.name)
-          .catch(() => null);
-      }
-    }
-
-    if (integration) {
-      const issueProjections = await prisma.githubIssueProjection.findMany({
-        where: { githubRepositoryId: integration.githubRepositoryId },
-        orderBy: { issueNumber: 'asc' },
-      });
-
-      const projectItemProjections = await prisma.githubProjectItemProjection.findMany({
-        where: { githubProjectV2Id: integration.githubProjectV2Id },
-      });
-
-      const itemStatusMap = new Map<string, string>();
-      for (const item of projectItemProjections) {
-        if (item.statusValue) {
-          itemStatusMap.set(item.githubIssueId.toString(), item.statusValue);
-        }
-      }
-
-      for (const issue of issueProjections) {
-        const slug = issue.title
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/[\s_]+/g, '-')
-          .replace(/-+/g, '-')
-          .slice(0, 30);
-        const branchName = `task/${issue.issueNumber}-${slug || 'item'}`;
-
-        const existing = localTasks.some(
-          (t) =>
-            t.branchName.includes(`task/${issue.issueNumber}-`) ||
-            t.title.trim().toLowerCase() === issue.title.trim().toLowerCase()
-        );
-
-        if (!existing) {
-          let status: TaskStatus = TaskStatus.NOT_STARTED;
-          if (issue.state === 'closed') {
-            status = TaskStatus.MERGED;
-          } else {
-            const itemStatus = itemStatusMap.get(issue.githubIssueId.toString());
-            if (itemStatus) {
-              const lower = itemStatus.toLowerCase();
-              if (lower.includes('progress') || lower.includes('andamento')) {
-                status = TaskStatus.IN_PROGRESS;
-              } else if (
-                lower.includes('done') ||
-                lower.includes('concluid') ||
-                lower.includes('merged')
-              ) {
-                status = TaskStatus.MERGED;
-              } else if (lower.includes('review')) {
-                status = TaskStatus.UNDER_REVIEW;
-              } else {
-                status = TaskStatus.NOT_STARTED;
-              }
-            } else {
-              status = TaskStatus.NOT_STARTED;
-            }
-          }
-
-          // Aplica os mesmos filtros de status e busca sobre a issue projetada
-          const matchesStatus =
-            !filters?.status || filters.status === 'ALL' || status === filters.status;
-
-          const searchTerm = filters?.search?.trim().toLowerCase();
-          const matchesSearch =
-            !searchTerm ||
-            issue.title.toLowerCase().includes(searchTerm) ||
-            branchName.toLowerCase().includes(searchTerm);
-
-          if (matchesStatus && matchesSearch) {
-            localTasks.push({
-              id: `github-issue-${issue.githubIssueId.toString()}`,
-              projectId,
-              assignedToId: assignedToId || '',
-              title: issue.title,
-              branchName,
-              status,
-              dueDate: undefined as any,
-              createdAt: issue.updatedAt,
-              updatedAt: issue.updatedAt,
-              assignee: {
-                id: 'github-user',
-                name: issue.assigneeGithubUsername || 'Membro Atribuído',
-                email: 'assigned@scilatex.org',
-              } as any,
-            } as any);
-          }
-        }
-      }
-    }
-
     const presenceMap = await redisService.getTaskPresenceMap(projectId);
     const activeUserIds = Array.from(new Set(Array.from(presenceMap.values())));
     const activeUsersMap = new Map<string, { id: string; name: string }>();
@@ -259,6 +126,32 @@ export class TasksService {
       }
     }
 
+    const allProjectTasks = await this.tasksRepository.findMany({ projectId });
+    const stageTasksMap = new Map<string, typeof allProjectTasks>();
+
+    for (const t of allProjectTasks) {
+      if (t.stageId) {
+        const list = stageTasksMap.get(t.stageId) || [];
+        list.push(t);
+        stageTasksMap.set(t.stageId, list);
+      }
+    }
+
+    const blockedTaskIdSet = new Set<string>();
+    for (const [, list] of stageTasksMap) {
+      const sorted = [...list].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      let foundUnmerged = false;
+      for (const t of sorted) {
+        if (foundUnmerged) {
+          blockedTaskIdSet.add(t.id);
+        } else if (t.status !== TaskStatus.MERGED) {
+          foundUnmerged = true;
+        }
+      }
+    }
+
     return localTasks.map((t) => {
       const activeUserId = presenceMap.get(t.id);
       const activeUser = activeUserId ? activeUsersMap.get(activeUserId) : null;
@@ -266,6 +159,7 @@ export class TasksService {
         ...t,
         isOccupied: Boolean(activeUserId),
         occupiedBy: activeUser ? { id: activeUser.id, name: activeUser.name } : null,
+        isBlockedByPrevious: blockedTaskIdSet.has(t.id),
       };
     });
   }
@@ -288,47 +182,39 @@ export class TasksService {
 
     let task = await this.tasksRepository.findById(taskId);
 
-    if (!task && taskId.startsWith('github-issue-')) {
-      const issueIdStr = taskId.replace('github-issue-', '');
-      try {
-        const issueProjection = await prisma.githubIssueProjection.findUnique({
-          where: { githubIssueId: BigInt(issueIdStr) },
-        });
-
-        if (issueProjection) {
-          const slug = issueProjection.title
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/[\s_]+/g, '-')
-            .replace(/-+/g, '-')
-            .slice(0, 30);
-          const branchName = `task/${issueProjection.issueNumber}-${slug || 'item'}`;
-
-          const localTasks = await this.tasksRepository.findMany({ projectId });
-          const existing = localTasks.find((t) => t.branchName === branchName);
-
-          if (existing) {
-            task = existing;
-          } else {
-            task = await this.tasksRepository.create({
-              projectId,
-              assignedToId: userId,
-              title: issueProjection.title,
-              branchName,
-              status: TaskStatus.NOT_STARTED,
-            });
-          }
-        }
-      } catch (err) {
-        console.warn(`⚠️ Warning resolving virtual github issue ${taskId}:`, err);
-      }
+    if (!task || task.projectId !== projectId) {
+      throw new Error('TASK_NOT_FOUND: A tarefa especificada não foi encontrada no projeto.');
     }
 
-    if (task?.projectId !== projectId) {
-      throw new Error('TASK_NOT_FOUND: A tarefa especificada não foi encontrada no projeto.');
+    // Governança de Assinatura: Um usuário só pode iniciar o workspace se ele tiver assinado a tarefa
+    if (task.assignedToId !== userId) {
+      if (!task.assignedToId) {
+        throw new Error(
+          'TASK_NOT_CLAIMED: Um usuário só pode iniciar o workspace se tiver assinado a tarefa. Assine a tarefa primeiro.'
+        );
+      }
+      throw new Error(
+        'TASK_CLAIMED_BY_OTHER: Esta tarefa está atribuída a outro membro. Apenas o autor responsável pode iniciar o workspace.'
+      );
+    }
+
+    // Trava Sequencial: Verifica se existe alguma sub-tarefa anterior na mesma etapa que não foi mesclada
+    if (task.stageId) {
+      const stageTasks = await prisma.task.findMany({
+        where: { projectId, stageId: task.stageId },
+        orderBy: { createdAt: 'asc' },
+      });
+      const taskIndex = stageTasks.findIndex((t) => t.id === task!.id);
+      if (taskIndex > 0) {
+        const previousUnmerged = stageTasks
+          .slice(0, taskIndex)
+          .find((t) => t.status !== TaskStatus.MERGED);
+        if (previousUnmerged) {
+          throw new Error(
+            'TASK_BLOCKED_BY_PREVIOUS: A tarefa anterior desta etapa precisa ser finalizada e mesclada antes de iniciar esta.'
+          );
+        }
+      }
     }
 
     // Garante a existência do repositório base do projeto
@@ -439,31 +325,6 @@ export class TasksService {
             startedAt: parentStage.startedAt ?? now,
           },
         });
-      }
-    }
-
-    // Atualiza o status da issue no GitHub Project v2 para "In Progress"
-    const integration = await prisma.githubIntegration
-      .findFirst({ where: { articleId: projectId } })
-      .catch(() => null);
-
-    if (integration?.githubProjectV2Id) {
-      const issueMatch = new RegExp(/^task\/(\d+)-/).exec(task.branchName);
-      if (issueMatch) {
-        const issueNumber = Number.parseInt(issueMatch[1], 10);
-        try {
-          const provider = getGithubProvider();
-          await provider.updateIssueStatusInProjectV2(
-            integration.githubProjectV2Id,
-            issueNumber,
-            'In Progress'
-          );
-        } catch (err: any) {
-          console.warn(
-            `⚠️ Warning updating Project v2 issue #${issueNumber} status to In Progress:`,
-            err.message || err
-          );
-        }
       }
     }
 

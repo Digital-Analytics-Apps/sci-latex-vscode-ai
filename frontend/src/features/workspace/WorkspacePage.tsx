@@ -334,6 +334,7 @@ export const WorkspacePage = () => {
           <CodeServerIframe
             projectId={projectId}
             taskId={activeTask?.id || taskId}
+            stageId={activeTask?.stageId}
           />
         )}
       </Box>

@@ -1,7 +1,7 @@
 import { ProjectStage, StageStatus } from '@prisma/client';
+import { prisma } from '../../db/prisma';
 import { GitService } from '../../infra/git/git.service';
 import {
-  CreateStageData,
   IProjectStagesRepository,
   UpdateStageData,
 } from '../../repositories/project-stages.repository';
@@ -12,14 +12,41 @@ export class ProjectStagesService {
     private readonly gitService: GitService = new GitService()
   ) {}
 
+  // Helper de validação da data da etapa contra a data de submissão do artigo
+  // TODO / NOTE: A data limite da etapa não pode ser maior que a data de submissão do artigo (targetConferenceDate/backupConferenceDate).
+  // No futuro, avaliar se esta data também deverá ser estritamente menor/respeitar a data do NIT.
+  private async validateStageDateAgainstSubmission(
+    projectId: string,
+    stageDate?: Date | string | null
+  ) {
+    if (!stageDate) return;
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) return;
+    const submissionDeadline = project.targetConferenceDate || project.backupConferenceDate;
+    if (submissionDeadline && new Date(stageDate) > new Date(submissionDeadline)) {
+      throw new Error(
+        'STAGE_DATE_EXCEEDS_SUBMISSION: A data da etapa não pode ser maior que a data de submissão do artigo.'
+      );
+    }
+  }
+
   async listStages(projectId: string): Promise<ProjectStage[]> {
     return this.stagesRepository.findByProjectId(projectId);
   }
 
   async createStage(
     projectId: string,
-    data: { title: string; order?: number; description?: string }
+    data: {
+      title: string;
+      order?: number;
+      description?: string;
+      plannedCompletionDate?: Date | string;
+      plannedEndAt?: Date | string;
+    }
   ): Promise<ProjectStage> {
+    const stageDate = data.plannedCompletionDate || data.plannedEndAt;
+    await this.validateStageDateAgainstSubmission(projectId, stageDate);
+
     const existingStages = await this.stagesRepository.findByProjectId(projectId);
     const nonGatekeepers = existingStages.filter((s) => !s.isGatekeeper);
     const gatekeepers = existingStages.filter((s) => s.isGatekeeper);
@@ -82,6 +109,9 @@ export class ProjectStagesService {
     if (stage?.projectId !== projectId) {
       throw new Error('Etapa de projeto não encontrada.');
     }
+
+    const stageDate = data.plannedCompletionDate || data.plannedEndAt;
+    await this.validateStageDateAgainstSubmission(projectId, stageDate);
 
     const allStages = await this.stagesRepository.findByProjectId(projectId);
 

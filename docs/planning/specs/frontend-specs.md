@@ -1,7 +1,7 @@
 # Especificação Técnica do Frontend (ReactJS + Redux Toolkit + TanStack Query)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-27  
+**Última Atualização:** 2026-10-04  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -145,19 +145,21 @@ Para evitar código redundante e garantir coerência visual em toda a aplicaçã
 * **`createChipColumn(config, getChipProps)`**: Constrói colunas estilizadas com o componente `<Chip size="small" />` (para Status da Submissão, Papéis de Usuário, Badges de Contagem).
 * **`createDateColumn(config)`**: Constrói colunas com formatação automática de datas para o padrão Português (`pt-BR`).
 
-### 6.3 DataGrid de Tarefas do Autor (`<AuthorTasksTable />`)
-* **Localização:** `src/features/author/components/AuthorTasksTable.tsx` & `src/features/author/components/TaskDataGridCells.tsx`
-* **Descrição:** Tabela padronizada para a visão do Autor com `<GenericDataGrid<TaskItem>>` e `<AutoSizer>`.
-* **Filtros com Debounce & REST API:** Integração direta com `useUrlFilters` e `useDebounce` (400ms), repassando parâmetros filtrados (`search`, `status`) para a API REST sem realizar filtragem em memória no cliente.
-* **Células Especializadas:**
-  - `TaskTitleBranchCell`: Título em destaque e tag com a branch Git (`code`).
-  - `TaskAssigneeCell`: Nome e avatar do responsável pela tarefa ou indicação `⚠️ Sem Responsável`.
-  - `TaskDueDateCell`: Prazo formatado em data pt-BR.
-  - `TaskStatusChip`: Status visual utilizando helper `getTaskStatusConfig` (cor MUI e rótulo) e indicador de bloqueio por outro autor (`🔒`).
-  - `TaskActionCell`: Botões de governança **"✍️ Assinar"** (atribui a tarefa ao usuário logado) e **"🔓 Desassinar"** (libera a tarefa), além do botão "🚀 Iniciar Workspace" / "🔒 Em uso por X".
-  - **Estado Inicial Vazio:** Ao criar um novo artigo, as Etapas de Escrita são instanciadas como estruturas, e a tabela/seções iniciam **vazias de tarefas**. O Autor adiciona sub-tarefas vinculadas às etapas conforme a necessidade.
-  - **Gestão Dinâmica de Etapas (Features):** Modais e ações para criar, editar, reordenar e remover etapas de escrita customizadas.
-  - **Restrição do Modal de PR:** O modal de solicitação de revisão (`CreatePRModal`) permite selecionar apenas a **Feature Branch** da Etapa (`feature/<stage-slug>` $\rightarrow$ `dev`) para revisão entre pares ou revisor principal. Sub-tarefas são integradas diretamente pelo autor na Feature Branch sem exigir PR formal.
+### 6.3 Visão Unificada em Linha do Tempo / Gantt (`<ArticleDetailPage />` & `<GanttTimelineView />`)
+* **Localização:** `src/features/author/ArticleDetailPage.tsx`, `src/features/author/components/gantt/GanttTimelineView.tsx`, `src/features/author/components/gantt/GanttTableTree.tsx` e `src/features/author/components/gantt/GanttTaskDetailDrawer.tsx`.
+* **Interface Unificada:** O acompanhamento do artigo é centralizado unicamente na visão de **Linha do Tempo (Gantt Interativo)**, eliminando a visão de tabela simples separada.
+* **Árvore Lateral de Lançamento Rápido (`<GanttTableTree />`)**:
+  - **Avatares & Atribuição**: Exibe o avatar do autor atribuído (`UserAvatar`) com tooltip, ou botão de atalho `Assinar` para sub-tarefas desassinadas.
+  - **Governança de Workspace por Assinatura**: O ícone de inicialização rápida de workspace (`LaunchIcon`) é liberado **exclusivamente se a tarefa estiver assinada pelo usuário logado** (`assignedToId === currentUserId`). Para tarefas não assinadas, exibe tooltip orientativo *"Assine a tarefa primeiro para liberar a abertura do workspace"*.
+  - **Trava Sequencial de Sub-tarefas (`isBlockedByPrevious`)**: Sub-tarefas que dependem da conclusão e merge da sub-tarefa anterior exibem o ícone `🔒` com tooltip *"Aguardando conclusão da sub-tarefa anterior"*.
+  - **Trava de Workspace Ocupado (`isOccupied`)**: Exibe `🔒` amarelado indicando `Workspace em uso por [Nome]` e desabilita inicialização concorrente quando o Pod do autor estiver ativo no VS Code.
+  - **Workspace da Feature Stage**: Exibe o botão de lançamento `🚀 Workspace da Feature` apenas quando todas as sub-tarefas da etapa alcançarem o status `MERGED`.
+* **Gaveta Lateral de Detalhes (`<GanttTaskDetailDrawer />`)**:
+  - Fornece visualização e edição detalhada de status, prazos, responsável (`Claim`/`Unclaim`), banners de alertas de ocupação (`isOccupied`) e o botão principal em largura total `🚀 Abrir Workspace no VS Code` (bloqueado com rótulo `✍️ Assine a Tarefa para Abrir Workspace` caso o usuário não seja o responsável atribuído).
+* **Painel de Apontamentos da Revisão (`<ReviewFeedbackPanel />`)**:
+  - **Localização:** `src/features/author/components/ReviewFeedbackPanel.tsx`.
+  - Consome `GET /api/v1/projects/:id/review-comments-by-stage` e exibe apontamentos dos revisores agrupados por etapa, oferecendo o botão lateral `➕ Criar Sub-tarefa` para gerar sub-tarefas de correção direto na fila da etapa.
+
 
 ### 6.5 Régua de Etapas & Linha do Tempo Compacta (`<ArticleTimelineHeader />`)
 * **Localização:** `src/components/common/ArticleTimelineHeader.tsx`

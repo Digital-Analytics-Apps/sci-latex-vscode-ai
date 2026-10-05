@@ -7,12 +7,7 @@ import { PrismaProjectsRepository } from '../../repositories/projects.repository
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import {
-  createProjectSchema,
-  postSubmissionSchema,
-  ProjectsController,
-  updateProjectSchema,
-} from './projects.controller';
+import { createProjectSchema, ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
 import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.repository';
@@ -453,5 +448,21 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
     },
     (req: any, reply) => stagesController.delete(req, reply)
+  );
+
+  // GET /api/v1/projects/:id/review-comments-by-stage - Obter apontamentos de revisão agrupados por etapa
+  app.get(
+    '/:id/review-comments-by-stage',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter apontamentos de revisão agrupados por etapa do projeto',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => controller.getReviewCommentsByStage(req, reply)
   );
 }

@@ -7,12 +7,14 @@ import type { RootState } from "../../store";
 interface CodeServerIframeProps {
   projectId: string;
   taskId?: string;
+  stageId?: string;
   mode?: string;
 }
 
 export const CodeServerIframe = ({
   projectId,
   taskId,
+  stageId,
   mode,
 }: CodeServerIframeProps) => {
   const token = useSelector((state: RootState) => state.auth.token);
@@ -24,6 +26,7 @@ export const CodeServerIframe = ({
   const params = new URLSearchParams();
   if (token) params.set("token", token);
   if (taskId) params.set("taskId", taskId);
+  if (stageId) params.set("stageId", stageId);
   if (mode) params.set("mode", mode);
 
   const iframeSrc = `${baseUrl}/editor-proxy/${projectId}?${params.toString()}`;

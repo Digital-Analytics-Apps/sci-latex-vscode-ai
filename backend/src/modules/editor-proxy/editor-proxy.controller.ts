@@ -6,8 +6,9 @@ export class EditorProxyController {
 
   async handleProxy(request: FastifyRequest, reply: FastifyReply) {
     const { projectId } = request.params as { projectId: string };
-    const { taskId, branchName, mode } = request.query as {
+    const { taskId, stageId, branchName, mode } = request.query as {
       taskId?: string;
+      stageId?: string;
       branchName?: string;
       mode?: string;
     };
@@ -20,6 +21,7 @@ export class EditorProxyController {
         projectId,
         userId,
         taskId,
+        stageId,
         branchName,
         mode,
         token,

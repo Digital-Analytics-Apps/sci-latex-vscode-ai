@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { exec } from 'node:child_process';
+import { exec, execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -62,7 +62,7 @@ export interface TaskRawDiffFactsResult {
 }
 
 export class GitService {
-  private baseStoragePath: string;
+  private readonly baseStoragePath: string;
   private cachedOwner?: string;
   private octokitClient?: Octokit;
 
@@ -70,11 +70,34 @@ export class GitService {
     this.baseStoragePath = path.resolve(env.STORAGE_PATH, 'git');
   }
 
+  // Obtém o token de autenticação ativo do GitHub com fallback para gh CLI
+  getEffectiveToken(): string | undefined {
+    const token = env.GITHUB_TOKEN || env.GIT_SERVICE_TOKEN;
+    if (token && !token.includes('dummy')) {
+      return token;
+    }
+    if (env.GIT_SERVICE_TOKEN && !env.GIT_SERVICE_TOKEN.includes('dummy')) {
+      return env.GIT_SERVICE_TOKEN;
+    }
+    try {
+      const ghToken = execSync('GITHUB_TOKEN="" gh auth token 2>/dev/null', {
+        encoding: 'utf-8',
+      }).trim();
+      if (ghToken && !ghToken.includes('dummy')) {
+        return ghToken;
+      }
+    } catch {
+      // Ignora falhas se a CLI do gh não estiver instalada/autenticada
+    }
+    return token;
+  }
+
   // Obtém a instância autenticada da SDK oficial do GitHub (@octokit/rest)
   private getOctokit(): Octokit {
     if (!this.octokitClient) {
-      if (env.GITHUB_TOKEN) {
-        this.octokitClient = new Octokit({ auth: env.GITHUB_TOKEN });
+      const token = this.getEffectiveToken();
+      if (token) {
+        this.octokitClient = new Octokit({ auth: token });
       } else {
         throw new Error(
           'GITHUB_TOKEN_REQUIRED: GITHUB_TOKEN environment variable is required to interact with GitHub API.'
@@ -87,8 +110,9 @@ export class GitService {
   // Retorna a flag -c http.extraHeader para autenticar comandos Git CLI via cabeçalho HTTP efêmero em memória
   getGitAuthFlags(): string {
     const safeDir = '-c safe.directory="*"';
-    if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
-      const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
+    const token = this.getEffectiveToken();
+    if (token && env.NODE_ENV !== 'test') {
+      const authHeader = Buffer.from(`token:${token}`).toString('base64');
       return `${safeDir} -c http.extraHeader="Authorization: Basic ${authHeader}"`;
     }
     return safeDir;
@@ -399,13 +423,9 @@ export class GitService {
       let sourceWorkspace = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
       if (data.userId) {
         if (data.taskId) {
-          const taskDir = path.resolve(
-            env.STORAGE_PATH,
-            'projects',
+          const taskDir = await this.resolveTaskWorkspaceDir(
             data.projectId,
-            'users',
             data.userId,
-            'tasks',
             data.taskId
           );
           try {
@@ -548,11 +568,76 @@ export class GitService {
     }
   }
 
+  // Resolve o caminho físico absoluto e canônico da workspace da tarefa (com suporte a fallback de legado)
+  async resolveTaskWorkspaceDir(
+    projectId: string,
+    userId: string,
+    taskId: string,
+    stageId?: string
+  ): Promise<string> {
+    let targetStageId = stageId;
+    if (!targetStageId && taskId && taskId !== 'default-task') {
+      const task = await prisma.task
+        .findUnique({
+          where: { id: taskId },
+          select: { stageId: true },
+        })
+        .catch(() => null);
+      if (task?.stageId) {
+        targetStageId = task.stageId;
+      }
+    }
+
+    const stageSegment = targetStageId || 'general';
+    const canonicalPath = path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      projectId,
+      'users',
+      userId,
+      'stages',
+      stageSegment,
+      'tasks',
+      taskId
+    );
+
+    try {
+      const stats = await fs.stat(canonicalPath);
+      if (stats.isDirectory()) {
+        return canonicalPath;
+      }
+    } catch {
+      // Ignora erro se não existir
+    }
+
+    const legacyPath = path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      projectId,
+      'users',
+      userId,
+      'tasks',
+      taskId
+    );
+
+    try {
+      const stats = await fs.stat(legacyPath);
+      if (stats.isDirectory()) {
+        return legacyPath;
+      }
+    } catch {
+      // Ignora erro de legado
+    }
+
+    return canonicalPath;
+  }
+
   // Realiza o commit e push de TODOS os arquivos modificados (incluindo subpastas de seções) do workspace da tarefa para o GitHub
   async commitWorkspaceProgress(data: {
     projectId: string;
     userId: string;
     taskId: string;
+    stageId?: string;
     branchName: string;
     commitMessage: string;
     authorName: string;
@@ -560,45 +645,21 @@ export class GitService {
     repoUrl?: string;
   }): Promise<string> {
     const gitFlags = this.getGitAuthFlags();
-    const taskWorkspaceDir = path.resolve(
-      env.STORAGE_PATH,
-      'projects',
+    const taskWorkspaceDir = await this.resolveTaskWorkspaceDir(
       data.projectId,
-      'users',
       data.userId,
-      'tasks',
-      data.taskId
+      data.taskId,
+      data.stageId
     );
 
-    let workspaceToUse = taskWorkspaceDir;
+    const workspaceToUse = taskWorkspaceDir;
     try {
       const stats = await fs.stat(taskWorkspaceDir);
       if (!stats.isDirectory()) {
-        workspaceToUse = path.resolve(
-          env.STORAGE_PATH,
-          'projects',
-          data.projectId,
-          'users',
-          data.userId
-        );
+        await fs.mkdir(taskWorkspaceDir, { recursive: true, mode: 0o777 });
       }
     } catch {
-      workspaceToUse = path.resolve(
-        env.STORAGE_PATH,
-        'projects',
-        data.projectId,
-        'users',
-        data.userId
-      );
-    }
-
-    try {
-      const stats = await fs.stat(workspaceToUse);
-      if (!stats.isDirectory()) {
-        workspaceToUse = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
-      }
-    } catch {
-      workspaceToUse = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      await fs.mkdir(taskWorkspaceDir, { recursive: true, mode: 0o777 });
     }
 
     // Se o workspace não possui .git, inicializa
@@ -630,6 +691,13 @@ export class GitService {
     );
     await execAsync(`git -C "${workspaceToUse}" config core.fileMode false`).catch(() => {});
     await execAsync(`git -C "${workspaceToUse}" config safe.directory "*"`).catch(() => {});
+
+    // Garante que o repositório local está na branch correta antes de registrar o commit
+    await execAsync(`git -C "${workspaceToUse}" checkout "${data.branchName}"`).catch(async () => {
+      await execAsync(`git -C "${workspaceToUse}" checkout -b "${data.branchName}"`).catch(
+        () => {}
+      );
+    });
 
     await execAsync(`git -C "${workspaceToUse}" add -A`).catch(() => {});
     const statusRes = await execAsync(`git -C "${workspaceToUse}" status --porcelain`).catch(
@@ -747,17 +815,10 @@ export class GitService {
   async getTaskRawDiffFacts(
     projectId: string,
     userId: string,
-    taskId: string
+    taskId: string,
+    stageId?: string
   ): Promise<TaskRawDiffFactsResult> {
-    const targetDir = path.resolve(
-      env.STORAGE_PATH,
-      'projects',
-      projectId,
-      'users',
-      userId,
-      'tasks',
-      taskId
-    );
+    const targetDir = await this.resolveTaskWorkspaceDir(projectId, userId, taskId, stageId);
 
     let lastSavedAuthor: string | undefined;
     let lastSavedAt: string | undefined;

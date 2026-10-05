@@ -1,10 +1,15 @@
 import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
+import HowToRegIcon from "@mui/icons-material/HowToReg";
+import LockIcon from "@mui/icons-material/Lock";
 import MergeIcon from "@mui/icons-material/MergeType";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import {
+  Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   Drawer,
   IconButton,
@@ -26,7 +31,13 @@ interface GanttTaskDetailDrawerProps {
   onClose: () => void;
   stage?: ProjectStage | null;
   task?: TaskItem | null;
-  onStartWorkspace?: (taskId: string, branchName: string) => void;
+  currentUserId?: string;
+  provisioningTaskId?: string | null;
+  onStartWorkspace?: (task: TaskItem) => void | Promise<void>;
+  onClaimTask?: (taskId: string) => void;
+  onUnclaimTask?: (taskId: string) => void;
+  isClaiming?: boolean;
+  isUnclaiming?: boolean;
 }
 
 export const GanttTaskDetailDrawer = ({
@@ -34,7 +45,13 @@ export const GanttTaskDetailDrawer = ({
   onClose,
   stage,
   task,
+  currentUserId,
+  provisioningTaskId,
   onStartWorkspace,
+  onClaimTask,
+  onUnclaimTask,
+  isClaiming = false,
+  isUnclaiming = false,
 }: GanttTaskDetailDrawerProps) => {
   const details = getDrawerEntityDetails(stage, task);
   if (!details) return null;
@@ -52,6 +69,22 @@ export const GanttTaskDetailDrawer = ({
     assigneeUser,
   } = details;
 
+  const isAssignedToMe = Boolean(
+    task?.assignedToId && currentUserId && task.assignedToId === currentUserId,
+  );
+  const isOccupiedByOther = Boolean(
+    task?.isOccupied &&
+    task?.occupiedBy &&
+    task?.occupiedBy?.id !== currentUserId,
+  );
+  const occupiedByName = task?.occupiedBy?.name || "outro autor";
+  const isBlockedByPrevious = Boolean(task?.isBlockedByPrevious);
+  const isProvisioning = task && provisioningTaskId === task.id;
+  const isReadOnly =
+    !isStageNode &&
+    Boolean(task) &&
+    (!isAssignedToMe || isOccupiedByOther || isMerged);
+
   return (
     <Drawer
       anchor="right"
@@ -60,7 +93,7 @@ export const GanttTaskDetailDrawer = ({
       slotProps={{
         paper: {
           sx: {
-            width: { xs: "100%", sm: 420 },
+            width: { xs: "100%", sm: 440 },
             p: 3,
             display: "flex",
             flexDirection: "column",
@@ -83,13 +116,69 @@ export const GanttTaskDetailDrawer = ({
           sx={{ fontWeight: 800, letterSpacing: 1 }}
         >
           {isStageNode
-            ? "DETALHES DA ETAPA (TASK PRINCIPAL)"
-            : "DETALHES DA SUB-TASK"}
+            ? "DETALHES DA ETAPA (FEATURE BRANCH)"
+            : `DETALHES DA SUB-TASK ${isReadOnly ? "(SOMENTE LEITURA)" : ""}`}
         </Typography>
         <IconButton size="small" onClick={onClose}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
+
+      {/* ALERTAS DE SEGURANÇA, BLOQUEIO E READ-ONLY */}
+      {isOccupiedByOther && (
+        <Alert severity="warning" icon={<LockIcon fontSize="small" />}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 700, display: "block" }}
+          >
+            Workspace em Uso Ativo por {occupiedByName}
+          </Typography>
+          A sessão do Pod está em execução por outro autor. Exibindo em modo
+          somente leitura (Read-Only).
+        </Alert>
+      )}
+
+      {!isOccupiedByOther &&
+        !isStageNode &&
+        task?.assignedToId &&
+        !isAssignedToMe && (
+          <Alert severity="info" icon={<LockIcon fontSize="small" />}>
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 700, display: "block" }}
+            >
+              Tarefa Atribuída a Outro Autor (Somente Leitura)
+            </Typography>
+            Esta sub-tarefa pertence a <strong>{assigneeName}</strong>. Todos os
+            campos estão bloqueados para edição.
+          </Alert>
+        )}
+
+      {!isOccupiedByOther && !isStageNode && !task?.assignedToId && (
+        <Alert severity="info" icon={<LockIcon fontSize="small" />}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 700, display: "block" }}
+          >
+            Sub-tarefa Não Atribuída
+          </Typography>
+          Assine esta sub-tarefa para habilitar a edição de prazos, status e
+          liberação do workspace.
+        </Alert>
+      )}
+
+      {isBlockedByPrevious && !isMerged && (
+        <Alert severity="info" icon={<LockIcon fontSize="small" />}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 700, display: "block" }}
+          >
+            Sub-tarefa Bloqueada (Fila Sequencial)
+          </Typography>
+          Aguardando a sub-tarefa anterior da mesma etapa ser concluída e
+          mesclada.
+        </Alert>
+      )}
 
       {/* TÍTULO E FEATURE BRANCH */}
       <Box>
@@ -145,12 +234,13 @@ export const GanttTaskDetailDrawer = ({
             color="text.secondary"
             sx={{ fontWeight: 700, mb: 0.5, display: "block" }}
           >
-            STATUS ATUAL
+            STATUS ATUAL {isReadOnly && "(SOMENTE LEITURA)"}
           </Typography>
           <Select
             size="small"
             fullWidth
             value={status}
+            disabled={isReadOnly}
             sx={{ fontWeight: 700, fontSize: "0.85rem" }}
           >
             <MenuItem value={TaskStatus.NOT_STARTED}>Não Iniciada</MenuItem>
@@ -165,7 +255,7 @@ export const GanttTaskDetailDrawer = ({
         </Box>
 
         {/* RESPONSÁVEL / ASSIGNEE */}
-        {!isStageNode && (
+        {!isStageNode && task && (
           <Box>
             <Typography
               variant="caption"
@@ -174,26 +264,74 @@ export const GanttTaskDetailDrawer = ({
             >
               RESPONSÁVEL / ASSIGNEE
             </Typography>
+
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "space-between",
                 gap: 1.5,
                 p: 1.2,
                 borderRadius: 1.5,
                 bgcolor: "action.hover",
               }}
             >
-              <UserAvatar user={assigneeUser} name={assigneeName} size={32} />
-              {assigneeName && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <UserAvatar
+                  user={assigneeUser}
+                  name={assigneeName || "Autor"}
+                  size={32}
+                />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                    {assigneeName}
+                    {assigneeName || "Não Atribuído"}{" "}
+                    {isAssignedToMe && "(Você)"}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Coautor / Contribuidor Git
+                    Autor Responsável
                   </Typography>
                 </Box>
+              </Box>
+
+              {/* BOTOES DE ATRIBUIÇÃO */}
+              {!task.assignedToId && onClaimTask && (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  disabled={isClaiming || isOccupiedByOther}
+                  startIcon={
+                    isClaiming ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      <HowToRegIcon fontSize="small" />
+                    )
+                  }
+                  onClick={() => onClaimTask(task.id)}
+                  sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                >
+                  Assinar
+                </Button>
+              )}
+
+              {isAssignedToMe && onUnclaimTask && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  disabled={isUnclaiming || isOccupiedByOther}
+                  startIcon={
+                    isUnclaiming ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      <PersonRemoveIcon fontSize="small" />
+                    )
+                  }
+                  onClick={() => onUnclaimTask(task.id)}
+                  sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                >
+                  Desassinar
+                </Button>
               )}
             </Box>
           </Box>
@@ -205,15 +343,23 @@ export const GanttTaskDetailDrawer = ({
             label="Data de Início"
             type="date"
             size="small"
+            disabled={isReadOnly}
             value={startDate ? startDate.split("T")[0] : ""}
-            slotProps={{ inputLabel: { shrink: true } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { readOnly: isReadOnly },
+            }}
           />
           <TextField
             label="Data Limite (Due)"
             type="date"
             size="small"
+            disabled={isReadOnly}
             value={endDate ? endDate.split("T")[0] : ""}
-            slotProps={{ inputLabel: { shrink: true } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { readOnly: isReadOnly },
+            }}
           />
         </Box>
 
@@ -246,18 +392,68 @@ export const GanttTaskDetailDrawer = ({
 
       <Divider />
 
-      {/* AÇÕES FINAIS (ABRIR NO VS CODE) */}
+      {/* AÇÕES FINAIS (ABRIR NO VS CODE / POD) */}
       <Box sx={{ mt: "auto", pt: 2 }}>
         {!isStageNode && task && onStartWorkspace && (
           <Button
             variant="contained"
             color="primary"
             fullWidth
-            startIcon={<CodeIcon />}
-            onClick={() => onStartWorkspace(task.id, task.branchName)}
+            disabled={
+              isProvisioning ||
+              isBlockedByPrevious ||
+              isOccupiedByOther ||
+              !isAssignedToMe
+            }
+            startIcon={
+              isProvisioning ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : isBlockedByPrevious ||
+                isOccupiedByOther ||
+                !isAssignedToMe ? (
+                <LockIcon />
+              ) : (
+                <CodeIcon />
+              )
+            }
+            onClick={() => void onStartWorkspace(task)}
             sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
           >
-            Abrir Workspace no VS Code
+            {isProvisioning
+              ? "⚡ Provisionando Pod..."
+              : isBlockedByPrevious
+                ? "🔒 Aguardando Sub-tarefa Anterior"
+                : isOccupiedByOther
+                  ? `🔒 Em uso por ${occupiedByName}`
+                  : !task.assignedToId
+                    ? "✍️ Assine a Tarefa para Abrir Workspace"
+                    : !isAssignedToMe
+                      ? "🔒 Atribuída a Outro Autor"
+                      : "🚀 Abrir Workspace no VS Code"}
+          </Button>
+        )}
+
+        {isStageNode && stage && onStartWorkspace && (
+          <Button
+            variant="contained"
+            color="secondary"
+            fullWidth
+            startIcon={<CodeIcon />}
+            onClick={() => {
+              const featureTask: TaskItem = {
+                id: `stage-${stage.id}`,
+                projectId: stage.projectId,
+                stageId: stage.id,
+                title: `Workspace da Feature: ${stage.title}`,
+                branchName: `feature/stage-${stage.order}`,
+                status: TaskStatus.IN_PROGRESS,
+                dueDate: new Date().toISOString(),
+              };
+              void onStartWorkspace(featureTask);
+            }}
+            sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
+          >
+            🚀 Workspace da Feature
           </Button>
         )}
       </Box>

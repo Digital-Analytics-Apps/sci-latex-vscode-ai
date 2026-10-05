@@ -1,12 +1,11 @@
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { StandardModal } from "../../../components/common/StandardModal";
 import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
 import { Role } from "../../../constants/roles";
-import { api } from "../../../services/api";
+import { useAddProjectMemberMutation } from "../../../hooks/useProjectQueries";
 import { type UserMemberItem } from "../../../services/usersService";
 import { showNotification } from "../../../store/slices/notificationSlice";
 
@@ -24,10 +23,9 @@ export const AddMemberModal = ({
   onMemberAdded,
 }: AddMemberModalProps) => {
   const dispatch = useDispatch();
-  const queryClient = useQueryClient();
+  const addMemberMutation = useAddProjectMemberMutation(projectId);
 
   const [role, setRole] = useState<Role>(Role.AUTHOR);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Busca de Usuários via UserSearchAutocomplete
   const [selectedUserEmail, setSelectedUserEmail] = useState("");
@@ -55,9 +53,8 @@ export const AddMemberModal = ({
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      await api.post(`/projects/${projectId}/members`, {
+      await addMemberMutation.mutateAsync({
         userId: selectedUser.id,
         role,
       });
@@ -71,11 +68,6 @@ export const AddMemberModal = ({
         }),
       );
 
-      // Invalida as queries do React Query para atualizar o card do artigo e a lista de membros
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["user-articles"] });
-
       setSelectedUser(null);
       setSelectedUserEmail("");
       if (onMemberAdded) onMemberAdded();
@@ -86,8 +78,6 @@ export const AddMemberModal = ({
         err.message ||
         "Erro ao adicionar membro ao artigo.";
       dispatch(showNotification({ message: errorMsg, severity: "error" }));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -103,7 +93,7 @@ export const AddMemberModal = ({
       confirmText="Adicionar Membro"
       confirmColor="primary"
       confirmDisabled={!selectedUser}
-      isSubmitting={isSubmitting}
+      isSubmitting={addMemberMutation.isPending}
     >
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
         {/* Componente Reutilizável de Busca de Usuários */}

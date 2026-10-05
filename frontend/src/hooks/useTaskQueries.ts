@@ -22,9 +22,9 @@ export function useCreateTaskMutation(projectId: string) {
   return useMutation({
     mutationFn: (data: CreateTaskInput) =>
       tasksService.createTask(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
 }
@@ -34,9 +34,9 @@ export function useActivateTaskWorkspaceMutation(projectId: string) {
   return useMutation({
     mutationFn: (taskId: string) =>
       tasksService.activateWorkspace(projectId, taskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
 }
@@ -45,9 +45,9 @@ export function useClaimTaskMutation(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (taskId: string) => tasksService.claimTask(projectId, taskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
 }
@@ -56,9 +56,9 @@ export function useUnclaimTaskMutation(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (taskId: string) => tasksService.unclaimTask(projectId, taskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
 }

@@ -385,4 +385,14 @@ startxref
     const status = await this.projectsService.checkGitStatus(id, userId);
     return reply.send(status);
   }
+
+  async getReviewCommentsByStage(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+    const result = await this.projectsService.getReviewCommentsByStage(id);
+    return reply.send(result);
+  }
 }

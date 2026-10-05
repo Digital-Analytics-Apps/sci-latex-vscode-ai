@@ -20,7 +20,13 @@ interface GanttTimelineViewProps {
   projectCreatedAt?: string | null;
   targetConferenceName?: string | null;
   targetConferenceDate?: string | null;
-  onStartWorkspace?: (taskId: string, branchName: string) => void;
+  currentUserId?: string;
+  provisioningTaskId?: string | null;
+  onStartWorkspace?: (task: TaskItem) => void | Promise<void>;
+  onClaimTask?: (taskId: string) => void;
+  onUnclaimTask?: (taskId: string) => void;
+  isClaiming?: boolean;
+  isUnclaiming?: boolean;
   onOpenCreateStage?: () => void;
   onOpenCreateTask?: () => void;
 }
@@ -31,7 +37,13 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
   projectCreatedAt,
   targetConferenceName,
   targetConferenceDate,
+  currentUserId,
+  provisioningTaskId,
   onStartWorkspace,
+  onClaimTask,
+  onUnclaimTask,
+  isClaiming = false,
+  isUnclaiming = false,
   onOpenCreateStage,
   onOpenCreateTask,
 }) => {
@@ -159,6 +171,10 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
           tasks={tasks}
           onSelectEntity={handleSelectEntity}
           selectedEntityId={selectedTask?.id || selectedStage?.id}
+          currentUserId={currentUserId}
+          provisioningTaskId={provisioningTaskId}
+          onStartWorkspace={onStartWorkspace}
+          onClaimTask={onClaimTask}
         />
 
         {/* Gráfico de Barras e Régua de Datas à Direita */}
@@ -182,7 +198,13 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
         onClose={() => setIsDrawerOpen(false)}
         stage={selectedStage}
         task={selectedTask}
+        currentUserId={currentUserId}
+        provisioningTaskId={provisioningTaskId}
         onStartWorkspace={onStartWorkspace}
+        onClaimTask={onClaimTask}
+        onUnclaimTask={onUnclaimTask}
+        isClaiming={isClaiming}
+        isUnclaiming={isUnclaiming}
       />
     </Box>
   );

@@ -273,18 +273,30 @@ export class K8sPodManagerService {
         labelSelector
       );
 
+      // Define subcaminho isolado por tarefa do usuário: projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}
+      const stageSegment = stageId || 'general';
+      const userTaskSubPath = `projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}`;
+
       const activePod = (existingPods.body.items || []).find(
         (pod) => pod.status?.phase === 'Running'
       );
       if (activePod?.metadata?.name) {
-        await this.updateServiceSelector(projectId, userId, taskId);
-        await this.waitForPodReady(activePod.metadata.name);
-        return {
-          podName: activePod.metadata.name,
-          pvcName,
-          status: 'claimed_from_pool',
-          codeServerUrl: env.CODE_SERVER_URL,
-        };
+        const currentSubPath = activePod.spec?.containers?.[0]?.volumeMounts?.[0]?.subPath;
+        if (currentSubPath && currentSubPath !== userTaskSubPath) {
+          console.log(
+            `🔄 Pod ${activePod.metadata.name} possui subPath desatualizado (${currentSubPath} != ${userTaskSubPath}). Re-criando Pod...`
+          );
+          await k8sApi.deleteNamespacedPod(activePod.metadata.name, this.namespace).catch(() => {});
+        } else {
+          await this.updateServiceSelector(projectId, userId, taskId);
+          await this.waitForPodReady(activePod.metadata.name);
+          return {
+            podName: activePod.metadata.name,
+            pvcName,
+            status: 'claimed_from_pool',
+            codeServerUrl: env.CODE_SERVER_URL,
+          };
+        }
       }
 
       // Se o Warm Pool tiver um pod livre, podemos limpar o standby antigo para criar o Pod 100% isolado da Task
@@ -301,10 +313,6 @@ export class K8sPodManagerService {
       if (warmPod?.metadata?.name) {
         await k8sApi.deleteNamespacedPod(warmPod.metadata.name, this.namespace).catch(() => {});
       }
-
-      // Define subcaminho isolado por tarefa do usuário: projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}
-      const stageSegment = stageId || 'general';
-      const userTaskSubPath = `projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}`;
 
       // Cria o Pod sob demanda estritamente isolado da Task
       const userSuffix = userId ? userId.slice(0, 6) : 'user';

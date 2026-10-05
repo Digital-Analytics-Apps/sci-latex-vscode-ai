@@ -1,8 +1,8 @@
 # Especificação Técnica e Arquitetural (Specs)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-22  
-**Status:** Especificação Completa (KinD Kubernetes Cluster Local, Warm Standby Pool, Pods sob Demanda, PVC por Projeto, Limpeza Inteligente de PVCs, Estrutura Modular TeX, SDK Octokit, Stream SSE, Interface Zen Mode Distraction-Free, Topbar Guiada a Estado de Domínio, UX Acadêmica de Salvar Progresso e Tradução de Diffs)
+**Última Atualização:** 2026-10-04  
+**Status:** Especificação Completa (Gantt Timeline Unificado, Trava Sequencial de Sub-tarefas, Workspaces por Nível Feature/Sub-tarefa, Painel de Feedback da Revisão Agrupado por Etapa, Pods sob Demanda K8s, Warm Standby Pool, Stream SSE)
 
 ---
 
@@ -561,16 +561,19 @@ model Release {
    - As cotas por time funcionam como guia de planejamento, sendo incentivada a superação da cota (`over-achievement`).
 
 3. **Etapas de Escrita Dinâmicas (`ProjectStage` como Features) & Hierarquia de Branches:**
-   - Cada etapa de escrita do artigo representa uma **Feature Branch** (`feature/<stage-slug>`). Os Autores possuem autonomia total para **criar, editar, reordenar e remover etapas de escrita** dinamicamente. Etapas institucionais (Gatekeepers NIT e Congresso) são marcos de processo e não geram branches.
+   - Cada etapa de escrita do artigo representa uma **Feature Branch** (`feature/<stage-slug>`). Os Autores possuem autonomia total para **criar, editar, reordenar e remover etapas de escrita** dinamicamente.
    - **Hierarquia Estrita de Branches:** `main` $\leftarrow$ `dev` $\leftarrow$ `feature/<stage-slug>` $\leftarrow$ `task/<issue-slug>`.
-   - **Tabela Inicial Vazia & Sub-tarefas:** Na criação de um novo artigo/projeto, as Etapas de Escrita são instanciadas como estruturas, porém a tabela de tarefas inicia **vazia de sub-issues**. O Autor cria sub-tarefas vinculadas a uma Etapa conforme o andamento.
-   - **Governança de Assinatura (Claim/Unclaim):** Sub-tarefas possuem o campo `assignedToId` opcional. Qualquer Autor do projeto pode **Assinar** a tarefa (atribuindo a si próprio) ou **Desassinar** (liberando a tarefa).
+   - **Trava Sequencial de Execução de Sub-tarefas (`isBlockedByPrevious`)**: Como todas as sub-tarefas de uma mesma etapa alteram os mesmos arquivos da seção TeX (`sections/*.tex`), as sub-tarefas de uma etapa são estritamente sequenciais. A sub-tarefa $N$ só pode ter seu workspace iniciado quando a sub-tarefa $N-1$ alcançar o status `MERGED`, prevenindo conflitos de mesclagem Git.
+   - **Interface Unificada em Linha do Tempo / Gantt (`<GanttTimelineView />`)**: A gestão visual do artigo elimina a visão de tabela simples separada. A árvore lateral (`<GanttTableTree />`) integra lançamento rápido de workspace por 1 clique (`LaunchIcon`), avatares dos autores atribuídos (`UserAvatar`), atalhos de assinatura (`Assinar`), badges de travamento de ocupação (`isOccupied`) e trava sequencial (`isBlockedByPrevious`).
+   - **Regras de Workspace por Nível**:
+     - *Sub-tarefas (Issues)*: Iniciam workspace na branch `task/<task-id>`, salvam commits e efetuam merge direto na Feature Branch pai (`feature/<stage-slug>`) sem necessidade de Pull Request ou parecer de revisores.
+     - *Feature Branches de Etapa*: O botão `🚀 Workspace da Feature` só é liberado quando 100% das sub-tarefas da etapa estiverem `MERGED`. Requer a criação de um Pull Request formal para `dev`, submetido a parecer dos Pares / Revisor Principal.
 
-4. **Revisão de Pares & Restrição Estrita de Pull Requests:**
-   - **Sub-tarefas (Issues):** São salvas e mescladas diretamente pelo Autor na branch da respectiva Feature (`feature/<stage-slug>`).
-   - **Solicitação de Revisão Formal (`PullRequest` / `ReviewRound`):** **Restrita exclusivamente às Feature Branches** (`feature/<stage-slug>` $\rightarrow$ `dev`). O Autor solicita a revisão da Feature concluída tanto aos seus Pares (co-autores) quanto ao Revisor Principal. Somente Feature Branches aprovadas podem ser mescladas em `dev`.
+4. **Painel de Feedback dos Revisores (`<ReviewFeedbackPanel />`):**
+   - Apontamentos dos revisores são consumidos do endpoint `GET /api/v1/projects/:id/review-comments-by-stage` e apresentados agrupados por Etapa e Arquivo TeX com indicação de linha (`lineNumber`).
+   - Oferece o botão lateral `➕ Criar Sub-tarefa` para que o Autor converta instantaneamente qualquer comentário do revisor em uma nova sub-tarefa encadeada na fila da respectiva etapa.
 
 5. **Os Dois Gatekeepers Sequenciais:**
-   - **⚖️ Gatekeeper 1 - Análise do NIT:** Bloqueado (`🔒 LOCKED`) enquanto houver etapas/tarefas de conteúdo pendentes (< 100%). Liberado automaticamente quando 100% do conteúdo for mergeado. Solicitação exclusiva dos Autores do artigo.
+   - **⚖️ Gatekeeper 1 - Análise do NIT:** Bloqueado (`🔒 LOCKED`) enquanto houver etapas/tarefas de conteúdo pendentes (< 100%). Liberado automaticamente quando 100% do conteúdo for mergeado.
    - **🚀 Gatekeeper 2 - Submissão ao Congresso:** Bloqueado (`🔒 LOCKED`) até a emissão do parecer de aprovação do NIT (`APPROVED_NIT`).
 

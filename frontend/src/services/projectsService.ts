@@ -5,7 +5,7 @@ import type {
   ProjectDetails,
   ProjectListItem,
 } from "../types/project.types";
-import type { ProjectStage } from "../types/stage.types";
+import type { CreateStageInput, ProjectStage } from "../types/stage.types";
 import { api } from "./api";
 
 export type { ProjectMember } from "../types/user.types";
@@ -104,7 +104,7 @@ export const projectsService = {
   // Criar nova etapa customizada de escrita
   async createProjectStage(
     projectId: string,
-    data: { title: string; order?: number; description?: string },
+    data: CreateStageInput,
   ): Promise<ProjectStage> {
     const response = await api.post(
       `${PROJETCT_URL}/${projectId}/stages`,
@@ -149,5 +149,25 @@ export const projectsService = {
   // Excluir etapa de escrita customizada (Etapas Gatekeeper são protegidas)
   async deleteProjectStage(projectId: string, stageId: string): Promise<void> {
     await api.delete(`${PROJETCT_URL}/${projectId}/stages/${stageId}`);
+  },
+
+  // Obter apontamentos de revisão agrupados por etapa
+  async getReviewCommentsByStage(projectId: string): Promise<any[]> {
+    const response = await api.get(
+      `${PROJETCT_URL}/${projectId}/review-comments-by-stage`,
+    );
+    return response.data;
+  },
+
+  // Adicionar membro ao projeto / artigo
+  async addProjectMember(
+    projectId: string,
+    data: { userId: string; role: string },
+  ) {
+    const response = await api.post(
+      `${PROJETCT_URL}/${projectId}/members`,
+      data,
+    );
+    return response.data;
   },
 };

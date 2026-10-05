@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -25,4 +27,17 @@ if (!_env.success) {
   throw new Error('Invalid environment variables');
 }
 
-export const env = _env.data;
+const rawStoragePath = _env.data.STORAGE_PATH;
+let resolvedStoragePath = path.resolve(rawStoragePath);
+if (
+  !path.isAbsolute(rawStoragePath) &&
+  process.cwd().endsWith('/backend') &&
+  fs.existsSync(path.resolve(process.cwd(), '..', 'storage'))
+) {
+  resolvedStoragePath = path.resolve(process.cwd(), '..', 'storage');
+}
+
+export const env = {
+  ..._env.data,
+  STORAGE_PATH: resolvedStoragePath,
+};

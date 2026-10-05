@@ -1,9 +1,19 @@
 import AddTaskIcon from "@mui/icons-material/AddTask";
-import { Box, Chip, TextField, Typography } from "@mui/material";
-import React, { useState } from "react";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import {
+  Box,
+  Chip,
+  InputAdornment,
+  TextField,
+  Typography,
+} from "@mui/material";
+import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { StandardModal } from "../../../components/common/StandardModal";
-import { useCreateStageMutation } from "../../../hooks/useProjectQueries";
+import {
+  useCreateStageMutation,
+  useProjectDetails,
+} from "../../../hooks/useProjectQueries";
 import { showNotification } from "../../../store/slices/notificationSlice";
 
 interface CreateStageModalProps {
@@ -21,9 +31,25 @@ export const CreateStageModal = ({
 }: CreateStageModalProps) => {
   const dispatch = useDispatch();
   const createStageMutation = useCreateStageMutation(projectId);
+  const { data: projectDetails } = useProjectDetails(projectId);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [plannedCompletionDate, setPlannedCompletionDate] = useState("");
+
+  const targetSubmissionDateStr = useMemo(() => {
+    const raw =
+      projectDetails?.targetConferenceDate ||
+      projectDetails?.backupConferenceDate;
+    if (!raw) return "";
+    return new Date(raw).toISOString().split("T")[0];
+  }, [projectDetails]);
+
+  const targetSubmissionDateFormatted = useMemo(() => {
+    if (!targetSubmissionDateStr) return null;
+    const [year, month, day] = targetSubmissionDateStr.split("-");
+    return `${day}/${month}/${year}`;
+  }, [targetSubmissionDateStr]);
 
   const slug = title
     .toLowerCase()
@@ -46,11 +72,28 @@ export const CreateStageModal = ({
       return;
     }
 
+    // TODO / NOTE: A data limite da etapa não pode ser maior que a data de submissão do artigo (targetConferenceDate/backupConferenceDate).
+    // No futuro, avaliar se esta data também deverá ser estritamente menor/respeitar a data do NIT.
+    if (
+      plannedCompletionDate &&
+      targetSubmissionDateStr &&
+      new Date(plannedCompletionDate) > new Date(targetSubmissionDateStr)
+    ) {
+      dispatch(
+        showNotification({
+          message: `A data limite da etapa não pode ser maior que a data de submissão do artigo (${targetSubmissionDateFormatted}).`,
+          severity: "error",
+        }),
+      );
+      return;
+    }
+
     try {
       await createStageMutation.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
         order: nextOrder,
+        plannedCompletionDate: plannedCompletionDate || undefined,
       });
 
       dispatch(
@@ -62,6 +105,7 @@ export const CreateStageModal = ({
 
       setTitle("");
       setDescription("");
+      setPlannedCompletionDate("");
       onClose();
     } catch (err: any) {
       const msg =
@@ -89,7 +133,7 @@ export const CreateStageModal = ({
         <TextField
           fullWidth
           size="small"
-          label="Título da Etapa de Escrita"
+          label="Título da Etapa de Escrita *"
           placeholder="Ex: Metodologia e Modelagem Matemática"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -120,6 +164,33 @@ export const CreateStageModal = ({
             sx={{ fontFamily: "monospace", fontWeight: 700 }}
           />
         </Box>
+
+        <TextField
+          fullWidth
+          size="small"
+          type="date"
+          label="Prazo Previsto de Conclusão da Etapa"
+          slotProps={{
+            inputLabel: { shrink: true },
+            htmlInput: {
+              max: targetSubmissionDateStr || undefined,
+            },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <CalendarTodayIcon color="primary" fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          helperText={
+            targetSubmissionDateFormatted
+              ? `Data limite de submissão do artigo: ${targetSubmissionDateFormatted}`
+              : "Defina o prazo final previsto de conclusão desta etapa."
+          }
+          value={plannedCompletionDate}
+          onChange={(e) => setPlannedCompletionDate(e.target.value)}
+        />
 
         <TextField
           fullWidth

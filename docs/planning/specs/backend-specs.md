@@ -1,7 +1,7 @@
 # Especificação Técnica do Backend (Fastify + Prisma + TypeScript)
 
 **Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
-**Última Atualização:** 2026-09-22  
+**Última Atualização:** 2026-10-04  
 **Documento de Referência:** [`specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs.md)
 
 ---
@@ -97,7 +97,7 @@ src/
 * `POST /api/v1/projects/:projectId/tasks/:taskId/unclaim`
   * **Descrição:** Desassocia o responsável da sub-tarefa/issue (`assignedToId = null`).
 * `POST /api/v1/projects/:projectId/tasks/:taskId/workspace`
-  * **Comportamento & Trava de Ocupação:** Se a tarefa possuir uma sessão ativa no Redis com outro usuário, rejeita a solicitação com **HTTP 409 Conflict** (`TASK_WORKSPACE_OCCUPIED`). Caso livre, provisiona a workspace e atualiza/sincroniza a branch com a Feature pai `feature/<stage-slug>`.
+  * **Comportamento & Trava de Ocupação/Assinatura:** Valida se a tarefa está assinada pelo usuário solicitante (`assignedToId === req.user.id`). Se não estiver assinada, rejeita a solicitação com **HTTP 400 Bad Request** (`TASK_NOT_CLAIMED`). Se a tarefa possuir uma sessão ativa no Redis com outro usuário, rejeita com **HTTP 409 Conflict** (`TASK_WORKSPACE_OCCUPIED`). Caso aprovado, provisiona o workspace e atualiza/sincroniza a branch com a Feature pai `feature/<stage-slug>`.
 * `GET /api/v1/projects/:id/tasks/:taskId/diff-summary`
   * **Permissão:** Integrante do Projeto (`AUTHOR`, `REVIEWER`, `COORDINATOR`).
   * **Descrição:** Retorna os fatos Git puros (`path`, `status`, `additions`, `deletions`), metadados temporais (`lastSavedAt`, `lastSavedAuthor`) e itens traduzidos de domínio (`category`, `label`, `isTaskScope`) calculados contra o `HEAD` da branch da tarefa.
@@ -106,6 +106,9 @@ src/
   * **Input Opcional:** `{ "commitMessage": "Descrição manual opcional" }`
   * **Comportamento:** Copia os arquivos atualizados da workspace `projects/:projectId/users/:userId/stages/:stageId/tasks/:taskId`, executa o commit na branch da sub-tarefa e mescla diretamente na Feature Branch pai (`feature/<stage-slug>`).
   * **Restrição Estrita de PR:** Solicitacões de Revisão (`PullRequest` / `ReviewRound`) são permitidas **apenas para Feature Branches** (`feature/...` $\rightarrow$ `dev`). Sub-tarefas são integradas na Feature Branch sem exigir PR formal ao Revisor.
+* `GET /api/v1/projects/:id/review-comments-by-stage`
+  * **Permissão:** Integrante do Projeto (`AUTHOR`, `REVIEWER`, `COORDINATOR`, `MANAGER`).
+  * **Descrição:** Retorna a lista de apontamentos dos revisores agrupados por etapa (`stageId`, `stageTitle`), listando comentários de revisão com metadados do autor, linha de código TeX (`lineNumber`), arquivo (`filePath`), status da resolução e atalho para criação direta de sub-tarefas de correção.
 
 ### 3.4 Módulo `compiler` (PDF Oficial de PRs e Artigo Consolidado)
 * `POST /api/v1/projects/:id/compile-master`

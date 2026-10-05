@@ -24,6 +24,7 @@ export interface PrepareWorkspaceSessionParams {
   projectId: string;
   userId: string;
   taskId?: string;
+  stageId?: string;
   branchName?: string;
   token?: string;
   mode?: string;
@@ -329,7 +330,6 @@ export class EditorProxyService {
     }
 
     const gitFlags = this.gitService.getGitAuthFlags();
-    const repoTarget = remoteUrl || hostGitPath || this.gitService.getRepoPath(projectId);
 
     // 2. Resolver o caminho físico exclusivo do Workspace da Task: projects/${projectId}/users/${userId}/stages/${stageId}/tasks/${taskId}
     const taskWorkspaceDir = this.workspacesRepository.getTaskWorkspacePath(
@@ -349,19 +349,64 @@ export class EditorProxyService {
       taskHasGit = false;
     }
 
-    // 3. Se o workspace não possui .git, efetuar git clone diretamente do repositório remoto/host do GitHub (Zero fs.cp)
-    if (!taskHasGit) {
-      try {
-        if (remoteUrl) {
-          await execAsync(`git ${gitFlags} clone "${remoteUrl}" "${taskWorkspaceDir}"`);
-        } else if (hostGitPath) {
-          await execAsync(`git clone "${hostGitPath}" "${taskWorkspaceDir}"`);
-        } else {
-          await execAsync(`git init "${taskWorkspaceDir}"`);
+    // Se o workspace da etapa específica não tiver .git, verifica se existe no caminho legado 'general' e sincroniza
+    if (!taskHasGit && stageId && stageId !== 'general') {
+      const legacyGeneralDir = this.workspacesRepository.getTaskWorkspacePath(
+        projectId,
+        userId,
+        taskId,
+        'general'
+      );
+      const legacyGitDir = path.join(legacyGeneralDir, '.git');
+      const hasLegacyGit = await fs
+        .access(legacyGitDir)
+        .then(() => true)
+        .catch(() => false);
+
+      if (hasLegacyGit) {
+        try {
+          await execAsync(
+            `cp -rn "${legacyGeneralDir}"/* "${taskWorkspaceDir}"/ 2>/dev/null || true`
+          ).catch(() => {});
+          await execAsync(
+            `cp -rn "${legacyGeneralDir}"/.* "${taskWorkspaceDir}"/ 2>/dev/null || true`
+          ).catch(() => {});
+          taskHasGit = await fs
+            .access(taskGitDir)
+            .then(() => true)
+            .catch(() => false);
+        } catch {
+          // Ignora falha de sincronização legada
         }
-      } catch {
-        // Fallback: se o clone falhar (ex: repositório remoto sem commits ou ambiente de teste sem rede), inicializa git init
+      }
+    }
+
+    // 3. Se o workspace não possui .git, efetuar clone diretamente da branch da tarefa
+    if (!taskHasGit) {
+      let cloneSuccess = false;
+      if (remoteUrl) {
+        // Tenta clonar diretamente a branch remota específica da tarefa
+        const cloneBranchCmd = `git ${gitFlags} clone --branch "${branchName}" "${remoteUrl}" "${taskWorkspaceDir}"`;
+        const res = await execAsync(cloneBranchCmd).catch(() => null);
+        if (res) {
+          cloneSuccess = true;
+        } else {
+          // Se a branch específica ainda não existir no remoto, clona o repositório base e cria a branch
+          const cloneBaseCmd = `git ${gitFlags} clone "${remoteUrl}" "${taskWorkspaceDir}"`;
+          const baseRes = await execAsync(cloneBaseCmd).catch(() => null);
+          if (baseRes) {
+            await execAsync(`git -C "${taskWorkspaceDir}" checkout -b "${branchName}"`).catch(
+              () => {}
+            );
+            cloneSuccess = true;
+          }
+        }
+      }
+
+      if (!cloneSuccess) {
+        // Fallback local se estiver offline ou sem acesso de rede
         await execAsync(`git init "${taskWorkspaceDir}"`).catch(() => {});
+        await execAsync(`git -C "${taskWorkspaceDir}" checkout -b "${branchName}"`).catch(() => {});
       }
     }
 
@@ -377,15 +422,19 @@ export class EditorProxyService {
     // 4. Efetuar fetch das atualizações mais recentes do remoto do GitHub para o workspace
     try {
       if (remoteUrl) {
-        await execAsync(`git -C "${taskWorkspaceDir}" ${gitFlags} fetch origin`).catch(() => {});
+        await execAsync(`git -C "${taskWorkspaceDir}" ${gitFlags} fetch origin`).catch(
+          (err: any) => {
+            console.warn(`⚠️ git fetch origin warning for task ${taskId}:`, err.message || err);
+          }
+        );
         await execAsync(`git -C "${taskWorkspaceDir}" ${gitFlags} fetch --all`).catch(() => {});
       } else if (hostGitPath) {
         await execAsync(
           `git -C "${taskWorkspaceDir}" fetch "${hostGitPath}" "+refs/heads/*:refs/remotes/origin/*"`
         ).catch(() => {});
       }
-    } catch {
-      // Ignora falhas de fetch offline
+    } catch (err: any) {
+      console.warn(`⚠️ git fetch exception for task ${taskId}:`, err.message || err);
     }
 
     // 5. Checkout da branch ou do commit imutável da submissão (submittedCommitHash)
@@ -399,22 +448,54 @@ export class EditorProxyService {
             ).catch(() => {});
           }
         );
+      } else if (!taskHasGit) {
+        // Modo Autor (Novo Workspace): checkout na branch da tarefa criada a partir do remoto/origin ou dev
+        await execAsync(
+          `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
+        ).catch(async () => {
+          await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`).catch(
+            async () => {
+              await execAsync(`git -C "${taskWorkspaceDir}" checkout -b "${branchName}" dev`).catch(
+                () => {}
+              );
+            }
+          );
+        });
+        await execAsync(
+          `git -C "${taskWorkspaceDir}" merge --ff-only origin/"${branchName}"`
+        ).catch(() => {});
       } else {
-        // Modo Autor: checkout na branch da tarefa (ex: task/123-secao)
+        // Modo Autor (Workspace Já Existente): garante que está na branch da tarefa e sincroniza com a origin/"${branchName}"
         await execAsync(`git -C "${taskWorkspaceDir}" checkout "${branchName}"`).catch(async () => {
           await execAsync(
             `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
-          );
-        });
-        await execAsync(`git -C "${taskWorkspaceDir}" reset --hard origin/"${branchName}"`).catch(
-          async () => {
-            await execAsync(`git -C "${taskWorkspaceDir}" reset --hard "${branchName}"`).catch(
+          ).catch(async () => {
+            await execAsync(`git -C "${taskWorkspaceDir}" checkout -b "${branchName}"`).catch(
               () => {}
             );
+          });
+        });
+
+        // Sincroniza com origin/"${branchName}" se houver novos commits no remoto
+        await execAsync(
+          `git -C "${taskWorkspaceDir}" merge --ff-only origin/"${branchName}"`
+        ).catch(async () => {
+          // Se o fast-forward falhar e o working tree estiver limpo (sem edições locais não salvas), atualiza para origin/branchName
+          const statusRes = await execAsync(
+            `git -C "${taskWorkspaceDir}" status --porcelain`
+          ).catch(() => ({ stdout: '' }));
+          if (statusRes.stdout.trim() === '') {
+            await execAsync(
+              `git -C "${taskWorkspaceDir}" reset --hard origin/"${branchName}"`
+            ).catch(() => {});
           }
-        );
+        });
       }
-    } catch {
+    } catch (err: any) {
+      console.warn(
+        `⚠️ Error checking out branch ${branchName} for task ${taskId}:`,
+        err.message || err
+      );
       // Fallback em caso de nova tarefa ou branch ainda não existente no remoto
       await execAsync(
         `git -C "${taskWorkspaceDir}" checkout -b "${branchName}" origin/"${branchName}"`
@@ -451,7 +532,13 @@ export class EditorProxyService {
       ).catch(() => {});
     }
 
-    await this.ensureTeXTemplateFiles(taskWorkspaceDir, 'Artigo SCI-LaTeX');
+    const mainTexExists = await fs
+      .access(path.join(taskWorkspaceDir, 'main.tex'))
+      .then(() => true)
+      .catch(() => false);
+    if (!mainTexExists) {
+      await this.ensureTeXTemplateFiles(taskWorkspaceDir, 'Artigo SCI-LaTeX');
+    }
     await this.ensureWorkspaceSettings(taskWorkspaceDir, mode);
 
     return taskWorkspaceDir;
@@ -506,6 +593,7 @@ export class EditorProxyService {
 
     // 1. Determina a branch de destino no Git e resolve canonical taskId
     let targetBranch = params.branchName || 'dev';
+    let resolvedStageId: string | undefined = params.stageId;
 
     if (params.taskId && params.taskId !== 'default-task') {
       let task = await this.tasksRepository.findById(params.taskId).catch(() => null);
@@ -551,6 +639,7 @@ export class EditorProxyService {
 
       if (task) {
         taskId = task.id;
+        resolvedStageId = task.stageId || resolvedStageId;
         if (!params.branchName && task.branchName) {
           targetBranch = task.branchName;
         }
@@ -596,6 +685,7 @@ export class EditorProxyService {
       projectId: params.projectId,
       userId,
       taskId,
+      stageId: resolvedStageId,
       branchName: targetBranch,
       targetCommitHash,
       gitRepoPath: project.gitRepoPath,
@@ -603,7 +693,12 @@ export class EditorProxyService {
     });
 
     // 2. Reivindica o Pod isolado da Task do projeto no K8s
-    const podResult = await this.k8sPodManager.claimPodForTask(params.projectId, userId, taskId);
+    const podResult = await this.k8sPodManager.claimPodForTask(
+      params.projectId,
+      userId,
+      taskId,
+      resolvedStageId
+    );
 
     const codeServerUrl = env.CODE_SERVER_URL;
     let isCodeServerUp = false;

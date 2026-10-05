@@ -1,26 +1,28 @@
 import AddTaskIcon from "@mui/icons-material/AddTask";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import {
   Autocomplete,
   Box,
   Chip,
   CircularProgress,
   FormControl,
+  FormHelperText,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
   TextField,
   Typography,
 } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { StandardModal } from "../../../components/common/StandardModal";
 import { Role } from "../../../constants/roles";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { useProjectDetails } from "../../../hooks/useProjectQueries";
+import { useCreateTaskMutation } from "../../../hooks/useTaskQueries";
 import { useUserSearchQuery } from "../../../hooks/useUserQueries";
 import { type ProjectMember } from "../../../services/projectsService";
-import { tasksService } from "../../../services/tasksService";
 import { type UserMemberItem } from "../../../services/usersService";
 import { showNotification } from "../../../store/slices/notificationSlice";
 
@@ -29,6 +31,8 @@ interface CreateTaskModalProps {
   onClose: () => void;
   projectId: string;
   members?: ProjectMember[];
+  initialTitle?: string;
+  initialStageId?: string;
   onTaskCreated?: () => void;
 }
 
@@ -37,30 +41,58 @@ export const CreateTaskModal = ({
   onClose,
   projectId,
   members: propMembers,
+  initialTitle = "",
+  initialStageId = "",
   onTaskCreated,
 }: CreateTaskModalProps) => {
   const dispatch = useDispatch();
-  const queryClient = useQueryClient();
+  const createTaskMutation = useCreateTaskMutation(projectId);
 
-  // Busca os detalhes do artigo para obter seus membros reais se não forem passados via props
   const { data: projectDetails } = useProjectDetails(projectId);
   const articleMembers = useMemo(() => {
     return propMembers || projectDetails?.members || [];
   }, [propMembers, projectDetails?.members]);
 
-  const [title, setTitle] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [stageId, setStageId] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Se houver membros no artigo, inicializa o responsável pelo primeiro membro do artigo
-  const [assignedToId, setAssignedToId] = useState<string>("");
-
   const projectStages = useMemo(() => {
-    return projectDetails?.stages || [];
+    return (projectDetails?.stages || []).filter((s: any) => !s.isGatekeeper);
   }, [projectDetails?.stages]);
 
-  // Mantém busca global com debounce como fallback caso o usuário queira procurar fora dos membros do artigo
+  const [prevOpen, setPrevOpen] = useState(false);
+  const [title, setTitle] = useState(initialTitle);
+  const [dueDate, setDueDate] = useState("");
+  const [stageId, setStageId] = useState<string>("");
+  const [assignedToId, setAssignedToId] = useState<string>("");
+
+  // Sync state when modal transitions to open
+  if (open && !prevOpen) {
+    setPrevOpen(true);
+    if (initialTitle) setTitle(initialTitle);
+    const defaultStageId =
+      initialStageId || (projectStages.length > 0 ? projectStages[0].id : "");
+    setStageId(defaultStageId);
+  } else if (!open && prevOpen) {
+    setPrevOpen(false);
+  }
+
+  // Encontra a etapa selecionada para extrair o prazo limite máximo permitido para a sub-tarefa
+  const selectedStage = useMemo(() => {
+    return projectStages.find((s: any) => s.id === stageId);
+  }, [projectStages, stageId]);
+
+  const maxStageDateStr = useMemo(() => {
+    if (!selectedStage) return "";
+    const rawDate =
+      selectedStage.plannedCompletionDate || selectedStage.plannedEndAt;
+    if (!rawDate) return "";
+    return new Date(rawDate).toISOString().split("T")[0];
+  }, [selectedStage]);
+
+  const maxStageDateFormatted = useMemo(() => {
+    if (!maxStageDateStr) return null;
+    const [year, month, day] = maxStageDateStr.split("-");
+    return `${day}/${month}/${year}`;
+  }, [maxStageDateStr]);
+
   const [assigneeSearchText, setAssigneeSearchText] = useState("");
   const debouncedAssigneeSearch = useDebounce(assigneeSearchText, 300);
   const { data: usersList = [], isFetching: isFetchingUsers } =
@@ -73,8 +105,33 @@ export const CreateTaskModal = ({
     if (!title.trim()) {
       dispatch(
         showNotification({
-          message: "Informe o título da tarefa.",
+          message: "Informe o título da sub-tarefa.",
           severity: "warning",
+        }),
+      );
+      return;
+    }
+
+    if (!stageId) {
+      dispatch(
+        showNotification({
+          message:
+            "Selecione obrigatoriamente a etapa de escrita à qual a sub-tarefa pertence.",
+          severity: "warning",
+        }),
+      );
+      return;
+    }
+
+    if (
+      dueDate &&
+      maxStageDateStr &&
+      new Date(dueDate) > new Date(maxStageDateStr)
+    ) {
+      dispatch(
+        showNotification({
+          message: `A data limite da sub-tarefa (${dueDate}) não pode ser maior que a data limite da etapa (${maxStageDateFormatted}).`,
+          severity: "error",
         }),
       );
       return;
@@ -83,18 +140,16 @@ export const CreateTaskModal = ({
     const finalAssignedToId =
       assignedToId || selectedGlobalAssignee?.id || undefined;
 
-    setIsSubmitting(true);
     try {
       if (projectId && !projectId.startsWith("demo-")) {
-        await tasksService.createTask(projectId, {
+        await createTaskMutation.mutateAsync({
           title,
           assignedToId: finalAssignedToId,
           dueDate: dueDate || undefined,
-          stageId: stageId || undefined,
+          stageId: stageId,
         });
       }
 
-      // Encontrar nome do usuário atribuído para notificação
       const assignedMember = finalAssignedToId
         ? articleMembers.find(
             (m) =>
@@ -105,8 +160,8 @@ export const CreateTaskModal = ({
       const assignedName =
         assignedMember?.user?.name || selectedGlobalAssignee?.name;
       const notificationMsg = assignedName
-        ? `Nova Tarefa "${title}" atribuída para ${assignedName} com sucesso!`
-        : `Nova Tarefa "${title}" criada com sucesso (não atribuída)!`;
+        ? `Nova Sub-tarefa "${title}" atribuída para ${assignedName} com sucesso!`
+        : `Nova Sub-tarefa "${title}" criada com sucesso (não atribuída)!`;
 
       dispatch(
         showNotification({
@@ -115,23 +170,19 @@ export const CreateTaskModal = ({
         }),
       );
 
-      // Invalida cache de tarefas
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-
       setTitle("");
       setAssignedToId("");
-      setStageId("");
+      setDueDate("");
       setSelectedGlobalAssignee(null);
       setAssigneeSearchText("");
       if (onTaskCreated) onTaskCreated();
       onClose();
     } catch (err: any) {
       const msg =
-        err.response?.data?.message || err.message || "Erro ao criar tarefa.";
+        err.response?.data?.message ||
+        err.message ||
+        "Erro ao criar sub-tarefa.";
       dispatch(showNotification({ message: msg, severity: "error" }));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -141,22 +192,72 @@ export const CreateTaskModal = ({
       onClose={onClose}
       size="sm"
       icon={<AddTaskIcon color="primary" />}
-      title="Criar Nova Tarefa do Artigo"
-      subtitle="Crie uma tarefa para o artigo. A atribuição a um membro é opcional (pode ser assinada depois)."
+      title="Criar Nova Sub-tarefa de Escrita"
+      subtitle="Crie uma sub-tarefa associada a uma etapa de escrita. A atribuição a um membro é opcional (pode ser assinada depois)."
       onSubmit={handleSubmit}
-      confirmText="Criar Tarefa"
+      confirmText="Criar Sub-tarefa"
       confirmColor="primary"
-      isSubmitting={isSubmitting}
+      isSubmitting={createTaskMutation.isPending}
     >
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <TextField
           fullWidth
           size="small"
-          label="Título da Tarefa"
+          label="Título da Sub-tarefa *"
           placeholder="Ex: Formulação das equações da Introdução"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
+        />
+
+        {/* Seleção OBRIGATÓRIA da Etapa de Escrita */}
+        <FormControl fullWidth size="small" required error={!stageId}>
+          <InputLabel>Etapa de Escrita Associada *</InputLabel>
+          <Select
+            value={stageId}
+            label="Etapa de Escrita Associada *"
+            required
+            onChange={(e) => setStageId(e.target.value)}
+          >
+            {projectStages.map((s: any) => (
+              <MenuItem key={s.id} value={s.id}>
+                Etapa {s.order}: {s.title}
+              </MenuItem>
+            ))}
+          </Select>
+          {!stageId && (
+            <FormHelperText>
+              A sub-tarefa deve estar vinculada a uma etapa.
+            </FormHelperText>
+          )}
+        </FormControl>
+
+        {/* Campo de Data Limite (Prazo da Sub-tarefa) em Destaque com Validação de Etapa */}
+        <TextField
+          fullWidth
+          size="small"
+          type="date"
+          label="Data Limite (Prazo da Sub-tarefa)"
+          slotProps={{
+            inputLabel: { shrink: true },
+            htmlInput: {
+              max: maxStageDateStr || undefined,
+            },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <CalendarTodayIcon color="primary" fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          helperText={
+            maxStageDateFormatted
+              ? `Data limite máxima da etapa: ${maxStageDateFormatted}`
+              : "Defina o prazo de entrega desta sub-tarefa."
+          }
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
         />
 
         {/* Seleção do Membro do Artigo */}
@@ -258,39 +359,6 @@ export const CreateTaskModal = ({
             )}
           />
         )}
-
-        {/* Seleção da Etapa de Escrita Associada */}
-        {projectStages.length > 0 && (
-          <FormControl fullWidth size="small">
-            <InputLabel>Etapa de Escrita Associada (Opcional)</InputLabel>
-            <Select
-              value={stageId}
-              label="Etapa de Escrita Associada (Opcional)"
-              onChange={(e) => setStageId(e.target.value)}
-            >
-              <MenuItem value="">
-                <em>Nenhuma (Geral do Artigo)</em>
-              </MenuItem>
-              {projectStages
-                .filter((s: any) => !s.isGatekeeper)
-                .map((s: any) => (
-                  <MenuItem key={s.id} value={s.id}>
-                    Etapa {s.order}: {s.title}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
-        )}
-
-        <TextField
-          fullWidth
-          size="small"
-          type="date"
-          label="Data Limite (Prazo)"
-          slotProps={{ inputLabel: { shrink: true } }}
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
       </Box>
     </StandardModal>
   );

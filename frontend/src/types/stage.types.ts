@@ -26,6 +26,8 @@ export interface CreateStageInput {
   title: string;
   order?: number;
   description?: string;
+  plannedCompletionDate?: string;
+  plannedEndAt?: string;
 }
 
 export interface UpdateStageInput {
