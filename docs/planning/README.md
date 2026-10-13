@@ -34,13 +34,17 @@ docs/planning/
 │   ├── frontend-specs.md       (Especificação de Componentes & Services Frontend)
 │   ├── git-service-spec.md     (Integração com Token de Serviço Git)
 │   ├── github-projects-architecture.md (Integração Native GitHub Projects & Webhooks)
-│   └── reviewer-view-spec.md   (Especificação Técnica da Interface do Revisor)
+│   ├── reviewer-view-spec.md   (Especificação Técnica da Interface do Revisor)
+│   ├── sciai-contracts-spec.md (Contratos de API, Máquina de Estados e Eventos SciAI)
+│   └── sciai-chat-copilot-spec.md (Chat Copilot & Onboarding Multi-Agente)
 │
 ├── adrs/                       <-- 🧠 Architecture Decision Records (ADRs)
 │   ├── adr-001-github-user-access.md
 │   ├── adr-002-kubernetes-on-demand-pods.md
 │   ├── adr-003-user-git-workspace-flow.md
 │   ├── adr-004-redis-pod-lifecycle-heartbeat.md
+│   ├── adr-005-production-storage-strategy.md
+│   ├── adr-006-sciai-integration-architecture.md (Integração da IA SciAI e Governança)
 │   └── parecer-tecnico-code-server-coder.md
 │
 ├── reports/                    <-- 📈 Relatórios de Execução (Fases & Sprints)
@@ -48,6 +52,7 @@ docs/planning/
 │   ├── relatorio-fase-2.md     (Front-end Setup & Local Projections)
 │   ├── relatorio-fase-3.md     (Work Item Branches & Fluxo NIT)
 │   ├── relatorio-fase-4.md     (Integração Tasks + Projeções & SSE em Tempo Real)
+│   ├── analise-comparativa-sci-project.md (Análise Comparativa de Arquitetura com sci-project)
 │   └── backend-sprint-*.md     (Histórico de Sprints 1 a 4 do Backend)
 │
 └── backlog/                    <-- 💡 Análises Pendentes e Ideias Futuras
