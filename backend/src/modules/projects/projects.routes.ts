@@ -1,17 +1,22 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
 import { PrismaTeamsRepository } from '../../repositories/teams.repository';
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { ProjectsController } from './projects.controller';
+import { createProjectSchema, ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
 import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.repository';
 import { PullRequestsService } from '../pull-requests/pull-requests.service';
 import { PullRequestsController } from '../pull-requests/pull-requests.controller';
+
+import { PrismaProjectStagesRepository } from '../../repositories/project-stages.repository';
+import { ProjectStagesService } from './project-stages.service';
+import { ProjectStagesController } from './project-stages.controller';
 
 export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
@@ -24,6 +29,10 @@ export async function projectsRoutes(app: FastifyInstance) {
   const prRepository = new PrismaPullRequestsRepository();
   const prService = new PullRequestsService(prRepository, gitService, k8sPodManager);
   const prController = new PullRequestsController(prService);
+
+  const stagesRepository = new PrismaProjectStagesRepository();
+  const stagesService = new ProjectStagesService(stagesRepository);
+  const stagesController = new ProjectStagesController(stagesService);
 
   // Exige autenticação JWT para todas as rotas de projetos
   app.addHook('onRequest', verifyJwt);
@@ -38,18 +47,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         description:
           'Cria um novo artigo científico no banco de dados e provisiona o repositório remoto no GitHub com o template main.tex.',
         security: [{ bearerAuth: [] }],
-        body: z.object({
-          name: z.string().min(2),
-          description: z.string().optional(),
-          teamId: z.string().uuid().optional(),
-          academicPeriodId: z.string().uuid().optional(),
-          targetConferenceName: z.string().optional(),
-          targetConferenceDate: z.string().optional(),
-          backupConferenceName: z.string().optional(),
-          backupConferenceDate: z.string().optional(),
-          coAuthorIds: z.array(z.string()).optional(),
-          reviewerId: z.string().optional(),
-        }),
+        body: createProjectSchema,
       },
     },
     (req, reply) => controller.create(req, reply)
@@ -166,7 +164,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         }),
         body: z.object({
           userId: z.string(),
-          role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+          role: z.nativeEnum(Role),
         }),
       },
     },
@@ -269,6 +267,25 @@ export async function projectsRoutes(app: FastifyInstance) {
     (req, reply) => controller.commitTaskProgress(req, reply)
   );
 
+  // GET /api/v1/projects/:id/tasks/:taskId/diff-summary - Obter resumo acadêmico de alterações do rascunho
+  app.get(
+    '/:id/tasks/:taskId/diff-summary',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter resumo acadêmico de alterações do rascunho da tarefa',
+        description:
+          'Compara o workspace isolado da tarefa com o último checkpoint salvo (HEAD) e retorna a lista categorizada de modificações TeX, referências e imagens.',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+          taskId: z.string(),
+        }),
+      },
+    },
+    (req, reply) => controller.getTaskDiffSummary(req, reply)
+  );
+
   // GET /api/v1/projects/:id/git-status - Checar alterações pendentes (hasUncommittedChanges)
   app.get(
     '/:id/git-status',
@@ -327,5 +344,125 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
     },
     (req: any, reply) => prController.merge(req, reply)
+  );
+
+  // GET /api/v1/projects/:projectId/stages - Listar etapas do artigo
+  app.get(
+    '/:projectId/stages',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Listar etapas de escrita e gatekeepers do artigo',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.list(req, reply)
+  );
+
+  // POST /api/v1/projects/:projectId/stages - Criar nova etapa customizada de escrita
+  app.post(
+    '/:projectId/stages',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Criar nova etapa customizada de escrita',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+        body: z.object({
+          title: z.string().min(2),
+          description: z.string().optional(),
+          order: z.number().optional(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.create(req, reply)
+  );
+
+  // PUT /api/v1/projects/:projectId/stages/reorder - Reordenar etapas do artigo em lote
+  app.put(
+    '/:projectId/stages/reorder',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Reordenar etapas do artigo em lote',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+        }),
+        body: z.object({
+          stages: z.array(
+            z.object({
+              id: z.string(),
+              order: z.number(),
+            })
+          ),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.reorder(req, reply)
+  );
+
+  // PATCH /api/v1/projects/:projectId/stages/:stageId - Atualizar status ou dados da etapa
+  app.patch(
+    '/:projectId/stages/:stageId',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Atualizar status ou dados da etapa de escrita',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+          stageId: z.string(),
+        }),
+        body: z.object({
+          title: z.string().optional(),
+          description: z.string().optional(),
+          order: z.number().optional(),
+          status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']).optional(),
+          plannedCompletionDate: z.string().optional().nullable(),
+          plannedStartAt: z.string().optional().nullable(),
+          plannedEndAt: z.string().optional().nullable(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.update(req, reply)
+  );
+
+  // DELETE /api/v1/projects/:projectId/stages/:stageId - Excluir etapa customizada
+  app.delete(
+    '/:projectId/stages/:stageId',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Excluir etapa customizada (Etapas Gatekeeper são protegidas)',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          projectId: z.string(),
+          stageId: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => stagesController.delete(req, reply)
+  );
+
+  // GET /api/v1/projects/:id/review-comments-by-stage - Obter apontamentos de revisão agrupados por etapa
+  app.get(
+    '/:id/review-comments-by-stage',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter apontamentos de revisão agrupados por etapa do projeto',
+        security: [{ bearerAuth: [] }],
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    (req: any, reply) => controller.getReviewCommentsByStage(req, reply)
   );
 }

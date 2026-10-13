@@ -18,9 +18,11 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Remover extensões embutidas de Chat/Copilot e Terminal Suggest do code-server
+# Remover extensões embutidas de Chat/Copilot/GitHub e Terminal Suggest do code-server
 RUN rm -rf /usr/lib/code-server/lib/vscode/extensions/copilot \
            /usr/lib/code-server/lib/vscode/extensions/prompt-basics \
+           /usr/lib/code-server/lib/vscode/extensions/github \
+           /usr/lib/code-server/lib/vscode/extensions/github-authentication \
            /usr/lib/code-server/lib/vscode/extensions/terminal-suggest
 
 # Configurar o Git para considerar todos os diretórios como seguros
@@ -39,10 +41,10 @@ RUN git config --global safe.directory "*"
 # Instalar a extensão oficial LaTeX Workshop no VS Code Web
 RUN code-server --install-extension James-Yu.latex-workshop || true
 
-# Pre-instalar o arquivo de configurações padrao settings.json, keybindings.json e config.yaml nos diretórios de usuário
-RUN mkdir -p /home/coder/.local/share/code-server/User /home/coder/.config/code-server/User /home/coder/.config/code-server
+# Pre-instalar o arquivo de configurações padrao settings.json, keybindings.json e config.yaml no diretório de usuário único (/home/coder/.local/share/code-server/User)
+RUN mkdir -p /home/coder/.local/share/code-server/User /home/coder/.config/code-server
 COPY settings.json /home/coder/.local/share/code-server/User/settings.json
-COPY settings.json /home/coder/.config/code-server/User/settings.json
+COPY author.settings.json /home/coder/.local/share/code-server/author.settings.json
+COPY reviewer.settings.json /home/coder/.local/share/code-server/reviewer.settings.json
 COPY keybindings.json /home/coder/.local/share/code-server/User/keybindings.json
-COPY keybindings.json /home/coder/.config/code-server/User/keybindings.json
 COPY config.yaml /home/coder/.config/code-server/config.yaml

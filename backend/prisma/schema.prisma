@@ -50,6 +50,12 @@ enum DeadlineStatus {
   OVERDUE
 }
 
+enum PeriodStatus {
+  ACTIVE
+  ARCHIVED
+  COMPLETED
+}
+
 model User {
   id           String    @id @default(uuid())
   email        String    @unique
@@ -65,41 +71,48 @@ model User {
   managedTeams     Team[]       @relation("ManagerTeams")
   teamMemberships  TeamMember[]
 
-  projects     ProjectMember[]
-  pullRequests PullRequest[]      @relation("AuthorPRs")
-  reviews      PullRequest[]      @relation("ReviewerPRs")
-  comments     ReviewComment[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
-  userTasks    Task[]             @relation("UserTasks")
-  workspaces   Workspace[]
-  reviewerRCs  ReleaseCandidate[] @relation("ReviewerRCs")
+  projects        ProjectMember[]
+  pullRequests    PullRequest[]      @relation("AuthorPRs")
+  reviews         PullRequest[]      @relation("ReviewerPRs")
+  comments        ReviewComment[]
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  userTasks       Task[]             @relation("UserTasks")
+  workspaces      Workspace[]
+  reviewerRCs     ReleaseCandidate[] @relation("ReviewerRCs")
+  academicPeriods AcademicPeriod[]   @relation("ManagerAcademicPeriods")
 }
 
 model AcademicPeriod {
-  id        String    @id @default(uuid())
-  name      String // e.g., "Academic Cycle 2026/2027"
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  projects  Project[]
+  id                  String             @id @default(uuid())
+  name                String // e.g., "Academic Cycle 2026/2027"
+  startDate           DateTime
+  endDate             DateTime
+  targetArticlesCount Int                @default(0)
+  status              PeriodStatus       @default(ACTIVE)
+  managerId           String?
+  manager             User?              @relation("ManagerAcademicPeriods", fields: [managerId], references: [id])
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+  projects            Project[]
+  teamGoals           TeamAcademicGoal[]
 }
 
 model Team {
-  id            String       @id @default(uuid())
+  id            String             @id @default(uuid())
   name          String
   description   String?
   managerId     String?
   coordinatorId String
-  manager       User?        @relation("ManagerTeams", fields: [managerId], references: [id])
-  coordinator   User         @relation("TeamCoordinator", fields: [coordinatorId], references: [id])
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  manager       User?              @relation("ManagerTeams", fields: [managerId], references: [id])
+  coordinator   User               @relation("TeamCoordinator", fields: [coordinatorId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
   deletedAt     DateTime?
   members       TeamMember[]
   projects      Project[]
+  academicGoals TeamAcademicGoal[]
 }
 
 model TeamMember {
@@ -111,6 +124,19 @@ model TeamMember {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
+}
+
+model TeamAcademicGoal {
+  id               String         @id @default(uuid())
+  academicPeriodId String
+  teamId           String
+  targetArticles   Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  academicPeriod   AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  team             Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([academicPeriodId, teamId])
 }
 
 model Project {
@@ -136,17 +162,20 @@ model Project {
 
   reviewerFeedback String?
 
-  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  academicPeriod    AcademicPeriod?    @relation(fields: [academicPeriodId], references: [id])
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
-  members           ProjectMember[]
-  prs               PullRequest[]
-  tasks             Task[]
-  workspaces        Workspace[]
-  releaseCandidates ReleaseCandidate[]
-  releases          Release[]
+  team               Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  academicPeriod     AcademicPeriod?     @relation(fields: [academicPeriodId], references: [id])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  members            ProjectMember[]
+  prs                PullRequest[]
+  tasks              Task[]
+  workspaces         Workspace[]
+  releaseCandidates  ReleaseCandidate[]
+  releases           Release[]
+  githubIntegrations GithubIntegration[]
+  nitProcesses       NitProcess[]
+  stages             ProjectStage[]
 }
 
 model ProjectMember {
@@ -166,8 +195,11 @@ model PullRequest {
   description String?
   status      PRStatus @default(DRAFT)
 
-  nitStatus NITStatus @default(NOT_REQUIRED)
-  nitNotes  String?
+  nitStatus      NITStatus @default(NOT_REQUIRED)
+  nitNotes       String?
+  sentToNitAt    DateTime?
+  sentToNitNotes String?
+  nitApprovedAt  DateTime?
 
   taskId     String?
   authorId   String
@@ -181,17 +213,33 @@ model PullRequest {
   reviewer   User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
   project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   comments   ReviewComment[]
+  rounds     ReviewRound[]
+}
+
+model ReviewRound {
+  id                          String   @id @default(uuid())
+  pullRequestId               String
+  roundNumber                 Int
+  baseCommitHash              String
+  submittedCommitHash         String
+  previousSubmittedCommitHash String?
+  createdAt                   DateTime @default(now())
+
+  pullRequest PullRequest     @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  comments    ReviewComment[]
 }
 
 model ReviewComment {
-  id            String      @id @default(uuid())
+  id            String       @id @default(uuid())
   pullRequestId String
+  reviewRoundId String?
   userId        String
   lineNumer     Int?
   comment       String
-  createdAt     DateTime    @default(now())
-  pullRequest   PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  user          User        @relation(fields: [userId], references: [id])
+  createdAt     DateTime     @default(now())
+  pullRequest   PullRequest  @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  reviewRound   ReviewRound? @relation(fields: [reviewRoundId], references: [id], onDelete: SetNull)
+  user          User         @relation(fields: [userId], references: [id])
 }
 
 model AuditLog {
@@ -218,17 +266,19 @@ model Workspace {
   id        String          @id @default(uuid())
   projectId String
   userId    String
-  taskId    String?
+  stageId   String          @default("general")
+  taskId    String
   podName   String?
   status    WorkspaceStatus @default(PROVISIONING)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage   ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  task    Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, userId])
+  @@unique([projectId, userId, stageId, taskId])
 }
 
 enum WorkspaceStatus {
@@ -242,20 +292,54 @@ enum WorkspaceStatus {
   TERMINATED
 }
 
+enum StageStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  LOCKED
+}
+
+model ProjectStage {
+  id                    String      @id @default(uuid())
+  projectId             String
+  title                 String
+  description           String?
+  order                 Int
+  plannedStartAt        DateTime?
+  plannedEndAt          DateTime?
+  plannedCompletionDate DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  status                StageStatus @default(NOT_STARTED)
+  isGatekeeper          Boolean     @default(false)
+  gatekeeperType        String? // "NIT" | "TARGET_CONFERENCE" | "BACKUP_CONFERENCE"
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks      Task[]
+  workspaces Workspace[]
+
+  @@unique([projectId, order])
+}
 
 model Task {
-  id           String        @id @default(uuid())
+  id           String     @id @default(uuid())
   projectId    String
-  assignedToId String
+  assignedToId String?
+  stageId      String?
   title        String
   branchName   String
-  status       TaskStatus    @default(NOT_STARTED)
+  status       TaskStatus @default(NOT_STARTED)
+  startDate    DateTime?
+  startedAt    DateTime?
   dueDate      DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee     User          @relation("UserTasks", fields: [assignedToId], references: [id])
+  stage        ProjectStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  assignee     User?         @relation("UserTasks", fields: [assignedToId], references: [id])
   pullRequests PullRequest[] @relation("TaskPullRequest")
   workspaces   Workspace[]
 }
@@ -303,4 +387,67 @@ model Release {
   createdAt  DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model GithubIntegration {
+  id                 String   @id @default(uuid())
+  articleId          String
+  githubRepositoryId BigInt
+  githubRepoName     String
+  githubProjectV2Id  String
+  createdAt          DateTime @default(now())
+
+  article Project @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model GithubWebhookEvent {
+  id             String    @id @default(uuid())
+  deliveryId     String    @unique
+  eventType      String
+  action         String?
+  signatureValid Boolean
+  installationId BigInt
+  payload        Json
+  receivedAt     DateTime  @default(now())
+  processedAt    DateTime?
+  status         String    @default("PENDING")
+}
+
+model GithubIssueProjection {
+  githubIssueId          BigInt    @id
+  githubRepositoryId     BigInt
+  issueNumber            Int
+  title                  String
+  state                  String
+  authorGithubUsername   String?
+  assigneeGithubUsername String?
+  htmlUrl                String
+  updatedAt              DateTime
+  lastGithubEventAt      DateTime?
+  lastSyncedAt           DateTime  @default(now())
+}
+
+model GithubProjectItemProjection {
+  githubProjectItemId String   @id
+  githubProjectV2Id   String
+  githubIssueId       BigInt
+  statusValue         String?
+  nitStatusValue      String?
+  updatedAt           DateTime
+  lastSyncedAt        DateTime @default(now())
+}
+
+model NitProcess {
+  id             String    @id @default(uuid())
+  articleId      String
+  githubPrNodeId String
+  status         NITStatus @default(WAITING_NIT)
+  sentAt         DateTime
+  sentNotes      String?
+  approvedAt     DateTime?
+  responseNotes  String?
+  protocolNumber String?
+  createdAt      DateTime  @default(now())
+
+  article Project @relation(fields: [articleId], references: [id], onDelete: Cascade)
 }

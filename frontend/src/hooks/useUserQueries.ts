@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "../services/usersService";
 
 export function useUserSearchQuery(search: string = "", role?: string) {
@@ -13,6 +13,21 @@ export function useUserSearchQuery(search: string = "", role?: string) {
   });
 }
 
+export function useUsersListQuery(filters?: {
+  search?: string;
+  role?: string;
+  teamId?: string;
+}) {
+  const search = filters?.search || "";
+  const role = filters?.role || "";
+  const teamId = filters?.teamId || "";
+
+  return useQuery({
+    queryKey: ["users", "list", search, role, teamId],
+    queryFn: () => usersService.searchUsers(search, role, teamId),
+  });
+}
+
 export function useCoAuthorsQuery() {
   return useQuery({
     queryKey: ["users", "co-authors"],
@@ -24,5 +39,21 @@ export function useReviewersQuery() {
   return useQuery({
     queryKey: ["users", "reviewers"],
     queryFn: () => usersService.getReviewers(),
+  });
+}
+
+export function useCreateUserMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      email: string;
+      password: string;
+      role?: string;
+    }) => usersService.createUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
   });
 }

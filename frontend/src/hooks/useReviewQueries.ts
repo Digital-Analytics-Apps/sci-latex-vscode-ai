@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { NITStatus, PRStatus } from "../constants/status";
 import type { NITParecerFormData } from "../schemas/nit.schema";
 import { api } from "../services/api";
@@ -20,6 +25,9 @@ export interface PullRequestDetail {
   description?: string;
   status: PRStatus;
   nitStatus: NITStatus;
+  sentToNitAt?: string;
+  sentToNitNotes?: string;
+  nitApprovedAt?: string;
   nitNotes?: string;
   taskId?: string;
   authorId: string;
@@ -29,19 +37,24 @@ export interface PullRequestDetail {
   author: { id: string; name: string; email: string };
   reviewer?: { id: string; name: string; email: string };
   task?: { id: string; title: string; branchName: string };
+  project?: { id: string; name: string };
   comments?: ReviewCommentItem[];
   diffContent?: string;
   pdfUrl?: string;
 }
 
 // Hook para buscar a lista de PRs pendentes para o Revisor/Coordenador
-export function usePendingReviews() {
-  return useQuery<PullRequestDetail[]>({
-    queryKey: ["pull-requests", "pending"],
+export function usePendingReviews(params?: Record<string, string>) {
+  return useQuery<{ pullRequests: PullRequestDetail[]; total: number }>({
+    queryKey: ["pull-requests", params],
     queryFn: async () => {
-      const response = await api.get("/pull-requests");
-      return response.data.pullRequests || [];
+      const response = await api.get("/pull-requests", { params });
+      return {
+        pullRequests: response.data.pullRequests || [],
+        total: response.data.total ?? (response.data.pullRequests?.length || 0),
+      };
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -63,7 +76,10 @@ export function useReviewPRMutation(prId: string) {
 
   return useMutation({
     mutationFn: async (data: {
-      status?: typeof PRStatus.APPROVED | typeof PRStatus.CHANGES_REQUESTED | typeof PRStatus.UNDER_REVIEW;
+      status?:
+        | typeof PRStatus.APPROVED
+        | typeof PRStatus.CHANGES_REQUESTED
+        | typeof PRStatus.UNDER_REVIEW;
       comment?: string;
       lineNumer?: number;
     }) => {
@@ -90,5 +106,52 @@ export function useSubmitNITParecerMutation(prId: string) {
       queryClient.invalidateQueries({ queryKey: ["pull-request", prId] });
       queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
     },
+  });
+}
+
+export interface ClassifiedFileDiff {
+  path: string;
+  status: "added" | "modified" | "deleted";
+  additions: number;
+  deletions: number;
+  category: "section" | "bibliography" | "figure" | "other";
+  label: string;
+}
+
+export interface ReviewDiffData {
+  pullRequestId: string;
+  roundNumber: number;
+  overview: {
+    baseCommitHash: string;
+    targetCommitHash: string;
+    classifiedFiles: ClassifiedFileDiff[];
+    hasChangesInOtherFiles: boolean;
+  };
+  roundChanges?: {
+    previousSubmittedCommitHash: string;
+    currentSubmittedCommitHash: string;
+    classifiedFiles: ClassifiedFileDiff[];
+    hasChangesInOtherFiles: boolean;
+  } | null;
+  roundsCount: number;
+  rounds?: Array<{
+    id: string;
+    roundNumber: number;
+    baseCommitHash: string;
+    submittedCommitHash: string;
+    previousSubmittedCommitHash?: string;
+    createdAt: string;
+  }>;
+}
+
+// Hook para buscar a estrutura de diffs da revisão (ReviewDiff)
+export function usePRDiffQuery(prId: string) {
+  return useQuery<ReviewDiffData>({
+    queryKey: ["pull-request-diff", prId],
+    queryFn: async () => {
+      const response = await api.get(`/pull-requests/${prId}/diff`);
+      return response.data;
+    },
+    enabled: Boolean(prId),
   });
 }

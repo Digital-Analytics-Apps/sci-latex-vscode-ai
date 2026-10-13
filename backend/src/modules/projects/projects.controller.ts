@@ -7,7 +7,7 @@ import { env } from '../../config/env';
 import { ProjectsService } from './projects.service';
 
 export const createProjectSchema = z.object({
-  name: z.string().min(3),
+  name: z.string().min(2),
   description: z.string().optional(),
   teamId: z.string().uuid().optional(),
   academicPeriodId: z.string().uuid().optional(),
@@ -17,6 +17,18 @@ export const createProjectSchema = z.object({
   backupConferenceDate: z.coerce.date().optional(),
   coAuthorIds: z.array(z.string()).optional(),
   reviewerId: z.string().optional(),
+  stages: z
+    .array(
+      z.object({
+        title: z.string().min(2),
+        description: z.string().optional(),
+        plannedStartAt: z.coerce.date().optional(),
+        plannedEndAt: z.coerce.date().optional(),
+        plannedCompletionDate: z.coerce.date().optional(),
+      })
+    )
+    .min(3)
+    .optional(),
 });
 
 export const updateProjectSchema = z.object({
@@ -63,6 +75,14 @@ export class ProjectsController {
       const project = await this.projectsService.createProject(userId, body);
       return reply.status(201).send({ project });
     } catch (err: any) {
+      if (err.message?.includes('USER_NOT_FOUND')) {
+        return reply.status(401).send({
+          statusCode: 401,
+          error: 'Unauthorized',
+          message:
+            'O seu usuário não foi encontrado no banco de dados. Sua sessão pode ter expirado ou o banco foi reiniciado. Por favor, faça login novamente.',
+        });
+      }
       if (err.message?.includes('GITHUB_TOKEN_REQUIRED')) {
         return reply.status(400).send({
           statusCode: 400,
@@ -71,11 +91,16 @@ export class ProjectsController {
             'A variável GITHUB_TOKEN não foi configurada nas variáveis de ambiente (.env ou docker-compose.yml). É necessário fornecer um Token do GitHub para criar o repositório remoto.',
         });
       }
-      if (err.message?.includes('GITHUB_API_ERROR')) {
+      if (
+        err.message?.includes('GITHUB_API_ERROR') ||
+        err.status === 401 ||
+        err.statusCode === 401 ||
+        err.name === 'HttpError'
+      ) {
         return reply.status(502).send({
           statusCode: 502,
           error: 'Bad Gateway',
-          message: `Falha na API do GitHub ao criar repositório remoto: ${err.message}`,
+          message: `Falha na API do GitHub ao criar repositório remoto: ${err.message || 'Credenciais do GitHub inválidas ou sem permissão.'}`,
         });
       }
       throw err;
@@ -208,7 +233,7 @@ startxref
     });
     const bodySchema = z.object({
       userId: z.string().uuid(),
-      role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+      role: z.nativeEnum(Role),
     });
 
     const { id } = paramsSchema.parse(request.params);
@@ -329,6 +354,26 @@ startxref
     }
   }
 
+  async getTaskDiffSummary(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+      taskId: z.string(),
+    });
+
+    const { id, taskId } = paramsSchema.parse(request.params);
+    const userId = request.user.sub;
+
+    try {
+      const summary = await this.projectsService.getTaskDiffSummary(id, taskId, userId);
+      return reply.send(summary);
+    } catch (err: any) {
+      if (err.message === 'PROJECT_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Project not found' });
+      }
+      throw err;
+    }
+  }
+
   async getGitStatus(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({
       id: z.string(),
@@ -339,5 +384,15 @@ startxref
 
     const status = await this.projectsService.checkGitStatus(id, userId);
     return reply.send(status);
+  }
+
+  async getReviewCommentsByStage(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+    const result = await this.projectsService.getReviewCommentsByStage(id);
+    return reply.send(result);
   }
 }

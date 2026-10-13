@@ -46,3 +46,32 @@ export const DeadlineStatus = {
 
 export type DeadlineStatus =
   (typeof DeadlineStatus)[keyof typeof DeadlineStatus];
+
+export const StageStatus = {
+  NOT_STARTED: "NOT_STARTED",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  LOCKED: "LOCKED",
+} as const;
+
+export type StageStatus = (typeof StageStatus)[keyof typeof StageStatus];
+
+export const PeriodStatus = {
+  ACTIVE: "ACTIVE",
+  ARCHIVED: "ARCHIVED",
+  COMPLETED: "COMPLETED",
+} as const;
+
+export type PeriodStatus = (typeof PeriodStatus)[keyof typeof PeriodStatus];
+
+export const SubmissionStatus = {
+  DRAFT: "DRAFT",
+  NIT_PENDING: "NIT_PENDING",
+  NIT_APPROVED: "NIT_APPROVED",
+  SUBMITTED: "SUBMITTED",
+  ACCEPTED: "ACCEPTED",
+  REJECTED: "REJECTED",
+} as const;
+
+export type SubmissionStatus =
+  (typeof SubmissionStatus)[keyof typeof SubmissionStatus];

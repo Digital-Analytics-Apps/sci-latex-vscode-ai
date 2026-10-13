@@ -1,9 +1,10 @@
 import { Octokit } from '@octokit/rest';
-import { exec } from 'child_process';
-import fs from 'fs/promises';
-import path from 'path';
-import { promisify } from 'util';
+import { exec, execSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import { env } from '../../config/env';
+import { prisma } from '../../db/prisma';
 
 const execAsync = promisify(exec);
 
@@ -47,8 +48,21 @@ export const DEFAULT_PULL_REQUEST_TEMPLATE = `## 📝 Resumo das Alterações
 <!-- Dúvidas, notas adicionais ou pontos específicos para a revisão -->
 `;
 
+export interface RawFileDiffFact {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+  additions: number;
+  deletions: number;
+}
+
+export interface TaskRawDiffFactsResult {
+  lastSavedAt?: string;
+  lastSavedAuthor?: string;
+  files: RawFileDiffFact[];
+}
+
 export class GitService {
-  private baseStoragePath: string;
+  private readonly baseStoragePath: string;
   private cachedOwner?: string;
   private octokitClient?: Octokit;
 
@@ -56,11 +70,34 @@ export class GitService {
     this.baseStoragePath = path.resolve(env.STORAGE_PATH, 'git');
   }
 
+  // Obtém o token de autenticação ativo do GitHub com fallback para gh CLI
+  getEffectiveToken(): string | undefined {
+    const token = env.GITHUB_TOKEN || env.GIT_SERVICE_TOKEN;
+    if (token && !token.includes('dummy')) {
+      return token;
+    }
+    if (env.GIT_SERVICE_TOKEN && !env.GIT_SERVICE_TOKEN.includes('dummy')) {
+      return env.GIT_SERVICE_TOKEN;
+    }
+    try {
+      const ghToken = execSync('GITHUB_TOKEN="" gh auth token 2>/dev/null', {
+        encoding: 'utf-8',
+      }).trim();
+      if (ghToken && !ghToken.includes('dummy')) {
+        return ghToken;
+      }
+    } catch {
+      // Ignora falhas se a CLI do gh não estiver instalada/autenticada
+    }
+    return token;
+  }
+
   // Obtém a instância autenticada da SDK oficial do GitHub (@octokit/rest)
   private getOctokit(): Octokit {
     if (!this.octokitClient) {
-      if (env.GITHUB_TOKEN) {
-        this.octokitClient = new Octokit({ auth: env.GITHUB_TOKEN });
+      const token = this.getEffectiveToken();
+      if (token) {
+        this.octokitClient = new Octokit({ auth: token });
       } else {
         throw new Error(
           'GITHUB_TOKEN_REQUIRED: GITHUB_TOKEN environment variable is required to interact with GitHub API.'
@@ -71,10 +108,11 @@ export class GitService {
   }
 
   // Retorna a flag -c http.extraHeader para autenticar comandos Git CLI via cabeçalho HTTP efêmero em memória
-  private getGitAuthFlags(): string {
+  getGitAuthFlags(): string {
     const safeDir = '-c safe.directory="*"';
-    if (env.GITHUB_TOKEN && env.NODE_ENV !== 'test') {
-      const authHeader = Buffer.from(`x-access-token:${env.GITHUB_TOKEN}`).toString('base64');
+    const token = this.getEffectiveToken();
+    if (token && env.NODE_ENV !== 'test') {
+      const authHeader = Buffer.from(`token:${token}`).toString('base64');
       return `${safeDir} -c http.extraHeader="Authorization: Basic ${authHeader}"`;
     }
     return safeDir;
@@ -96,7 +134,7 @@ export class GitService {
     if (this.cachedOwner) {
       return this.cachedOwner;
     }
-    if (!env.GITHUB_TOKEN) {
+    if (env.NODE_ENV === 'test' || !env.GITHUB_TOKEN) {
       return 'user';
     }
     try {
@@ -169,7 +207,9 @@ export class GitService {
         remoteUrl = `https://github.com/${owner}/${repoName}.git`;
       } catch (error: any) {
         console.error('❌ Error creating GitHub repository via Octokit:', error.message || error);
-        throw error;
+        throw new Error(
+          `GITHUB_API_ERROR: ${error.message || 'Falha ao conectar à API do GitHub'}`
+        );
       }
     } else {
       // Modo exclusivo para suíte de testes automatizados sem rede
@@ -262,6 +302,75 @@ export class GitService {
       : path.join(this.baseStoragePath, `${projectId}.git`);
   }
 
+  // Cria uma Feature Branch para a etapa de escrita (feature/<stage-slug>) derivada do ramo dev
+  async createFeatureBranch(
+    projectId: string,
+    stageTitle: string,
+    repoUrl?: string
+  ): Promise<string> {
+    await this.ensureStorageDir();
+    const gitFlags = this.getGitAuthFlags();
+
+    let targetRepoLocation = repoUrl;
+    if (!targetRepoLocation && env.NODE_ENV !== 'test') {
+      try {
+        const proj = await prisma.project.findUnique({
+          where: { id: projectId },
+          select: { gitRepoPath: true, name: true },
+        });
+        if (proj?.gitRepoPath) {
+          targetRepoLocation = proj.gitRepoPath;
+        } else if (proj?.name) {
+          targetRepoLocation = this.getRepoPath(projectId, proj.name);
+        }
+      } catch {
+        // Fallback para getRepoPath padrão
+      }
+    }
+
+    const cleanRepoLocation = this.cleanRepoUrl(targetRepoLocation || this.getRepoPath(projectId));
+
+    const slug = stageTitle
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 30)
+      .replace(/^-+|-+$/g, '');
+
+    const branchName = `feature/${slug || 'stage'}`;
+    const tempDir = path.join(this.baseStoragePath, `temp-feature-${projectId}-${Date.now()}`);
+
+    try {
+      try {
+        await execAsync(`git ${gitFlags} clone --branch dev "${cleanRepoLocation}" "${tempDir}"`, {
+          cwd: this.baseStoragePath,
+        });
+      } catch {
+        await execAsync(`git ${gitFlags} clone --branch main "${cleanRepoLocation}" "${tempDir}"`, {
+          cwd: this.baseStoragePath,
+        });
+      }
+
+      await execAsync(`git checkout -b ${branchName}`, { cwd: tempDir }).catch(() => {});
+      await execAsync(`git ${gitFlags} push origin ${branchName}`, { cwd: tempDir }).catch(
+        (err) => {
+          console.warn(`⚠️ Warning pushing feature branch ${branchName}:`, err.message || err);
+        }
+      );
+
+      return branchName;
+    } catch (err: any) {
+      console.warn(`⚠️ Could not create feature branch ${branchName}:`, err.message || err);
+      return branchName;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
   // Realiza o commit silencioso de uma alteração em um arquivo do projeto
   async commitFile(data: {
     projectId: string;
@@ -273,6 +382,7 @@ export class GitService {
     authorEmail: string;
     repoUrl?: string;
     userId?: string;
+    taskId?: string;
   }): Promise<string> {
     await this.ensureStorageDir();
     const gitFlags = this.getGitAuthFlags();
@@ -309,29 +419,46 @@ export class GitService {
         await execAsync(`git checkout -b ${data.branchName}`, { cwd: tempDir });
       }
 
-      // Copia o conteúdo atualizado da workspace do autor para o tempDir do commit (evitando pastas de usuários e artefatos TeX)
+      // Copia o conteúdo atualizado da workspace do autor para o tempDir do commit
       let sourceWorkspace = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
       if (data.userId) {
-        const userDir = path.resolve(
-          env.STORAGE_PATH,
-          'projects',
-          data.projectId,
-          'users',
-          data.userId
-        );
-        try {
-          const stats = await fs.stat(userDir);
-          if (stats.isDirectory()) {
-            sourceWorkspace = userDir;
+        if (data.taskId) {
+          const taskDir = await this.resolveTaskWorkspaceDir(
+            data.projectId,
+            data.userId,
+            data.taskId
+          );
+          try {
+            const stats = await fs.stat(taskDir);
+            if (stats.isDirectory()) {
+              sourceWorkspace = taskDir;
+            }
+          } catch {
+            // Ignora se não existir
           }
-        } catch {
-          // Ignora se a pasta por usuário não existir
+        }
+        if (sourceWorkspace === path.resolve(env.STORAGE_PATH, 'projects', data.projectId)) {
+          const userDir = path.resolve(
+            env.STORAGE_PATH,
+            'projects',
+            data.projectId,
+            'users',
+            data.userId
+          );
+          try {
+            const stats = await fs.stat(userDir);
+            if (stats.isDirectory()) {
+              sourceWorkspace = userDir;
+            }
+          } catch {
+            // Ignora se a pasta por usuário não existir
+          }
         }
       }
 
       const isIgnoredBuildArtifact = (srcPath: string) => {
-        const normalized = srcPath.replaceAll('\\', '/');
-        const fileName = path.basename(normalized);
+        const relativePath = path.relative(sourceWorkspace, srcPath).replaceAll('\\', '/');
+        const fileName = path.basename(srcPath);
         const ignoredExtensions = [
           '.aux',
           '.log',
@@ -347,14 +474,22 @@ export class GitService {
           '.vrb',
           '.pdf',
         ];
-        return (
-          normalized.includes('/.git') ||
-          normalized.includes('/.vscode') ||
-          normalized.includes('/users/') ||
-          normalized.endsWith('/users') ||
-          fileName === 'indent.log' ||
-          ignoredExtensions.some((ext) => fileName.endsWith(ext))
-        );
+
+        if (
+          relativePath === '.git' ||
+          relativePath.startsWith('.git/') ||
+          relativePath === '.vscode' ||
+          relativePath.startsWith('.vscode/') ||
+          relativePath === 'users' ||
+          relativePath.startsWith('users/') ||
+          relativePath === 'tasks' ||
+          relativePath.startsWith('tasks/')
+        ) {
+          return true;
+        }
+
+        if (fileName === 'indent.log') return true;
+        return ignoredExtensions.some((ext) => fileName.endsWith(ext));
       };
 
       try {
@@ -383,9 +518,15 @@ export class GitService {
       });
 
       await execAsync(`git add -A`, { cwd: tempDir });
-      await execAsync(`git commit -m "${data.commitMessage.replaceAll('"', '')}"`, {
-        cwd: tempDir,
-      });
+      const statusRes = await execAsync(`git status --porcelain`, { cwd: tempDir }).catch(() => ({
+        stdout: '',
+      }));
+      const sanitizedMsg = data.commitMessage.replace(/"/g, '\\"');
+      if (statusRes.stdout.trim() !== '') {
+        await execAsync(`git commit -m "${sanitizedMsg}"`, { cwd: tempDir });
+      } else {
+        await execAsync(`git commit --allow-empty -m "${sanitizedMsg}"`, { cwd: tempDir });
+      }
       await execAsync(`git ${gitFlags} push origin ${data.branchName}`, { cwd: tempDir });
 
       // Sincroniza o commit no repositório Git local do usuário para que o VS Code limpe as marcas de Untracked ("U") e Modified ("M")
@@ -413,7 +554,7 @@ export class GitService {
         await fs.access(localGitDir);
         await execAsync(`git -C "${localWorkspace}" add -A`).catch(() => {});
         await execAsync(
-          `git -C "${localWorkspace}" commit -m "${data.commitMessage.replaceAll('"', '')}" --allow-empty`
+          `git -C "${localWorkspace}" commit -m "${sanitizedMsg}" --allow-empty`
         ).catch(() => {});
       } catch {
         // Ignora se o workspace local não for um repositório git
@@ -425,6 +566,171 @@ export class GitService {
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
+  }
+
+  // Resolve o caminho físico absoluto e canônico da workspace da tarefa (com suporte a fallback de legado)
+  async resolveTaskWorkspaceDir(
+    projectId: string,
+    userId: string,
+    taskId: string,
+    stageId?: string
+  ): Promise<string> {
+    let targetStageId = stageId;
+    if (!targetStageId && taskId && taskId !== 'default-task') {
+      const task = await prisma.task
+        .findUnique({
+          where: { id: taskId },
+          select: { stageId: true },
+        })
+        .catch(() => null);
+      if (task?.stageId) {
+        targetStageId = task.stageId;
+      }
+    }
+
+    const stageSegment = targetStageId || 'general';
+    const canonicalPath = path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      projectId,
+      'users',
+      userId,
+      'stages',
+      stageSegment,
+      'tasks',
+      taskId
+    );
+
+    try {
+      const stats = await fs.stat(canonicalPath);
+      if (stats.isDirectory()) {
+        return canonicalPath;
+      }
+    } catch {
+      // Ignora erro se não existir
+    }
+
+    const legacyPath = path.resolve(
+      env.STORAGE_PATH,
+      'projects',
+      projectId,
+      'users',
+      userId,
+      'tasks',
+      taskId
+    );
+
+    try {
+      const stats = await fs.stat(legacyPath);
+      if (stats.isDirectory()) {
+        return legacyPath;
+      }
+    } catch {
+      // Ignora erro de legado
+    }
+
+    return canonicalPath;
+  }
+
+  // Realiza o commit e push de TODOS os arquivos modificados (incluindo subpastas de seções) do workspace da tarefa para o GitHub
+  async commitWorkspaceProgress(data: {
+    projectId: string;
+    userId: string;
+    taskId: string;
+    stageId?: string;
+    branchName: string;
+    commitMessage: string;
+    authorName: string;
+    authorEmail: string;
+    repoUrl?: string;
+  }): Promise<string> {
+    const gitFlags = this.getGitAuthFlags();
+    const taskWorkspaceDir = await this.resolveTaskWorkspaceDir(
+      data.projectId,
+      data.userId,
+      data.taskId,
+      data.stageId
+    );
+
+    const workspaceToUse = taskWorkspaceDir;
+    try {
+      const stats = await fs.stat(taskWorkspaceDir);
+      if (!stats.isDirectory()) {
+        await fs.mkdir(taskWorkspaceDir, { recursive: true, mode: 0o777 });
+      }
+    } catch {
+      await fs.mkdir(taskWorkspaceDir, { recursive: true, mode: 0o777 });
+    }
+
+    // Se o workspace não possui .git, inicializa
+    const gitDir = path.join(workspaceToUse, '.git');
+    const hasGit = await fs
+      .access(gitDir)
+      .then(() => true)
+      .catch(() => false);
+
+    if (!hasGit) {
+      await execAsync(`git init "${workspaceToUse}"`).catch(() => {});
+      if (data.repoUrl) {
+        const cleanUrl = this.cleanRepoUrl(data.repoUrl);
+        await execAsync(`git -C "${workspaceToUse}" remote add origin "${cleanUrl}"`).catch(
+          () => {}
+        );
+      }
+    }
+
+    const sanitizedAuthor = data.authorName.replace(/"/g, '');
+    const sanitizedEmail = data.authorEmail.replace(/"/g, '');
+    const sanitizedMsg = data.commitMessage.replace(/"/g, '\\"');
+
+    await execAsync(`git -C "${workspaceToUse}" config user.name "${sanitizedAuthor}"`).catch(
+      () => {}
+    );
+    await execAsync(`git -C "${workspaceToUse}" config user.email "${sanitizedEmail}"`).catch(
+      () => {}
+    );
+    await execAsync(`git -C "${workspaceToUse}" config core.fileMode false`).catch(() => {});
+    await execAsync(`git -C "${workspaceToUse}" config safe.directory "*"`).catch(() => {});
+
+    // Garante que o repositório local está na branch correta antes de registrar o commit
+    await execAsync(`git -C "${workspaceToUse}" checkout "${data.branchName}"`).catch(async () => {
+      await execAsync(`git -C "${workspaceToUse}" checkout -b "${data.branchName}"`).catch(
+        () => {}
+      );
+    });
+
+    await execAsync(`git -C "${workspaceToUse}" add -A`).catch(() => {});
+    const statusRes = await execAsync(`git -C "${workspaceToUse}" status --porcelain`).catch(
+      () => ({
+        stdout: '',
+      })
+    );
+
+    if (statusRes.stdout.trim() !== '') {
+      await execAsync(`git -C "${workspaceToUse}" commit -m "${sanitizedMsg}"`).catch(() => {});
+    } else {
+      await execAsync(`git -C "${workspaceToUse}" commit --allow-empty -m "${sanitizedMsg}"`).catch(
+        () => {}
+      );
+    }
+
+    // Push para o repositório remoto no GitHub
+    if (data.repoUrl || env.GITHUB_TOKEN) {
+      const remoteTarget = data.repoUrl
+        ? this.cleanRepoUrl(data.repoUrl)
+        : this.getRepoPath(data.projectId);
+      await execAsync(
+        `git -C "${workspaceToUse}" ${gitFlags} push "${remoteTarget}" HEAD:refs/heads/${data.branchName} --force`
+      ).catch(async (pushErr) => {
+        console.warn(
+          `⚠️ Error pushing branch ${data.branchName} to remote:`,
+          pushErr.message || pushErr
+        );
+      });
+    }
+
+    const { stdout } = await execAsync(`git -C "${workspaceToUse}" rev-parse HEAD`);
+    return stdout.trim();
   }
 
   // Verifica se há rascunhos/modificações pendentes de commit no workspace do projeto ou do usuário
@@ -490,7 +796,7 @@ export class GitService {
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line.length > 0)
-        .map((line) => line.replace(/^[\s\?MADRCU]+\s+/, ''))
+        .map((line) => line.replace(/^[\s?MADRCU]+\s+/, ''))
         .filter((file) => !isIgnoredFile(file));
 
       return {
@@ -503,6 +809,147 @@ export class GitService {
         dirtyFiles: [],
       };
     }
+  }
+
+  // Obtém os fatos brutos de modificação no repositório isolado da tarefa e metadados do último salvamento
+  async getTaskRawDiffFacts(
+    projectId: string,
+    userId: string,
+    taskId: string,
+    stageId?: string
+  ): Promise<TaskRawDiffFactsResult> {
+    const targetDir = await this.resolveTaskWorkspaceDir(projectId, userId, taskId, stageId);
+
+    let lastSavedAuthor: string | undefined;
+    let lastSavedAt: string | undefined;
+
+    try {
+      const logRes = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" log -1 --format="%an|%ad" --date=iso-strict',
+        { cwd: targetDir }
+      ).catch(() => null);
+
+      if (logRes?.stdout?.trim()) {
+        const [author, dateStr] = logRes.stdout.trim().split('|');
+        lastSavedAuthor = author || undefined;
+        lastSavedAt = dateStr || undefined;
+      }
+    } catch {
+      // Ignora erro de leitura de log
+    }
+
+    const filesMap = new Map<string, RawFileDiffFact>();
+
+    const isIgnoredFile = (file: string) => {
+      const normalized = file.replaceAll('\\', '/');
+      const fileName = path.basename(normalized);
+      const ignoredExtensions = [
+        '.aux',
+        '.log',
+        '.fdb_latexmk',
+        '.fls',
+        '.synctex.gz',
+        '.toc',
+        '.out',
+        '.nav',
+        '.snm',
+        '.bbl',
+        '.blg',
+        '.vrb',
+        '.pdf',
+      ];
+      return (
+        normalized.startsWith('users/') ||
+        normalized.startsWith('.vscode/') ||
+        normalized === '.gitignore' ||
+        fileName === 'indent.log' ||
+        ignoredExtensions.some((ext) => fileName.endsWith(ext))
+      );
+    };
+
+    try {
+      const statusRes = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" -c core.fileMode=false status --porcelain',
+        { cwd: targetDir }
+      );
+
+      const statusLines = statusRes.stdout
+        .split('\n')
+        .map((l) => l.trimEnd())
+        .filter((l) => l.length >= 4);
+
+      for (const line of statusLines) {
+        const code = line.slice(0, 2).trim();
+        const filePath = line.slice(3).trim();
+        if (isIgnoredFile(filePath)) continue;
+
+        let status: 'added' | 'modified' | 'deleted' = 'modified';
+        if (code.includes('A') || code === '??') {
+          status = 'added';
+        } else if (code.includes('D')) {
+          status = 'deleted';
+        }
+
+        filesMap.set(filePath, {
+          path: filePath,
+          status,
+          additions: 0,
+          deletions: 0,
+        });
+      }
+
+      const numstatRes = await execAsync(
+        'GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" diff --numstat HEAD',
+        { cwd: targetDir }
+      ).catch(() => null);
+
+      if (numstatRes?.stdout) {
+        const numstatLines = numstatRes.stdout.split('\n');
+        for (const line of numstatLines) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 3) {
+            const additions = Number.parseInt(parts[0], 10) || 0;
+            const deletions = Number.parseInt(parts[1], 10) || 0;
+            const filePath = parts.slice(2).join(' ');
+            if (isIgnoredFile(filePath)) continue;
+
+            const existing = filesMap.get(filePath);
+            if (existing) {
+              existing.additions = additions;
+              existing.deletions = deletions;
+            } else {
+              filesMap.set(filePath, {
+                path: filePath,
+                status: 'modified',
+                additions,
+                deletions,
+              });
+            }
+          }
+        }
+      }
+
+      // Preenche a contagem de linhas para arquivos novos adicionados que ainda não estão no index do HEAD
+      for (const fact of filesMap.values()) {
+        if (fact.status === 'added' && fact.additions === 0) {
+          try {
+            const fullPath = path.join(targetDir, fact.path);
+            const content = await fs.readFile(fullPath, 'utf-8');
+            fact.additions = content.split('\n').length;
+          } catch {
+            // Ignora falha de leitura
+          }
+        }
+      }
+    } catch {
+      // Ignora erro de diff no repositório local
+    }
+
+    return {
+      lastSavedAt,
+      lastSavedAuthor,
+      files: Array.from(filesMap.values()),
+    };
   }
 
   // Realiza a fusão (git merge) de uma branch de origem (ex: task/intro-a1b2c3d4) em uma branch alvo (ex: dev ou main)
@@ -657,7 +1104,7 @@ export class GitService {
     }
   }
 
-  // Cria um Draft Pull Request no GitHub via Octokit REST API
+  // Cria um Draft Pull Request no GitHub via Octokit REST API e retorna os SHAs imutáveis da base e do head
   async createDraftPullRequest(data: {
     projectId: string;
     headBranch: string;
@@ -669,15 +1116,29 @@ export class GitService {
     authorName?: string;
     authorEmail?: string;
     authorRole?: string;
-  }): Promise<{ number: number; htmlUrl: string; nodeId?: string }> {
-    const isGitHubMode = Boolean(env.GITHUB_TOKEN && env.NODE_ENV !== 'test');
+  }): Promise<{
+    number: number;
+    htmlUrl: string;
+    nodeId?: string;
+    baseCommitHash?: string;
+    submittedCommitHash?: string;
+  }> {
+    const isTestMode = env.NODE_ENV === 'test';
     const baseBranch = data.baseBranch || 'dev';
 
-    if (!isGitHubMode) {
+    if (isTestMode) {
       return {
         number: 1,
         htmlUrl: `http://localhost/mock-pr/${data.headBranch}`,
+        baseCommitHash: 'dev-sha-mock',
+        submittedCommitHash: 'head-sha-mock',
       };
+    }
+
+    if (!env.GITHUB_TOKEN) {
+      throw new Error(
+        'GITHUB_TOKEN_REQUIRED: GITHUB_TOKEN é obrigatório para operar com o GitHub.'
+      );
     }
 
     let owner = await this.getOwner();
@@ -699,17 +1160,28 @@ export class GitService {
       .filter(Boolean)
       .join(' ');
 
+    let issueRef = '';
+    const issueMatch = data.headBranch.match(/^task\/(\d+)-/);
+    if (issueMatch) {
+      issueRef = `Resolves #${issueMatch[1]}`;
+    }
+
     let prBody = data.body || `Draft PR for ${data.headBranch}`;
     if (userMeta) {
       prBody = `👤 **Autor Original:** ${userMeta}\n\n${prBody}`;
     }
+    if (issueRef && !prBody.includes(issueRef)) {
+      prBody = `${prBody}\n\n${issueRef}`;
+    }
+
+    const cleanTitle = data.title.replace(/^\[?DRAFT\]?:?\s*/i, '').trim() || data.title;
 
     try {
       const octokit = this.getOctokit();
       const res = await octokit.rest.pulls.create({
         owner,
         repo: repoName,
-        title: data.title,
+        title: cleanTitle,
         body: prBody,
         head: data.headBranch,
         base: baseBranch,
@@ -720,6 +1192,8 @@ export class GitService {
         number: res.data.number,
         htmlUrl: res.data.html_url,
         nodeId: res.data.node_id,
+        baseCommitHash: res.data.base?.sha,
+        submittedCommitHash: res.data.head?.sha,
       };
     } catch (error: any) {
       if (error.status === 422 || error.message?.includes('already exists')) {
@@ -732,10 +1206,13 @@ export class GitService {
             state: 'all',
           });
           if (listRes.data.length > 0) {
+            const prItem = listRes.data[0];
             return {
-              number: listRes.data[0].number,
-              htmlUrl: listRes.data[0].html_url,
-              nodeId: listRes.data[0].node_id,
+              number: prItem.number,
+              htmlUrl: prItem.html_url,
+              nodeId: prItem.node_id,
+              baseCommitHash: prItem.base?.sha,
+              submittedCommitHash: prItem.head?.sha,
             };
           }
         } catch {
@@ -748,6 +1225,34 @@ export class GitService {
         htmlUrl: `https://github.com/${owner}/${repoName}/pulls`,
       };
     }
+  }
+
+  // Cria uma tag remota/local de infraestrutura para ancorar o commit imutável de uma ReviewRound
+  async createReviewTag(data: {
+    projectId: string;
+    prId: string;
+    roundNumber: number;
+    commitSha: string;
+    repoUrl?: string;
+  }): Promise<string> {
+    const tagName = `review/pr-${data.prId.slice(0, 8)}-round-${data.roundNumber}`;
+    const gitFlags = this.getGitAuthFlags();
+    const cleanRepoLocation = this.cleanRepoUrl(data.repoUrl || this.getRepoPath(data.projectId));
+    const tempDir = path.join(this.baseStoragePath, `temp-tag-${data.projectId}-${Date.now()}`);
+
+    try {
+      await execAsync(`git ${gitFlags} clone --bare "${cleanRepoLocation}" "${tempDir}"`, {
+        cwd: this.baseStoragePath,
+      });
+      await execAsync(`git -C "${tempDir}" tag "${tagName}" "${data.commitSha}"`).catch(() => {});
+      await execAsync(`git -C "${tempDir}" ${gitFlags} push origin "${tagName}"`).catch(() => {});
+    } catch (err: any) {
+      console.warn(`⚠️ Warning creating review tag ${tagName}:`, err.message || err);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+
+    return tagName;
   }
 
   // Transiciona um Draft Pull Request para Ready for Review no GitHub via Octokit GraphQL API
@@ -908,5 +1413,88 @@ export class GitService {
     }
 
     return true;
+  }
+
+  // Obtém o SHA imutável de um commit/ref em um diretório de repositório
+  async getCommitSha(targetDir: string, ref: string = 'HEAD'): Promise<string> {
+    try {
+      const { stdout } = await execAsync(
+        `GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" rev-parse ${ref}`,
+        { cwd: targetDir }
+      );
+      return stdout.trim();
+    } catch {
+      return '';
+    }
+  }
+
+  // Obtém os fatos de diff numstat entre duas referências de commit (baseRef..targetRef)
+  async getDiffFactsBetweenRefs(
+    targetDir: string,
+    baseRef: string,
+    targetRef: string
+  ): Promise<RawFileDiffFact[]> {
+    try {
+      const numstatRes = await execAsync(
+        `GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -c safe.directory="*" diff --numstat ${baseRef}..${targetRef}`,
+        { cwd: targetDir }
+      ).catch(() => null);
+
+      if (!numstatRes?.stdout) {
+        return [];
+      }
+
+      const files: RawFileDiffFact[] = [];
+      const numstatLines = numstatRes.stdout.split('\n');
+
+      const isIgnoredFile = (file: string) => {
+        const normalized = file.replaceAll('\\', '/');
+        const fileName = path.basename(normalized);
+        const ignoredExtensions = [
+          '.aux',
+          '.log',
+          '.fdb_latexmk',
+          '.fls',
+          '.synctex.gz',
+          '.toc',
+          '.out',
+          '.nav',
+          '.snm',
+          '.bbl',
+          '.blg',
+          '.vrb',
+          '.pdf',
+        ];
+        return (
+          normalized.startsWith('users/') ||
+          normalized.startsWith('.vscode/') ||
+          normalized === '.gitignore' ||
+          fileName === 'indent.log' ||
+          ignoredExtensions.some((ext) => fileName.endsWith(ext))
+        );
+      };
+
+      for (const line of numstatLines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 3) {
+          const additions = Number.parseInt(parts[0], 10) || 0;
+          const deletions = Number.parseInt(parts[1], 10) || 0;
+          const filePath = parts.slice(2).join(' ');
+
+          if (isIgnoredFile(filePath)) continue;
+
+          files.push({
+            path: filePath,
+            status: additions > 0 && deletions === 0 ? 'added' : 'modified',
+            additions,
+            deletions,
+          });
+        }
+      }
+
+      return files;
+    } catch {
+      return [];
+    }
   }
 }

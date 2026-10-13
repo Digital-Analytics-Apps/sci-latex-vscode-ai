@@ -23,11 +23,29 @@ import { editorProxyRoutes } from './modules/editor-proxy/editor-proxy.routes';
 import { tasksRoutes } from './modules/tasks/tasks.routes';
 import { releasesRoutes } from './modules/releases/releases.routes';
 import { usersRoutes } from './modules/users/users.routes';
+import { githubIntegrationRoutes } from './modules/github-integration/github-integration.routes';
+
+import { K8sPodManagerService } from './infra/k8s/k8s-pod-manager.service';
 
 export async function buildApp() {
   const app = fastify({
     logger: true,
   }).withTypeProvider<ZodTypeProvider>();
+
+  const k8sPodManager = new K8sPodManagerService();
+
+  // Executa a varredura inicial de reconciliação de Pods órfãos no boot do backend
+  k8sPodManager.reconcileOrphanPods().catch(() => {});
+
+  // Agenda o Sweeper periódico a cada 60 segundos para limpar Pods cujas chaves expiraram no Redis
+  const sweeperInterval = setInterval(() => {
+    k8sPodManager.reconcileOrphanPods().catch(() => {});
+  }, 60000);
+
+  app.addHook('onClose', (_instance, done) => {
+    clearInterval(sweeperInterval);
+    done();
+  });
 
   // Configura os compiladores de validação e serialização do Zod
   app.setValidatorCompiler(validatorCompiler);
@@ -124,6 +142,7 @@ export async function buildApp() {
   await app.register(tasksRoutes);
   await app.register(releasesRoutes);
   await app.register(usersRoutes, { prefix: '/api/v1/users' });
+  await app.register(githubIntegrationRoutes, { prefix: '/api/v1/github' });
 
   // Rota de Health Check
   app.get(

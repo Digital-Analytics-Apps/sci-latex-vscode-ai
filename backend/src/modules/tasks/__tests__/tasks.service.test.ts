@@ -7,6 +7,17 @@ vi.mock('../../../db/prisma', () => ({
     workspace: {
       upsert: vi.fn(),
     },
+    githubIntegration: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    project: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+    githubIssueProjection: {
+      count: vi.fn().mockResolvedValue(0),
+      findMany: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn(),
+    },
   },
 }));
 
@@ -52,7 +63,9 @@ describe('TasksService (Unit Tests)', () => {
       updatedAt: new Date(),
     };
 
-    (mockTasksRepository.create as any).mockResolvedValue(mockTask);
+    (mockTasksRepository.create as any).mockImplementation((data: any) =>
+      Promise.resolve({ ...mockTask, ...data })
+    );
     (mockTasksRepository.update as any).mockImplementation((_id: string, data: any) =>
       Promise.resolve({ ...mockTask, ...data })
     );
@@ -61,10 +74,11 @@ describe('TasksService (Unit Tests)', () => {
       projectId: 'proj-1',
       assignedToId: 'user-1',
       title: 'Escrever a Introdução',
+      stageId: 'stage-1',
     });
 
     expect(mockTasksRepository.create).toHaveBeenCalled();
-    expect(result.branchName).toBe('task/escrever-a-introducao-task-u');
+    expect(result.branchName).toMatch(/^task\/escrever-a-introducao-[a-f0-9-]{6}$/);
   });
 
   it('should list tasks for a project', async () => {
@@ -81,6 +95,23 @@ describe('TasksService (Unit Tests)', () => {
       projectId: 'proj-1',
       assignedToId: undefined,
     });
-    expect(result).toEqual(mockTasks);
+    expect(result).toEqual([
+      {
+        id: 'task-1',
+        title: 'Task 1',
+        projectId: 'proj-1',
+        isOccupied: false,
+        occupiedBy: null,
+        isBlockedByPrevious: false,
+      },
+      {
+        id: 'task-2',
+        title: 'Task 2',
+        projectId: 'proj-1',
+        isOccupied: false,
+        occupiedBy: null,
+        isBlockedByPrevious: false,
+      },
+    ]);
   });
 });

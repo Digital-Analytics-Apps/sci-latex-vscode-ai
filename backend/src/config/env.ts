@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -12,6 +14,7 @@ const envSchema = z.object({
   GITHUB_REPO_PREFIX: z.string().default('sci-paper-'),
   STORAGE_PATH: z.string().default('./storage'),
   CODE_SERVER_URL: z.string().default('http://localhost:8080'),
+  REDIS_URL: z.string().default('redis://localhost:6379'),
   PORT: z.coerce.number().default(3333),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -24,4 +27,17 @@ if (!_env.success) {
   throw new Error('Invalid environment variables');
 }
 
-export const env = _env.data;
+const rawStoragePath = _env.data.STORAGE_PATH;
+let resolvedStoragePath = path.resolve(rawStoragePath);
+if (
+  !path.isAbsolute(rawStoragePath) &&
+  process.cwd().endsWith('/backend') &&
+  fs.existsSync(path.resolve(process.cwd(), '..', 'storage'))
+) {
+  resolvedStoragePath = path.resolve(process.cwd(), '..', 'storage');
+}
+
+export const env = {
+  ..._env.data,
+  STORAGE_PATH: resolvedStoragePath,
+};

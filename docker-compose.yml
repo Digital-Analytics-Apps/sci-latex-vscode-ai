@@ -19,6 +19,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: sci_latex_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -31,9 +43,8 @@ services:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=public
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: super-secret-jwt-key-change-in-production
-      GIT_SERVICE_TOKEN: system-git-service-token-secret
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_ORG: ${GITHUB_ORG:-}
       GITHUB_REPO_PREFIX: ${GITHUB_REPO_PREFIX:-sci-paper-}
       CODE_SERVER_URL: http://code-server:8080
@@ -43,6 +54,7 @@ services:
     volumes:
       - ./backend:/app
       - ./storage:/app/storage
+      - ./docker/code-server:/app/docker/code-server:ro
       - /app/node_modules
       - ${HOME}/.kube/config:/root/.kube/config:ro
     extra_hosts:
@@ -50,7 +62,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: npm run dev
+      redis:
+        condition: service_healthy
+    command: sh -c "npx prisma generate && npm run dev"
     networks:
       - default
       - kind

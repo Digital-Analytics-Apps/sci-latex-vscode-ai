@@ -1,7 +1,7 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
-import { PullRequestsService } from './pull-requests.service';
-import { z } from 'zod';
 import { NITStatus } from '@prisma/client';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { PullRequestsService } from './pull-requests.service';
 
 export class PullRequestsController {
   constructor(private readonly prService: PullRequestsService) {}
@@ -36,11 +36,16 @@ export class PullRequestsController {
   async list(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
       projectId: z.string().optional(),
+      status: z.string().optional(),
+      nitStatus: z.string().optional(),
+      search: z.string().optional(),
+      page: z.coerce.number().optional(),
+      limit: z.coerce.number().optional(),
     });
 
-    const { projectId } = querySchema.parse(request.query);
-    const prs = await this.prService.listPRs(projectId);
-    return reply.send({ pullRequests: prs });
+    const filters = querySchema.parse(request.query);
+    const result = await this.prService.listPRs(filters as any);
+    return reply.send({ pullRequests: result.pullRequests, total: result.total });
   }
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
@@ -91,16 +96,25 @@ export class PullRequestsController {
       id: z.string(),
     });
     const bodySchema = z.object({
-      nitStatus: z.enum(['WAITING_NIT', 'APPROVED_NIT', 'REJECTED_NIT']),
-      nitNotes: z.string().optional(),
+      nitStatus: z.enum(['WAITING_NIT', 'APPROVED_NIT', 'REJECTED_NIT', 'NOT_REQUIRED']),
+      nitNotes: z.string().optional().nullable(),
+      sentToNitAt: z.string().optional().nullable(),
+      sentToNitNotes: z.string().optional().nullable(),
+      nitApprovedAt: z.string().optional().nullable(),
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { nitStatus, nitNotes } = bodySchema.parse(request.body);
+    const body = bodySchema.parse(request.body);
     const userId = request.user.sub;
 
     try {
-      const pr = await this.prService.updateNITStatus(id, userId, nitStatus as NITStatus, nitNotes);
+      const pr = await this.prService.updateNITStatus(id, userId, {
+        nitStatus: body.nitStatus as NITStatus,
+        nitNotes: body.nitNotes || undefined,
+        sentToNitAt: body.sentToNitAt || undefined,
+        sentToNitNotes: body.sentToNitNotes || undefined,
+        nitApprovedAt: body.nitApprovedAt || undefined,
+      });
       return reply.send({ pullRequest: pr });
     } catch (err: any) {
       if (err.message === 'PR_NOT_FOUND') {
@@ -166,6 +180,24 @@ export class PullRequestsController {
           message:
             'O Pull Request não pode ser mesclado pois pendente de aprovação do NIT (Núcleo de Inovação Tecnológica).',
         });
+      }
+      throw err;
+    }
+  }
+
+  async getDiff(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+      id: z.string(),
+    });
+
+    const { id } = paramsSchema.parse(request.params);
+
+    try {
+      const reviewDiff = await this.prService.getPRReviewDiff(id);
+      return reply.send(reviewDiff);
+    } catch (err: any) {
+      if (err.message === 'PR_NOT_FOUND') {
+        return reply.status(404).send({ message: 'Pull Request not found' });
       }
       throw err;
     }

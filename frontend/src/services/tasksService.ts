@@ -1,31 +1,14 @@
-import { TaskStatus } from "../constants/status";
+import type { CreateTaskInput, TaskItem } from "../types/task.types";
 import { api } from "./api";
-
-export { TaskStatus };
-
-export interface TaskItem {
-  id: string;
-  projectId: string;
-  projectName?: string;
-  title: string;
-  branchName: string;
-  status: TaskStatus;
-  dueDate: string;
-  assignee: string;
-  assignedToId?: string;
-}
-
-export interface CreateTaskInput {
-  title: string;
-  assignedToId: string;
-  dueDate?: string;
-}
 
 export const tasksService = {
   // Buscar tarefas de um projeto diretamente da API REST real (/projects/:projectId/tasks)
-  async getTasksByProject(projectId: string): Promise<TaskItem[]> {
+  async getTasksByProject(
+    projectId: string,
+    params?: Record<string, any>,
+  ): Promise<TaskItem[]> {
     if (!projectId) return [];
-    const response = await api.get(`/projects/${projectId}/tasks`);
+    const response = await api.get(`/projects/${projectId}/tasks`, { params });
     return response.data.tasks || [];
   },
 
@@ -44,5 +27,21 @@ export const tasksService = {
       `/projects/${projectId}/tasks/${taskId}/workspace`,
     );
     return response.data;
+  },
+
+  // Assinar tarefa (Claim)
+  async claimTask(projectId: string, taskId: string): Promise<TaskItem> {
+    const response = await api.post(
+      `/projects/${projectId}/tasks/${taskId}/claim`,
+    );
+    return response.data.task || response.data;
+  },
+
+  // Desassinar tarefa (Unclaim)
+  async unclaimTask(projectId: string, taskId: string): Promise<TaskItem> {
+    const response = await api.post(
+      `/projects/${projectId}/tasks/${taskId}/unclaim`,
+    );
+    return response.data.task || response.data;
   },
 };

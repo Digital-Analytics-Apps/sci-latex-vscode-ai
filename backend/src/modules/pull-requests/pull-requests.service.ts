@@ -1,13 +1,17 @@
 import { NITStatus, PRStatus } from '@prisma/client';
-import {
-  CreatePRData,
-  PrismaPullRequestsRepository,
-} from '../../repositories/pull-requests.repository';
-import { eventsManager } from '../events/events.manager';
-import { logAudit } from '../../utils/audit';
+import path from 'node:path';
+import { env } from '../../config/env';
+import { prisma } from '../../db/prisma';
 import { GitService } from '../../infra/git/git.service';
 import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { prisma } from '../../db/prisma';
+import {
+  CreatePRData,
+  ListPRFilters,
+  PrismaPullRequestsRepository,
+} from '../../repositories/pull-requests.repository';
+import { logAudit } from '../../utils/audit';
+import { eventsManager } from '../events/events.manager';
+import { classificationService } from '../projects/services/classification.service';
 
 export class PullRequestsService {
   constructor(
@@ -76,6 +80,86 @@ export class PullRequestsService {
         reviewerId: cleanReviewerId,
         authorId,
       });
+    }
+
+    // 2.5 Congelamento da ReviewRound e captura imutável dos SHAs no momento da submissão
+    try {
+      const authorUser = await prisma.user
+        .findUnique({ where: { id: authorId } })
+        .catch(() => null);
+      const project = await prisma.project
+        .findUnique({ where: { id: data.projectId } })
+        .catch(() => null);
+
+      if (this.gitService && data.taskId) {
+        await this.gitService
+          .commitWorkspaceProgress({
+            projectId: data.projectId,
+            userId: authorId,
+            taskId: data.taskId,
+            branchName: headBranchName,
+            commitMessage: `Submissão de Revisão do Autor: ${pr.title}`,
+            authorName: authorUser?.name || 'SCI-LaTeX Author',
+            authorEmail: authorUser?.email || 'author@sci-latex.org',
+            repoUrl: project?.gitRepoPath,
+          })
+          .catch((err) =>
+            console.warn('⚠️ Warning auto-committing workspace progress on PR creation:', err)
+          );
+      }
+
+      const taskWorkspaceDir = data.taskId
+        ? path.resolve(
+            env.STORAGE_PATH,
+            'projects',
+            data.projectId,
+            'users',
+            authorId,
+            'tasks',
+            data.taskId
+          )
+        : path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+      const projectDir = path.resolve(env.STORAGE_PATH, 'projects', data.projectId);
+
+      const submittedCommitHash = this.gitService
+        ? (await this.gitService.getCommitSha(taskWorkspaceDir, 'HEAD')) || 'HEAD'
+        : 'HEAD';
+      const baseCommitHash = this.gitService
+        ? (await this.gitService.getCommitSha(projectDir, 'dev')) || 'dev'
+        : 'dev';
+
+      const existingRounds = await prisma.reviewRound.findMany({
+        where: { pullRequestId: pr.id },
+        orderBy: { roundNumber: 'asc' },
+      });
+
+      const roundNumber = existingRounds.length + 1;
+      const previousSubmittedCommitHash =
+        existingRounds.length > 0 ? existingRounds.at(-1)?.submittedCommitHash : undefined;
+
+      await prisma.reviewRound.create({
+        data: {
+          pullRequestId: pr.id,
+          roundNumber,
+          baseCommitHash,
+          submittedCommitHash,
+          previousSubmittedCommitHash,
+        },
+      });
+
+      if (this.gitService && submittedCommitHash && submittedCommitHash !== 'HEAD') {
+        await this.gitService
+          .createReviewTag({
+            projectId: data.projectId,
+            prId: pr.id,
+            roundNumber,
+            commitSha: submittedCommitHash,
+            repoUrl: project?.gitRepoPath,
+          })
+          .catch((tagErr) => console.warn('⚠️ Warning creating review tag:', tagErr));
+      }
+    } catch (err: any) {
+      console.warn('⚠️ Warning creating ReviewRound record:', err?.message || err);
     }
 
     // 3. Atualizar o status da Task associada para UNDER_REVIEW
@@ -169,9 +253,12 @@ export class PullRequestsService {
     return pr;
   }
 
-  // Listar PRs de um projeto
-  async listPRs(projectId?: string) {
-    return this.prRepository.findAll(projectId);
+  // Listar PRs de um projeto com suporte a filtros e paginação
+  async listPRs(filters?: string | ListPRFilters) {
+    if (typeof filters === 'string') {
+      return this.prRepository.findAll({ projectId: filters });
+    }
+    return this.prRepository.findAll(filters);
   }
 
   // Avaliação pelo Revisor (Aprovar, Solicitar Ajustes ou Adicionar Comentários)
@@ -185,10 +272,16 @@ export class PullRequestsService {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
 
-    // Se houver comentário, grava na tabela de comentários do PR
+    // Se houver comentário, grava na tabela de comentários do PR vinculando à última ReviewRound
     if (comment && comment.trim() !== '') {
+      const latestRound = await prisma.reviewRound.findFirst({
+        where: { pullRequestId: prId },
+        orderBy: { roundNumber: 'desc' },
+      });
+
       await this.prRepository.addComment({
         pullRequestId: prId,
+        reviewRoundId: latestRound?.id,
         userId: reviewerId,
         lineNumer,
         comment,
@@ -202,17 +295,33 @@ export class PullRequestsService {
       status !== pr.status
     ) {
       updatedPR = await this.prRepository.updateStatus(prId, status as PRStatus);
+
+      if (pr.taskId) {
+        await prisma.task
+          .update({
+            where: { id: pr.taskId },
+            data: { status: status as any },
+          })
+          .catch((err) => console.warn('⚠️ Warning updating task status on review:', err));
+      }
+
       await logAudit({
         userId: reviewerId,
         action: `PR_${status}`,
         entityType: 'PullRequest',
         entityId: prId,
-        details: { status, comment, lineNumer },
+        details: { status, comment, lineNumer, taskId: pr.taskId },
       });
       eventsManager.broadcastToUser(pr.authorId, 'PR_REVIEWED', {
         pullRequestId: prId,
         status,
+        taskId: pr.taskId,
+        projectId: pr.projectId,
         reviewerId,
+      });
+      eventsManager.broadcastToProject(pr.projectId, 'TASK_STATUS_UPDATED', {
+        taskId: pr.taskId,
+        status,
       });
     }
 
@@ -245,12 +354,57 @@ export class PullRequestsService {
     return fullPR ?? updatedPR;
   }
 
-  // Registro Manual do Status do NIT (Núcleo de Inovação Tecnológica)
-  async updateNITStatus(prId: string, userId: string, nitStatus: NITStatus, nitNotes?: string) {
+  // Registro Manual do Status / Envio do NIT (Núcleo de Inovação Tecnológica)
+  async updateNITStatus(
+    prId: string,
+    userId: string,
+    data: {
+      nitStatus: NITStatus;
+      nitNotes?: string;
+      sentToNitAt?: string | Date;
+      sentToNitNotes?: string;
+      nitApprovedAt?: string | Date;
+    }
+  ) {
     const pr = await this.prRepository.findById(prId);
     if (!pr) throw new Error('PR_NOT_FOUND');
 
-    const updatedPR = await this.prRepository.updateNITStatus(prId, nitStatus, nitNotes);
+    const updatedPR = await this.prRepository.updateNITStatus(prId, {
+      nitStatus: data.nitStatus,
+      nitNotes: data.nitNotes,
+      sentToNitAt: data.sentToNitAt ? new Date(data.sentToNitAt) : undefined,
+      sentToNitNotes: data.sentToNitNotes,
+      nitApprovedAt: data.nitApprovedAt ? new Date(data.nitApprovedAt) : undefined,
+    });
+
+    // Registra o processo institucional completo do NIT no PostgreSQL
+    await prisma.nitProcess
+      .create({
+        data: {
+          articleId: pr.projectId,
+          githubPrNodeId: pr.id,
+          status: data.nitStatus,
+          sentAt: data.sentToNitAt ? new Date(data.sentToNitAt) : new Date(),
+          sentNotes: data.sentToNitNotes,
+          approvedAt: data.nitApprovedAt ? new Date(data.nitApprovedAt) : undefined,
+          responseNotes: data.nitNotes,
+        },
+      })
+      .catch((err) => console.warn('⚠️ Warning creating nitProcess record:', err));
+
+    // Sincroniza a projeção local do resumo do NIT no quadro do GitHub Project v2
+    const projectIntegration = await prisma.githubIntegration.findFirst({
+      where: { articleId: pr.projectId },
+    });
+
+    if (projectIntegration) {
+      await prisma.githubProjectItemProjection
+        .updateMany({
+          where: { githubProjectV2Id: projectIntegration.githubProjectV2Id },
+          data: { nitStatusValue: data.nitStatus, lastSyncedAt: new Date() },
+        })
+        .catch(() => {});
+    }
 
     // Registra na Timeline / AuditLog
     await logAudit({
@@ -258,13 +412,17 @@ export class PullRequestsService {
       action: 'NIT_STATUS_UPDATED',
       entityType: 'PullRequest',
       entityId: prId,
-      details: { nitStatus, nitNotes },
+      details: {
+        nitStatus: data.nitStatus,
+        nitNotes: data.nitNotes,
+        sentToNitNotes: data.sentToNitNotes,
+      },
     });
 
     // Emite notificação SSE
     eventsManager.broadcastToUser(pr.authorId, 'NIT_STATUS_UPDATED', {
       pullRequestId: prId,
-      nitStatus,
+      nitStatus: data.nitStatus,
     });
 
     return updatedPR;
@@ -406,5 +564,68 @@ export class PullRequestsService {
     });
 
     return { message: 'Artigo mesclado com sucesso na branch main para submissão final.' };
+  }
+
+  // Obter a estrutura desacoplada de ReviewDiff (overview e roundChanges)
+  async getPRReviewDiff(prId: string) {
+    const pr = await prisma.pullRequest.findUnique({
+      where: { id: prId },
+      include: {
+        rounds: { orderBy: { roundNumber: 'asc' } },
+        task: true,
+      },
+    });
+
+    if (!pr) throw new Error('PR_NOT_FOUND');
+
+    const projectDir = path.resolve(env.STORAGE_PATH, 'projects', pr.projectId);
+    const rounds = pr.rounds || [];
+    const latestRound = rounds.length > 0 ? rounds[rounds.length - 1] : null;
+
+    const baseSha = latestRound?.baseCommitHash || 'dev';
+    const submittedSha = latestRound?.submittedCommitHash || 'HEAD';
+    const previousSha = latestRound?.previousSubmittedCommitHash || undefined;
+
+    const overviewFacts = this.gitService
+      ? await this.gitService.getDiffFactsBetweenRefs(projectDir, baseSha, submittedSha)
+      : [];
+
+    const overviewClassification = classificationService.classifyDiffFacts(overviewFacts, pr.title);
+
+    let roundChangesClassification: any = null;
+    if (previousSha && this.gitService) {
+      const roundFacts = await this.gitService.getDiffFactsBetweenRefs(
+        projectDir,
+        previousSha,
+        submittedSha
+      );
+      roundChangesClassification = classificationService.classifyDiffFacts(roundFacts, pr.title);
+    }
+
+    return {
+      pullRequestId: pr.id,
+      roundNumber: latestRound?.roundNumber || 1,
+      overview: {
+        baseCommitHash: baseSha,
+        targetCommitHash: submittedSha,
+        ...overviewClassification,
+      },
+      roundChanges: previousSha
+        ? {
+            previousSubmittedCommitHash: previousSha,
+            currentSubmittedCommitHash: submittedSha,
+            ...roundChangesClassification,
+          }
+        : null,
+      roundsCount: rounds.length,
+      rounds: rounds.map((r) => ({
+        id: r.id,
+        roundNumber: r.roundNumber,
+        baseCommitHash: r.baseCommitHash,
+        submittedCommitHash: r.submittedCommitHash,
+        previousSubmittedCommitHash: r.previousSubmittedCommitHash,
+        createdAt: r.createdAt,
+      })),
+    };
   }
 }

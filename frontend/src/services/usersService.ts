@@ -1,25 +1,26 @@
+import { Role } from "../constants/roles";
+import type { UserMemberItem } from "../types/user.types";
 import { api } from "./api";
 
-export interface UserMemberItem {
-  id: string;
-  name: string;
-  email: string;
-  role: "AUTHOR" | "REVIEWER" | "COORDINATOR" | "MANAGER" | "ADMIN";
-}
+export type { UserMemberItem } from "../types/user.types";
 
 export const usersService = {
-  // Buscar lista de usuários com suporte a termo de busca (debounced) e papel (role)
+  // Buscar lista de usuários com suporte a termo de busca (debounced), papel (role) e equipe (teamId)
   async searchUsers(
     search: string = "",
     role?: string,
+    teamId?: string,
   ): Promise<UserMemberItem[]> {
     try {
       const params = new URLSearchParams();
       if (search.trim()) {
         params.append("search", search.trim());
       }
-      if (role) {
+      if (role && role !== "ALL") {
         params.append("role", role);
+      }
+      if (teamId && teamId !== "ALL") {
+        params.append("teamId", teamId);
       }
       const response = await api.get(`/users?${params.toString()}`);
       return response.data.users || [];
@@ -30,11 +31,22 @@ export const usersService = {
 
   // Buscar lista de co-autores disponíveis na API REST real
   async getCoAuthors(): Promise<UserMemberItem[]> {
-    return this.searchUsers("", "AUTHOR");
+    return this.searchUsers("", Role.AUTHOR);
   },
 
   // Buscar lista de revisores técnicos disponíveis na API REST real
   async getReviewers(): Promise<UserMemberItem[]> {
-    return this.searchUsers("", "REVIEWER");
+    return this.searchUsers("", Role.REVIEWER);
+  },
+
+  // Cadastrar novo usuário/pesquisador no sistema
+  async createUser(data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: string;
+  }): Promise<UserMemberItem> {
+    const response = await api.post("/auth/register", data);
+    return response.data.user || response.data;
   },
 };

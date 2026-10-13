@@ -4,14 +4,15 @@ import { z } from 'zod';
 import { Role } from '@prisma/client';
 
 export class TeamsController {
-  constructor(private teamsService: TeamsService) {}
+  constructor(private readonly teamsService: TeamsService) {}
 
   async create(request: FastifyRequest, reply: FastifyReply) {
     const requesterId = request.user.sub;
     const bodySchema = z.object({
       name: z.string().min(2),
       description: z.string().optional(),
-      coordinatorId: z.string().uuid(),
+      coordinatorId: z.string().uuid().optional(),
+      coordinatorEmail: z.string().email().optional(),
       managerId: z.string().uuid().optional(),
     });
 
@@ -22,11 +23,12 @@ export class TeamsController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
+      search: z.string().optional(),
       managerId: z.string().uuid().optional(),
     });
 
-    const { managerId } = querySchema.parse(request.query);
-    const teams = await this.teamsService.listTeams(managerId);
+    const { search, managerId } = querySchema.parse(request.query);
+    const teams = await this.teamsService.listTeams({ search, managerId });
     return reply.send({ teams });
   }
 
@@ -56,6 +58,7 @@ export class TeamsController {
       name: z.string().min(2).optional(),
       description: z.string().optional(),
       coordinatorId: z.string().uuid().optional(),
+      coordinatorEmail: z.string().email().optional(),
       managerId: z.string().uuid().optional(),
     });
 
@@ -80,7 +83,7 @@ export class TeamsController {
     });
     const bodySchema = z.object({
       userId: z.string().uuid(),
-      role: z.enum(['AUTHOR', 'REVIEWER', 'COORDINATOR']),
+      role: z.nativeEnum(Role).optional().default(Role.AUTHOR),
     });
 
     const { id } = paramsSchema.parse(request.params);

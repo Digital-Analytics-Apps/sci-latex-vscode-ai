@@ -11,6 +11,7 @@ export interface CreateUserData {
 export interface SearchUsersParams {
   search?: string;
   role?: Role;
+  teamId?: string;
   limit?: number;
 }
 
@@ -41,13 +42,21 @@ export class PrismaUsersRepository implements IUsersRepository {
     });
   }
 
-  async searchMany({ search, role, limit = 20 }: SearchUsersParams): Promise<User[]> {
+  async searchMany({ search, role, teamId, limit = 100 }: SearchUsersParams): Promise<User[]> {
     const where: any = {
       deletedAt: null,
     };
 
     if (role) {
       where.role = role;
+    }
+
+    if (teamId) {
+      where.teamMemberships = {
+        some: {
+          teamId,
+        },
+      };
     }
 
     if (search) {
@@ -60,6 +69,23 @@ export class PrismaUsersRepository implements IUsersRepository {
     return prisma.user.findMany({
       where,
       take: limit,
+      include: {
+        teamMemberships: {
+          include: {
+            team: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            projects: true,
+          },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }

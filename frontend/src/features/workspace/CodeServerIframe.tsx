@@ -7,14 +7,16 @@ import type { RootState } from "../../store";
 interface CodeServerIframeProps {
   projectId: string;
   taskId?: string;
+  stageId?: string;
   mode?: string;
 }
 
-export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
+export const CodeServerIframe = ({
   projectId,
   taskId,
+  stageId,
   mode,
-}) => {
+}: CodeServerIframeProps) => {
   const token = useSelector((state: RootState) => state.auth.token);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -24,6 +26,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   const params = new URLSearchParams();
   if (token) params.set("token", token);
   if (taskId) params.set("taskId", taskId);
+  if (stageId) params.set("stageId", stageId);
   if (mode) params.set("mode", mode);
 
   const iframeSrc = `${baseUrl}/editor-proxy/${projectId}?${params.toString()}`;
@@ -34,7 +37,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
         width: "100%",
         height: "100%",
         position: "relative",
-        bgcolor: "#0b0f17",
+        // bgcolor: "#0b0f17",
       }}
     >
       {isLoading && (

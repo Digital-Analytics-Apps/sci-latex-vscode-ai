@@ -71,6 +71,9 @@ export class PrismaProjectsRepository implements IProjectsRepository {
       include: {
         team: true,
         academicPeriod: true,
+        stages: {
+          orderBy: { order: 'asc' },
+        },
         members: {
           include: {
             user: {
@@ -105,6 +108,19 @@ export class PrismaProjectsRepository implements IProjectsRepository {
       include: {
         team: true,
         academicPeriod: true,
+        stages: {
+          include: {
+            tasks: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                assignedToId: true,
+              },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
         members: {
           include: {
             user: {
@@ -176,6 +192,9 @@ export class PrismaProjectsRepository implements IProjectsRepository {
       include: {
         team: true,
         academicPeriod: true,
+        stages: {
+          orderBy: { order: 'asc' },
+        },
         members: {
           include: {
             user: {

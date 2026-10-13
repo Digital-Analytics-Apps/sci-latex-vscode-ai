@@ -19,9 +19,29 @@ export const eventsRoutes: FastifyPluginAsyncZod = async (app) => {
         security: [{ bearerAuth: [] }],
         querystring: z.object({
           projectId: z.string().optional(),
+          taskId: z.string().optional(),
         }),
       },
     },
     controller.streamEvents.bind(controller)
+  );
+
+  // POST /api/v1/events/heartbeat - Heartbeat de Presença (Foco na aba & Web Worker)
+  app.post(
+    '/heartbeat',
+    {
+      onRequest: [verifyJwt],
+      schema: {
+        tags: ['Events'],
+        summary: 'Heartbeat de Presença e Foco da Workspace',
+        description: 'Renova a presença no Redis e cancela a destruição do Pod.',
+        security: [{ bearerAuth: [] }],
+        querystring: z.object({
+          projectId: z.string().optional(),
+          taskId: z.string().optional(),
+        }),
+      },
+    },
+    controller.sendHeartbeat.bind(controller)
   );
 };

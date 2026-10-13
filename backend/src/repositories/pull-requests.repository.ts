@@ -24,9 +24,27 @@ export interface CreatePRData {
 
 export interface AddCommentData {
   pullRequestId: string;
+  reviewRoundId?: string;
   userId: string;
   lineNumer?: number;
   comment: string;
+}
+
+export interface UpdateNITData {
+  nitStatus: NITStatus;
+  nitNotes?: string;
+  sentToNitAt?: Date | null;
+  sentToNitNotes?: string | null;
+  nitApprovedAt?: Date | null;
+}
+
+export interface ListPRFilters {
+  projectId?: string;
+  status?: PRStatus | 'ALL' | string;
+  nitStatus?: NITStatus | 'ALL' | string;
+  search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export class PrismaPullRequestsRepository {
@@ -61,12 +79,50 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async findAll(projectId?: string): Promise<PullRequestWithRelations[]> {
-    return prisma.pullRequest.findMany({
-      where: projectId ? { projectId } : undefined,
-      include: prInclude,
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(
+    filters?: ListPRFilters
+  ): Promise<{ pullRequests: PullRequestWithRelations[]; total: number }> {
+    const where: Prisma.PullRequestWhereInput = {};
+
+    if (filters?.projectId && filters.projectId !== 'all') {
+      where.projectId = filters.projectId;
+    }
+
+    if (filters?.status && (filters.status as string) !== 'ALL') {
+      where.status = filters.status as PRStatus;
+    }
+
+    if (filters?.nitStatus && (filters.nitStatus as string) !== 'ALL') {
+      where.nitStatus = filters.nitStatus as NITStatus;
+    }
+
+    if (filters?.search && filters.search.trim() !== '') {
+      const term = filters.search.trim();
+      where.OR = [
+        { title: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+        { author: { email: { contains: term, mode: 'insensitive' } } },
+        { author: { name: { contains: term, mode: 'insensitive' } } },
+        { project: { name: { contains: term, mode: 'insensitive' } } },
+      ];
+    }
+
+    const page = filters?.page && filters.page > 0 ? filters.page : 1;
+    const limit = filters?.limit && filters.limit > 0 ? filters.limit : 50;
+    const skip = (page - 1) * limit;
+
+    const [pullRequests, total] = await Promise.all([
+      prisma.pullRequest.findMany({
+        where,
+        include: prInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: filters?.limit ? skip : undefined,
+        take: filters?.limit ? limit : undefined,
+      }),
+      prisma.pullRequest.count({ where }),
+    ]);
+
+    return { pullRequests: pullRequests as unknown as PullRequestWithRelations[], total };
   }
 
   async updateStatus(id: string, status: PRStatus): Promise<PullRequestWithRelations> {
@@ -80,16 +136,20 @@ export class PrismaPullRequestsRepository {
     });
   }
 
-  async updateNITStatus(
-    id: string,
-    nitStatus: NITStatus,
-    nitNotes?: string
-  ): Promise<PullRequestWithRelations> {
+  async updateNITStatus(id: string, data: UpdateNITData): Promise<PullRequestWithRelations> {
     return prisma.pullRequest.update({
       where: { id },
       data: {
-        nitStatus,
-        nitNotes,
+        nitStatus: data.nitStatus,
+        nitNotes: data.nitNotes,
+        sentToNitAt: data.sentToNitAt !== undefined ? data.sentToNitAt : undefined,
+        sentToNitNotes: data.sentToNitNotes !== undefined ? data.sentToNitNotes : undefined,
+        nitApprovedAt:
+          data.nitApprovedAt !== undefined
+            ? data.nitApprovedAt
+            : data.nitStatus === NITStatus.APPROVED_NIT
+              ? new Date()
+              : undefined,
       },
       include: prInclude,
     });

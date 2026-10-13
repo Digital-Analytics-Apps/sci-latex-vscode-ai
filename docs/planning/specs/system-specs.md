@@ -1,0 +1,579 @@
+# Especificação Técnica e Arquitetural (Specs)
+
+**Projeto:** Plataforma Web de Escrita Científica Self-Hosted  
+**Última Atualização:** 2026-10-04  
+**Status:** Especificação Completa (Gantt Timeline Unificado, Trava Sequencial de Sub-tarefas, Workspaces por Nível Feature/Sub-tarefa, Painel de Feedback da Revisão Agrupado por Etapa, Pods sob Demanda K8s, Warm Standby Pool, Stream SSE)
+
+---
+
+## 1. Visão Geral e Objetivos
+
+Este documento contém as especificações técnicas, padrões de código, modelo de dados e decisões de arquitetura para a plataforma de escrita científica. Ele garante a consistência técnica durante todas as fases do desenvolvimento.
+
+> [!IMPORTANT]
+> **Padrão de Código em Inglês:**  
+> Todos os identificadores de código (modelos, enums, interfaces, variáveis, funções, rotas, props, classes) devem ser escritos estritamente em **Inglês**. Comentários e documentações explicativas podem ser em **Português**.
+
+---
+
+## 2. Arquitetura de Edição e Compilação Nativa TeX Live (VS Code Embedded)
+
+Para garantir performance imediata ao Autor e simplicidade de infraestrutura para o servidor self-hosted (zero overhead de broker), a compilação TeX é realizada nativamente dentro do container do `code-server` pela extensão **LaTeX Workshop**:
+
+```mermaid
+graph TD
+    subgraph "1. Edição & Compilação Nativa (VS Code Web / TeX Live)"
+        Author[Autor no VS Code Iframe] -->|Ctrl+S / Auto-build| Extension[Extensão LaTeX Workshop]
+        Extension -->|TeX Live Local no Container| LocalPDF[PDF Gerado em ./storage/projects/id/output.pdf]
+        LocalPDF -->|Exibe na Aba do VS Code| EditorPreview[Preview Interativo do Autor]
+    end
+
+    subgraph "2. Visualização do Revisor & Dashboard"
+        Reviewer[Revisor / Coordenador] -->|Acessa PDF Viewer ou VS Code| LocalPDF
+    end
+```
+
+### 2.1 Por que a compilação nativa no `code-server` elimina o RabbitMQ?
+
+1. **Compilação Nativa Instantânea:** O container do `code-server` de cada usuário já possui o TeX Live e a extensão `LaTeX Workshop` instaladas. A compilação é acionada automaticamente ao salvar (`Ctrl+S`).
+2. **Eliminação de Duplicidade:** O PDF oficial gerado na workspace pelo último autor/revisor que editou a seção já é o PDF compilado final. Não é necessário reenviar mensagens para uma fila de background do RabbitMQ recompilar o documento do zero.
+3. **Servidor Leve e Econômico:** Removemos a dependência do cluster RabbitMQ/Erlang (~200MB-300MB de RAM), simplificando a infraestrutura Docker para apenas 2 containers principais (`sci_latex_backend` e `sci_latex_codeserver`).
+
+### 2.2 Gestão de Classes e Templates LaTeX (`.cls` / `.sty`) & Evolução Futura
+
+- **Suporte Nativo a Editores Acadêmicos:** A plataforma suporta múltiplos templates de congressos e periódicos acadêmicos (IEEE via `IEEEtran.cls`, ACM via `acmart.cls`, SBC via `sbc-template.sty` e Springer LNCS via `llncs.cls`).
+- **Auto-provisionamento na Workspace:** Ao criar um artigo, a plataforma grava o arquivo de classe correspondente no próprio repositório do artigo (`./storage/projects/<projectId>/<template>.cls`), garantindo compilação autônoma instantânea no `code-server`.
+- **> [!NOTE] Nota de Evolução Futura (Backlog Arquitetural):**  
+  Em versões futuras, o sistema poderá expandir a gestão de templates para permitir que o usuário (or Coordenador/Gerente) envie arquivos de classe customizados (`.cls`/`.sty` ou pacote `.zip`) para cadastro no catálogo dinâmico de templates da organização ou upload direto na workspace.
+
+### 2.3 Customização Extrema "Zen Mode" & Git Nativo no Editor
+
+Para proporcionar um ambiente de escrita acadêmica sem distrações:
+1. **Remoção de Extensões de Chat/IA no Build Docker:** As extensões embutidas `copilot`, `prompt-basics` e `terminal-suggest` foram removidas durante a construção da imagem Docker do `code-server`, eliminando o painel de chat da barra lateral direita e assistentes não utilizados.
+2. **Interface Minimalista via `settings.json`:**
+   - `"workbench.activityBar.location": "hidden"`
+   - `"workbench.statusBar.visible": false`
+   - `"window.menuBarVisibility": "hidden"`
+   - `"workbench.secondarySideBar.visible": false`
+   - `"workbench.panel.visible": false`
+   - `"files.exclude"`: Ocultação automática na árvore de arquivos de artefatos temporários de compilação TeX (`*.aux`, `*.log`, `*.synctex.gz`, `*.fls`, `*.fdb_latexmk`, `*.toc`, `*.out`, etc.).
+3. **Desativação Completa do Terminal (`keybindings.json`):** Atalhos para abertura de terminal (`Ctrl+` `, `Ctrl+Shift+` `, `Ctrl+J`) e atalhos de chat (`Ctrl+Shift+I`) foram desativados.
+4. **Git Nativo no Pod sem Ruídos:**
+   - O diretório `.git` é preservado no repositório da workspace do usuário para habilitar os recursos visuais nativos do VS Code (calhas de diff, visualização side-by-side de edições).
+   - Configurações do container: `git config core.fileMode false` (evita falsos modificados por diferenças de permissão de arquivo `0755`/`0644` no Linux) e `safe.directory "*"` configurado em `/etc/gitconfig` (elimina o aviso de "Unsafe Repository").
+
+### 2.4 Fonte de Configurações por Perfil do VS Code (`author.settings.json` vs `reviewer.settings.json`)
+
+As configurações de ambiente do editor são mantidas em dois perfis de modelos distintos em `docker/code-server/`:
+- **Perfil do Autor (`author.settings.json`)**: Configurações padrão de edição com salvamento automático (`files.autoSave: "afterDelay"`), auto-compilação TeX ao salvar (`latex-workshop.latex.autoBuild.run: "onSave"`) e visualizador de PDF habilitado.
+- **Perfil do Revisor (`reviewer.settings.json`)**: Configurações em modo estrito de leitura (Read-Only) com trava de digitação (`"files.readOnlyInclude": { "**/*": true }`), desativação de auto-save e auto-build, desativação do terminal integrado (`"terminal.integrated.enabled": false`) e customização visual com tema indicativo de revisão (`statusBar.background: "#4A154B"`).
+
+O módulo `editor-proxy` (`backend/src/modules/editor-proxy/editor-proxy.service.ts`) identifica o modo da sessão (`mode=author` vs `mode=review`) e injeta dinamicamente o arquivo de perfil apropriado em `~/.local/share/code-server/User/settings.json` no container do usuário. O provisionamento é exibido diretamente nos cards de tarefas do frontend (`"⚡ Provisionando..."`), eliminando telas HTML com recarregamento efêmero no iframe.
+
+---
+
+## 3. Arquitetura de Provisionamento Git Remoto no GitHub & Controle de Acesso (Service Token)
+
+### 3.1 Como Funciona o Acesso e Criação Obrigatória no GitHub
+
+O usuário **NÃO** precisa gerenciar chaves SSH ou tokens individuais de Git manualmente. A autenticação do usuário com a plataforma é realizada por **Cookies HTTP-Only (`accessToken`)** e **JWT (JSON Web Token)** (em estrita conformidade com os padrões OWASP, sem exposição em query parameters de URL).
+
+- **Provisionamento Automático Remoto:** O backend Fastify utiliza o **Token de Serviço do GitHub (`GITHUB_TOKEN`)** para criar obrigatoriamente um repositório remoto privado via REST API do GitHub (`POST /user/repos` ou `/orgs/{org}/repos`).
+- **Padrão de Nomeação Amigável (Slug + Short Hash):** Os repositórios no GitHub são nomeados com o slug do título limpo e um sufixo curto de 8 caracteres do UUID para garantir 100% de unicidade e identificação clara na interface do GitHub (ex: `sci-paper-otimizacao-de-compiladores-tex-isolados-5550a24e`).
+- **Registro de Progresso Silencioso (`POST /api/v1/projects/:id/tasks/:taskId/commit`):** O salvamento de progresso pelo Autor gera um commit silencioso assinado pela Conta de Serviço em nome do autor (`--author="Nome <email>"`) e um registro auditável no `AuditLog`.
+
+```mermaid
+graph TD
+    User[Autor / Coordenador] -->|1. Autentica via HTTP-Only Cookie JWT| API[Backend Fastify]
+    API -->|2. Valida Permissão de Projeto/Equipe| DB[(PostgreSQL)]
+    API -->|3. REST API GitHub POST /user/repos com GITHUB_TOKEN| GitHub[GitHub Remote Server]
+    API -->|4. Push inicial main.tex e Commits Silenciosos| GitHub
+```
+
+### 3.2 Estratégia de Branches Git (main, dev e task/<slug>-<shortHash>) e Proteções
+
+Para garantir isolamento, rastreabilidade e integridade no código TeX do artigo, a plataforma segue uma convenção estrita de branches:
+
+1. **`main` (Production / Camera-Ready)**:
+   - Contém a versão oficial consolidada do artigo pronto para submissão final.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Apenas recebe merges da branch `dev` após aprovação do artigo e **parecer favorável do NIT (Núcleo de Inovação Tecnológica)** na penúltima etapa antes da submissão.
+   - **Proteção Total**: Nunca pode ser excluída.
+
+2. **`dev` (Development / Integration)**:
+   - É a branch base de integração constante do projeto e o **target padrão de todos os Pull Requests de tarefas**.
+   - **Bloqueio Estrito**: Não recebe commits diretos. Recebe merges dos PRs de tarefas aprovados **exclusivamente pelo Revisor** (sem exigir validação do NIT nesta etapa).
+   - **Proteção Total**: Nunca pode ser excluída.
+
+3. **Branch de Tarefa do Autor (`task/<slug>-<shortHash>`)**:
+   - Branch de trabalho individual atribuída à tarefa e ao autor responsável.
+   - **Identificador Único (Short Hash)**: Cada branch possui um sufixo hash único de 8 caracteres (ex: `task/introducao-a1b2c3d4`) para evitar colisões entre colaboradores ou tentativas paralelas.
+   - O autor executa os commits do "Salvar Progresso" nesta branch.
+   - **Exclusão Pós-Merge**: Após o Pull Request ser aprovado pelo Revisor e o merge ser executado na `dev`, a branch da tarefa é **automaticamente removida** do repositório remoto no GitHub (`git push origin --delete <branchName>`) para manter o repositório limpo.
+
+### 3.3 Atribuição de Revisores & Notificações Real-Time de PR (`PR_OPENED` e `PR_REVIEWER_ASSIGNED`)
+
+1. **Auto-atribuição e Atribuição Posterior de Revisor**:
+   - Ao abrir um Pull Request, se o autor não definir um revisor específico na tela de envio, o sistema busca automaticamente se o artigo possui um membro associado com papel de **Revisor (`Role.REVIEWER`)** e atribui o PR a ele.
+   - Caso um Revisor seja atribuído posteriormente pelo Coordenador (via `PATCH /api/v1/pull-requests/:id/reviewer` ou associação de membro), o PR é atualizado, disparando evento de notificação em tempo real para o autor e para o novo revisor.
+
+2. **Notificação Real-Time para Todos os Envolvidos**:
+   - Quando um Pull Request é aberto (`PR_OPENED`), o backend dispara um broadcast via **Server-Sent Events (SSE)** para **todos os membros do projeto (autores, revisores e coordenador)**.
+   - Isso garante ciência imediata em tempo real para toda a equipe sobre a existência de uma revisão pendente.
+
+### 3.4 Sincronização do Ciclo de Vida do GitHub PR (Draft ➔ Ready for Review), Habilitação de Botões por Estado de Domínio & Revisão
+
+> [!IMPORTANT]
+> **Habilitação de Botões Orientada 100% pelo Fluxo de Domínio (`PRStatus`):**  
+> A ativação e o bloqueio dos botões de ação na Topbar do Workspace ("Salvar Progresso", "Enviar p/ Revisão", "Realizar Merge") são estritamente guiados pelo estado atual do Pull Request/Tarefa (`activePR.status`: `DRAFT`, `UNDER_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `MERGED`). Essa abordagem elimina a necessidade de monitorar dirty states no sistema de arquivos local (`/git-status`), garantindo um comportamento previsível e zero código morto.
+
+1. **Salvar Progresso (`DRAFT` / `CHANGES_REQUESTED`)**:
+   - **Fluxo Backend/GitHub**: Efetua o commit e push para a branch da tarefa (`task/<slug>-<shortHash>`) e gera/mantém o **Draft Pull Request no GitHub** (`draft: true`) e no banco de dados (`status: DRAFT`) apontando para a branch `dev`.
+   - **Título Limpo sem Prefixos Manuais**: O título do PR rascunho no GitHub não contém a string `"DRAFT"` no texto (ex: `Task: Escrever Introdução`), utilizando o atributo nativo `draft: true` da API do GitHub para representar a condição de rascunho.
+   - **Vinculação Automática com Issue & Project v2**: O corpo do PR inclui a instrução `Resolves #<issueNumber>`, vinculando automaticamente o PR à Issue na seção *Development* do GitHub. Adicionalmente, executa a mutation `addProjectV2ItemById` (vinculando o PR ao quadro Project v2) e `updateProjectV2ItemFieldValue` (garantindo que o status no quadro esteja como `In Progress`).
+   - **Materialização Sob Demanda**: Ao iniciar um workspace para uma projeção sintética (`github-issue-*`), o backend materializa dinamicamente a entidade `Task` no PostgreSQL, mantendo consistência relacional com a tabela `Workspace`.
+   - **Resiliência a Falhas de API (`502 Bad Gateway`)**: Erros de comunicação com a API do GitHub são mapeados para HTTP 502 (Bad Gateway), evitando que interceptores de autenticação no frontend confundam falhas de integração com expiracão de token (`401 Unauthorized`).
+   - **Regra de Habilitação**: Habilitado enquanto o PR estiver em rascunho (`DRAFT`) ou em ajuste (`CHANGES_REQUESTED`).
+
+2. **Enviar p/ Revisão (`UNDER_REVIEW`)**:
+   - **Fluxo Backend/GitHub**: Transiciona o Draft PR no GitHub para **Ready for Review** via API (`markPullRequestReadyForReview`), atualizando o status para `UNDER_REVIEW` no banco e emitindo notificação SSE (`PR_OPENED`).
+   - **Regra de Habilitação**: Habilitado após a realização do primeiro commit/rascunho.
+
+3. **Ambiente de Revisão no VS Code Web (Diff Nativo & Branch Checkout)**:
+   - Ao abrir o Painel de Revisão (`ReviewDetailPage.tsx`), o backend (`editor-proxy`) utiliza o parâmetro `taskId` para posicionar automaticamente o repositório da workspace na branch da tarefa enviada pelo autor (`task/...`).
+   - O VS Code Web carrega o código da tarefa alterada de forma fluida sem depender de login do usuário em extensões de terceiros.
+
+4. **Painel Lateral de Comentários & Pareceres (`Drawer`)**:
+   - A interface do Revisor exibe uma gaveta lateral retrátil contendo:
+     - **Histórico de Apontamentos**: Exibe todos os comentários anteriores com data, autor e número da linha do arquivo (`lineNumer`).
+     - **Formulário de Comentário**: Permite ao revisor inserir observações por linha ou gerais e selecionar se deseja enviar apenas um **Comentário**, **Solicitar Ajustes** (`CHANGES_REQUESTED`) ou **Aprovar a Tarefa** (`APPROVED`).
+
+5. **Realizar Merge (`APPROVED`) & Desativação do Pod/PVC**:
+   - **Fluxo Backend/GitHub**: Valida a aprovação do Revisor (`status === APPROVED`), executa o `git merge` integrando as alterações na branch `dev`, remove a branch temporária da seção do GitHub (`deleteBranch`), e em seguida aciona a liberação do Pod K8s (`releasePodForProject`), destruição do PVC temporário (`cleanProjectPVC`) e marca a entrada do banco de dados na tabela `Workspace` como `TERMINATED`.
+   - **Fluxo Frontend & UX**: O botão "Salvar Progresso" é bloqueado quando o PR é aprovado pelo Revisor ou concluído. Após a confirmação do merge com sucesso, o frontend redireciona automaticamente o usuário para a página de tarefas (`/`), onde a tarefa passa a ser exibida com a badge `Concluída (Merged)` e o botão de acesso ao workspace é desabilitado.
+   - **Regra de Habilitação**: Habilitado exclusivamente quando o PR é aprovado pelo Revisor (`status === APPROVED`).
+
+---
+
+### 3.5 Arquitetura Decoupled de UX Acadêmica para Salvar Progresso
+
+Para transformar o modelo mental do escritor científico e evitar exposição direta de complexidades do Git:
+
+1. **Separação entre Fatos Git e Interpretação Acadêmica**:
+   - **Backend Factual (`GitService`)**: Extrai os fatos puros do sistema de arquivos Git (`git diff HEAD` na working tree da task), retornando `path`, `status` (`added`, `modified`, `deleted`), `additions` e `deletions`, além de metadados temporais (`lastSavedAt`, `lastSavedAuthor`).
+   - **Classificação Acadêmica de Domínio (`ClassificationService`)**: Mapeia caminhos de arquivos para o vocabulário do escritor científico:
+     - `sections/*.tex` $\rightarrow$ Categoria `section` ("Seção [Nome]")
+     - `main.tex` $\rightarrow$ Categoria `main_structure` ("Estrutura Principal do Artigo")
+     - `*.bib` $\rightarrow$ Categoria `references` ("Referências Bibliográficas")
+     - `figures/*`, `images/*`, `*.png`, `*.jpg`, `*.svg` $\rightarrow$ Categoria `figures` ("Figuras e Ilustrações")
+     - `tables/*`, `*.csv` $\rightarrow$ Categoria `tables` ("Tabelas e Dados")
+     - `appendices/*` $\rightarrow$ Categoria `appendices` ("Anexos e Apêndices")
+     - `*.cls`, `*.sty` $\rightarrow$ Categoria `style` ("Estilos e Formatadores")
+
+2. **Diff Relativo ao HEAD da Branch da Tarefa**:
+   - A linha de base para cálculo do diff de progresso é **`git diff HEAD`** no repositório individual da tarefa (`task/<slug>-<shortHash>`).
+   - Isso garante que o modal "Salvar Progresso" exiba unicamente o trabalho realizado desde o último salvamento (último commit salvo) naquela tarefa específica.
+
+3. **Geração Determinística de Mensagem Fallback (`ProgressDescriptionService`)**:
+   - Caso o escritor prefira salvar o progresso sem digitar uma mensagem manual (ou envie string em branco), o backend sintetiza automaticamente uma descrição acadêmica clara e padronizada baseada nas categorias dos arquivos alterados (ex: `"Atualizações na Seção Introdução e Referências Bibliográficas"`).
+
+4. **Informativo Factual Não-Bloqueante (`hasChangesInOtherFiles`)**:
+   - Se o autor alterar arquivos fora do escopo primário da tarefa (ex: editou a bibliografia durante a escrita da Introdução), o sistema detecta o fato (`hasChangesInOtherFiles: true`) e apresenta um informativo transparente na interface, **sem jamais bloquear a ação de salvamento**. O autor mantém autonomia total para salvar seu progresso.
+
+---
+
+## 4. Stack Tecnológica Oficial
+
+| Camada                      | Tecnologia Escolhida                      | Racional Técnico                                                                                            |
+| :-------------------------- | :---------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Frontend**                | ReactJS + TypeScript                      | Tipagem estrita, performance de renderização e rico ecossistema de UI.                                      |
+| **Gerenciamento de Estado** | Redux Toolkit (UI) + TanStack Query (API) | Separação clara entre estado de interface/iframe e cache de requisições.                                    |
+| **Comunicação Real-Time**   | Server-Sent Events (SSE)                  | Stream HTTP unidirecional leve (`EventSource`) para notificações sem overhead.                              |
+| **Backend Framework**       | Fastify (Node.js + TypeScript)            | Alto desempenho de I/O, suporte a esquemas JSON (AJV) e baixo overhead.                                     |
+| **ORM & Banco de Dados**    | Prisma ORM + PostgreSQL                   | Relacionamentos estritos, transações ACID e logs em JSONB.                                                  |
+| **Serviço de Prazos (Cron)**| Agendador Leve (`node-cron` nativo)       | Verificação diária de prazos de conferências sem necessidade de mensageria externa.                         |
+| **Ambiente de Edição**      | VS Code (`code-server` via Iframe)        | Experiência de desenvolvimento completa para LaTeX (com extensão LaTeX Workshop e TeX Live local).          |
+| **Compilação TeX Oficial**  | Nativa no Container `code-server`         | Compilação nativa e instantânea pelo `LaTeX Workshop`, gerando o `main.pdf` estático na workspace.           |
+
+---
+
+## 5. As 7 Fases do Ciclo de Vida do Artigo
+
+```
+[Fase 1: Cadastro & Prazos] ──> [Fase 2: Escrita & Commits] ──> [Fase 3: Revisão Acadêmica]
+                                                                        │
+                                                               [Fase 4: Validação NIT]
+                                                                        │
+[Fase 7: Pós-Submissão & Decisão dos Autores] <── [Fase 6: Submissão] <── [Fase 5: Merge pelo Autor]
+    │
+    ├── [Cenário A: ACEITO] ───────────> Metadados Finais (DOI, Links, Camera-Ready) ──> [CONCLUÍDO]
+    │
+    ├── [Cenário B: REVISÃO SOLICITADA] ──> Correções no Mesmo Congresso ─────────────> [Reenvio Mesma Conferência]
+    │
+    └── [Cenário C: REJEITADO] ─────────> Autores Decidem: Congresso Backup ou Novo ──> [Ajustes v2]
+```
+
+---
+
+## 6. Especificação do Modelo de Dados (Prisma Schema Reference)
+
+```prisma
+enum Role {
+  AUTHOR
+  REVIEWER
+  COORDINATOR
+  MANAGER
+  ADMIN
+}
+
+enum PRStatus {
+  DRAFT
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  MERGED
+  CANCELLED
+}
+
+enum NITStatus {
+  NOT_REQUIRED
+  WAITING_NIT
+  APPROVED_NIT
+  REJECTED_NIT
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  WAITING_NIT
+  SUBMITTED_TARGET
+  SUBMITTED_BACKUP
+  ACCEPTED_REVISION_REQUESTED
+  ACCEPTED_CAMERA_READY
+  REJECTED_WAITING_DECISION
+  REJECTED_REOPENED_V2
+  COMPLETED_PUBLISHED
+}
+
+enum DeadlineStatus {
+  ON_TIME
+  WARNING_SOON
+  OVERDUE
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  name          String
+  passwordHash  String
+  role          Role            @default(AUTHOR)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  coordinatedTeams Team[]       @relation("TeamCoordinator")
+  managedTeams     Team[]       @relation("ManagerTeams")
+  teamMemberships  TeamMember[]
+
+  projects      ProjectMember[]
+  pullRequests  PullRequest[]   @relation("AuthorPRs")
+  reviews       PullRequest[]   @relation("ReviewerPRs")
+  comments      ReviewComment[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+}
+
+model AcademicPeriod {
+  id        String    @id @default(uuid())
+  name      String    // e.g., "Academic Cycle 2026/2027"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Team {
+  id            String       @id @default(uuid())
+  name          String
+  description   String?
+  managerId     String?
+  coordinatorId String
+  manager       User?        @relation("ManagerTeams", fields: [managerId], references: [id])
+  coordinator   User         @relation("TeamCoordinator", fields: [coordinatorId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  members       TeamMember[]
+  projects      Project[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  role      Role     @default(AUTHOR)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model Project {
+  id                      String           @id @default(uuid())
+  name                    String
+  description             String?
+  gitRepoPath             String
+  teamId                  String
+  academicPeriodId        String?
+
+  submissionStatus        SubmissionStatus @default(IN_PROGRESS)
+  currentVersion          Int              @default(1)
+
+  targetConferenceName    String?
+  targetConferenceDate    DateTime?
+  backupConferenceName    String?
+  backupConferenceDate    DateTime?
+
+  doi                     String?
+  publicationUrl          String?
+  datasetUrl              String?
+  publishedAt             DateTime?
+
+  reviewerFeedback        String?
+
+  team                    Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  academicPeriod          AcademicPeriod?  @relation(fields: [academicPeriodId], references: [id])
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  members                 ProjectMember[]
+  prs                     PullRequest[]
+  tasks                   Task[]
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  role      Role
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+}
+
+model PullRequest {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  status      PRStatus        @default(DRAFT)
+
+  nitStatus   NITStatus       @default(NOT_REQUIRED)
+  nitNotes    String?
+
+  taskId      String?
+  authorId    String
+  reviewerId  String?
+  projectId   String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  mergedAt    DateTime?
+  task        Task?           @relation("TaskPullRequest", fields: [taskId], references: [id], onDelete: SetNull)
+  author      User            @relation("AuthorPRs", fields: [authorId], references: [id])
+  reviewer    User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments    ReviewComment[]
+}
+
+model ReviewComment {
+  id            String      @id @default(uuid())
+  pullRequestId String
+  userId        String
+  lineNumer     Int?
+  comment       String
+  createdAt     DateTime    @default(now())
+  pullRequest   PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  details    Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id          String          @id @default(uuid())
+  projectId   String
+  userId      String
+  taskId      String?
+  podName     String?
+  status      WorkspaceStatus @default(PROVISIONING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, userId])
+}
+
+enum WorkspaceStatus {
+  PROVISIONING
+  READY
+  DIRTY
+  SYNCING
+  BEHIND
+  CONFLICTED
+  ERROR
+}
+
+model Task {
+  id            String         @id @default(uuid())
+  projectId     String
+  assignedToId  String?
+  stageId       String?
+  title         String
+  branchName    String
+  status        TaskStatus     @default(NOT_STARTED)
+  startDate     DateTime?
+  startedAt     DateTime?
+  dueDate       DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage         ProjectStage?  @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  assignee      User?          @relation("UserTasks", fields: [assignedToId], references: [id])
+  pullRequests  PullRequest[]  @relation("TaskPullRequest")
+  workspaces    Workspace[]
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  MERGED
+}
+
+model ReleaseCandidate {
+  id          String   @id @default(uuid())
+  projectId   String
+  versionTag  String   // ex: RC-1, RC-2
+  commitSha   String
+  status      RCStatus @default(SUBMITTED)
+  feedback    String?
+  reviewerId  String?
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer    User?    @relation("ReviewerRCs", fields: [reviewerId], references: [id])
+}
+
+enum RCStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+}
+
+model Release {
+  id          String   @id @default(uuid())
+  projectId   String
+  versionTag  String   // ex: v1.0, v1.1, v2.0
+  commitSha   String   // SHA fundido na branch main
+  title       String   // ex: "Submissão Congresso A"
+  conference  String?  // ex: "IEEE ICSE 2026"
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+## 7. Especificação de Endpoints REST API & Regras de Negócio de Membros e Tarefas
+
+### 7.1 Criação de Projetos e Associação Inicial de Membros
+- **`POST /api/v1/projects`**:
+  - **Payload**:
+    ```json
+    {
+      "name": "Título do Artigo",
+      "description": "Descrição opcional",
+      "targetConferenceName": "IEEE Transactions 2027",
+      "targetConferenceDate": "2027-02-15",
+      "coAuthorIds": ["uuid-1", "uuid-2"],
+      "reviewerId": "uuid-3"
+    }
+    ```
+  - **Comportamento**:
+    1. Provisiona o repositório remoto Git no GitHub com base no Token de Serviço.
+    2. Cria a entidade `Project` no banco de dados e adiciona o criador como `Role.AUTHOR`.
+    3. Associa cada id contido em `coAuthorIds` como membro autor (`Role.AUTHOR`).
+    4. Associa `reviewerId` como membro revisor (`Role.REVIEWER`).
+    5. Executa `findById(projectId)` e retorna o objeto `project` populado com a lista completa de membros e relacionamentos.
+
+### 7.2 Gestão Dinâmica de Membros do Artigo
+- **`POST /api/v1/projects/:id/members`**:
+  - **Payload**: `{ "userId": "uuid-user", "role": "AUTHOR" | "REVIEWER" }`
+  - **Comportamento**: Associa ou atualiza um usuário como membro do projeto com o papel especificado.
+  - **Regra**: Cada artigo permite múltiplos autores/co-autores e no máximo 1 revisor de par atribuído.
+
+- **`DELETE /api/v1/projects/:id/members/:userId`**:
+  - **Comportamento**: Remove o membro do projeto no banco de dados.
+
+### 7.3 Atribuição de Tarefas do Artigo (`Task`)
+- **`POST /api/v1/projects/:projectId/tasks`**:
+  - **Payload**: `{ "projectId": "uuid-project", "assignedToId": "uuid-user", "title": "Título", "dueDate": "YYYY-MM-DD" }`
+  - **Regra de Interface**: A seleção do responsável (`assignedToId`) no modal de criação de tarefa é restrita e filtrada para os membros pertencentes àquele artigo específico (`ProjectMember`).
+  - **Provisionamento Git**: A criação da tarefa gera automaticamente a branch correspondente no repositório.
+
+### 7.4 Busca de Usuários com Debounce
+- **`GET /api/v1/users/search?q=...`**:
+  - Retorna lista filtrada por substring no nome ou e-mail com limite prudente de resultados, integrada ao frontend via busca debounced (300ms).
+
+---
+
+### 7.5 Governança de Personas, Ciclos Acadêmicos, Etapas Paralelas e Gatekeepers
+
+1. **Hierarquia e Personas (Arquitetura Multi-Gerente):**
+   - **Múltiplos Gerentes (`Role.MANAGER`):** O sistema suporta **múltiplos gerentes simultâneos**. Cada Gerente supervisiona seu portfólio individual de Times (`Team.managerId`), abre Ciclos Acadêmicos (`AcademicPeriod.managerId`) para seu setor, cadastra Coordenadores e aloca a Meta Global e cotas dos seus times.
+   - **Coordenador (`Role.COORDINATOR`):** Pode gerenciar múltiplos times simultaneamente (`1:N`). Cadastra membros nos seus times e ajusta cotas de artigos com seu Gerente.
+   - **Autores (`Role.AUTHOR`):** Membros podem colaborar como co-autores em artigos pertencentes a múltiplos times e departamentos.
+   - **Revisores (`Role.REVIEWER`):** Revisam múltiplos artigos. Ao escreverem um artigo próprio, atuam com privilégios de Autor naquele projeto específico.
+
+2. **Ciclos Acadêmicos & Cotas por Time (`TeamAcademicGoal`):**
+   - O Ciclo Acadêmico possui período delimitado (início e término), vínculo com o Gerente criador (`managerId`) e meta global de artigos da unidade.
+   - As cotas por time funcionam como guia de planejamento, sendo incentivada a superação da cota (`over-achievement`).
+
+3. **Etapas de Escrita Dinâmicas (`ProjectStage` como Features) & Hierarquia de Branches:**
+   - Cada etapa de escrita do artigo representa uma **Feature Branch** (`feature/<stage-slug>`). Os Autores possuem autonomia total para **criar, editar, reordenar e remover etapas de escrita** dinamicamente.
+   - **Hierarquia Estrita de Branches:** `main` $\leftarrow$ `dev` $\leftarrow$ `feature/<stage-slug>` $\leftarrow$ `task/<issue-slug>`.
+   - **Trava Sequencial de Execução de Sub-tarefas (`isBlockedByPrevious`)**: Como todas as sub-tarefas de uma mesma etapa alteram os mesmos arquivos da seção TeX (`sections/*.tex`), as sub-tarefas de uma etapa são estritamente sequenciais. A sub-tarefa $N$ só pode ter seu workspace iniciado quando a sub-tarefa $N-1$ alcançar o status `MERGED`, prevenindo conflitos de mesclagem Git.
+   - **Interface Unificada em Linha do Tempo / Gantt (`<GanttTimelineView />`)**: A gestão visual do artigo elimina a visão de tabela simples separada. A árvore lateral (`<GanttTableTree />`) integra lançamento rápido de workspace por 1 clique (`LaunchIcon`), avatares dos autores atribuídos (`UserAvatar`), atalhos de assinatura (`Assinar`), badges de travamento de ocupação (`isOccupied`) e trava sequencial (`isBlockedByPrevious`).
+   - **Regras de Workspace por Nível**:
+     - *Sub-tarefas (Issues)*: Iniciam workspace na branch `task/<task-id>`, salvam commits e efetuam merge direto na Feature Branch pai (`feature/<stage-slug>`) sem necessidade de Pull Request ou parecer de revisores.
+     - *Feature Branches de Etapa*: O botão `🚀 Workspace da Feature` só é liberado quando 100% das sub-tarefas da etapa estiverem `MERGED`. Requer a criação de um Pull Request formal para `dev`, submetido a parecer dos Pares / Revisor Principal.
+
+4. **Painel de Feedback dos Revisores (`<ReviewFeedbackPanel />`):**
+   - Apontamentos dos revisores são consumidos do endpoint `GET /api/v1/projects/:id/review-comments-by-stage` e apresentados agrupados por Etapa e Arquivo TeX com indicação de linha (`lineNumber`).
+   - Oferece o botão lateral `➕ Criar Sub-tarefa` para que o Autor converta instantaneamente qualquer comentário do revisor em uma nova sub-tarefa encadeada na fila da respectiva etapa.
+
+5. **Os Dois Gatekeepers Sequenciais:**
+   - **⚖️ Gatekeeper 1 - Análise do NIT:** Bloqueado (`🔒 LOCKED`) enquanto houver etapas/tarefas de conteúdo pendentes (< 100%). Liberado automaticamente quando 100% do conteúdo for mergeado.
+   - **🚀 Gatekeeper 2 - Submissão ao Congresso:** Bloqueado (`🔒 LOCKED`) até a emissão do parecer de aprovação do NIT (`APPROVED_NIT`).
+
