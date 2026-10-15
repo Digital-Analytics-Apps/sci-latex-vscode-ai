@@ -2,6 +2,9 @@
 
 Este documento estabelece o fluxo de trabalho obrigatório para criação de branches, testes automatizados, verificação de qualidade, integração com Jira e abertura de Pull Requests via GitHub MCP Server no projeto **sci-latex-vscode**.
 
+> [!NOTE]
+> Este documento trata do **Fluxo de Desenvolvimento (Engenharia/Git/Jira)**. Para consultar as jornadas de usuário, estados e fluxos funcionais da plataforma SCIA, acesse o documento: [🔄 Documento de Fluxos da Aplicação (APP_FLOWS.md)](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/APP_FLOWS.md).
+
 ---
 
 ## 1. Regras Fundamentais de Qualidade & Nomenclatura
