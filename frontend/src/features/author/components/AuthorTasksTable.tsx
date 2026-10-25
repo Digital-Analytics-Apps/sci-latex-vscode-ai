@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   LinearProgress,
   Paper,
   Tooltip,
@@ -61,6 +62,9 @@ const TASK_STATUS_OPTIONS: TableSelectOption[] = [
   { value: "ALL", label: "Todos os Status" },
   { value: TaskStatus.NOT_STARTED, label: "Não Iniciada" },
   { value: TaskStatus.IN_PROGRESS, label: "Em Andamento" },
+  { value: TaskStatus.REVIEW_REQUESTED, label: "Aguardando Revisão" },
+  { value: TaskStatus.IN_REVIEW, label: "Em Revisão" },
+  { value: TaskStatus.CHANGES_REQUESTED, label: "Ajustes Solicitados" },
   { value: TaskStatus.COMPLETED, label: "Concluída" },
 ];
 
@@ -255,20 +259,6 @@ export const AuthorTasksTable = ({
               ...bindSelect("status"),
             },
           ]}
-          actions={
-            onOpenCreateTask && (
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                startIcon={<AddIcon fontSize="small" />}
-                onClick={() => onOpenCreateTask()}
-                sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
-              >
-                Nova Tarefa
-              </Button>
-            )
-          }
           clearFilters={{
             visible: isFiltered,
             onClear: resetFilters,
@@ -284,9 +274,6 @@ export const AuthorTasksTable = ({
         const completedSubtasks = stageTasks.filter(
           (t) => t.status === TaskStatus.COMPLETED,
         ).length;
-        const hasUncompletedSubtasks = stageTasks.some(
-          (t) => t.status !== TaskStatus.COMPLETED,
-        );
         const progressPct =
           totalSubtasks > 0
             ? Math.round((completedSubtasks / totalSubtasks) * 100)
@@ -408,66 +395,84 @@ export const AuthorTasksTable = ({
                     />
                   </Box>
 
-                  {/* BOTÃO DA ETAPA DE ESCRITA */}
-                  {!stage.isGatekeeper && hasUncompletedSubtasks ? (
-                    <Tooltip title="🔒 Conclua todas as sub-tarefas desta etapa antes de abrir o workspace da etapa.">
-                      <span>
-                        <Button
-                          variant="outlined"
-                          color="inherit"
-                          size="small"
-                          disabled
-                          startIcon={<LockIcon fontSize="small" />}
-                          onClick={(e) => e.stopPropagation()}
-                          sx={{
-                            fontWeight: 600,
-                            fontSize: "0.75rem",
-                            height: 32,
-                          }}
-                        >
-                          Workspace da Etapa
-                        </Button>
-                      </span>
+                  {/* BOTÃO DA ETAPA DE ESCRITA: EXCLUSIVO DA ETAPA DE ESCRITA E ATIVADO SE HOUVER TASKS */}
+                  {(() => {
+                    const isWritingStage =
+                      stage.order === 3 ||
+                      stage.title.toLowerCase().includes("escrita");
+                    if (!isWritingStage) return null;
+
+                    if (totalSubtasks === 0) {
+                      return (
+                        <Tooltip title="🔒 Crie ao menos uma sub-tarefa nesta etapa para abrir o workspace de escrita.">
+                          <span>
+                            <Button
+                              variant="outlined"
+                              color="inherit"
+                              size="small"
+                              disabled
+                              startIcon={<LockIcon fontSize="small" />}
+                              onClick={(e) => e.stopPropagation()}
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: "0.75rem",
+                                height: 32,
+                              }}
+                            >
+                              Workspace de Escrita
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      );
+                    }
+
+                    return (
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const featureBranchTask: TaskItem = {
+                            id: `stage-${stage.id}`,
+                            projectId,
+                            stageId: stage.id,
+                            title: `Workspace da Etapa: ${stage.title}`,
+                            status: TaskStatus.IN_PROGRESS,
+                            dueDate: new Date().toISOString(),
+                          };
+                          void onStartWorkspace(featureBranchTask);
+                        }}
+                        sx={{ fontWeight: 700, fontSize: "0.75rem", height: 32 }}
+                      >
+                        🚀 Workspace de Escrita
+                      </Button>
+                    );
+                  })()}
+
+                  {onOpenCreateTask && !stage.isGatekeeper ? (
+                    <Tooltip title={`Adicionar sub-tarefa à ${stage.title}`}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          onOpenCreateTask?.(stage.id);
+                        }}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 1.5,
+                          p: 0.6,
+                          "&:hover": {
+                            borderColor: "primary.main",
+                            bgcolor: "action.hover",
+                          },
+                        }}
+                      >
+                        <AddIcon fontSize="small" />
+                      </IconButton>
                     </Tooltip>
-                  ) : null}
-
-                  {!stage.isGatekeeper && !hasUncompletedSubtasks ? (
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const featureBranchTask: TaskItem = {
-                          id: `stage-${stage.id}`,
-                          projectId,
-                          stageId: stage.id,
-                          title: `Workspace da Etapa: ${stage.title}`,
-                          status: TaskStatus.IN_PROGRESS,
-                          dueDate: new Date().toISOString(),
-                        };
-                        void onStartWorkspace(featureBranchTask);
-                      }}
-                      sx={{ fontWeight: 700, fontSize: "0.75rem", height: 32 }}
-                    >
-                      🚀 Workspace da Etapa
-                    </Button>
-                  ) : null}
-
-                  {onOpenCreateTask ? (
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      startIcon={<AddIcon fontSize="small" />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenCreateTask?.(stage.id);
-                      }}
-                      sx={{ fontWeight: 700, fontSize: "0.75rem", height: 32 }}
-                    >
-                      + Sub-tarefa
-                    </Button>
                   ) : null}
                 </Box>
               </Box>

@@ -68,6 +68,65 @@ export class TasksService {
     });
     return updated;
   }
+  async requestTaskReview(projectId: string, taskId: string, userId: string, notes?: string) {
+    const task = await this.tasksRepository.findById(taskId);
+    if (task?.projectId !== projectId) {
+      throw new Error('TASK_NOT_FOUND: Tarefa não encontrada.');
+    }
+    const updated = await this.tasksRepository.update(taskId, {
+      status: TaskStatus.REVIEW_REQUESTED,
+    });
+    eventsManager.publishDomainEvent({
+      eventName: 'TASK_REVIEW_REQUESTED',
+      projectId,
+      userId,
+      data: { ...updated, notes },
+    });
+    return updated;
+  }
+
+  async startTaskReview(projectId: string, taskId: string, userId: string) {
+    const task = await this.tasksRepository.findById(taskId);
+    if (task?.projectId !== projectId) {
+      throw new Error('TASK_NOT_FOUND: Tarefa não encontrada.');
+    }
+    const updated = await this.tasksRepository.update(taskId, {
+      status: TaskStatus.IN_REVIEW,
+    });
+    eventsManager.publishDomainEvent({
+      eventName: 'TASK_IN_REVIEW',
+      projectId,
+      userId,
+      data: updated,
+    });
+    return updated;
+  }
+
+  async reviewTaskDecision(
+    projectId: string,
+    taskId: string,
+    userId: string,
+    decision: 'APPROVED' | 'CHANGES_REQUESTED',
+    feedback?: string
+  ) {
+    const task = await this.tasksRepository.findById(taskId);
+    if (task?.projectId !== projectId) {
+      throw new Error('TASK_NOT_FOUND: Tarefa não encontrada.');
+    }
+    const nextStatus =
+      decision === 'APPROVED' ? TaskStatus.COMPLETED : TaskStatus.CHANGES_REQUESTED;
+    const updated = await this.tasksRepository.update(taskId, {
+      status: nextStatus,
+    });
+    eventsManager.publishDomainEvent({
+      eventName: 'TASK_REVIEW_DECISION',
+      projectId,
+      userId,
+      data: { ...updated, decision, feedback },
+    });
+    return updated;
+  }
+
 
 
   // 1. Criar nova Task associada ao autor
@@ -155,6 +214,19 @@ export class TasksService {
 
   // 3. Ativar/Iniciar o Workspace orientado a uma Task
   async startTaskWorkspace(projectId: string, taskId: string, userId: string) {
+    if (taskId.startsWith('stage-')) {
+      const stageId = taskId.replace('stage-', '');
+      const stage = await prisma.projectStage.findFirst({
+        where: { id: stageId, projectId },
+      });
+      if (!stage) {
+        throw new Error('STAGE_NOT_FOUND: A etapa especificada não foi encontrada no projeto.');
+      }
+      return {
+        task: null,
+        codeServerUrl: `/workspace/${projectId}`,
+      };
+    }
 
     let task = await this.tasksRepository.findById(taskId);
 

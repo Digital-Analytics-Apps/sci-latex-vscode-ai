@@ -3,6 +3,8 @@ import { verifyJwt } from '../../middlewares/auth.middleware';
 import {
   createTaskBodySchema,
   listTasksQuerySchema,
+  requestReviewBodySchema,
+  reviewDecisionBodySchema,
   taskParamsSchema,
   TasksController,
   taskWorkspaceParamsSchema,
@@ -84,6 +86,50 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
     controller.complete.bind(controller)
   );
+  // POST /api/v1/projects/:projectId/tasks/:taskId/request-review - Solicitar revisão da tarefa
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/request-review',
+    {
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Solicitar revisão de uma tarefa de escrita ao orientador',
+        security: [{ bearerAuth: [] }],
+        params: taskWorkspaceParamsSchema,
+        body: requestReviewBodySchema,
+      },
+    },
+    controller.requestReview.bind(controller)
+  );
+
+  // POST /api/v1/projects/:projectId/tasks/:taskId/start-review - Revisor inicia avaliação da tarefa
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/start-review',
+    {
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Revisor assume inspeção da tarefa em modo leitura',
+        security: [{ bearerAuth: [] }],
+        params: taskWorkspaceParamsSchema,
+      },
+    },
+    controller.startReview.bind(controller)
+  );
+
+  // POST /api/v1/projects/:projectId/tasks/:taskId/decision - Emitir parecer da tarefa (Aprovar ou Ajustes)
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/decision',
+    {
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Emitir parecer da tarefa de escrita (Aprovação ou Ajustes Solicitados)',
+        security: [{ bearerAuth: [] }],
+        params: taskWorkspaceParamsSchema,
+        body: reviewDecisionBodySchema,
+      },
+    },
+    controller.reviewDecision.bind(controller)
+  );
+
 
 
   // POST /api/v1/projects/:projectId/tasks/:taskId/workspace - Iniciar / Continuar Workspace para uma Task

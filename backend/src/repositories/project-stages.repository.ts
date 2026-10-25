@@ -45,10 +45,11 @@ export interface IProjectStagesRepository {
 export const DEFAULT_STAGES = [
   { order: 1, title: 'Planejamento e Pesquisa', isGatekeeper: false },
   { order: 2, title: 'Desenvolvimento e Experimentos', isGatekeeper: false },
-  { order: 3, title: 'Escrita da Versão Rascunho', isGatekeeper: false },
-  { order: 4, title: 'Parecer do NIT (Gatekeeper 1)', isGatekeeper: true, gatekeeperType: 'NIT' },
+  { order: 3, title: 'Escrita do Artigo', isGatekeeper: false },
+  { order: 4, title: 'Revisão Técnica e Científica', isGatekeeper: false },
+  { order: 5, title: 'Parecer do NIT (Gatekeeper 1)', isGatekeeper: true, gatekeeperType: 'NIT' },
   {
-    order: 5,
+    order: 6,
     title: 'Submissão ao Congresso Alvo (Gatekeeper 2)',
     isGatekeeper: true,
     gatekeeperType: 'TARGET_CONFERENCE',

@@ -59,10 +59,6 @@ export async function buildApp() {
           description: 'Gestão de Artigos Científicos, Repositórios e Congressos (Target/Backup)',
         },
         {
-          name: 'PullRequests',
-          description: 'Fluxo de Revisão de PRs, Parecer do NIT e Trava de Merge',
-        },
-        {
           name: 'Tasks',
           description: 'Gerenciamento de Tarefas e Ativação de Workspace Orientado a Task',
         },

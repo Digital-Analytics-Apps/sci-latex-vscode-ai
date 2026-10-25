@@ -16,10 +16,10 @@ Pesquisadores e grupos de acadêmicos enfrentam desafios ao redigir artigos cien
 * Dificuldade no acompanhamento de prazos rígidos de conferências científicas e gerenciamento de congressos alvos e congressos backups.
 
 ### A Solução
-O **SCIA (Scientific Collaboration + AI)** é uma plataforma web **100% Self-Hosted** que disponibiliza um editor VS Code (`code-server`) totalmente embutido em um ambiente seguro e controlado (via **Kubernetes - KinD**), com:
-* **Provisionamento Git Automatizado:** Repositórios criados no GitHub via Conta de Serviço (sem necessidade de chaves SSH para os usuários).
-* **Compilação TeX Nativa:** Visualização instantânea de PDF lado a lado com auto-build no salvamento.
-* **Fluxo de Revisão e NIT:** Módulo de Pull Requests, diff visual LaTeX, painel de comentários por linha e registro de parecer institucional NIT.
+O **SCIA (Scientific Collaboration + AI)** é uma plataforma web **100% Self-Hosted** voltada para a gestão e redação científica colaborativa, baseada no editor **CodeMirror 6** com sincronização em tempo real (OT) e persistência transacional em **PostgreSQL**, com:
+* **Edição Web-Nativa sem Git:** Zero atrito de chaves SSH, branches Git ou conflitos de merge; sincronização contínua e snapshots de versão.
+* **Compilação TeX Nativa:** Visualização instantânea de PDF lado a lado com compilação direta via container LaTeX.
+* **Workflow em 6 Etapas Fixas & Revisão em Dois Níveis:** Bate e volta granular por tarefas (nível micro) e Revisão Geral consolidada (nível macro na Etapa 4) antes do Gatekeeper do NIT.
 * **Governança por Prazos:** Dashboard com matrizes de prazos, notificações em tempo real (SSE) e visão por Período Acadêmico.
 
 ---
@@ -28,53 +28,54 @@ O **SCIA (Scientific Collaboration + AI)** é uma plataforma web **100% Self-Hos
 
 ```mermaid
 graph LR
-    A[Autor / Pesquisador] -->|Escreve TeX & Executa Merge| P[Artigo Científico]
-    R[Revisor Acadêmico] -->|Avalia Diff TeX & Registra NIT| P
-    C[Coordenador de Pesquisa] -->|Gerencia Prazos de Seções| P
-    G[Gerente de Organização] -->|Métricas & Período Acadêmico| P
+    A[Autor / Pesquisador] -->|Escreve TeX & Resolve Apontamentos| P[Artigo Científico]
+    R[Revisor Oficial / Orientador] -->|Comenta em Read-Only & Emite Parecer| P
+    C[Coordenador de Pesquisa] -->|Gerencia Prazos de Seções & Equipes| P
+    G[Gerente de Organização] -->|Métricas de Ciclo & Metas| P
 ```
 
 | Persona | Atribuições & Responsabilidades |
 | :--- | :--- |
-| **Autor** | Cria o artigo, estabelece a timeline de etapas paralelas, escreve no editor VS Code, submete tarefas para revisão viva, atua em correções (v2), solicita análise do NIT (ao concluir 100% das etapas de escrita) e executa a submissão ao congresso. Pode colaborar em artigos de múltiplos times. |
-| **Revisor** | Acessa workspace isolado de revisão, avalia o diff side-by-side (TeX/PDF), insere apontamentos por linha e aprova PRs de tarefas. Caso escreva um artigo próprio (auto-escrita), atua com privilégios de Autor naquele projeto (abertura de NIT e datas). |
-| **Coordenador** | Coordena 1 ou mais Times (`1:N`). Gerencia cotas de artigos com a gerência, acompanha a régua de timeline de etapas paralelas e resolve gargalos das equipes. |
-| **Gerente** | Suporte a **Múltiplos Gerentes (`Role.MANAGER`)** por departamento/área. Visão estratégica executiva por **Ciclo Acadêmico** do seu setor, define a Meta Global da sua unidade, distribui cotas entre os times sob sua gestão (`TeamAcademicGoal`), acompanha indicadores de superação de metas (*over-achievement*) e análise de gargalos nas etapas. |
+| **Autor** | Cria o artigo, estabelece datas planejadas das etapas fixas, redige no editor CodeMirror 6, solicita revisão de tarefas, atua em ajustes apontados pelo revisor, solicita análise do NIT (ao aprovar a Etapa 4) e executa a submissão final ao congresso. |
+| **Revisor** | Atua como Orientador ou Revisor Técnico do projeto. Acessa as mesmas telas do autor (com filtro e badges dedicados), avalia o texto no CodeMirror em modo **Read-Only** com capacidade total de comentários inline ancorados (`ReviewSidebar`), emitindo pareceres em nível de tarefa (Etapa 3) e na Revisão Geral (Etapa 4). |
+| **Coordenador** | Coordena 1 ou mais Times (`1:N`). Gerencia prazos, monitora tarefas em revisão, reatribui orientadores/revisores e resolve gargalos das equipes. |
+| **Gerente** | Suporte a **Múltiplos Gerentes (`Role.MANAGER`)** por departamento/área. Visão estratégica executiva por **Ciclo Acadêmico**, define a Meta Global da sua unidade, distribui cotas entre os times (`TeamAcademicGoal`), acompanha métricas de tempo de revisão e rodadas de retrabalho. |
 
 ---
 
-## 🔄 3. As 7 Fases do Ciclo de Vida do Artigo
+## 🔄 3. As 6 Etapas Fixas do Ciclo de Vida do Artigo (ADR-008)
 
 ```mermaid
 graph TD
-    F1[Fase 1: Cadastro, Período Acadêmico & Timeline de Etapas] --> F2[Fase 2: Escrita Paralela & Commits Silenciosos]
-    F2 -->|Revisão Viva por Task| F3[Fase 3: Revisão Acadêmica Contínua]
-    F3 -->|100% Escrita Concluída| F4[Gatekeeper 1: Análise Institucional NIT]
-    F4 -->|Parecer Aprovado NIT| F5[Fase 5: Merge pelo Autor na dev/main]
-    F5 -->|Parecer Aprovado NIT| F6[Gatekeeper 2: Submissão ao Congresso Target]
-    F6 --> F7[Fase 7: Pós-Submissão & Decisão dos Autores]
+    E1[Etapa 1: Planejamento e Pesquisa TeX] --> E2[Etapa 2: Desenvolvimento Experimental & Benchmarks]
+    E2 --> E3[Etapa 3: Escrita do Artigo - Tarefas Paralelas]
+    E3 -->|100% das Tarefas Aprovadas| E4[Etapa 4: Revisão Técnica e Científica - Revisão Geral]
+    E4 -->|Ajustes Gerais| E4
+    E4 -->|Aprovação Geral| E5[Gatekeeper 1: Parecer Institucional do NIT]
+    E5 -->|Parecer Aprovado NIT| E6[Gatekeeper 2: Submissão Final ao Congresso Alvo]
+    E6 --> PostSub[Pós-Submissão & Desfecho]
     
-    F7 -->|Aceito| C1[Metadados Finais - DOI & Camera-Ready]
-    F7 -->|Revisão Solicitada| C2[Correções v2 no Mesmo Congresso]
-    F7 -->|Rejeitado| C3[Submissão ao Congresso Backup / Novo]
+    PostSub -->|Aceito| C1[Metadados Finais - DOI & Camera-Ready]
+    PostSub -->|Revisão Solicitada| C2[Correções v2 no Mesmo Congresso]
+    PostSub -->|Rejeitado| C3[Redirecionamento ao Congresso Backup]
 ```
 
-1. **Fase 1 (Cadastro, Período Acadêmico & Timeline de Etapas):** Associação ao Ciclo Acadêmico ativo, definição de título, autores, congresso alvo, backups e cronograma de etapas preliminares (`ProjectStage`).
-2. **Fase 2 (Escrita Paralela & Commits):** Edição no VS Code embutido com execução paralela de seções/etapas, auto-compilação em PDF e commits silenciosos na branch de trabalho (`task/SLV-X-...`).
-3. **Fase 3 (Revisão Acadêmica Contínua):** Processo vivo transversal acionado em cada `Task`. Abertura de Draft PR, visualização side-by-side do diff LaTeX pelo Revisor e apontamentos por linha.
-4. **Fase 4 (Gatekeeper 1: Análise do NIT):** Trava sequencial estrita (`🔒 LOCKED`). Liberada para solicitação dos autores somente quando 100% das etapas de conteúdo de escrita estiverem concluídas.
-5. **Fase 5 (Merge pelo Autor):** O Autor realiza a mesclagem da branch de trabalho após aprovação do Revisor e do NIT; limpeza automática do Pod/PVC isolado no K8s.
-6. **Fase 6 (Gatekeeper 2: Submissão ao Congresso Target):** Trava sequencial estrita (`🔒 LOCKED`). Envio oficial do artigo compilado para a conferência selecionada após aprovação formal do NIT (`APPROVED_NIT`).
-7. **Fase 7 (Pós-Submissão & Decisão):** Atualização do resultado (Aceito, Revisão Solicitada, Rejeitado) com encaminhamento para metadados finais (DOI), correções v2 ou redirecionamento para congresso backup.
+1. **Etapa 1 — Planejamento e Pesquisa:** Levantamento bibliográfico, formulação de hipóteses e estruturação preliminar da árvore TeX.
+2. **Etapa 2 — Desenvolvimento Experimental & Benchmarks:** Coleta de dados experimentais, execução de scripts e geração automatizada de gráficos.
+3. **Etapa 3 — Escrita do Artigo (Tarefas Paralelas & Bate e Volta):** Redação das seções TeX distribuídas entre coautores com solicitação de revisão por tarefa (`REVIEW_REQUESTED`), comentários ancorados e aprovação (`COMPLETED`).
+4. **Etapa 4 — Revisão Técnica e Científica (Revisão Geral):** Avaliação holística do manuscrito completo consolidado pelo Revisor Oficial. Caso haja inconformidades macro, a Etapa 4 itera em rodadas de ajustes (`CHANGES_REQUESTED`), mantendo a Etapa 3 intacta como concluída.
+5. **Etapa 5 — Parecer do NIT (Gatekeeper 1 🔒):** Trava sequencial estrita liberada para solicitação dos autores unicamente após a aprovação integral da Etapa 4 de Revisão Geral.
+6. **Etapa 6 — Submissão Final ao Congresso Alvo (Gatekeeper 2 🔒):** Trava sequencial estrita liberada para envio formal somente após a homologação de parecer favorável pelo NIT (`APPROVED_NIT`).
 
 ---
 
 ## 🏗️ 4. Principais Decisões de Arquitetura (Consolidadas)
 
-* **Editor Zen Mode (`code-server` em `<iframe>`):** Interface limpa de distração, sem Copilot/extensões externas, com `settings.json` centralizado e atalhos customizados.
-* **Orquestração de Pods K8s On-Demand (KinD):** Warm pool de Pods pré-aquecidos para abertura instantânea do editor. Destruição do Pod e limpeza do PVC temporário após a realização do Merge na branch principal.
-* **Backend Fastify & Projeções Locais no PostgreSQL:** Projeções enxutas (`GithubIssueProjection`, `GithubProjectItemProjection`) para alta performance nas consultas da Dashboard.
-* **Sincronização em Tempo Real (SSE):** Atualização instantânea na interface ReactJS através de Server-Sent Events e React Query, sem necessidade de reload (F5).
+* **Editor Web-Nativo com CodeMirror 6 & @codemirror/collab (ADR-007):** Arquitetura Single-Leader OT com rebase em memória, zero dependência de terminais e flush periódico no PostgreSQL.
+* **Extensão Read-Only Nativa para o Revisor:** Proteção contra edição acidental via `EditorState.readOnly.of(true)`, permitindo seleção de trechos e inclusão de anotações via `ReviewSidebar`.
+* **Régua Institucional de 6 Etapas Imutáveis (ADR-008):** Todas as etapas são sequenciais e obrigatórias; remoção de reordenação e deleção de etapas, eliminando a dependência de `@dnd-kit`.
+* **Modelo de Revisão em Dois Níveis:** Separação entre o bate e volta granular por tarefas (Etapa 3) e a Revisão Geral macro institucional (Etapa 4).
+* **Sincronização em Tempo Real (SSE & WebSockets):** Atualização instantânea na interface React através de SSE e WebSockets, sem necessidade de reload de página.
 
 ---
 

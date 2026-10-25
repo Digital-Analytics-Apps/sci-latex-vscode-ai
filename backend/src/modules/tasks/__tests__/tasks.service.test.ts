@@ -1,3 +1,4 @@
+import { Task, TaskStatus } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TasksService } from '../tasks.service';
 import { ITasksRepository } from '../../../repositories/tasks.repository';
@@ -92,5 +93,109 @@ describe('TasksService (Unit Tests)', () => {
         isBlockedByPrevious: false,
       },
     ]);
+  });
+
+  it('should request review for a task (author -> REVIEW_REQUESTED)', async () => {
+    const existingTask = {
+      id: 'task-1',
+      projectId: 'proj-1',
+      title: 'Intro',
+      assignedToId: null,
+      stageId: null,
+      status: TaskStatus.IN_PROGRESS,
+      startDate: null,
+      startedAt: null,
+      dueDate: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } satisfies Task;
+    vi.mocked(mockTasksRepository.findById).mockResolvedValue(existingTask);
+    vi.mocked(mockTasksRepository.update).mockImplementation((_id, data) =>
+      Promise.resolve({ ...existingTask, ...data })
+    );
+
+    const result = await service.requestTaskReview('proj-1', 'task-1', 'user-1', 'Seção concluída');
+    expect(mockTasksRepository.update).toHaveBeenCalledWith('task-1', {
+      status: TaskStatus.REVIEW_REQUESTED,
+    });
+    expect(result.status).toBe(TaskStatus.REVIEW_REQUESTED);
+  });
+
+  it('should start task review (reviewer -> IN_REVIEW)', async () => {
+    const existingTask = {
+      id: 'task-1',
+      projectId: 'proj-1',
+      title: 'Intro',
+      assignedToId: null,
+      stageId: null,
+      status: TaskStatus.REVIEW_REQUESTED,
+      startDate: null,
+      startedAt: null,
+      dueDate: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } satisfies Task;
+    vi.mocked(mockTasksRepository.findById).mockResolvedValue(existingTask);
+    vi.mocked(mockTasksRepository.update).mockImplementation((_id, data) =>
+      Promise.resolve({ ...existingTask, ...data })
+    );
+
+    const result = await service.startTaskReview('proj-1', 'task-1', 'rev-1');
+    expect(mockTasksRepository.update).toHaveBeenCalledWith('task-1', {
+      status: TaskStatus.IN_REVIEW,
+    });
+    expect(result.status).toBe(TaskStatus.IN_REVIEW);
+  });
+
+  it('should approve task decision (decision APPROVED -> COMPLETED)', async () => {
+    const existingTask = {
+      id: 'task-1',
+      projectId: 'proj-1',
+      title: 'Intro',
+      assignedToId: null,
+      stageId: null,
+      status: TaskStatus.IN_REVIEW,
+      startDate: null,
+      startedAt: null,
+      dueDate: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } satisfies Task;
+    vi.mocked(mockTasksRepository.findById).mockResolvedValue(existingTask);
+    vi.mocked(mockTasksRepository.update).mockImplementation((_id, data) =>
+      Promise.resolve({ ...existingTask, ...data })
+    );
+
+    const result = await service.reviewTaskDecision('proj-1', 'task-1', 'rev-1', 'APPROVED', 'Excelente');
+    expect(mockTasksRepository.update).toHaveBeenCalledWith('task-1', {
+      status: TaskStatus.COMPLETED,
+    });
+    expect(result.status).toBe(TaskStatus.COMPLETED);
+  });
+
+  it('should request changes task decision (decision CHANGES_REQUESTED -> CHANGES_REQUESTED)', async () => {
+    const existingTask = {
+      id: 'task-1',
+      projectId: 'proj-1',
+      title: 'Intro',
+      assignedToId: null,
+      stageId: null,
+      status: TaskStatus.IN_REVIEW,
+      startDate: null,
+      startedAt: null,
+      dueDate: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } satisfies Task;
+    vi.mocked(mockTasksRepository.findById).mockResolvedValue(existingTask);
+    vi.mocked(mockTasksRepository.update).mockImplementation((_id, data) =>
+      Promise.resolve({ ...existingTask, ...data })
+    );
+
+    const result = await service.reviewTaskDecision('proj-1', 'task-1', 'rev-1', 'CHANGES_REQUESTED', 'Faltam referências');
+    expect(mockTasksRepository.update).toHaveBeenCalledWith('task-1', {
+      status: TaskStatus.CHANGES_REQUESTED,
+    });
+    expect(result.status).toBe(TaskStatus.CHANGES_REQUESTED);
   });
 });

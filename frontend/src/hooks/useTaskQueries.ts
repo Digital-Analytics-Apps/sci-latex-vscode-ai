@@ -7,7 +7,7 @@ import {
 import { tasksService } from "../services/tasksService";
 import type { CreateTaskInput } from "../types/task.types";
 
-export function useTasksQuery(projectId: string, params?: Record<string, any>) {
+export function useTasksQuery(projectId: string, params?: Record<string, unknown>) {
   const paramsKey = JSON.stringify(params || {});
   return useQuery({
     queryKey: ["tasks", projectId, paramsKey],
@@ -56,6 +56,48 @@ export function useUnclaimTaskMutation(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (taskId: string) => tasksService.unclaimTask(projectId, taskId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+}
+
+export function useRequestReviewMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, notes }: { taskId: string; notes?: string }) =>
+      tasksService.requestReview(projectId, taskId, notes),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+}
+
+export function useStartReviewMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => tasksService.startReview(projectId, taskId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+}
+
+export function useReviewDecisionMutation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      decision,
+      feedback,
+    }: {
+      taskId: string;
+      decision: "APPROVED" | "CHANGES_REQUESTED";
+      feedback?: string;
+    }) => tasksService.reviewDecision(projectId, taskId, decision, feedback),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
       await queryClient.invalidateQueries({ queryKey: ["project", projectId] });

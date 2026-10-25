@@ -10,6 +10,7 @@ export const autoCloseBracketsCompart = new Compartment();
 export const autocompleteCompart = new Compartment();
 export const linterCompart = new Compartment();
 export const grammarLinterCompart = new Compartment();
+export const readOnlyCompart = new Compartment();
 
 const spellcheckExtensionCache: Record<string, Extension> = {};
 

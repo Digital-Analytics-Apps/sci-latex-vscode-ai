@@ -253,7 +253,7 @@ A solução descentralizada aproxima a experiência dos autores da velocidade de
   const stage3 = await prisma.projectStage.create({
     data: {
       projectId: project.id,
-      title: 'Escrita da Metodologia e Resultados',
+      title: 'Escrita do Artigo (Tarefas Paralelas)',
       description: 'Redação das seções principais no formato IEEEtran e revisão do estado da arte.',
       order: 3,
       status: StageStatus.NOT_STARTED,
@@ -262,12 +262,25 @@ A solução descentralizada aproxima a experiência dos autores da velocidade de
     },
   });
 
+  const stage4 = await prisma.projectStage.create({
+    data: {
+      projectId: project.id,
+      title: 'Revisão Técnica e Científica',
+      description: 'Revisão holística do manuscrito consolidado e rodadas de ajustes pelo Revisor Oficial.',
+      order: 4,
+      status: StageStatus.NOT_STARTED,
+      plannedStartAt: new Date('2026-09-01T00:00:00Z'),
+      plannedEndAt: new Date('2026-09-30T00:00:00Z'),
+      isGatekeeper: false,
+    },
+  });
+
   await prisma.projectStage.create({
     data: {
       projectId: project.id,
       title: 'Aprovação NIT (Propriedade Intelectual)',
       description: 'Gatekeeper institucional de validação de patentes e termos de transferência tecnológica.',
-      order: 4,
+      order: 5,
       status: StageStatus.NOT_STARTED,
       isGatekeeper: true,
       gatekeeperType: 'NIT',
@@ -279,13 +292,13 @@ A solução descentralizada aproxima a experiência dos autores da velocidade de
       projectId: project.id,
       title: 'Submissão Final IEEE S&P 2027',
       description: 'Gatekeeper de submissão no sistema oficial da conferência (HotCRP / EasyChair).',
-      order: 5,
+      order: 6,
       status: StageStatus.NOT_STARTED,
       isGatekeeper: true,
       gatekeeperType: 'TARGET_CONFERENCE',
     },
   });
-  console.log('   - 5 etapas criadas (incluindo gatekeepers NIT e Conferência Alvo).');
+  console.log('   - 6 etapas fixas criadas (incluindo Revisão Técnica e Gatekeepers NIT e Conferência Alvo).');
 
   // 6. Criar Tarefas das Etapas (Sem branches)
   console.log('📝 Creating tasks...');

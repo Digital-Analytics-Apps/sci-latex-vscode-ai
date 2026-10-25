@@ -1,7 +1,6 @@
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
-import LaunchIcon from "@mui/icons-material/Launch";
 import LockIcon from "@mui/icons-material/Lock";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import {
@@ -342,6 +341,12 @@ export const getTaskStatusConfig = (
   switch (status) {
     case TaskStatus.COMPLETED:
       return { color: "success", label: "Concluída" };
+    case TaskStatus.REVIEW_REQUESTED:
+      return { color: "warning", label: "Aguardando Revisão" };
+    case TaskStatus.IN_REVIEW:
+      return { color: "secondary", label: "Em Revisão" };
+    case TaskStatus.CHANGES_REQUESTED:
+      return { color: "error", label: "Ajustes Solicitados" };
     case TaskStatus.IN_PROGRESS:
       return { color: "primary", label: "Em Andamento" };
     case TaskStatus.NOT_STARTED:
@@ -366,21 +371,20 @@ export const TaskStatusChip = ({ status }: { status: TaskStatus }) => {
 
 export const TaskActionCell = ({
   row,
-  provisioningTaskId,
+  provisioningTaskId: _provisioningTaskId,
   currentUserId,
-  onStartWorkspace,
+  onStartWorkspace: _onStartWorkspace,
 }: {
   row: TaskItem;
-  provisioningTaskId: string | null;
+  provisioningTaskId?: string | null;
   currentUserId?: string;
-  onStartWorkspace: (task: TaskItem) => void | Promise<void>;
+  onStartWorkspace?: (task: TaskItem) => void | Promise<void>;
   onClaimTask?: (taskId: string) => void;
   onUnclaimTask?: (taskId: string) => void;
   isClaiming?: boolean;
   isUnclaiming?: boolean;
 }) => {
   const isCompleted = row.status === TaskStatus.COMPLETED;
-  const isProvisioning = provisioningTaskId === row.id;
   const isAssignedToMe = row.assignedToId === currentUserId;
 
   if (isCompleted) {
@@ -420,23 +424,13 @@ export const TaskActionCell = ({
   // Tarefa atribuída ao usuário atual: Botão Iniciar Workspace
   if (isAssignedToMe) {
     return (
-      <Button
-        variant="contained"
-        color="primary"
+      <Chip
+        label="Sua responsabilidade"
         size="small"
-        disabled={isProvisioning}
-        startIcon={
-          isProvisioning ? (
-            <CircularProgress size={14} color="inherit" />
-          ) : (
-            <LaunchIcon fontSize="small" />
-          )
-        }
-        onClick={() => void onStartWorkspace(row)}
-        sx={{ fontWeight: 700 }}
-      >
-        {isProvisioning ? "⚡ Carregando..." : "🚀 Abrir Editor"}
-      </Button>
+        color="primary"
+        variant="outlined"
+        sx={{ fontWeight: 600, fontSize: "0.75rem" }}
+      />
     );
   }
 

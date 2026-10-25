@@ -1,4 +1,3 @@
-import AddIcon from "@mui/icons-material/Add";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -23,8 +22,6 @@ interface GanttToolbarProps {
   onPrevPeriod: () => void;
   onNextPeriod: () => void;
   dateRangeText: string;
-  onOpenCreateStage?: () => void;
-  onOpenCreateTask?: () => void;
   onAutoScheduleAI?: () => void;
 }
 
@@ -35,8 +32,6 @@ export const GanttToolbar = ({
   onPrevPeriod,
   onNextPeriod,
   dateRangeText,
-  onOpenCreateStage,
-  onOpenCreateTask,
   onAutoScheduleAI,
 }: GanttToolbarProps) => {
   return (
@@ -149,41 +144,6 @@ export const GanttToolbar = ({
           </IconButton>
         </Tooltip>
 
-        {onOpenCreateStage && (
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<AddIcon fontSize="small" />}
-            onClick={onOpenCreateStage}
-            sx={{
-              height: 32,
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              borderRadius: 1.5,
-            }}
-          >
-            Nova Etapa
-          </Button>
-        )}
-
-        {onOpenCreateTask && (
-          <Button
-            variant="outlined"
-            color="primary"
-            size="small"
-            startIcon={<AddIcon fontSize="small" />}
-            onClick={onOpenCreateTask}
-            sx={{
-              height: 32,
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              borderRadius: 1.5,
-            }}
-          >
-            Nova Sub-task
-          </Button>
-        )}
       </Stack>
     </Box>
   );

@@ -172,50 +172,32 @@ Resumo do artigo científico.
       });
     }
 
-    // 2b. Instanciar Etapas de Escrita (customizadas ou padrão) e Etapas Obrigatórias de Gatekeeper
-    const writingStagesData =
-      data.stages && data.stages.length >= 3
-        ? data.stages
-        : [
-            { title: 'Planejamento e Pesquisa' },
-            { title: 'Desenvolvimento e Experimentos' },
-            { title: 'Escrita da Versão Rascunho' },
-          ];
+    // 2b. Instanciar as 6 Etapas Fixas Obrigatórias (ADR-008)
+    const defaultSixStages = [
+      { order: 1, title: 'Planejamento e Pesquisa TeX', description: 'Levantamento bibliográfico e estruturação TeX', isGatekeeper: false },
+      { order: 2, title: 'Desenvolvimento e Experimentos', description: 'Coleta de dados e benchmarks', isGatekeeper: false },
+      { order: 3, title: 'Escrita do Artigo', description: 'Redação das seções em tarefas paralelas', isGatekeeper: false },
+      { order: 4, title: 'Revisão Técnica e Científica', description: 'Revisão geral do manuscrito consolidado', isGatekeeper: false },
+      { order: 5, title: 'Parecer do NIT (Gatekeeper 1)', description: 'Validação de propriedade intelectual', isGatekeeper: true, gatekeeperType: 'NIT' },
+      { order: 6, title: 'Submissão ao Congresso Alvo (Gatekeeper 2)', description: 'Submissão externa do artigo compilado', isGatekeeper: true, gatekeeperType: 'TARGET_CONFERENCE' },
+    ];
 
     await Promise.all(
-      writingStagesData.map(async (s, i) => {
+      defaultSixStages.map(async (def, i) => {
+        const inputStage = data.stages && data.stages[i];
         await this.stagesRepository.create({
           projectId,
-          title: s.title,
-          description: s.description,
-          plannedStartAt: s.plannedStartAt,
-          plannedEndAt: s.plannedEndAt || s.plannedCompletionDate,
-          plannedCompletionDate: s.plannedCompletionDate || s.plannedEndAt,
-          order: i + 1,
-          isGatekeeper: false,
+          title: (inputStage && inputStage.title) || def.title,
+          description: (inputStage && inputStage.description) || def.description,
+          plannedStartAt: inputStage?.plannedStartAt,
+          plannedEndAt: inputStage?.plannedEndAt || inputStage?.plannedCompletionDate,
+          plannedCompletionDate: inputStage?.plannedCompletionDate || inputStage?.plannedEndAt,
+          order: def.order,
+          isGatekeeper: def.isGatekeeper,
+          gatekeeperType: def.gatekeeperType,
         });
       })
     );
-
-    // Criar as 2 etapas obrigatórias de Gatekeeper ao final
-    const baseGatekeeperOrder = writingStagesData.length + 1;
-    await Promise.all([
-      this.stagesRepository.create({
-        projectId,
-        title: 'Parecer do NIT (Gatekeeper 1)',
-        order: baseGatekeeperOrder,
-        isGatekeeper: true,
-        gatekeeperType: 'NIT',
-      }),
-      this.stagesRepository.create({
-        projectId,
-        title: 'Submissão ao Congresso Alvo (Gatekeeper 2)',
-        order: baseGatekeeperOrder + 1,
-        isGatekeeper: true,
-        gatekeeperType: 'TARGET_CONFERENCE',
-      }),
-    ]);
-
     // 3. Registrar evento de criação no AuditLog para a Timeline
     await logAudit({
       userId,
@@ -515,10 +497,6 @@ Resumo do artigo científico.
       taskId,
       projectId,
     };
-  }
-
-  async checkGitStatus(_projectId: string, _userId?: string) {
-    return { hasUncommittedChanges: false, uncommittedFiles: [] };
   }
 
   // Agrupa apontamentos/comentários de revisores por etapa do projeto

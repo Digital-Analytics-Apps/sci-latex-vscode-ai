@@ -23,6 +23,7 @@ export function EditorHeader() {
     showReview,
     comments,
     isConnected,
+    isReviewer,
     setLayoutMode,
     setShowHistory,
     setShowReview,
@@ -70,6 +71,7 @@ export function EditorHeader() {
           onToggleReview={() => setShowReview((prev) => !prev)}
           commentsCount={comments.filter((c) => c.status === 'open').length}
           isConnected={isConnected}
+          isReviewer={isReviewer}
           onLayoutChange={setLayoutMode}
           onToggleHistory={() => setShowHistory((prev) => !prev)}
           onUserNameChange={setUserName}

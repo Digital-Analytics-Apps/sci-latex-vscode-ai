@@ -7,7 +7,6 @@ export interface ProjectDetails {
   id: string;
   name: string;
   description?: string;
-  gitRepoPath?: string | null;
   coordinatorId: string;
   managerId: string;
   coordinator?: { id: string; name: string; email: string };
@@ -66,7 +65,7 @@ export interface ArticleItem {
   title: string;
   conference: string;
   repo: string;
-  role: "Autor" | "Revisor de Par";
+  role: "Autor" | "Revisor Oficial" | "Revisor de Par";
   status: string;
   progress: number;
   tasks: TaskItem[];

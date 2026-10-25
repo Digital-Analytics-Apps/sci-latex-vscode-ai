@@ -1,10 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import AddIcon from "@mui/icons-material/Add";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import DeleteIcon from "@mui/icons-material/Delete";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
-import LockIcon from "@mui/icons-material/Lock";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import {
   Alert,
@@ -15,7 +12,7 @@ import {
   Chip,
   FormControl,
   FormHelperText,
-  IconButton,
+
   InputLabel,
   MenuItem,
   Select,
@@ -24,7 +21,7 @@ import {
   StepLabel,
   Stepper,
   TextField,
-  Tooltip,
+
   Typography,
 } from "@mui/material";
 import React, { useState } from "react";
@@ -56,7 +53,7 @@ interface StageFormItem {
 const DEFAULT_INITIAL_STAGES: StageFormItem[] = [
   {
     id: "stage-default-1",
-    title: "Planejamento e Pesquisa",
+    title: "Planejamento e Pesquisa TeX",
     description:
       "Mapeamento inicial de bibliografia, hipóteses e estruturação TeX",
     plannedCompletionDate: "",
@@ -65,14 +62,35 @@ const DEFAULT_INITIAL_STAGES: StageFormItem[] = [
     id: "stage-default-2",
     title: "Desenvolvimento e Experimentos",
     description:
-      "Execução dos experimentos, análise de dados e geração de gráficos",
+      "Execução dos experimentos, análise de dados e geração de benchmarks",
     plannedCompletionDate: "",
   },
   {
     id: "stage-default-3",
-    title: "Escrita da Versão Rascunho",
+    title: "Escrita do Artigo",
     description:
-      "Redação completa das seções de introdução, método e resultados",
+      "Redação paralela das seções em tarefas com bate e volta",
+    plannedCompletionDate: "",
+  },
+  {
+    id: "stage-default-4",
+    title: "Revisão Técnica e Científica",
+    description:
+      "Revisão geral do manuscrito consolidado pelo Revisor Oficial",
+    plannedCompletionDate: "",
+  },
+  {
+    id: "stage-default-5",
+    title: "Parecer do NIT (Gatekeeper 1)",
+    description:
+      "Auditoria formal de propriedade intelectual e patentes",
+    plannedCompletionDate: "",
+  },
+  {
+    id: "stage-default-6",
+    title: "Submissão Final ao Congresso Alvo (Gatekeeper 2)",
+    description:
+      "Envio oficial do manuscrito compilado para a conferência",
     plannedCompletionDate: "",
   },
 ];
@@ -128,8 +146,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   // eslint-disable-next-line react-hooks/incompatible-library
   const selectedTemplate = watch("template");
 
-  const submissionDeadline = watch("submissionDeadline");
-
   const handleNextStep0 = async () => {
     const isValidStep0 = await trigger([
       "name",
@@ -153,11 +169,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       );
       return;
     }
-    if (stages.length < 3) {
+    if (stages.length !== 6) {
       dispatch(
         showNotification({
-          message:
-            "É obrigatório manter no mínimo 3 etapas de escrita antes dos gatekeepers.",
+          message: "As 6 etapas padronizadas são obrigatórias.",
           severity: "warning",
         }),
       );
@@ -170,32 +185,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     setActiveStep((prev) => Math.max(0, prev - 1));
   };
 
-  const handleAddStage = () => {
-    const nextNum = stages.length + 1;
-    setStages((prev) => [
-      ...prev,
-      {
-        id: `stage-custom-${Date.now()}`,
-        title: `Etapa ${nextNum < 10 ? `0${nextNum}` : nextNum}: Nova Etapa`,
-        description: "",
-        plannedCompletionDate: "",
-      },
-    ]);
-  };
-
-  const handleRemoveStage = (id: string) => {
-    if (stages.length <= 3) {
-      dispatch(
-        showNotification({
-          message:
-            "Não é possível remover. É obrigatório manter no mínimo 3 etapas de escrita.",
-          severity: "warning",
-        }),
-      );
-      return;
-    }
-    setStages((prev) => prev.filter((s) => s.id !== id));
-  };
 
   const handleUpdateStage = (
     id: string,
@@ -427,7 +416,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             }}
           >
             <TimelineIcon color="primary" fontSize="small" />
-            Etapas de Escrita do Artigo ({stages.length}):
+            6 Etapas Padronizadas do Artigo (Ordem Fixa - ADR-008):
           </Typography>
 
           <Stack
@@ -495,109 +484,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       sx={{ width: 170 }}
                     />
 
-                    <Tooltip
-                      title={
-                        stages.length <= 3
-                          ? "Mínimo de 3 etapas de escrita obrigatórias"
-                          : "Remover Etapa"
-                      }
-                    >
-                      <span>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          disabled={stages.length <= 3}
-                          onClick={() => handleRemoveStage(stage.id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
                   </Box>
                 </CardContent>
               </Card>
             ))}
           </Stack>
 
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={handleAddStage}
-            size="small"
-            sx={{
-              alignSelf: "flex-start",
-              textTransform: "none",
-              fontWeight: 700,
-            }}
-          >
-            + Adicionar Etapa de Escrita
-          </Button>
-
-          {/* FIXAS: ETAPAS DE GATEKEEPER */}
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 700, mt: 1, color: "text.secondary" }}
-          >
-            Etapas Obrigatórias de Trava (Gatekeepers):
-          </Typography>
-
-          <Stack spacing={1}>
-            <Card
-              variant="outlined"
-              sx={{ bgcolor: "action.hover", opacity: 0.85 }}
-            >
-              <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <LockIcon color="action" fontSize="small" />
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      Parecer do NIT (Gatekeeper 1)
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label="🔒 Fixo / Automático"
-                    size="small"
-                    variant="filled"
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-
-            <Card
-              variant="outlined"
-              sx={{ bgcolor: "action.hover", opacity: 0.85 }}
-            >
-              <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <LockIcon color="action" fontSize="small" />
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      Submissão ao Congresso Alvo (Gatekeeper 2)
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ fontWeight: 700 }}
-                  >
-                    Data limite: {submissionDeadline || "Não configurada"}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Stack>
         </Box>
       )}
 

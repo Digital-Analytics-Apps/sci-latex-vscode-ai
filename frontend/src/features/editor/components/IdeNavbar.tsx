@@ -20,6 +20,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
+import Chip from '@mui/material/Chip';
 import { CollaboratorsBar } from './CollaboratorsBar';
 import { EditorHistoryControls } from './EditorHistoryControls';
 import { Collaborator, RemoteCursor, SaveStatus } from '../types/collab.types';
@@ -39,6 +40,7 @@ export interface IdeNavbarProps {
   onToggleReview?: () => void;
   commentsCount?: number;
   isConnected?: boolean;
+  isReviewer?: boolean;
   onLayoutChange: (mode: 'split' | 'editor' | 'pdf') => void;
   onToggleHistory: () => void;
   onUserNameChange: (name: string) => void;
@@ -68,6 +70,7 @@ export function IdeNavbar({
   onToggleReview,
   commentsCount = 0,
   isConnected = true,
+  isReviewer = false,
   onLayoutChange,
   onToggleHistory,
   onUserNameChange,
@@ -501,6 +504,23 @@ export function IdeNavbar({
             Review ({commentsCount || 0})
           </Button>
         </Tooltip>
+        {isReviewer && (
+          <Chip
+            label="🔒 Modo Revisão (Leitura)"
+            size="small"
+            color="secondary"
+            sx={{
+              height: 24,
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              backgroundColor: 'rgba(123, 31, 162, 0.15)',
+              color: '#9c27b0',
+              borderColor: 'rgba(123, 31, 162, 0.3)',
+            }}
+            variant="outlined"
+          />
+        )}
+
 
         {/* Input Apelido */}
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>

@@ -27,8 +27,11 @@ interface GanttTimelineViewProps {
   onUnclaimTask?: (taskId: string) => void;
   isClaiming?: boolean;
   isUnclaiming?: boolean;
-  onOpenCreateStage?: () => void;
-  onOpenCreateTask?: () => void;
+  onOpenCreateTask?: (stageId?: string) => void;
+  onRequestReview?: (taskId: string) => void;
+  onApproveTask?: (taskId: string) => void;
+  onRequestChanges?: (taskId: string) => void;
+  isReviewer?: boolean;
 }
 
 export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
@@ -44,8 +47,11 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
   onUnclaimTask,
   isClaiming = false,
   isUnclaiming = false,
-  onOpenCreateStage,
   onOpenCreateTask,
+  onRequestReview,
+  onApproveTask,
+  onRequestChanges,
+  isReviewer = false,
 }) => {
   // Estado da escala de tempo (Dias / Semanas / Meses)
   const [scale, setScale] = useState<TimeScale>("days");
@@ -146,8 +152,6 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
         onPrevPeriod={handlePrevPeriod}
         onNextPeriod={handleNextPeriod}
         dateRangeText={dateRangeText}
-        onOpenCreateStage={onOpenCreateStage}
-        onOpenCreateTask={onOpenCreateTask}
         onAutoScheduleAI={() =>
           alert("Otimização preditiva de prazos via IA executada com sucesso!")
         }
@@ -172,6 +176,7 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
           onSelectEntity={handleSelectEntity}
           selectedEntityId={selectedTask?.id || selectedStage?.id}
           currentUserId={currentUserId}
+          onOpenCreateTask={onOpenCreateTask}
           provisioningTaskId={provisioningTaskId}
           onStartWorkspace={onStartWorkspace}
           onClaimTask={onClaimTask}
@@ -205,6 +210,10 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
         onUnclaimTask={onUnclaimTask}
         isClaiming={isClaiming}
         isUnclaiming={isUnclaiming}
+        onRequestReview={onRequestReview}
+        onApproveTask={onApproveTask}
+        onRequestChanges={onRequestChanges}
+        isReviewer={isReviewer}
       />
     </Box>
   );

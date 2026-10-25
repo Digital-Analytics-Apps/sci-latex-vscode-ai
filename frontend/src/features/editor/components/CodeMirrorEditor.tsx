@@ -56,6 +56,7 @@ import {
   autocompleteCompart,
   linterCompart,
   grammarLinterCompart,
+  readOnlyCompart,
   getSpellcheckExtension,
   getEditorConfigExtension,
 } from '../extensions/config/editorCompartments';
@@ -173,6 +174,7 @@ export interface CodeMirrorEditorProps {
   onDocContentChange?: (content: string) => void;
   onHistoryChange?: (status: HistoryStatus) => void;
   onRegisterActions?: (actions: { undo: () => boolean; redo: () => boolean } | null) => void;
+  readOnly?: boolean;
 }
 
 export function CodeMirrorEditor({
@@ -205,6 +207,7 @@ export function CodeMirrorEditor({
   onDocContentChange,
   onHistoryChange,
   onRegisterActions,
+  readOnly = false,
 }: CodeMirrorEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -439,6 +442,7 @@ export function CodeMirrorEditor({
           settings.nonBlinkingCursor
         )
       ),
+      readOnlyCompart.of(EditorState.readOnly.of(Boolean(readOnly))),
       collab({
         startVersion: collabVersion || 0,
         clientID: currentUserId || 'anon',
@@ -666,6 +670,13 @@ export function CodeMirrorEditor({
     settings?.lineHeight,
     settings?.nonBlinkingCursor,
   ]);
+  useEffect(() => {
+    if (!viewRef.current) return;
+    viewRef.current.dispatch({
+      effects: readOnlyCompart.reconfigure(EditorState.readOnly.of(Boolean(readOnly))),
+    });
+  }, [readOnly]);
+
 
   // Atualiza cursores remotos
   useEffect(() => {

@@ -1,8 +1,9 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { Button } from "@mui/material";
+import { Button, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 import {
@@ -19,18 +20,47 @@ import { TableHeaderToolbar } from "../../components/common/TableFilters";
 import { WelcomeHeader } from "../../components/common/WelcomeHeader";
 import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
 import type { ArticleItem } from "../../services/articlesService";
+import type { RootState } from "../../store";
 import { CreateProjectModal } from "./modals/CreateProjectModal";
 
 export const AuthorArticlesPage = () => {
   const navigate = useNavigate();
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const { data: articles = [], isLoading } = useUserArticlesQuery();
 
   const [searchArticleQuery, setSearchArticleQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const articlesWithRoles = useMemo(() => {
+    return articles.map((art) => {
+      const isReviewer = art.members?.some(
+        (m) =>
+          m.role === "REVIEWER" &&
+          (m.userId === currentUser?.id || m.user?.id === currentUser?.id),
+      );
+      const role: "Autor" | "Revisor Oficial" = isReviewer
+        ? "Revisor Oficial"
+        : "Autor";
+      return {
+        ...art,
+        role,
+      };
+    });
+  }, [articles, currentUser?.id]);
+
+  const authorCount = useMemo(
+    () => articlesWithRoles.filter((a) => a.role === "Autor").length,
+    [articlesWithRoles],
+  );
+
+  const reviewerCount = useMemo(
+    () => articlesWithRoles.filter((a) => a.role === "Revisor Oficial").length,
+    [articlesWithRoles],
+  );
+
   const filteredArticles = useMemo(() => {
-    return articles.filter((article) => {
+    return articlesWithRoles.filter((article) => {
       const matchesSearch =
         searchArticleQuery.trim() === "" ||
         article.title
@@ -41,11 +71,14 @@ export const AuthorArticlesPage = () => {
           .includes(searchArticleQuery.toLowerCase()) ||
         article.status.toLowerCase().includes(searchArticleQuery.toLowerCase());
 
-      const matchesRole = roleFilter === "ALL" || article.role === roleFilter;
+      const matchesRole =
+        roleFilter === "ALL" ||
+        (roleFilter === "AUTHOR" && article.role === "Autor") ||
+        (roleFilter === "REVIEWER" && article.role === "Revisor Oficial");
 
       return matchesSearch && matchesRole;
     });
-  }, [articles, searchArticleQuery, roleFilter]);
+  }, [articlesWithRoles, searchArticleQuery, roleFilter]);
 
   const articleColumns = useMemo<GridColDef<ArticleItem>[]>(
     () => [
@@ -59,6 +92,23 @@ export const AuthorArticlesPage = () => {
         (params) => ({
           title: params.row.title,
           subtitle: params.row.conference,
+        }),
+      ),
+      createChipColumn<ArticleItem>(
+        {
+          field: "role",
+          headerName: "Atuação",
+          flex: 1.1,
+          minWidth: 150,
+        },
+        (params) => ({
+          label: String(params.value),
+          variant: String(params.value).includes("Revisor")
+            ? "filled"
+            : "outlined",
+          color: String(params.value).includes("Revisor")
+            ? "secondary"
+            : "primary",
         }),
       ),
       createChipColumn<ArticleItem>(
@@ -146,16 +196,47 @@ export const AuthorArticlesPage = () => {
           onChange: setSearchArticleQuery,
         }}
         actions={
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => setIsCreateModalOpen(true)}
-            sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
-          >
-            Novo Artigo
-          </Button>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <ToggleButtonGroup
+              size="small"
+              value={roleFilter}
+              exclusive
+              onChange={(_, val) => {
+                if (val !== null) setRoleFilter(val);
+              }}
+              sx={{ height: 40 }}
+            >
+              <ToggleButton
+                value="ALL"
+                sx={{ fontWeight: 600, textTransform: "none", px: 1.5 }}
+              >
+                Todos ({articlesWithRoles.length})
+              </ToggleButton>
+              <ToggleButton
+                value="AUTHOR"
+                sx={{ fontWeight: 600, textTransform: "none", px: 1.5 }}
+              >
+                Meus Artigos ({authorCount})
+              </ToggleButton>
+              <ToggleButton
+                value="REVIEWER"
+                sx={{ fontWeight: 600, textTransform: "none", px: 1.5 }}
+              >
+                Sob Minha Revisão ({reviewerCount})
+              </ToggleButton>
+            </ToggleButtonGroup>
+
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setIsCreateModalOpen(true)}
+              sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
+            >
+              Novo Artigo
+            </Button>
+          </Stack>
         }
         clearFiltersProps={{
           visible: searchArticleQuery.trim() !== "" || roleFilter !== "ALL",

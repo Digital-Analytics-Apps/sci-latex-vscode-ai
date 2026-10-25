@@ -149,14 +149,15 @@ describe('ProjectStagesService', () => {
     service = new ProjectStagesService(repository);
   });
 
-  it('should list stages and auto-create default 5 stages if none exist', async () => {
+  it('should list stages and auto-create default 6 stages if none exist', async () => {
     const stages = await service.listStages('proj-1');
-    expect(stages).toHaveLength(5);
+    expect(stages).toHaveLength(6);
     expect(stages[0].title).toBe('Planejamento e Pesquisa');
-    expect(stages[3].isGatekeeper).toBe(true);
-    expect(stages[3].title).toContain('NIT');
+    expect(stages[3].title).toBe('Revisão Técnica e Científica');
     expect(stages[4].isGatekeeper).toBe(true);
-    expect(stages[4].title).toContain('Congresso');
+    expect(stages[4].title).toContain('NIT');
+    expect(stages[5].isGatekeeper).toBe(true);
+    expect(stages[5].title).toContain('Congresso');
   });
 
   it('should create a custom writing stage', async () => {
@@ -170,29 +171,29 @@ describe('ProjectStagesService', () => {
     expect(newStage.isGatekeeper).toBe(false);
 
     const all = await service.listStages('proj-1');
-    expect(all).toHaveLength(6);
+    expect(all).toHaveLength(7);
   });
 
-  it('should block NIT Gatekeeper stage activation when writing stages are NOT completed', async () => {
+  it('should block NIT Gatekeeper stage activation when writing stages or review are NOT completed', async () => {
     const stages = await service.listStages('proj-1');
-    const nitStage = stages.find((s) => s.order === 4)!;
+    const nitStage = stages.find((s) => s.order === 5)!;
 
     await expect(
       service.updateStage('proj-1', nitStage.id, { status: StageStatus.IN_PROGRESS })
     ).rejects.toThrow(
-      'Não é possível liberar a etapa do NIT enquanto houver etapas de escrita pendentes.'
+      'Não é possível liberar a etapa do NIT enquanto a etapa de Revisão Técnica ou etapas anteriores estiverem pendentes.'
     );
   });
 
-  it('should allow NIT Gatekeeper stage activation when all writing stages are completed', async () => {
+  it('should allow NIT Gatekeeper stage activation when all writing stages and review are completed', async () => {
     const stages = await service.listStages('proj-1');
-    const writingStages = stages.filter((s) => !s.isGatekeeper);
+    const priorStages = stages.filter((s) => s.order < 5);
 
-    for (const s of writingStages) {
+    for (const s of priorStages) {
       await service.updateStage('proj-1', s.id, { status: StageStatus.COMPLETED });
     }
 
-    const nitStage = stages.find((s) => s.order === 4)!;
+    const nitStage = stages.find((s) => s.order === 5)!;
     const updatedNit = await service.updateStage('proj-1', nitStage.id, {
       status: StageStatus.IN_PROGRESS,
     });
@@ -202,7 +203,7 @@ describe('ProjectStagesService', () => {
 
   it('should block Target Conference Gatekeeper stage when NIT is NOT completed', async () => {
     const stages = await service.listStages('proj-1');
-    const conferenceStage = stages.find((s) => s.order === 5)!;
+    const conferenceStage = stages.find((s) => s.order === 6)!;
 
     await expect(
       service.updateStage('proj-1', conferenceStage.id, { status: StageStatus.COMPLETED })
@@ -211,16 +212,13 @@ describe('ProjectStagesService', () => {
 
   it('should allow Target Conference Gatekeeper stage when NIT is completed', async () => {
     const stages = await service.listStages('proj-1');
-    const writingStages = stages.filter((s) => !s.isGatekeeper);
+    const priorStages = stages.filter((s) => s.order < 6);
 
-    for (const s of writingStages) {
+    for (const s of priorStages) {
       await service.updateStage('proj-1', s.id, { status: StageStatus.COMPLETED });
     }
 
-    const nitStage = stages.find((s) => s.order === 4)!;
-    await service.updateStage('proj-1', nitStage.id, { status: StageStatus.COMPLETED });
-
-    const conferenceStage = stages.find((s) => s.order === 5)!;
+    const conferenceStage = stages.find((s) => s.order === 6)!;
     const updatedConf = await service.updateStage('proj-1', conferenceStage.id, {
       status: StageStatus.COMPLETED,
     });
@@ -228,19 +226,10 @@ describe('ProjectStagesService', () => {
     expect(updatedConf.status).toBe(StageStatus.COMPLETED);
   });
 
-  it('should delete a custom stage but prevent deleting gatekeeper stages', async () => {
-    await service.listStages('proj-1');
-    const custom = await service.createStage('proj-1', { title: 'Análise Qualitativa Extra' });
-
-    await service.deleteStage('proj-1', custom.id);
-    const stagesAfterDelete = await service.listStages('proj-1');
-    expect(stagesAfterDelete.find((s) => s.id === custom.id)).toBeUndefined();
-
-    const nitStage = stagesAfterDelete.find(
-      (s) => s.isGatekeeper && (s.gatekeeperType === 'NIT' || s.title.includes('NIT'))
-    )!;
-    await expect(service.deleteStage('proj-1', nitStage.id)).rejects.toThrow(
-      'Não é possível excluir etapas de Gatekeeper obrigatórias'
+  it('should prevent deleting any stage due to fixed stages rule (ADR-008)', async () => {
+    const stages = await service.listStages('proj-1');
+    await expect(service.deleteStage('proj-1', stages[0].id)).rejects.toThrow(
+      'FIXED_STAGES: As etapas do projeto são padronizadas e fixas (1 a 6) e não podem ser excluídas.'
     );
   });
 });

@@ -51,9 +51,9 @@ O sistema de persistência do SCIA adota um modelo híbrido com foco em integrid
 * **Prisma Client:** Versão `^7.10.0` com adapter nativo `@prisma/adapter-pg` sobre o driver `pg` v8.
 * **Pool de Conexões:** Gerenciado nativamente pelo Fastify no boot do processo Node.js através de instância única singleton (`src/db/prisma.ts`).
 * **Convenção de Nomes:** 
-  - Modelos/Tabelas: PascalCase com aspas duplas no PostgreSQL (`"User"`, `"Project"`, `"PullRequest"`).
+  - Modelos/Tabelas: PascalCase com aspas duplas no PostgreSQL (`"User"`, `"Project"`, `"ProjectFile"`, `"DocumentSnapshot"`).
   - Colunas/Propriedades: camelCase com aspas duplas (`"passwordHash"`, `"academicPeriodId"`).
-  - Tipos Enumerados: PascalCase (`"Role"`, `"PRStatus"`, `"SubmissionStatus"`).
+  - Tipos Enumerados: PascalCase (`"Role"`, `"TaskStatus"`, `"SubmissionStatus"`).
 
 ---
 
@@ -61,46 +61,27 @@ O sistema de persistência do SCIA adota um modelo híbrido com foco em integrid
 
 ```mermaid
 erDiagram
-    AcademicPeriod ||--o{ TeamAcademicGoal : "possui metas"
     AcademicPeriod ||--o{ Project : "agrupa artigos"
     AcademicPeriod }o--o| User : "gerenciado por"
 
-    Team ||--o{ TeamMember : "composto por"
-    Team ||--o{ Project : "produz"
-    Team ||--o{ TeamAcademicGoal : "estabelece"
-    Team }o--|| User : "coordenado por"
-    Team }o--o| User : "gerenciado por"
-
-    User ||--o{ TeamMember : "participa"
     User ||--o{ ProjectMember : "atua em"
-    User ||--o{ PullRequest : "autor/revisor de"
-    User ||--o{ ReviewComment : "escreve"
     User ||--o{ Session : "autenticado via"
     User ||--o{ AuditLog : "dispara ações"
     User ||--o{ Task : "atribuído a"
-    User ||--o{ Workspace : "abre pod"
     User ||--o{ ReleaseCandidate : "revisa"
+    User ||--o{ DocumentOperation : "opera"
 
     Project ||--o{ ProjectMember : "possui integrantes"
-    Project ||--o{ ProjectStage : "dividido em etapas"
+    Project ||--o{ ProjectStage : "dividido em 6 etapas fixas"
     Project ||--o{ Task : "contém tarefas"
-    Project ||--o{ PullRequest : "registra revisões"
-    Project ||--o{ Workspace : "executa workspaces"
     Project ||--o{ ReleaseCandidate : "gera versões candidatas"
     Project ||--o{ Release : "publica releases"
-    Project ||--o{ GithubIntegration : "integra repositório"
     Project ||--o{ NitProcess : "submete à governança"
+    Project ||--o{ ProjectFile : "armazena arquivos TeX"
+    Project ||--o{ DocumentOperation : "registra deltas OT"
+    Project ||--o{ DocumentSnapshot : "persiste versões"
 
-    ProjectStage ||--o{ Task : "agrupa"
-    ProjectStage ||--o{ Workspace : "vincula pods de feature"
-
-    Task ||--o{ PullRequest : "origina"
-    Task ||--o{ Workspace : "sessão isolada da task"
-
-    PullRequest ||--o{ ReviewRound : "organiza ciclos"
-    PullRequest ||--o{ ReviewComment : "recebe apontamentos"
-
-    ReviewRound ||--o{ ReviewComment : "contextualiza notas"
+    ProjectStage ||--o{ Task : "agrupa tarefas da etapa"
 ```
 
 ---
@@ -114,21 +95,34 @@ Define os privilégios operacionais do usuário na plataforma e dentro de projet
 CREATE TYPE "Role" AS ENUM ('AUTHOR', 'REVIEWER', 'COORDINATOR', 'MANAGER', 'ADMIN');
 ```
 
-* `AUTHOR`: Escritor e pesquisador com permissão para gerenciar sub-tarefas, commitar em branches e abrir PRs.
-* `REVIEWER`: Avaliador acadêmico. Permissão estrita de leitura e anotação em diffs/PDFs.
+* `AUTHOR`: Escritor e pesquisador com permissão para gerenciar tarefas, editar no CodeMirror e solicitar revisões.
+* `REVIEWER`: Avaliador acadêmico. Permissão estrita de leitura (`readOnly`) e inclusão de anotações e comentários inline ancorados (`ReviewSidebar`).
 * `COORDINATOR`: Líder técnico de equipe. Monitora cronogramas, matriz de prazos e compilações oficiais.
 * `MANAGER`: Gestor executivo institucional. Supervisiona cotas de publicação, gargalos e períodos acadêmicos.
 * `ADMIN`: Administrador do sistema com acesso irrestrito a configurações e gestão de infraestrutura.
 
 ---
 
-### 3.2. `PRStatus` (Ciclo de Vida do Pull Request)
-Controla a transição de validação técnica das Feature Branches (`feature/*` $\rightarrow$ `dev`).
+### 3.2. `TaskStatus` (Ciclo de Vida da Tarefa & Bate e Volta de Revisão — ADR-008)
+Controla a transição granular das tarefas de escrita e os ciclos iterativos de revisão entre coautores e orientadores.
 
 ```sql
-CREATE TYPE "PRStatus" AS ENUM ('DRAFT', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'MERGED', 'CANCELLED');
+CREATE TYPE "TaskStatus" AS ENUM (
+  'NOT_STARTED',
+  'IN_PROGRESS',
+  'REVIEW_REQUESTED',
+  'IN_REVIEW',
+  'CHANGES_REQUESTED',
+  'COMPLETED'
+);
 ```
 
+* `NOT_STARTED`: Tarefa cadastrada e ainda não iniciada pelo pesquisador.
+* `IN_PROGRESS`: Tarefa em processo ativo de escrita no editor CodeMirror 6.
+* `REVIEW_REQUESTED`: Autor concluiu a seção e solicitou a avaliação do Revisor Oficial.
+* `IN_REVIEW`: Revisor acessou a tarefa para inspeção e anotação em modo leitura.
+* `CHANGES_REQUESTED`: Revisor devolveu a tarefa apontando melhorias necessárias.
+* `COMPLETED`: Seção aprovada pelo Revisor Oficial e finalizada.
 ---
 
 ### 3.3. `NITStatus` (Governança do Núcleo de Inovação Tecnológica)
@@ -356,118 +350,97 @@ Associação de co-autores e do revisor técnico ao artigo.
 * **Regra de Domínio:** A camada de serviços valida no nível de aplicação que um projeto aceita **estritamente 1 único membro com `role = REVIEWER`**.
 
 #### Tabela `"ProjectStage"`
-Etapas sequenciais da linha do tempo do artigo (Stepper Ribbon / Gantt) e travas de Gatekeeper.
+Etapas sequenciais da linha do tempo do artigo (Gantt) e travas de Gatekeeper. Conforme estabelecido na **ADR-008**, todo projeto nasce com **6 etapas fixas e imutáveis** (ordem estrita 1 a 6):
+1. Planejamento e Pesquisa TeX (`order: 1`, `isGatekeeper: false`)
+2. Desenvolvimento Experimental & Benchmarks (`order: 2`, `isGatekeeper: false`)
+3. Escrita do Artigo — Tarefas Paralelas (`order: 3`, `isGatekeeper: false`)
+4. Revisão Técnica e Científica — Revisão Geral (`order: 4`, `isGatekeeper: false`)
+5. Parecer do NIT — Gatekeeper 1 (`order: 5`, `isGatekeeper: true`, `gatekeeperType: 'NIT'`)
+6. Submissão Final ao Congresso Alvo — Gatekeeper 2 (`order: 6`, `isGatekeeper: true`, `gatekeeperType: 'TARGET_CONFERENCE'`)
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da etapa |
 | `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
-| `title` | `TEXT` | Não | — | Nome da etapa (ex: *"01 - Introdução"*) |
+| `title` | `TEXT` | Não | — | Nome da etapa fixa |
 | `description` | `TEXT` | Sim | — | Orientações de escrita da seção |
-| `order` | `INTEGER` | Não | — | Posição sequencial na régua de etapas |
+| `order` | `INTEGER` | Não | — | Posição sequencial obrigatória (1 a 6) |
 | `plannedStartAt` | `TIMESTAMP(3)` | Sim | — | Início planejado |
 | `plannedEndAt` | `TIMESTAMP(3)` | Sim | — | Término planejado |
 | `plannedCompletionDate` | `TIMESTAMP(3)` | Sim | — | Data alvo contratada |
 | `startedAt` | `TIMESTAMP(3)` | Sim | — | Início real de trabalho |
 | `completedAt` | `TIMESTAMP(3)` | Sim | — | Conclusão real da etapa |
-| `status` | `"StageStatus"`| Não | `DEFAULT 'NOT_STARTED'` | Estado da etapa (`NOT_STARTED`, etc.) |
+| `status` | `"StageStatus"`| Não | `DEFAULT 'NOT_STARTED'` | Estado da etapa (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`, `LOCKED`) |
 | `isGatekeeper` | `BOOLEAN` | Não | `DEFAULT false` | Indica trava de governança obrigatória |
 | `gatekeeperType` | `TEXT` | Sim | — | `"NIT"`, `"TARGET_CONFERENCE"` ou `"BACKUP_CONFERENCE"` |
 | `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de criação |
 | `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de atualização |
 
 * **Restrição Única Composta:** `@@unique([projectId, order])` (Garante unicidade estrita de ordenação).
+* **Regra de Imutabilidade (ADR-008):** Deleção de etapas é bloqueada na API (`DELETE /stages/:id -> 400 BAD_REQUEST`); a ordem 1 a 6 não pode ser alterada.
 
 ---
 
-### 4.4. Domínio de Tarefas & Workspaces da IDE
+### 4.4. Domínio de Tarefas de Escrita & Bate e Volta
 
 #### Tabela `"Task"`
-Sub-tarefas atômicas de escrita, vinculadas a branches Git e etapas do artigo.
+Sub-tarefas atômicas de escrita científica vinculadas às etapas do artigo, com ciclo iterativo de revisão entre autor e orientador.
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da tarefa |
 | `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
 | `stageId` | `TEXT` | Sim | `FK -> ProjectStage.id ON DELETE SET NULL`| Etapa pai vinculada |
-| `assignedToId` | `TEXT` | Sim | `FK -> User.id` | Autor responsável assinado (`claim`) |
-| `title` | `TEXT` | Não | — | Título da tarefa/issue |
-| `branchName` | `TEXT` | Não | — | Nome da branch Git associada à tarefa |
-| `status` | `"TaskStatus"` | Não | `DEFAULT 'NOT_STARTED'` | Estado operacional da sub-tarefa |
+| `assignedToId` | `TEXT` | Sim | `FK -> User.id` | Autor responsável atribuído |
+| `title` | `TEXT` | Não | — | Título da tarefa de escrita (ex: *"Seção de Metodologia"*) |
+| `status` | `"TaskStatus"` | Não | `DEFAULT 'NOT_STARTED'` | Estado operacional (`NOT_STARTED`, `IN_PROGRESS`, `REVIEW_REQUESTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `COMPLETED`) |
 | `startDate` | `TIMESTAMP(3)` | Sim | — | Data programada de início |
 | `startedAt` | `TIMESTAMP(3)` | Sim | — | Data real de inicialização |
 | `dueDate` | `TIMESTAMP(3)` | Sim | — | Data limite de entrega da sub-tarefa |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de abertura |
+| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de criação |
 | `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de atualização |
-
-#### Tabela `"Workspace"`
-Rastreia a alocação e o ciclo de vida dos Pods Kubernetes que executam o `code-server` Zen Mode.
-
-| Coluna | Tipo | Nulo | Restrições / Default | Descrição |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do workspace ativo |
-| `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
-| `userId` | `TEXT` | Não | `FK -> User.id ON DELETE CASCADE` | Usuário proprietário do Pod |
-| `stageId` | `TEXT` | Não | `FK -> ProjectStage.id ON DELETE CASCADE` | Etapa vinculada (`default: "general"`) |
-| `taskId` | `TEXT` | Não | `FK -> Task.id ON DELETE CASCADE` | Sub-tarefa ativa no Pod |
-| `podName` | `TEXT` | Sim | — | Nome do Pod físico no Kubernetes |
-| `status` | `"WorkspaceStatus"`| Não | `DEFAULT 'PROVISIONING'`| Estado do ambiente (`READY`, `DIRTY`, etc.) |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Momento do provisionamento |
-| `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Última renovação |
-
-* **Restrição Única Composta:** `@@unique([projectId, userId, stageId, taskId])` (Impede múltiplos pods concorrentes para o mesmo autor na mesma tarefa).
 
 ---
 
-### 4.5. Domínio de Revisão por Pares & Diffs TeX
+### 4.5. Domínio de Edição Colaborativa TeX & Versionamento (ADR-007)
 
-#### Tabela `"PullRequest"`
-Controla as propostas formais de mesclagem entre Feature Branches e a branch de desenvolvimento (`dev`).
-
-| Coluna | Tipo | Nulo | Restrições / Default | Descrição |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do Pull Request |
-| `title` | `TEXT` | Não | — | Título do PR |
-| `description` | `TEXT` | Sim | — | Descrição das alterações propostas |
-| `status` | `"PRStatus"` | Não | `DEFAULT 'DRAFT'` | Estado de aprovação (`DRAFT`, etc.) |
-| `nitStatus` | `"NITStatus"` | Não | `DEFAULT 'NOT_REQUIRED'`| Estado de auditoria do NIT |
-| `nitNotes` | `TEXT` | Sim | — | Parecer técnico emitido pelo NIT |
-| `sentToNitAt` | `TIMESTAMP(3)` | Sim | — | Timestamp do envio para auditoria do NIT |
-| `sentToNitNotes`| `TEXT` | Sim | — | Notas anexadas no encaminhamento |
-| `nitApprovedAt` | `TIMESTAMP(3)`| Sim | — | Timestamp da aprovação formal pelo NIT |
-| `taskId` | `TEXT` | Sim | `FK -> Task.id ON DELETE SET NULL` | Sub-tarefa originária (opcional) |
-| `authorId` | `TEXT` | Não | `FK -> User.id` | Autor solicitante do PR |
-| `reviewerId` | `TEXT` | Sim | `FK -> User.id` | Revisor formal designado |
-| `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo ao qual pertence |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de abertura |
-| `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de alteração |
-| `mergedAt` | `TIMESTAMP(3)` | Sim | — | Data e hora formal da mesclagem |
-
-#### Tabela `"ReviewRound"`
-Representa rodadas iterativas de avaliação para cada novo commit submetido a um PR existente.
+#### Tabela `"ProjectFile"`
+Armazena a árvore de arquivos de código LaTeX, bibliografia BibTeX, figuras e folhas de estilo do projeto.
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da rodada de revisão |
-| `pullRequestId` | `TEXT` | Não | `FK -> PullRequest.id ON DELETE CASCADE`| PR vinculado |
-| `roundNumber` | `INTEGER` | Não | — | Número sequencial da rodada (1, 2, 3...) |
-| `baseCommitHash` | `TEXT` | Não | — | Hash SHA do commit base (`target`) |
-| `submittedCommitHash` | `TEXT` | Não | — | Hash SHA do commit sob avaliação |
-| `previousSubmittedCommitHash`| `TEXT`| Sim | — | Commit submetido na rodada anterior |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de submissão da rodada |
+| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do arquivo |
+| `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
+| `path` | `TEXT` | Não | — | Caminho relativo do arquivo (ex: `"main.tex"`, `"sections/01_intro.tex"`) |
+| `content` | `TEXT` | Não | `DEFAULT ''` | Conteúdo textual durável em disco/banco |
+| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de criação |
+| `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Momento do último flush de persistência |
 
-#### Tabela `"ReviewComment"`
-Comentários pontuais por linha de código TeX deixados pelo Revisor durante a avaliação.
+* **Restrição Única Composta:** `@@unique([projectId, path])`.
+
+#### Tabela `"DocumentOperation"`
+Histórico de deltas de Transformação Operacional (OT) sequenciados pelo pod dono do documento.
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do comentário |
-| `pullRequestId` | `TEXT` | Não | `FK -> PullRequest.id ON DELETE CASCADE`| PR vinculado |
-| `reviewRoundId` | `TEXT` | Sim | `FK -> ReviewRound.id ON DELETE SET NULL`| Rodada de revisão associada |
-| `userId` | `TEXT` | Não | `FK -> User.id` | Autor do apontamento |
-| `lineNumer` | `INTEGER` | Sim | — | Número da linha no arquivo TeX |
-| `comment` | `TEXT` | Não | — | Texto descritivo do apontamento |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Momento do registro |
+| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da operação |
+| `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
+| `userId` | `TEXT` | Não | `FK -> User.id` | Autor originário da digitação |
+| `file` | `TEXT` | Não | — | Arquivo alvo do delta |
+| `operation`| `JSONB` | Não | — | Payload serializado da operação OT (insert/delete) |
+| `version` | `INTEGER` | Não | — | Versão sequencial do documento após aplicação |
+| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Timestamp de recepção |
+
+#### Tabela `"DocumentSnapshot"`
+Pontos de restauração e versões completas do documento geradas automaticamente ou sob demanda.
+
+| Coluna | Tipo | Nulo | Restrições / Default | Descrição |
+| :--- | :--- | :---: | :--- | :--- |
+| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do snapshot |
+| `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
+| `version` | `INTEGER` | Não | — | Versão sequencial consolidada |
+| `content` | `TEXT` | Não | — | Conteúdo integral de todos os arquivos do snapshot |
+| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Timestamp do snapshot |
 
 ---
 
@@ -481,8 +454,8 @@ Versões congeladas do documento submetidas à validação integral da equipe an
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da Release Candidate |
 | `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo ao qual pertence |
 | `versionTag` | `TEXT` | Não | — | Tag semântica (ex: `"v1.0-rc1"`) |
-| `commitSha` | `TEXT` | Não | — | Hash do commit congelado |
-| `status` | `"RCStatus"` | Não | `DEFAULT 'SUBMITTED'` | Estado da RC (`APPROVED`, etc.) |
+| `snapshotId` | `TEXT` | Sim | — | Identificador do snapshot correspondente |
+| `status` | `"RCStatus"` | Não | `DEFAULT 'SUBMITTED'` | Estado da RC (`SUBMITTED`, `UNDER_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`) |
 | `feedback` | `TEXT` | Sim | — | Avaliação geral da versão |
 | `reviewerId` | `TEXT` | Sim | `FK -> User.id` | Revisor avaliador |
 | `pdfUrl` | `TEXT` | Sim | — | Caminho do PDF compilado correspondente |
@@ -496,8 +469,8 @@ Histórico imutável de versões finais aprovadas e publicadas em conferências.
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da release oficial |
 | `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo publicado |
-| `versionTag` | `TEXT` | Não | — | Tag de versão (ex: `"v1.0-final"`) |
-| `commitSha` | `TEXT` | Não | — | Hash SHA do commit de entrega |
+| `versionTag` | `TEXT` | Não | — | Tag de versão (ex: `"v1.0"`) |
+| `version` | `INTEGER` | Não | `DEFAULT 1` | Versão numérica |
 | `title` | `TEXT` | Não | — | Título no momento da submissão |
 | `conference` | `TEXT` | Sim | — | Nome da conferência onde foi submetido |
 | `pdfUrl` | `TEXT` | Sim | — | Link do PDF Camera-Ready arquivado |
@@ -505,16 +478,15 @@ Histórico imutável de versões finais aprovadas e publicadas em conferências.
 
 ---
 
-### 4.7. Domínio de Governança NIT & Integração GitHub
+### 4.7. Domínio de Governança NIT
 
 #### Tabela `"NitProcess"`
-Rastreia a conformidade institucional de Propriedade Intelectual junto ao NIT.
+Rastreia a conformidade institucional de Propriedade Intelectual junto ao NIT (Gatekeeper 1).
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do processo NIT |
 | `articleId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo auditado |
-| `githubPrNodeId`| `TEXT` | Não | — | Node ID do Pull Request no GitHub |
 | `status` | `"NITStatus"` | Não | `DEFAULT 'WAITING_NIT'` | Parecer atual do comitê |
 | `sentAt` | `TIMESTAMP(3)` | Não | — | Data do envio ao NIT |
 | `sentNotes` | `TEXT` | Sim | — | Observações submetidas ao comitê |
@@ -522,17 +494,6 @@ Rastreia a conformidade institucional de Propriedade Intelectual junto ao NIT.
 | `responseNotes` | `TEXT` | Sim | — | Resposta e parecer emitido |
 | `protocolNumber`| `TEXT` | Sim | — | Número oficial de protocolo do processo |
 | `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de abertura do processo |
-
-#### Tabelas de Integração Nativa com GitHub (`Inbox Pattern` & Projeções)
-
-1. **`"GithubIntegration"`**:
-   - `id` (`PK`), `articleId` (`FK -> Project.id ON DELETE CASCADE`), `githubRepositoryId` (`BIGINT`), `githubRepoName` (`TEXT`), `githubProjectV2Id` (`TEXT`), `createdAt`.
-2. **`"GithubWebhookEvent"` (Inbox de Eventos Idempotente)**:
-   - `id` (`PK`), `deliveryId` (`TEXT UNIQUE` — identificador único de entrega do GitHub), `eventType` (`TEXT`), `action` (`TEXT`), `signatureValid` (`BOOLEAN`), `installationId` (`BIGINT`), `payload` (`JSONB`), `receivedAt`, `processedAt`, `status` (`TEXT DEFAULT 'PENDING'`).
-3. **`"GithubIssueProjection"` (Projeção Local de Issues)**:
-   - `githubIssueId` (`BIGINT PK`), `githubRepositoryId` (`BIGINT`), `issueNumber` (`INT`), `title` (`TEXT`), `state` (`TEXT`), `authorGithubUsername`, `assigneeGithubUsername`, `htmlUrl`, `updatedAt`, `lastGithubEventAt`, `lastSyncedAt`.
-4. **`"GithubProjectItemProjection"` (Projeção de Cartões do GitHub Projects V2)**:
-   - `githubProjectItemId` (`TEXT PK`), `githubProjectV2Id` (`TEXT`), `githubIssueId` (`BIGINT`), `statusValue` (`TEXT`), `nitStatusValue` (`TEXT`), `updatedAt`, `lastSyncedAt`.
 
 ---
 
@@ -545,19 +506,17 @@ Project (Deleção em Cascata)
   ├── ProjectMember (CASCADE)
   ├── ProjectStage (CASCADE)
   │     └── Task (CASCADE)
-  │           └── Workspace (CASCADE)
-  ├── PullRequest (CASCADE)
-  │     ├── ReviewRound (CASCADE)
-  │     └── ReviewComment (CASCADE)
+  ├── ProjectFile (CASCADE)
+  ├── DocumentOperation (CASCADE)
+  ├── DocumentSnapshot (CASCADE)
   ├── ReleaseCandidate (CASCADE)
   ├── Release (CASCADE)
-  ├── GithubIntegration (CASCADE)
   └── NitProcess (CASCADE)
 
 User (Preservação de Histórico)
   ├── AuditLog (SET NULL)  <-- Logs permanecem intactos sem dados pessoais
   ├── Task.assignedToId (RESTRICT/SET NULL)
-  └── PullRequest.authorId (RESTRICT) <-- Impede deleção física se houver PRs ativos
+  └── ReleaseCandidate.reviewerId (SET NULL)
 ```
 
 ### 5.2. Chaves Únicas e Índices de Performance

@@ -1,247 +1,154 @@
-# Especificação Arquitetural e de Produto: Visão do Revisor no VS Code (`sci-latex-vscode`)
+# Especificação Arquitetural e de Produto: Visão e Persona do Revisor (`sci-latex-vscode`)
 
-**Data da Última Atualização:** 23 de Setembro de 2026  
-**Status:** Diretriz Arquitetural Aprovada (Modelo de Domínio, Diffs Consolidados, Isolamento do Revisor & Resiliência SSE com Redis/Web Worker)  
-**Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)
+**Data da Última Atualização:** 25 de Outubro de 2026  
+**Status:** Diretriz Arquitetural Aprovada (Alinhada à ADR-007 e ADR-008)  
+**Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
+**Tecnologias Centrais:** CodeMirror 6, `@codemirror/collab`, React 19, Fastify, PostgreSQL (Prisma)
 
 ---
 
-## 1. Decisão Fundamental de Produto & Separação de Camadas
+## 1. Decisão Fundamental de Produto & Modelo Mental
 
 > [!IMPORTANT]
 > **Modelo Mental Acadêmico:**  
-> O revisor está revisando um **Artigo Científico**, e não simplesmente arquivos de código LaTeX.  
-> O VS Code é a infraestrutura/editor de alta performance, mas **NÃO** define o modelo mental ou o workflow da revisão. A aplicação **SCI-LaTeX (React/Fastify)** é a detentora do contexto acadêmico, das decisões de domínio e do ciclo de vida das revisões.
+> O revisor está revisando um **Artigo Científico**, e não simplesmente arquivos de código LaTeX ou repositórios Git.  
+> Ele atua como **Orientador** ou **Revisor Técnico Oficial** designado para o projeto acadêmico. A sua tela de acompanhamento é **a mesma tela do Autor** (`AuthorArticlesPage`, `ArticleDetailPage` e Gantt), diferenciada por contexto de atuação, indicadores visuais e travas de proteção de conteúdo no editor.
 
 ```mermaid
 flowchart TD
-    GitLayer["1. Infraestrutura Git / GitHub Remote\n(Fatos, commits SHAs, git tags aliases)"]
-    
-    subgraph "2. SCI-LaTeX (Backend Fastify + Frontend React)"
-        Context["Contexto Acadêmico & Diff Summary"]
-        Workflow["Workflow de Revisão & Ancoragem de Comentários"]
-        Decisions["Pareceres, Status PR & Decisões NIT"]
+    subgraph "1. SCI-LaTeX (Frontend React + Backend Fastify)"
+        Context["Contexto Acadêmico & Cronograma Gantt"]
+        Workflow["Workflow em 6 Etapas Fixas (ADR-008)"]
+        Decisions["Pareceres de Tarefas & Revisão Geral"]
     end
 
-    subgraph "3. VS Code Embedded (Workspace)"
-        Workspace["Workspace / Editor"]
-        TeXDiff["TeX Diff (Navegação visual)"]
-        PDFView["PDF Compilado da versão submetida"]
-        Workspace --> TeXDiff
-        Workspace --> PDFView
+    subgraph "2. Editor Colaborativo CodeMirror 6"
+        CodeMirror["CodeMirror 6 Web-Nativo"]
+        ReadOnly["Extensão Read-Only Ativa para o Revisor"]
+        Comments["ReviewSidebar & Ancoragem de Comentários"]
+        PDFView["Compilação & Preview de PDF Sincronizado"]
+        CodeMirror --> ReadOnly
+        CodeMirror --> Comments
+        CodeMirror --> PDFView
     end
 
-    GitLayer --> SCI-LaTeX
-    Context --> Workspace
-    Workflow --> Workspace
-    Workspace --> Revisor["Revisor entende o que mudou e toma decisões acadêmicas"]
+    Context --> CodeMirror
+    Workflow --> Decisions
+    Decisions --> Revisor["Revisor orienta, insere apontamentos e aprova etapas"]
 ```
 
 ---
 
-## 2. Modelo de Domínio Estrito: Rodadas de Revisão e Fotografia Imutável
+## 2. A Experiência do Revisor nas Telas da Aplicação
 
-Para garantir que a revisão nunca acompanhe a ponta móvel da branch da tarefa (que continua evoluindo com novos commits), o domínio do **SCI-LaTeX** captura o commit exato como uma **fotografia lógica imutável** no momento do envio para revisão.
+### 2.1 Na Listagem de Artigos (`AuthorArticlesPage`)
+O revisor não possui um sitemap apartado; ele visualiza todos os artigos em que participa através de um **filtro segmentado unificado**:
 
-### 2.1 Interface de Domínio de Rodada (`ReviewRound`)
-
-O SHA do commit é a **única fonte da verdade** no modelo de domínio:
-
-```typescript
-export interface ReviewRound {
-  id: string;
-  prId: string;
-  roundNumber: number;                  // Ex: 1, 2, 3...
-  
-  // Hashing estrito e imutável dos estados do repositório (Fonte da Verdade)
-  baseCommitHash: string;               // SHA da branch dev/main no momento da submissão
-  submittedCommitHash: string;          // SHA exato da Task branch submetida para revisão
-  previousSubmittedCommitHash?: string; // SHA exato da rodada anterior (presente na rodada >= 2)
-
-  createdAt: Date;
-}
+```
+[ Todos (8) ]   [ Meus Artigos / Autor (5) ]   [ Sob Minha Revisão (3)  • 1 pendente ]
 ```
 
-> [!NOTE]
-> **Git Tags como Infraestrutura / Alias de Conveniência:**  
-> A infraestrutura do Git (via `GitService`) pode gerar opcionalmente uma Git Tag leve (ex: `review/pr-42-round-1 -> <submittedCommitHash>`).  
-> Essa tag pertence estritamente à camada de infraestrutura para facilitar inspeções visuais no repositório Git, enquanto o modelo de domínio do SCI-LaTeX referencia unicamente o SHA do commit (`submittedCommitHash`).
+- **Badges de Papel:**
+  - `Autor / Coautor` (azul): Artigos onde o usuário escreve e gerencia tarefas.
+  - `Revisor Oficial` (roxo/magenta): Artigos onde o usuário foi designado como o Revisor Técnico do projeto.
+- **Ação Direta de Revisão:** Quando um artigo possuir tarefas em `REVIEW_REQUESTED` ou estiver na Etapa 4 (Revisão Geral), o botão de ação destaca: `[ 🔍 Revisar Pendências ]`.
 
-### 2.2 Modelo de Comentários Ancorados (`ReviewComment`)
-
-Os comentários pertencem a uma **rodada específica** e ao **SHA do commit submetido**, garantindo rastreabilidade histórica inalterável:
-
-```typescript
-export interface ReviewComment {
-  id: string;
-  reviewRoundId: string;             // Vinculado à ReviewRound
-  commitHash: string;                // SHA exato do submittedCommitHash
-  filePath: string;                  // Ex: "sections/01-introduction.tex"
-  lineNumber: number;                // Número da linha na versão daquele commit
-  content: string;
-  authorId: string;
-  createdAt: Date;
-}
-```
+### 2.2 Na Visão Gantt do Artigo (`ArticleDetailPage`)
+- **Banner Contextual:** O topo da página sinaliza o papel ativo:
+  > *Visualizando como **Revisor Oficial** deste artigo científico.*
+- **Destaque de Tarefas:** Tarefas submetidas para avaliação pelos coautores ganham indicação visual imediata (`● Aguardando Revisão`).
+- **Ações Rápidas:** O drawer da tarefa disponibiliza os atalhos:
+  - *"Abrir no Editor (Modo Leitura)"*
+  - *"Visualizar Histórico de Apontamentos"*
+  - *"Emitir Parecer (Aprovar / Solicitar Ajustes)"*
 
 ---
 
-## 3. Estruturas Desacopladas de Diff no Backend (`ReviewDiff`)
+## 3. Comportamento no Editor CodeMirror 6 (`isReadOnly`)
 
-O backend calcula e disponibiliza separadamente as duas perspectivas de alteração para o frontend:
+Quando o Revisor abre o editor de um artigo onde atua como Revisor, a plataforma garante a integridade do texto sem bloquear a colaboração textual:
 
-```typescript
-export interface ReviewDiff {
-  // Perspectiva 1: Visão Geral (dev → versão submetida atual)
-  overview: {
-    baseCommitHash: string;          // commit dev/main (baseCommitHash)
-    targetCommitHash: string;        // commit submetido atual (submittedCommitHash)
-    summary: ClassifiedDiffSummary;
-  };
+1. **Injeção da Extensão Read-Only:**
+   ```typescript
+   // editorCompartments.ts
+   import { EditorState } from '@codemirror/state';
+   
+   // Se o usuário logado for o Revisor do projeto:
+   EditorState.readOnly.of(true)
+   ```
+   - O cursor de digitação é desativado para o revisor.
+   - Tentativas de digitação ou deleção de caracteres são interceptadas e impedidas pelo CodeMirror.
+   - A barra superior exibe o chip: `🔒 Modo de Revisão (Somente Leitura)`.
 
-  // Perspectiva 2: Correções Desta Rodada (versão submetida anterior → versão submetida atual)
-  roundChanges?: {
-    previousSubmittedCommitHash: string; // commit submetido da rodada anterior (SHA)
-    currentSubmittedCommitHash: string;  // commit submetido da rodada atual (SHA)
-    summary: ClassifiedDiffSummary;
-  };
-}
-```
+2. **Permissão Total para Comentários Ancorados (`ReviewSidebar`):**
+   - O revisor pode selecionar qualquer palavra, linha ou parágrafo no editor.
+   - Ao soltar a seleção, a popover de anotação oferece: **"Comentar trecho selecionado"**.
+   - O comentário (`ReviewComment`) é ancorado aos offsets de caractere (`from`, `to`) e ajustado dinamicamente via `changes.mapPos()`.
+   - No `ReviewSidebar`, o revisor pode responder a mensagens dos autores, marcar dúvidas como esclarecidas e reabrir pendências.
 
-- **`AuthorProgressDiff` (Modal "Salvar Progresso")**: $HEAD \rightarrow Working\ Tree$ (rascunho local do autor).
-- **`ReviewDiff.overview`**: $dev \rightarrow v3$ (Responde: *"Como está o artigo submetido em relação à base do projeto?"*).
-- **`ReviewDiff.roundChanges`**: $v2 \rightarrow v3$ (Responde: *"O que mudou desde o meu último parecer na rodada anterior?"*).
-
----
-
-## 4. Os 4 Pilares Estratégicos da Experiência de Revisão
-
-| Pilar | Funcionalidade | Prioridade | Objetivo de UX |
-| :--- | :--- | :--- | :--- |
-| **Pilar A** | **Diff Automático da Submissão** | **Essencial** | Carregar o VS Code no modo `mode=review` posicionado no SHA do commit da rodada. |
-| **Pilar B** | **Resumo Factual Acadêmico** | **Essencial (Diferencial)** | Painel determinístico categorizado com o impacto semântico por seções TeX. |
-| **Pilar C** | **Drawer React $\leftrightarrow$ VS Code** | **Essencial** | Workflow no React e navegação de linhas no VS Code via contrato `postMessage` orientado a intenção. |
-| **Pilar D** | **Visualização Dual TeX + PDF** | **Evolução Gradual** | Alternar entre código TeX e o **PDF compilado da versão submetida** (`latexdiff` fica como evolução futura). |
+3. **Compilação e PDF Sincronizado:**
+   - O painel lateral direito exibe o PDF compilado atualizado sob demanda (`PdfPreview.tsx`), permitindo ao orientador conferir se tabelas, equações e diagramas estão compilando perfeitamente no padrão acadêmico.
 
 ---
 
-### 4.1 Isolamento de Ambiente & Desbloqueio da Visão do Revisor (`mode=review`)
+## 4. O Modelo de Revisão em Dois Níveis: "Bate e Volta"
 
-1. **Desobstrução do Acesso do Revisor**:
-   - A trava de concorrência entre editores (`TASK_WORKSPACE_OCCUPIED`) impede unicamente que dois **Autores** trabalhem e escrevam na mesma tarefa/branch simultaneamente.
-   - Quando uma requisição de sessão carrega o parâmetro **`mode=review`** (ou provém do papel `Role.REVIEWER` / rota de revisão `/reviews/:prId`), o backend (`EditorProxyService.prepareWorkspaceSession`) ignora a verificação de ocupação do Autor.
+Conforme normatizado na **ADR-008**, o processo de revisão é estritamente separado em dois níveis:
 
-2. **Ambiente Físico Desacoplado por Usuário e Papel**:
-   - O workspace do Revisor é montado em um subcaminho isolado (`projects/${projectId}/users/${reviewerUserId}/tasks/${taskId}`), fisicamente disjunto do workspace do Autor (`projects/${projectId}/users/${authorUserId}/tasks/${taskId}`).
-   - O repositório local do Revisor faz checkout automático da branch/commit da submissão enviada sem interferir na árvore de arquivos não salvos do Autor.
-
-3. **Injeção de Perfil `reviewer.settings.json` & Trava Read-Only Estrita**:
-   - Ao inicializar a sessão com `mode=review`, o `EditorProxyService` injeta o template `docker/code-server/reviewer.settings.json` em `~/.local/share/code-server/User/settings.json` do container.
-   - **Mecanismo Triplo de Proteção e Leitura**:
-     1. **VS Code Read-Only**: Definição de `"files.readOnlyInclude": { "**/*": true }` e `"editor.readOnly": true`. Exibe ícone de cadeado 🔒 nas abas e bloqueia qualquer tentativa de edição com alerta nativo (*"Cannot edit in read-only editor"*).
-     2. **Permissão de SO (Linux)**: Execução de `chmod 444` em arquivos e `chmod 555` em pastas no repositório local do Revisor, garantindo retenção de erro `EACCES` em qualquer tentativa de escrita no disco.
-     3. **Customização Visual de Tema**: Injeção de `"workbench.colorCustomizations"` (`statusBar.background: "#4A154B"`, `titleBar.activeBackground: "#2C0D2D"`). O Revisor tem clareza visual imediata (barra roxa/destacada) de que está operando no workspace de leitura/revisão.
-   - **Terminal e Ferramentas Desativados**: Desativação do terminal integrado (`"terminal.integrated.enabled": false`), auto-save e auto-build no salvamento.
+### 4.1 Nível 1: Bate e Volta de Tarefa (Etapa 3 — Escrita do Artigo)
+Cada autor escreve suas seções simultaneamente em tarefas separadas (ex.: Introdução, Metodologia, Experimentos).
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Revisor as Revisor (React UI)
-    participant Proxy as EditorProxyService (Backend)
-    participant K8s as Orquestrador K8s / Pod Workspace
-    participant CodeServer as VS Code (code-server)
-
-    Revisor->>Proxy: GET /api/v1/editor/session?taskId=X&mode=review
-    Proxy->>Proxy: Identifica perfil = REVIEWER (mode=review)
-    Proxy->>K8s: Provisiona / Prepara diretório isolado do Revisor
-    Proxy->>K8s: Copia reviewer.settings.json -> ~/.local/share/code-server/User/settings.json
-    Proxy->>K8s: Executa chmod -R 444 (arquivos) / 555 (pastas) no repositório
-    Proxy-->>Revisor: Retorna URL de sessão do iframe
-    Revisor->>CodeServer: Carrega Iframe do VS Code
-    CodeServer-->>Revisor: Interface Read-Only com barras Roxas + Cadeado 🔒 + Digitação Bloqueada
+stateDiagram-v2
+    [*] --> NOT_STARTED: Tarefa criada no Gantt
+    NOT_STARTED --> IN_PROGRESS: Autor inicia redação
+    
+    IN_PROGRESS --> REVIEW_REQUESTED: Autor clica "Solicitar Revisão da Tarefa"
+    REVIEW_REQUESTED --> IN_REVIEW: Revisor abre a tarefa no Editor
+    
+    IN_REVIEW --> CHANGES_REQUESTED: Revisor clica "Solicitar Ajustes" (com comentários)
+    CHANGES_REQUESTED --> IN_PROGRESS: Autor ajusta o LaTeX e resolve pendências
+    
+    IN_REVIEW --> COMPLETED: Revisor clica "Aprovar Tarefa"
+    COMPLETED --> [*]: Seção aprovada
 ```
 
----
-
-### 4.2 Resiliência de Pods K8s, Monitoramento Redis & SSE com Web Worker & Heartbeat na Tela de Revisão
-
-1. **Problema do Desligamento do Pod por Perda de Foco**:
-   - Navegadores modernos suspendem/desaceleram timers de JavaScript (`setInterval`) e streams HTTP quando a aba do navegador perde o foco ou fica em segundo plano.
-   - Sem o envio de sinal ativo, o monitoramento no Redis e o gerenciador de eventos (`EventsManagerService`) interpretavam a perda de foco como término de sessão, acionando o *Grace Period* e destruindo o Pod do K8s, resultando na mensagem `"Disconnected. Attempting to reconnect..."` no iframe do VS Code.
-
-2. **Arquitetura de Batimento por Web Worker e Eventos de Visibilidade**:
-   - **`useSSEEventSource` na Tela do Revisor (`ReviewDetailPage.tsx`)**: A visão do Revisor invoca o hook `useSSEEventSource` passando o `projectId` e `taskId` do PR em avaliação.
-   - **Web Worker Dedicado para Heartbeats**: O hook instancia um Web Worker em background (`pingWorker`) que executa um loop de 20 segundos chamando `POST /api/v1/events/heartbeat`. Como Web Workers funcionam em uma thread separada do sistema operacional, o navegador **NÃO** desativa o batimento quando a aba perde o foco.
-   - **Gatilho de Visibilidade (`visibilitychange`)**: Sempre que o Revisor alterna de aba ou volta o foco para a aplicação/iframe, o evento `visibilitychange` dispara um ping instantâneo de reconexão, renovando a presença no Redis por 180 segundos e cancelando qualquer timer de limpeza do Pod.
+1. **Envio pelo Autor:** O autor clica em **"Solicitar Revisão"** na tarefa e pode opcionalmente resumir suas entregas. A tarefa assume o status `REVIEW_REQUESTED`.
+2. **Avaliação pelo Revisor:** O revisor analisa o trecho TeX em modo leitura e insere comentários no texto.
+3. **Decisão do Revisor:**
+   - 🟠 **"Solicitar Ajustes":** A tarefa transiciona para `CHANGES_REQUESTED`. O autor é notificado, realiza as correções no editor, marca os comentários como resolvidos e clica em **"Reenviar para Revisão"** (incrementando o contador de rodadas da tarefa).
+   - 🟢 **"Aprovar Tarefa":** A tarefa transiciona para `COMPLETED`.
 
 ---
 
-### 4.3 Melhorias de Experiência e Layout Distraction-Free (VS Code UI Framework)
+### 4.2 Nível 2: Revisão Geral do Artigo (Etapa 4 — Revisão Técnica e Científica)
 
-Baseado no guia oficial de [Interface do VS Code (VS Code UI Documentation)](https://code.visualstudio.com/docs/getstarted/userinterface), a visão do Revisor é otimizada com os seguintes recursos nativos do layout do workbench:
+A Etapa 4 é o marco institucional consolidado antes da liberação para os Gatekeepers (NIT e Conferência).
 
-1. **Navegação de Escopo por Sticky Scroll (`editor.stickyScroll.enabled`)**:
-   - Fixa as seções TeX (`\section`, `\subsection`) no topo do editor enquanto o revisor rola o artigo longo, proporcionando âncoras de contexto ininterruptas durante a leitura.
-
-2. **Navegação Estruturada por Breadcrumbs (`breadcrumbs.enabled`)**:
-   - Exibe a hierarquia completa de arquivos e estruturas TeX no topo da aba (`main.tex > sections/01-introduction.tex > \subsection{...}`).
-
-3. **Layout Dual Side-by-Side (`workbench.editor.openSideBySideDirection: "right"`)**:
-   - Posiciona o código TeX da submissão à esquerda e a aba do PDF compilado à direita, permitindo validação visual instantânea de layout, figuras e equações sem alternar abas.
-
-4. **Visualização Avançada de Diff (`diffEditor`)**:
-   - `diffEditor.renderSideBySide: true`: Comparação em duas colunas verticais.
-   - `diffEditor.ignoreTrimWhitespace: true`: Oculta ruídos de espaçamento para destacar alterações puras de texto acadêmico.
-   - `diffEditor.wordWrap: "on"`: Quebra automática de linhas em parágrafos TeX.
-
-5. **Interface Zen / Minimalista sem Distrações**:
-   - Ocultação da barra de atividades (`workbench.activityBar.location: "hidden"`).
-   - Ocultação do painel inferior de terminal (`workbench.panel.visible: false`, `terminal.integrated.enabled: false`).
-   - Ocultação do minimapa (`editor.minimap.enabled: false`) em favor do Sticky Scroll.
+1. **Critério de Início:** A Etapa 4 só é liberada quando **100% das tarefas da Etapa 3 estiverem no status `COMPLETED`**.
+2. **Escopo da Avaliação:** Leitura do manuscrito compilado integral (limite de páginas da conferência, consistência entre resumo, resultados e conclusões, integridade das referências `.bib`).
+3. **Mecanismo de Ajustes Gerais (Sem Reabertura da Etapa 3):**
+   - Caso haja inconformidades macro, o Revisor clica em **`[ Solicitar Ajustes Gerais ]`**.
+   - A **Etapa 3 permanece intacta como `COMPLETED`**, preservando o histórico da entrega inicial.
+   - A **Etapa 4 assume o status `CHANGES_REQUESTED`** (Rodada 1).
+   - Os autores recebem os apontamentos, ajustam o LaTeX, resolvem os itens no painel e clicam em **`[ Reenviar para Revisão Geral ]`** (iniciando a Rodada 2).
+   - Ao aprovar o manuscrito consolidado, o Revisor clica em **`[ Aprovar Revisão Geral ]`**, transicionando a Etapa 4 para `COMPLETED`.
 
 ---
 
-### Contrato Desacoplado de Comunicação (`postMessage`)
+## 5. Governança e Métricas Executivas
 
-```typescript
-type EditorMessage =
-  | {
-      type: 'go-to-location';
-      file: string;
-      line: number;
-      column?: number;
-    }
-  | {
-      type: 'selection-changed';
-      file: string;
-      startLine: number;
-      endLine: number;
-    };
-```
+A atuação do Revisor alimenta diretamente a tomada de decisão da Coordenação e Gerência:
 
----
-
-## 5. Tabela de Consenso das Decisões Arquiteturais Atuais
-
-| Decisão | Status | Justificativa |
+| Métrica no Dashboard | Origem no Domínio | Utilidade para a Gestão |
 | :--- | :--- | :--- |
-| **SCI-LaTeX controla o workflow acadêmico** | ✅ Aprovado | O VS Code é o editor/workspace, não a regra de negócio. |
-| **Git como infraestrutura transparente** | ✅ Aprovado | O autor e revisor interagem com o vocabulário acadêmico de artigos. |
-| **Autor tem autonomia de edição** | ✅ Aprovado | Alterações fora da tarefa primária geram aviso (`hasChangesInOtherFiles`), sem bloqueio. |
-| **AuthorProgressDiff $\neq$ ReviewDiff** | ✅ Aprovado | Baselines estritamente isolados ($HEAD \rightarrow WorkingTree$ vs $dev \rightarrow task$). |
-| **`submittedCommitHash` como SHA Imutável** | ✅ Aprovado | O SHA é a única fonte da verdade do domínio para congelar o estado da revisão. |
-| **Git Tag como Alias de Infraestrutura** | ✅ Aprovado | `review/pr-X-round-Y` criada na camada Git apenas como atalho de conveniência, fora do tipo da entidade de domínio. |
-| **GitHub Releases** | ✅ Reservado | Releases mantidas exclusivamente para versões publicadas (v1.0, Camera-Ready). |
-| **Comentários ancorados a Commit/Rodada** | ✅ Aprovado | Preserva o histórico mesmo quando o arquivo é totalmente reestruturado em rodadas futuras. |
-| **Visualização Dual (`overview` vs `roundChanges`)** | ✅ Aprovado | Permite validar correções pontuais da rodada sem precisar reler o artigo inteiro. |
-| **Comunicação React $\leftrightarrow$ VS Code** | ✅ Aprovado | `postMessage` orientado a intenção de domínio (`EditorMessage`). |
-| **Isolamento do Revisor (`mode=review`)** | ✅ Aprovado | Revisor acessa workspace em diretório/Pod isolado sem ser bloqueado por trava de concorrência do Autor. |
-| **Workspace do Revisor Read-Only (`reviewer.settings.json`)** | ✅ Aprovado | Trava de digitação (`files.readOnlyInclude`), `chmod -R a-w` e tema roxo indicativo (`#4A154B`), garantindo imutabilidade do commit submetido. |
-| **Resiliência SSE via Web Worker & Heartbeat** | ✅ Aprovado | `useSSEEventSource` integrado em `ReviewDetailPage.tsx` com pings em background e listener de `visibilitychange` renovando Redis TTL (180s). |
-| **Backlog Futuro (Fases Posteriores)** | ⏳ Trancado | `latexdiff`, síntese generativa por IA e comentários nativos no VS Code deliberadamente adiados. |
+| **Tempo de Ciclo de Revisão** | Intervalo entre `REVIEW_REQUESTED` e a emissão do parecer. | Identifica orientadores sobrecarregados antes do vencimento de prazos. |
+| **Taxa de Retrabalho (Rodadas)** | Quantidade de ciclos `CHANGES_REQUESTED` nas tarefas e na Etapa 4. | Mensura o nível de maturidade da escrita de cada equipe de pesquisa. |
+| **Fila de Revisão Geral** | Artigos ativos na Etapa 4. | Previsibilidade imediata da demanda que chegará ao NIT no próximo ciclo. |
+| **Alertas de Risco Preventivos** | Comparação entre tempo decorrido na Etapa 4 e a data do congresso. | Aciona o Coordenador para reatribuir co-orientações antes da perda do prazo da conferência. |
 
 ---
 
 ## 6. Conclusão
 
-Esta especificação consolida 100% das definições de produto, modelagem de dados e arquitetura para a **Visão do Revisor no VS Code (`sci-latex-vscode`)**, pronta para servir como guia oficial durante o desenvolvimento da funcionalidade.
+Esta especificação consolida a persona do Revisor como um colaborador ativo e protegido, integrado à mesma experiência fluida dos autores, com segurança garantida pelo CodeMirror 6 Read-Only e governança estrita pelas 6 etapas fixas e pelos dois níveis de revisão da plataforma SCIA.

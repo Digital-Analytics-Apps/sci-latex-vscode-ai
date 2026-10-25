@@ -22,7 +22,10 @@ import { useDebounce } from "../../../hooks/useDebounce";
 import { useProjectDetails } from "../../../hooks/useProjectQueries";
 import { useCreateTaskMutation } from "../../../hooks/useTaskQueries";
 import { useUserSearchQuery } from "../../../hooks/useUserQueries";
-import { type ProjectMember } from "../../../services/projectsService";
+import {
+  type ProjectMember,
+  type ProjectStage,
+} from "../../../services/projectsService";
 import { type UserMemberItem } from "../../../services/usersService";
 import { showNotification } from "../../../store/slices/notificationSlice";
 
@@ -54,7 +57,7 @@ export const CreateTaskModal = ({
   }, [propMembers, projectDetails?.members]);
 
   const projectStages = useMemo(() => {
-    return (projectDetails?.stages || []).filter((s: any) => !s.isGatekeeper);
+    return (projectDetails?.stages || []).filter((s: ProjectStage) => !s.isGatekeeper);
   }, [projectDetails?.stages]);
 
   const [prevOpen, setPrevOpen] = useState(false);
@@ -66,17 +69,19 @@ export const CreateTaskModal = ({
   // Sync state when modal transitions to open
   if (open && !prevOpen) {
     setPrevOpen(true);
-    if (initialTitle) setTitle(initialTitle);
+    setTitle(initialTitle || "");
     const defaultStageId =
       initialStageId || (projectStages.length > 0 ? projectStages[0].id : "");
     setStageId(defaultStageId);
+    setDueDate("");
+    setAssignedToId("");
   } else if (!open && prevOpen) {
     setPrevOpen(false);
   }
 
   // Encontra a etapa selecionada para extrair o prazo limite máximo permitido para a sub-tarefa
   const selectedStage = useMemo(() => {
-    return projectStages.find((s: any) => s.id === stageId);
+    return projectStages.find((s: ProjectStage) => s.id === stageId);
   }, [projectStages, stageId]);
 
   const maxStageDateStr = useMemo(() => {
@@ -217,19 +222,24 @@ export const CreateTaskModal = ({
             value={stageId}
             label="Etapa de Escrita Associada *"
             required
+            disabled={Boolean(initialStageId)}
             onChange={(e) => setStageId(e.target.value)}
           >
-            {projectStages.map((s: any) => (
+            {projectStages.map((s: ProjectStage) => (
               <MenuItem key={s.id} value={s.id}>
                 Etapa {s.order}: {s.title}
               </MenuItem>
             ))}
           </Select>
-          {!stageId && (
+          {Boolean(initialStageId) ? (
+            <FormHelperText sx={{ color: "text.secondary" }}>
+              🔒 Etapa vinculada automaticamente à seção selecionada.
+            </FormHelperText>
+          ) : !stageId ? (
             <FormHelperText>
               A sub-tarefa deve estar vinculada a uma etapa.
             </FormHelperText>
-          )}
+          ) : null}
         </FormControl>
 
         {/* Campo de Data Limite (Prazo da Sub-tarefa) em Destaque com Validação de Etapa */}

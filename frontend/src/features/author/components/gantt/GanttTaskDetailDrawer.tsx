@@ -38,6 +38,10 @@ interface GanttTaskDetailDrawerProps {
   onUnclaimTask?: (taskId: string) => void;
   isClaiming?: boolean;
   isUnclaiming?: boolean;
+  onRequestReview?: (taskId: string) => void;
+  onApproveTask?: (taskId: string) => void;
+  onRequestChanges?: (taskId: string) => void;
+  isReviewer?: boolean;
 }
 
 export const GanttTaskDetailDrawer = ({
@@ -46,12 +50,16 @@ export const GanttTaskDetailDrawer = ({
   stage,
   task,
   currentUserId,
-  provisioningTaskId,
+  provisioningTaskId: _provisioningTaskId,
   onStartWorkspace,
   onClaimTask,
   onUnclaimTask,
   isClaiming = false,
   isUnclaiming = false,
+  onRequestReview,
+  onApproveTask,
+  onRequestChanges,
+  isReviewer = false,
 }: GanttTaskDetailDrawerProps) => {
   const details = getDrawerEntityDetails(stage, task);
   if (!details) return null;
@@ -72,7 +80,6 @@ export const GanttTaskDetailDrawer = ({
     task?.assignedToId && currentUserId && task.assignedToId === currentUserId,
   );
   const isBlockedByPrevious = Boolean(task?.isBlockedByPrevious);
-  const isProvisioning = task && provisioningTaskId === task.id;
   const isReadOnly =
     !isStageNode &&
     Boolean(task) &&
@@ -218,6 +225,9 @@ export const GanttTaskDetailDrawer = ({
           >
             <MenuItem value={TaskStatus.NOT_STARTED}>Não Iniciada</MenuItem>
             <MenuItem value={TaskStatus.IN_PROGRESS}>Em Andamento</MenuItem>
+            <MenuItem value={TaskStatus.REVIEW_REQUESTED}>Aguardando Revisão</MenuItem>
+            <MenuItem value={TaskStatus.IN_REVIEW}>Em Revisão</MenuItem>
+            <MenuItem value={TaskStatus.CHANGES_REQUESTED}>Ajustes Solicitados</MenuItem>
             <MenuItem value={TaskStatus.COMPLETED}>Concluída</MenuItem>
           </Select>
         </Box>
@@ -362,63 +372,75 @@ export const GanttTaskDetailDrawer = ({
 
       {/* AÇÕES FINAIS (ABRIR NO VS CODE / POD) */}
       <Box sx={{ mt: "auto", pt: 2 }}>
-        {!isStageNode && task && onStartWorkspace && (
+        {/* AÇÕES DE BATE E VOLTA DA REVISÃO */}
+        {!isStageNode && task && isReviewer && (task.status === TaskStatus.REVIEW_REQUESTED || task.status === TaskStatus.IN_REVIEW) && (
+          <Stack spacing={1} sx={{ mb: 1.5 }}>
+            <Button
+              variant="contained"
+              color="success"
+              fullWidth
+              startIcon={<CheckCircleIcon />}
+              onClick={() => onApproveTask?.(task.id)}
+              sx={{ fontWeight: 700 }}
+            >
+              ✓ Aprovar Tarefa
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              fullWidth
+              onClick={() => onRequestChanges?.(task.id)}
+              sx={{ fontWeight: 700 }}
+            >
+              ⚠️ Solicitar Ajustes
+            </Button>
+          </Stack>
+        )}
+
+        {!isStageNode && task && !isReviewer && isAssignedToMe && (task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.CHANGES_REQUESTED) && (
           <Button
             variant="contained"
-            color="primary"
+            color="warning"
             fullWidth
-            disabled={
-              isProvisioning ||
-              isBlockedByPrevious ||
-              !isAssignedToMe
-            }
-            startIcon={
-              isProvisioning ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : isBlockedByPrevious ||
-                !isAssignedToMe ? (
-                <LockIcon />
-              ) : (
-                <CodeIcon />
-              )
-            }
-            onClick={() => void onStartWorkspace(task)}
-            sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
+            onClick={() => onRequestReview?.(task.id)}
+            sx={{ fontWeight: 700, mb: 1.5 }}
           >
-            {isProvisioning
-              ? "⚡ Provisionando Pod..."
-              : isBlockedByPrevious
-                ? "🔒 Aguardando Sub-tarefa Anterior"
-                  : !task.assignedToId
-                    ? "✍️ Assine a Tarefa para Abrir Workspace"
-                    : !isAssignedToMe
-                      ? "🔒 Atribuída a Outro Autor"
-                      : "🚀 Abrir Workspace de Escrita"}
+            🔍 Solicitar Revisão desta Tarefa
           </Button>
         )}
 
-        {isStageNode && stage && onStartWorkspace && (
-          <Button
-            variant="contained"
-            color="secondary"
-            fullWidth
-            startIcon={<CodeIcon />}
-            onClick={() => {
-              const featureTask: TaskItem = {
-                id: `stage-${stage.id}`,
-                projectId: stage.projectId,
-                stageId: stage.id,
-                title: `Workspace da Etapa: ${stage.title}`,
-                status: TaskStatus.IN_PROGRESS,
-                dueDate: new Date().toISOString(),
-              };
-              void onStartWorkspace(featureTask);
-            }}
-            sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
-          >
-            🚀 Workspace da Feature
-          </Button>
-        )}
+
+        {isStageNode && stage && onStartWorkspace && (() => {
+          const isWritingStage =
+            stage.order === 3 || stage.title.toLowerCase().includes("escrita");
+          if (!isWritingStage) return null;
+          const stageTasksCount = stage.tasks?.length || 0;
+          return (
+            <Button
+              variant="contained"
+              color="secondary"
+              fullWidth
+              disabled={stageTasksCount === 0}
+              startIcon={stageTasksCount === 0 ? <LockIcon /> : <CodeIcon />}
+              onClick={() => {
+                const featureTask: TaskItem = {
+                  id: `stage-${stage.id}`,
+                  projectId: stage.projectId,
+                  stageId: stage.id,
+                  title: `Workspace da Etapa: ${stage.title}`,
+                  status: TaskStatus.IN_PROGRESS,
+                  dueDate: new Date().toISOString(),
+                };
+                void onStartWorkspace(featureTask);
+              }}
+              sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
+            >
+              {stageTasksCount === 0
+                ? "🔒 Crie sub-tarefas para abrir o Workspace"
+                : "🚀 Abrir Workspace de Escrita"}
+            </Button>
+          );
+        })()}
       </Box>
     </Drawer>
   );

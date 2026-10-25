@@ -1,25 +1,5 @@
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  horizontalListSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import AddIcon from "@mui/icons-material/Add";
 import ArticleIcon from "@mui/icons-material/Article";
 import CodeIcon from "@mui/icons-material/Code";
-import DeleteIcon from "@mui/icons-material/Delete";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import LockIcon from "@mui/icons-material/Lock";
@@ -85,21 +65,6 @@ function getStagePlannedDateString(stage: ProjectStage): string {
   return new Date(rawDate).toISOString().split("T")[0];
 }
 
-function getGatekeeperStatusChipProps(
-  status: StageStatus,
-  isLocked: boolean,
-): { label: string; color: "success" | "warning" | "default" } {
-  if (status === StageStatus.COMPLETED) {
-    return { label: "✓ Aprovada", color: "success" };
-  }
-  if (isLocked) {
-    return {
-      label: "🔒 Bloqueada (Aguardando etapas de escrita)",
-      color: "warning",
-    };
-  }
-  return { label: "Pendente", color: "default" };
-}
 
 function getRcStatusChipProps(status: string): {
   label: string;
@@ -134,56 +99,28 @@ const LoadingStateSpinner = () => (
   </Box>
 );
 
-interface SortableStageRowProps {
+interface StageRowProps {
   stage: ProjectStage;
   onUpdateStageStatus?: (stageId: string, status: StageStatus) => void;
-  onUpdateStageField?: (stageId: string, field: string, value: any) => void;
-  onDeleteStage?: (stageId: string) => void;
+  onUpdateStageField?: (stageId: string, field: string, value: unknown) => void;
 }
 
-const SortableStageRow: React.FC<SortableStageRowProps> = ({
+const StageRow: React.FC<StageRowProps> = ({
   stage,
   onUpdateStageStatus,
   onUpdateStageField,
-  onDeleteStage,
 }) => {
   const [expanded, setExpanded] = useState(false);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: stage.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
   const tasksCount = stage.tasks?.length || 0;
-  const hasTasks = tasksCount > 0;
-  const slug = stage.title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-
   const plannedDateValue = getStagePlannedDateString(stage);
 
   return (
     <Paper
-      ref={setNodeRef}
-      style={style}
       variant="outlined"
       sx={{
         p: 1.5,
         borderRadius: 2,
-        bgcolor: isDragging ? "action.hover" : "background.paper",
+        bgcolor: stage.isGatekeeper ? "action.hover" : "background.paper",
         borderColor:
           stage.status === StageStatus.COMPLETED ? "success.main" : "divider",
         display: "flex",
@@ -210,25 +147,14 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
             minWidth: 240,
           }}
         >
-          <Box
-            {...attributes}
-            {...listeners}
-            sx={{
-              cursor: "grab",
-              display: "flex",
-              alignItems: "center",
-              color: "text.secondary",
-              "&:hover": { color: "primary.main" },
-            }}
-            title="Arraste para reordenar"
-          >
-            <DragIndicatorIcon />
-          </Box>
+          {stage.isGatekeeper && (
+            <LockIcon color="action" fontSize="small" />
+          )}
 
           <Chip
             label={`Etapa ${stage.order}`}
             size="small"
-            color="primary"
+            color={stage.isGatekeeper ? "secondary" : "primary"}
             variant="outlined"
             sx={{ fontWeight: 800 }}
           />
@@ -243,16 +169,15 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ fontFamily: "monospace" }}
             >
-              🌿 feature/{slug} • 📋 {tasksCount} tarefa(s)
+              📋 {tasksCount} tarefa(s) vinculada(s)
             </Typography>
           </Box>
         </Box>
 
-        {/* STATUS SELECT, BOTÃO DE EXPANDIR/EDITAR & REMOÇÃO */}
+        {/* STATUS SELECT / CHIP & BOTÃO DE EXPANDIR */}
         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-          {onUpdateStageStatus && (
+          {!stage.isGatekeeper && onUpdateStageStatus ? (
             <Select
               size="small"
               value={stage.status}
@@ -265,11 +190,24 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
               <MenuItem value={StageStatus.IN_PROGRESS}>Em Andamento</MenuItem>
               <MenuItem value={StageStatus.COMPLETED}>Concluída</MenuItem>
             </Select>
+          ) : (
+            <Chip
+              label={
+                stage.status === StageStatus.COMPLETED
+                  ? "✓ Aprovada"
+                  : stage.status === StageStatus.LOCKED
+                    ? "🔒 Bloqueada"
+                    : "Pendente"
+              }
+              color={stage.status === StageStatus.COMPLETED ? "success" : "default"}
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
           )}
 
           <Tooltip
             title={
-              expanded ? "Ocultar edição" : "Editar nome e detalhes da etapa"
+              expanded ? "Ocultar edição" : "Editar prazos e detalhes da etapa"
             }
           >
             <IconButton
@@ -280,31 +218,10 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
               <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-
-          {onDeleteStage && (
-            <Tooltip
-              title={
-                hasTasks
-                  ? `Esta etapa possui ${tasksCount} tarefa(s) e não pode ser excluída.`
-                  : "Excluir etapa customizada"
-              }
-            >
-              <span>
-                <IconButton
-                  size="small"
-                  color="error"
-                  disabled={hasTasks}
-                  onClick={() => onDeleteStage(stage.id)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
         </Stack>
       </Box>
 
-      {/* ÁREA EXPANSÍVEL (ACCORDION) DE EDIÇÃO DO NOME E DESCRIÇÃO */}
+      {/* ÁREA EXPANSÍVEL DE EDIÇÃO DO NOME E PRAZO */}
       <Collapse
         in={expanded}
         timeout="auto"
@@ -327,6 +244,7 @@ const SortableStageRow: React.FC<SortableStageRowProps> = ({
               size="small"
               label="Título da Etapa"
               value={stage.title}
+              disabled={stage.isGatekeeper}
               onChange={(e) =>
                 onUpdateStageField?.(stage.id, "title", e.target.value)
               }
@@ -378,7 +296,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   projectDetails,
   stages,
   onRefetchStages,
-  onOpenCreateStage,
   onOpenAddMember,
 }) => {
   const dispatch = useDispatch();
@@ -386,12 +303,15 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
   // Estados rascunho (Draft) de etapas e metadados
   const [localStages, setLocalStages] = useState<ProjectStage[]>([]);
-  const [deletedStageIds, setDeletedStageIds] = useState<string[]>([]);
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [targetConferenceName, setTargetConferenceName] = useState("");
   const [targetConferenceDate, setTargetConferenceDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const writingStagesCompleted = localStages
+    .filter((s) => !s.isGatekeeper)
+    .every((s) => s.status === StageStatus.COMPLETED);
+
 
   // Estado e mutações de Release Candidates & Releases Oficiais
   const [rcFeedbackNotes, setRcFeedbackNotes] = useState("");
@@ -409,7 +329,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalStages(stages || []);
-      setDeletedStageIds([]);
       setProjectName(projectDetails?.name || "");
       setDescription(projectDetails?.description || "");
       setTargetConferenceName(projectDetails?.targetConferenceName || "");
@@ -422,35 +341,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       );
     }
   }, [open, stages, projectDetails]);
-
-  const customStages = localStages.filter((s) => !s.isGatekeeper);
-  const gatekeeperStages = localStages.filter((s) => s.isGatekeeper);
-  const writingStagesCompleted = customStages.every(
-    (s) => s.status === StageStatus.COMPLETED,
-  );
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  // Edição local: Reordenação por D&D
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = customStages.findIndex((s) => s.id === active.id);
-    const newIndex = customStages.findIndex((s) => s.id === over.id);
-
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const reorderedCustom = arrayMove(customStages, oldIndex, newIndex).map(
-        (s, idx) => ({ ...s, order: idx + 1 }),
-      );
-      setLocalStages([...reorderedCustom, ...gatekeeperStages]);
-    }
-  };
 
   // Edição local: Status da Etapa
   const handleLocalUpdateStageStatus = (
@@ -466,29 +356,12 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const handleLocalUpdateStageField = (
     stageId: string,
     field: string,
-    value: any,
+    value: unknown,
   ) => {
     setLocalStages((prev) =>
       prev.map((s) => (s.id === stageId ? { ...s, [field]: value } : s)),
     );
   };
-
-  // Edição local: Remoção da Etapa
-  const handleLocalDeleteStage = (stageId: string) => {
-    const targetStage = localStages.find((s) => s.id === stageId);
-    if (targetStage?.tasks && targetStage.tasks.length > 0) {
-      dispatch(
-        showNotification({
-          message: `Não é possível excluir a etapa "${targetStage.title}" porque ela possui tarefas vinculadas. Remova ou reatribua as tarefas primeiro.`,
-          severity: "warning",
-        }),
-      );
-      return;
-    }
-    setLocalStages((prev) => prev.filter((s) => s.id !== stageId));
-    setDeletedStageIds((prev) => [...prev, stageId]);
-  };
-
   // HANDLERS PARA RELEASE CANDIDATES
   const handleCreateRC = async () => {
     try {
@@ -555,25 +428,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             return;
           }
         }
-      }
-
-      // 1. Processa remoções de etapas em paralelo
-      if (deletedStageIds.length > 0) {
-        await Promise.all(
-          deletedStageIds.map((stageId) =>
-            projectsService.deleteProjectStage(projectId, stageId),
-          ),
-        );
-      }
-
-      // 2. Atualiza reordenação de etapas customizadas
-      const customLocal = localStages.filter((s) => !s.isGatekeeper);
-      if (customLocal.length > 0) {
-        const reorderList = customLocal.map((s, idx) => ({
-          id: s.id,
-          order: idx + 1,
-        }));
-        await projectsService.reorderProjectStages(projectId, reorderList);
       }
 
       // 3. Atualiza dados, status e prazos de etapas alteradas em paralelo
@@ -688,127 +542,28 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       onSubmit={handleSaveAll}
       isSubmitting={isSaving}
     >
-      {/* ABA 0: GERENCIAMENTO DE ETAPAS (CRUD & DRAG AND DROP) */}
+      {/* ABA 0: GERENCIAMENTO DE ETAPAS PADRONIZADAS (ADR-008) */}
       {activeTab === 0 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                Etapas Customizadas de Escrita ({customStages.length})
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Arraste o ícone para alterar a ordem sequencial das etapas de
-                escrita.
-              </Typography>
-            </Box>
-
-            {onOpenCreateStage && (
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  onOpenCreateStage();
-                }}
-                sx={{ fontWeight: 700 }}
-              >
-                Nova Etapa
-              </Button>
-            )}
-          </Box>
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={customStages.map((s) => s.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              <Stack spacing={1.5}>
-                {customStages.map((stage) => (
-                  <SortableStageRow
-                    key={stage.id}
-                    stage={stage}
-                    onUpdateStageStatus={handleLocalUpdateStageStatus}
-                    onUpdateStageField={handleLocalUpdateStageField}
-                    onDeleteStage={handleLocalDeleteStage}
-                  />
-                ))}
-              </Stack>
-            </SortableContext>
-          </DndContext>
-
-          {/* SEÇÃO DE GATEKEEPERS FIXOS */}
-          <Box
-            sx={{
-              mt: 2,
-              pt: 2,
-              borderTop: "1px dashed",
-              borderColor: "divider",
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              sx={{ fontWeight: 700, mb: 1, color: "warning.main" }}
-            >
-              🔒 Etapas de Trava Obrigatórias (Gatekeepers Fixos no Final)
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              6 Etapas Padronizadas do Artigo ({localStages.length})
             </Typography>
-
-            <Stack spacing={1}>
-              {gatekeeperStages.map((stage) => {
-                const isLocked =
-                  !writingStagesCompleted &&
-                  stage.status !== StageStatus.COMPLETED;
-                const chipProps = getGatekeeperStatusChipProps(
-                  stage.status,
-                  isLocked,
-                );
-                return (
-                  <Paper
-                    key={stage.id}
-                    variant="outlined"
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      bgcolor: "action.hover",
-                      borderColor: "divider",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                    >
-                      <LockIcon
-                        color={isLocked ? "warning" : "disabled"}
-                        fontSize="small"
-                      />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {stage.order}. {stage.title}
-                      </Typography>
-                    </Box>
-
-                    <Chip
-                      label={chipProps.label}
-                      color={chipProps.color}
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  </Paper>
-                );
-              })}
-            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              As 6 etapas sequenciais do fluxo acadêmico são fixas e obrigatórias (ADR-008). Ajuste prazos e metas conforme o cronograma do projeto.
+            </Typography>
           </Box>
+
+          <Stack spacing={1.5}>
+            {localStages.map((stage) => (
+              <StageRow
+                key={stage.id}
+                stage={stage}
+                onUpdateStageStatus={handleLocalUpdateStageStatus}
+                onUpdateStageField={handleLocalUpdateStageField}
+              />
+            ))}
+          </Stack>
         </Box>
       )}
 

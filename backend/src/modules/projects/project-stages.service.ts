@@ -89,7 +89,9 @@ export class ProjectStagesService {
       }
     }
 
-    return this.stagesRepository.reorderStages(projectId, stageOrders);
+    throw new Error(
+      'FIXED_STAGES: As etapas do projeto possuem ordenação fixa (1 a 6) e não podem ser reordenadas.'
+    );
   }
 
   async updateStage(
@@ -107,35 +109,35 @@ export class ProjectStagesService {
 
     const allStages = await this.stagesRepository.findByProjectId(projectId);
 
-    // Validação do Gatekeeper 1 (NIT)
+    // Validação do Gatekeeper 1 (NIT) - Etapa 5
     const isNitGatekeeper =
       stage.isGatekeeper &&
       (stage.gatekeeperType === 'NIT' ||
         stage.title.toLowerCase().includes('nit') ||
-        stage.order === 4);
+        stage.order === 5);
 
     if (
       isNitGatekeeper &&
       data.status &&
       (data.status === StageStatus.IN_PROGRESS || data.status === StageStatus.COMPLETED)
     ) {
-      const nonGatekeepers = allStages.filter((s) => !s.isGatekeeper);
-      const pendingContentStages = nonGatekeepers.filter((s) => s.status !== StageStatus.COMPLETED);
+      const priorStages = allStages.filter((s) => s.order < stage.order);
+      const pendingPriorStages = priorStages.filter((s) => s.status !== StageStatus.COMPLETED);
 
-      if (pendingContentStages.length > 0) {
+      if (pendingPriorStages.length > 0) {
         throw new Error(
-          'Não é possível liberar a etapa do NIT enquanto houver etapas de escrita pendentes.'
+          'Não é possível liberar a etapa do NIT enquanto a etapa de Revisão Técnica ou etapas anteriores estiverem pendentes.'
         );
       }
     }
 
-    // Validação do Gatekeeper 2 (Congresso Alvo / Submissão)
+    // Validação do Gatekeeper 2 (Congresso Alvo / Submissão) - Etapa 6
     const isConferenceGatekeeper =
       stage.isGatekeeper &&
       (stage.gatekeeperType === 'TARGET_CONFERENCE' ||
         stage.title.toLowerCase().includes('congresso') ||
         stage.title.toLowerCase().includes('submissão') ||
-        stage.order === 5);
+        stage.order === 6);
 
     if (
       isConferenceGatekeeper &&
@@ -145,7 +147,7 @@ export class ProjectStagesService {
       const nitStage = allStages.find(
         (s) =>
           s.isGatekeeper &&
-          (s.gatekeeperType === 'NIT' || s.title.toLowerCase().includes('nit') || s.order === 4)
+          (s.gatekeeperType === 'NIT' || s.title.toLowerCase().includes('nit') || s.order === 5)
       );
 
       if (nitStage && nitStage.status !== StageStatus.COMPLETED) {
@@ -164,18 +166,8 @@ export class ProjectStagesService {
       throw new Error('Etapa de projeto não encontrada.');
     }
 
-    if (stage.isGatekeeper) {
-      throw new Error(
-        'Não é possível excluir etapas de Gatekeeper obrigatórias (NIT e Congresso Alvo).'
-      );
-    }
-
-    if (stage.tasks && stage.tasks.length > 0) {
-      throw new Error(
-        'STAGE_HAS_TASKS: Não é possível excluir uma etapa que possui tarefas associadas. Remova ou reatribua as tarefas antes de excluir.'
-      );
-    }
-
-    await this.stagesRepository.delete(stageId);
+    throw new Error(
+      'FIXED_STAGES: As etapas do projeto são padronizadas e fixas (1 a 6) e não podem ser excluídas.'
+    );
   }
 }

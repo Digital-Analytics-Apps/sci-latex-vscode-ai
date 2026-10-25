@@ -28,6 +28,9 @@ import { useFlushDocumentMutation } from '../hooks/useFlushDocumentMutation';
 import { EditorService } from '../services/editor.service';
 import { editorStateCache } from '../services/editorStateCache';
 import { HistoryStatus } from '../extensions/history/historyExtension';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store';
+import { useProjectDetails } from '../../../hooks/useProjectQueries';
 
 export interface CollabEditorContextValue {
   documentId: string;
@@ -62,6 +65,7 @@ export interface CollabEditorContextValue {
   comments: ReviewComment[];
   activeCommentId: string | null;
   setActiveCommentId: (id: string | null) => void;
+  isReviewer: boolean;
   historyStatus: HistoryStatus;
   setHistoryStatus: (status: HistoryStatus) => void;
   handleUndo: () => void;
@@ -171,6 +175,22 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     },
     []
   );
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const { data: projectDetails } = useProjectDetails(documentId);
+
+  const isReviewer = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'REVIEWER') return true;
+    if (projectDetails?.members) {
+      return projectDetails.members.some(
+        (m) =>
+          m.role === 'REVIEWER' &&
+          (m.userId === currentUser.id || m.user?.id === currentUser.id)
+      );
+    }
+    return false;
+  }, [currentUser, projectDetails]);
+
   // Queries e Mutations do TanStack Query
   const { data: historyData } = useDocumentHistoryQuery(documentId);
   const flushMutation = useFlushDocumentMutation(documentId);
@@ -638,6 +658,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     comments,
     activeCommentId,
     setActiveCommentId,
+    isReviewer,
     pdfBlobUrl,
     isCompiling,
     compileError,

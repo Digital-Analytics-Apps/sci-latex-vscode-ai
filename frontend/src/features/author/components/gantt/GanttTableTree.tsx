@@ -1,4 +1,5 @@
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
@@ -34,6 +35,7 @@ interface GanttTableTreeProps {
   provisioningTaskId?: string | null;
   onStartWorkspace?: (task: TaskItem) => void | Promise<void>;
   onClaimTask?: (taskId: string) => void;
+  onOpenCreateTask?: (stageId: string) => void;
 }
 
 export const GanttTableTree = ({
@@ -45,6 +47,7 @@ export const GanttTableTree = ({
   provisioningTaskId,
   onStartWorkspace,
   onClaimTask,
+  onOpenCreateTask,
 }: GanttTableTreeProps) => {
   const [expandedStageIds, setExpandedStageIds] = useState<
     Record<string, boolean>
@@ -123,9 +126,6 @@ export const GanttTableTree = ({
           const stageTasks = tasks.filter((t) => t.stageId === stage.id);
           const stageProgress = calculateStageProgress(stageTasks);
           const isSelected = selectedEntityId === stage.id;
-          const hasUncompletedSubtasks = stageTasks.some(
-            (t) => t.status !== TaskStatus.COMPLETED,
-          );
 
           return (
             <React.Fragment key={stage.id}>
@@ -196,20 +196,55 @@ export const GanttTableTree = ({
                     sx={{ height: 20, fontSize: "0.68rem", fontWeight: 800 }}
                   />
 
-                  {/* AÇÃO RÁPIDA DE WORKSPACE NA ETAPA */}
-                  {!stage.isGatekeeper &&
-                    (hasUncompletedSubtasks ? (
-                      <Tooltip title="🔒 Conclua todas as sub-tarefas desta etapa antes de abrir o workspace da etapa.">
-                        <span>
-                          <IconButton size="small" disabled sx={{ p: 0.3 }}>
-                            <LockIcon
-                              sx={{ fontSize: 16, color: "action.disabled" }}
-                            />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip title="🚀 Iniciar Workspace da Etapa">
+                  {/* ÍCONE PARA CRIAR SUB-TASK DENTRO DA ETAPA */}
+                  {onOpenCreateTask && !stage.isGatekeeper && (
+                    <Tooltip title={`Adicionar sub-tarefa à ${stage.title}`}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenCreateTask(stage.id);
+                        }}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 1,
+                          p: 0.3,
+                          "&:hover": {
+                            borderColor: "primary.main",
+                            bgcolor: "action.hover",
+                          },
+                        }}
+                      >
+                        <AddIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {/* AÇÃO RÁPIDA DE WORKSPACE: EXCLUSIVA DA ETAPA DE ESCRITA E SE HOUVER TASKS */}
+                  {(() => {
+                    const isWritingStage =
+                      stage.order === 3 ||
+                      stage.title.toLowerCase().includes("escrita");
+                    if (!isWritingStage) return null;
+
+                    if (stageTasks.length === 0) {
+                      return (
+                        <Tooltip title="🔒 Crie ao menos uma sub-tarefa nesta etapa para abrir o workspace de escrita.">
+                          <span>
+                            <IconButton size="small" disabled sx={{ p: 0.3 }}>
+                              <LockIcon
+                                sx={{ fontSize: 16, color: "action.disabled" }}
+                              />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      );
+                    }
+
+                    return (
+                      <Tooltip title="🚀 Iniciar Workspace de Escrita">
                         <IconButton
                           size="small"
                           color="secondary"
@@ -232,10 +267,10 @@ export const GanttTableTree = ({
                           <LaunchIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
-                    ))}
+                    );
+                  })()}
                 </Box>
               </Box>
-
               {/* LINHAS DE SUB-TASKS */}
               {isExpanded &&
                 stageTasks.map((task) => {
@@ -395,20 +430,6 @@ export const GanttTableTree = ({
                                 />
                               </IconButton>
                             </span>
-                          </Tooltip>
-                        ) : onStartWorkspace ? (
-                          <Tooltip title="🚀 Iniciar Workspace no VS Code">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void onStartWorkspace(task);
-                              }}
-                              sx={{ p: 0.2 }}
-                            >
-                              <LaunchIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
                           </Tooltip>
                         ) : null}
                       </Box>

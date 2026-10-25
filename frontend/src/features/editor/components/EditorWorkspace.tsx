@@ -52,6 +52,7 @@ export function EditorWorkspace() {
     comments,
     activeCommentId,
     setActiveCommentId,
+    isReviewer,
     pdfBlobUrl,
     isCompiling,
     compileError,
@@ -266,6 +267,7 @@ export function EditorWorkspace() {
                     }}
                     onHistoryChange={setHistoryStatus}
                     onRegisterActions={registerEditorActions}
+                    readOnly={isReviewer}
                   />
                 </Box>
               </Box>
