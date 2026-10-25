@@ -23,7 +23,7 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
   const authorsPerProject = config.authorsPerProject ?? 5;
   const opsPerAuthor = config.opsPerAuthor ?? 5;
   const delayMs = config.delayMs ?? 30;
-  const targetPort = config.targetPort ?? 30080;
+  const targetPort = config.targetPort ?? (process.env.TARGET_PORT ? parseInt(process.env.TARGET_PORT, 10) : 3333);
 
   const totalUsers = numProjects * authorsPerProject;
   const totalOps = totalUsers * opsPerAuthor;

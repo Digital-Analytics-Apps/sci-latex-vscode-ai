@@ -68,6 +68,7 @@ export class RedisService {
       const result = await this.client.set(ownerKey, podId, 'EX', ttlSeconds, 'NX');
       if (result === 'OK') {
         const gen = await this.client.incr(genKey);
+        await this.client.expire(genKey, ttlSeconds * 4);
         return { acquired: true, ownerId: podId, generation: gen };
       }
 
@@ -95,6 +96,7 @@ export class RedisService {
       const currentOwner = await this.client.get(key);
       if (currentOwner === podId) {
         await this.client.expire(key, ttlSeconds);
+        await this.client.expire(`editor:document:${documentId}:generation`, ttlSeconds * 4);
         return true;
       }
       return false;
@@ -114,7 +116,7 @@ export class RedisService {
       const key = `editor:document:${documentId}:owner`;
       const currentOwner = await this.client.get(key);
       if (currentOwner === podId) {
-        await this.client.del(key);
+        await this.client.del(key, `editor:document:${documentId}:generation`);
         return true;
       }
       return false;
