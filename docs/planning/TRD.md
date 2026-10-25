@@ -1,6 +1,6 @@
 # ⚙️ Documento de Requisitos Técnicos (TRD - Technical Requirements Document)
 
-**Produto:** SCIA — Scientific Collaboration + AI (Plataforma Web Self-Hosted)  
+**Produto:** SCIA — Scientific Collaboration and Intelligent Assistance (Plataforma Web Self-Hosted)  
 **Versão:** 2.0 (Consolidada com ADRs 001 a 006 e specs v2.0)  
 **Status:** Aprovado / Em Desenvolvimento Ativo  
 **Documento de Origem (Produto):** [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md)  

@@ -1,6 +1,6 @@
 # 📚 Central de Planejamento & Documentação (`docs/planning`)
 
-Bem-vindo à Central de Documentação e Planejamento do **SCIA — Scientific Collaboration + AI**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
+Bem-vindo à Central de Documentação e Planejamento do **SCIA — Scientific Collaboration and Intelligent Assistance**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
 
 ---
 
@@ -52,6 +52,8 @@ docs/planning/
 │   ├── adr-004-redis-pod-lifecycle-heartbeat.md
 │   ├── adr-005-production-storage-strategy.md
 │   ├── adr-006-sciai-integration-architecture.md (Integração da IA SciAI e Governança)
+│   ├── adr-007-collaborative-editor-architecture-scaling.md (Arquitetura, Persistência e Escalabilidade do Editor)
+│   ├── adr-007.1-document-ownership-fencing-and-routing.md (Roteamento de Posse e Fencing Tokens contra Split-Brain)
 │   └── parecer-tecnico-code-server-coder.md
 │
 ├── reports/                    <-- 📈 Relatórios de Execução (Fases & Sprints)
@@ -60,6 +62,7 @@ docs/planning/
 │   ├── relatorio-fase-3.md     (Work Item Branches & Fluxo NIT)
 │   ├── relatorio-fase-4.md     (Integração Tasks + Projeções & SSE em Tempo Real)
 │   ├── analise-comparativa-sci-project.md (Análise Comparativa de Arquitetura com sci-project)
+│   ├── relatorio-benchmark-kind-500-users-scaling.md (Benchmark KinD 500 Autores & Auto-Scaling HPA)
 │   └── backend-sprint-*.md     (Histórico de Sprints 1 a 4 do Backend)
 │
 └── backlog/                    <-- 💡 Análises Pendentes e Ideias Futuras

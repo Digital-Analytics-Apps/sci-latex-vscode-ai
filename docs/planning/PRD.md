@@ -1,6 +1,6 @@
 # 📄 Documento de Requisitos do Produto (PRD)
 
-**Produto:** SCIA — Scientific Collaboration + AI (Plataforma Web Self-Hosted)  
+**Produto:** SCIA — Scientific Collaboration and Intelligent Assistance (Plataforma Web Self-Hosted)  
 **Versão:** 2.0 (Consolidada)  
 **Status:** Em Desenvolvimento Ativo  
 

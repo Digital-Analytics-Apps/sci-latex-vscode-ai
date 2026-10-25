@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
-**Projeto:** SCIA — Scientific Collaboration + AI (`sci-latex-vscode`)  
-**Última Atualização:** 12 de Outubro de 2026  
-**Status Geral do Projeto:** 🟢 **Criação da Camada de IA Científica (`ai-service`) & Triagem Arquitetural.** Criação da branch `feature/sciai-integration-layer` e estruturação da nova camada independente `ai-service/` (Python 3.12, FastAPI, LangGraph, OpenAlex e Semantic Scholar), filtrando e eliminando todo o código legado e complexidade desnecessária do `sci-project`.
+**Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
+**Última Atualização:** 24 de Outubro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura do Editor Colaborativo Consolidada (ADR-007) & Camada de IA Científica (`ai-service`).** Finalizada a implementação completa da ADR-007 para escalabilidade horizontal do editor colaborativo CodeMirror 6, eliminando I/O desnecessário no Redis, blindando a persistência com debounce híbrido e transações atômicas no PostgreSQL, e estabilizando a sincronização multi-arquivo.
 
 ---
 
@@ -13,6 +13,14 @@
 
 ### 🔍 Estado Atual da Aplicação
   * **Branch Ativa:** `feature/sciai-integration-layer`
+  * **Refatoração e Blindagem do Editor Colaborativo (ADR-007 Implementada e Aprovada):**
+    * **Limpeza do Hot Path no Redis:** Removido o `rpush` de deltas de texto no Redis em `documents.service.ts`. A digitação opera em memória RAM do Pod dono com latência < 2ms.
+    * **Debounce Híbrido Multi-Critério:** Implementado timer de inatividade (3s), teto máximo contínuo (15s) e corte por volume (50 ops) para garantir checkpoints regulares no PostgreSQL sem risco de perda sob digitação ininterrupta.
+    * **Graceful Shutdown (`server.ts`):** Tratamento de `SIGTERM`/`SIGINT` para persistir todos os documentos ativos de `activeDocs` no PostgreSQL antes de encerrar o processo.
+    * **Concorrência Otimista & Transação Atômica (`documents.repository.ts`):** `saveCheckpoint` unifica a atualização da versão do projeto, `ProjectFile.content` (`main.tex`), arquivos secundários (`filesCollab`) e `DocumentSnapshot` em uma única chamada `prisma.$transaction`, com validação de `expectedOldVersion`.
+    * **Coordenação de Posse (Document Ownership Lease):** Primitivas `acquireDocumentLease` e `renewDocumentLease` no Redis (`editor:document:<docId>:owner`, TTL 10s renovado a cada 3s) garantindo autoridade Single-Writer por documento para orquestração multi-pod em Kubernetes.
+    * **Estabilização do WebSocket no Frontend (`useCollabWebSocket.ts`):** Removido `activeFile` das dependências do socket para eliminar reconexões indesejadas ao alternar abas, e adicionada fila de retry offline (`messageQueueRef`).
+    * **Sincronização Multi-Arquivo em Tempo Real:** O backend expõe `getAllCollabVersions` no `SYNC_INIT` e une o estado em memória quente em `listProjectFiles`. O frontend rastreia `fileCollabVersions` de forma isolada, corrigindo a propagação de alterações entre arquivos secundários.
   * **Estruturação da Nova Camada de IA (`ai-service/`):**
     * **Triagem Limpa do `sci-project`**: Descartados códigos legados e complexidade acidental (compilador Docker síncrono bloqueante, WebSockets colaborativos YRoom com vazamento de memória, autenticação duplicada e CRUDs SQLModel locais).
     * **Extração do Núcleo de Agentes LangGraph**:

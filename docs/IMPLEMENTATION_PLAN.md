@@ -1,6 +1,6 @@
 # 📋 Plano Mestre de Implementação Técnica (Master Implementation Plan)
 
-> **Plataforma:** SCIA — Scientific Collaboration + AI (`sci-latex-vscode`)  
+> **Plataforma:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
 > **Versão do Documento:** 2.0.0  
 > **Status:** Ativo / Em Execução  
 > **Última Atualização:** Outubro de 2026  

@@ -1,6 +1,6 @@
 # 🗄️ Documentação Técnica do Banco de Dados (Database Specification)
 
-> **Plataforma:** SCIA — Scientific Collaboration + AI (`sci-latex-vscode`)  
+> **Plataforma:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
 > **SGBD Principal:** PostgreSQL 16 (Relacional ACID)  
 > **Camada de Acesso a Dados:** Prisma ORM v7.10 com Adapter Nativo `@prisma/adapter-pg`  
 > **Camada Auxiliar In-Memory:** Redis 7 (Controle de Presença & Cache Atômico)  
@@ -579,7 +579,7 @@ User (Preservação de Histórico)
 
 O banco de dados PostgreSQL é blindado contra requisições contínuas de alta frequência (polling de digitação e batimento cardíaco da IDE). Essa responsabilidade é delegada ao **Redis 7** (`sci_latex_redis`):
 
-### Estrutura de Chave de Presença Atômica
+### 6.1. Estrutura de Chave de Presença do Workspace
 
 ```
 workspace:active:<projectId>:<userId>:<taskId>
@@ -592,6 +592,20 @@ workspace:active:<projectId>:<userId>:<taskId>
   - Se o usuário fecha a aba ou o navegador, o TTL expira.
   - O daemon do backend Fastify (`k8s-pod-manager.service.ts` / `reconcileOrphanPods`) roda a cada 60s, detecta a ausência da chave no Redis e solicita à API do Kubernetes a destruição física do Pod correspondente, economizando memória RAM e CPU do nó.
 
+### 6.2. Coordenação de Posse do Editor Colaborativo (Document Ownership Lease)
+
+```
+editor:document:<documentId>:owner
+```
+
+* **Tipo:** String atômica (`SET key podId EX 10 NX`).
+* **Valor:** Identificador do Pod Fastify responsável pela sessão (`POD_ID`).
+* **TTL (Time to Live):** `10 segundos` (Renovado a cada 3 segundos via heartbeat enquanto houver autores conectados na sala WebSocket).
+* **Propósito Técnico:**
+  - Garante a autoridade única (*Single-Writer*) do motor `@codemirror/collab` para cada documento ativo.
+  - Impede *split-brain* e corrupção concorrente quando o backend é orquestrado em múltiplos Pods no Kubernetes.
+  - Se o Pod morrer subitamente, o TTL de 10s expira automaticamente e outro Pod pode assumir a autoridade do documento a partir do checkpoint persistido no PostgreSQL.
+  - **Regra de ouro:** O Redis **não** armazena deltas de digitação; os deltas são operados na RAM do Pod dono e gravados diretamente no PostgreSQL via debounce híbrido.
 ---
 
 ## 7. Rotinas Operacionais (Migrações, Seeds & Consultas)

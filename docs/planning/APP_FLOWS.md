@@ -1,6 +1,6 @@
 # 🔄 Documento de Fluxos da Aplicação e Jornadas de Usuário (`APP_FLOWS.md`)
 
-**Produto:** SCIA — Scientific Collaboration + AI (Plataforma Web Self-Hosted)  
+**Produto:** SCIA — Scientific Collaboration and Intelligent Assistance (Plataforma Web Self-Hosted)  
 **Versão:** 2.0 (Consolidada com ADRs 001 a 006, specs v2.0 e TRD v2.0)  
 **Status:** Aprovado / Em Desenvolvimento Ativo  
 **Documentos Relacionados:**  
