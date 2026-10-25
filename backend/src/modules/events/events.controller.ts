@@ -32,13 +32,12 @@ export class EventsController {
     // Envia mensagem inicial de confirmação de conexão
     reply.raw.write(`: connected\n\n`);
 
-    this.manager.addClient(userId, reply, projectId, taskId, effectiveMode);
+    this.manager.addClient(userId, reply, projectId, taskId);
 
     // Heartbeat a cada 30 segundos para manter a conexão viva e renovar presença no Redis
     const keepAliveInterval = setInterval(() => {
       try {
         reply.raw.write(`: ping\n\n`);
-        this.manager.refreshHeartbeat(userId, projectId, taskId, effectiveMode);
       } catch {
         clearInterval(keepAliveInterval);
         this.manager.removeClient(userId, reply, projectId, taskId);
@@ -50,26 +49,5 @@ export class EventsController {
       clearInterval(keepAliveInterval);
       this.manager.removeClient(userId, reply, projectId, taskId);
     });
-  }
-
-  async sendHeartbeat(request: FastifyRequest, reply: FastifyReply) {
-    const userId = request.user.sub;
-    const {
-      projectId,
-      taskId,
-      mode: queryMode,
-    } = (request.query || {}) as {
-      projectId?: string;
-      taskId?: string;
-      mode?: string;
-    };
-    const userRole = (request.user as any)?.role;
-    const effectiveMode = queryMode || (userRole === 'REVIEWER' ? 'review' : 'editor');
-
-    if (projectId) {
-      this.manager.refreshHeartbeat(userId, projectId, taskId, effectiveMode);
-    }
-
-    return reply.send({ status: 'ok', timestamp: new Date().toISOString() });
   }
 }

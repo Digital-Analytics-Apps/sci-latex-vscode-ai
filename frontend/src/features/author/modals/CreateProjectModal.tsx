@@ -90,16 +90,23 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   // Etapas de Escrita Customizadas
   const [stages, setStages] = useState<StageFormItem[]>(DEFAULT_INITIAL_STAGES);
 
-  // Co-Autores
-  const [selectedCoAuthors, setSelectedCoAuthors] = useState<UserMemberItem[]>(
-    [],
-  );
+  // Gerente Institucional
+  const [managerSearchText, setManagerSearchText] = useState("");
+  const [selectedManager, setSelectedManager] =
+    useState<UserMemberItem | null>(null);
 
-  // Revisor Técnico
+  // Coordenador Técnico
+  const [coordinatorSearchText, setCoordinatorSearchText] = useState("");
+  const [selectedCoordinator, setSelectedCoordinator] =
+    useState<UserMemberItem | null>(null);
+
+  // Autores Adicionais (Criador já é autor automático)
+  const [selectedAuthors, setSelectedAuthors] = useState<UserMemberItem[]>([]);
+
+  // Revisor do Artigo (Opcional - qualquer membro)
   const [reviewerSearchText, setReviewerSearchText] = useState("");
   const [selectedReviewer, setSelectedReviewer] =
     useState<UserMemberItem | null>(null);
-
   const {
     register,
     handleSubmit,
@@ -205,13 +212,35 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       return;
     }
 
+    if (!selectedManager) {
+      dispatch(
+        showNotification({
+          message: "Por favor, selecione o Gerente Institucional responsável.",
+          severity: "warning",
+        }),
+      );
+      return;
+    }
+
+    if (!selectedCoordinator) {
+      dispatch(
+        showNotification({
+          message: "Por favor, selecione o Coordenador responsável.",
+          severity: "warning",
+        }),
+      );
+      return;
+    }
+
     try {
       const res = await createProjectMutation.mutateAsync({
         name: data.name,
         targetConference: data.targetConference,
         submissionDeadline: data.submissionDeadline,
         template: data.template,
-        coAuthorIds: selectedCoAuthors.map((auth) => auth.id),
+        coordinatorId: selectedCoordinator.id,
+        managerId: selectedManager.id,
+        additionalAuthorIds: selectedAuthors.map((auth) => auth.id),
         reviewerId: selectedReviewer ? selectedReviewer.id : undefined,
         stages: stages.map((s) => ({
           title: s.title,
@@ -231,7 +260,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       reset();
       setActiveStep(0);
       setStages(DEFAULT_INITIAL_STAGES);
-      setSelectedCoAuthors([]);
+      setSelectedManager(null);
+      setSelectedCoordinator(null);
+      setSelectedAuthors([]);
       setSelectedReviewer(null);
       onClose();
 
@@ -268,7 +299,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               <StepLabel>Etapas & Cronograma</StepLabel>
             </Step>
             <Step>
-              <StepLabel>Pares & Revisores</StepLabel>
+              <StepLabel>Governança & Autores</StepLabel>
             </Step>
           </Stepper>
         </Box>
@@ -298,7 +329,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         activeStep === 0
           ? "Próximo: Etapas & Prazos"
           : activeStep === 1
-            ? "Próximo: Adicionar Pares"
+            ? "Próximo: Participantes"
             : "Criar Artigo e Ir para Tarefas"
       }
       confirmColor={activeStep === 2 ? "success" : "primary"}
@@ -570,42 +601,94 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         </Box>
       )}
 
-      {/* PASSO 2: CO-AUTORES E REVISORES */}
+      {/* PASSO 2: GOVERNANÇA E AUTORES */}
       {activeStep === 2 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
           <Typography variant="body2" color="text.secondary">
-            Associe os co-autores e o revisor técnico digitando na pesquisa
-            (mínimo de 3 caracteres para buscar na API).
+            Defina a governança institucional e a composição de autores deste
+            artigo científico.
           </Typography>
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+              Gerente Institucional (Obrigatório):
+            </Typography>
+            <UserSearchAutocomplete
+              value={managerSearchText}
+              onChange={(email, user) => {
+                setManagerSearchText(email);
+                setSelectedManager(user || null);
+              }}
+              allowedRoles={["MANAGER", "ADMIN"]}
+              size="small"
+              label="Pesquisar Gerente Institucional"
+              placeholder="Digite nome ou e-mail do gerente..."
+              required
+            />
+          </Box>
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+              Coordenador do Artigo (Obrigatório):
+            </Typography>
+            <UserSearchAutocomplete
+              value={coordinatorSearchText}
+              onChange={(email, user) => {
+                setCoordinatorSearchText(email);
+                setSelectedCoordinator(user || null);
+              }}
+              allowedRoles={["COORDINATOR"]}
+              size="small"
+              label="Pesquisar Coordenador"
+              placeholder="Digite nome ou e-mail do coordenador..."
+              required
+            />
+          </Box>
 
           <Box>
             <Typography
               variant="subtitle2"
               sx={{
                 fontWeight: 700,
-                mb: 1,
+                mb: 0.5,
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
               }}
             >
               <GroupAddIcon color="primary" fontSize="small" />
-              Co-Autores Integrantes do Artigo:
+              Demais Autores do Artigo (Opcional):
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 1 }}
+            >
+              Você já está incluído automaticamente como autor. Adicione outros
+              autores agora ou posteriormente.
             </Typography>
             <UserSearchAutocomplete
               multiple
-              value={selectedCoAuthors}
-              onChange={(_emails, users) => setSelectedCoAuthors(users)}
+              value={selectedAuthors}
+              onChange={(_emails, users) => setSelectedAuthors(users)}
               allowedRoles={["AUTHOR"]}
               size="small"
-              label="Pesquisar Co-Autores (mín. 3 letras)"
+              label="Pesquisar Autores (mín. 3 letras)"
               placeholder="Digite nome ou e-mail..."
             />
           </Box>
 
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-              Revisor Técnico / Revisor de Par:
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Revisor do Artigo (Opcional):
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 1 }}
+            >
+              Qualquer membro cadastrado pode ser convidado para revisar este
+              artigo.
             </Typography>
             <UserSearchAutocomplete
               value={reviewerSearchText}
@@ -614,7 +697,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                 setSelectedReviewer(user || null);
               }}
               size="small"
-              label="Pesquisar Revisor Técnico"
+              label="Pesquisar Revisor (qualquer membro)"
               placeholder="Digite nome ou e-mail..."
             />
           </Box>

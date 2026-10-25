@@ -171,7 +171,7 @@ export const AuthorArticlesPage = () => {
 
   return (
     <PageContainer>
-      <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration + AI. Selecione um artigo para gerenciar suas tarefas e acessar o workspace." />
+      <WelcomeHeader subtitle="Seja bem-vindo ao SCIA — Scientific Collaboration and Intelligent Assistance. Selecione um artigo para gerenciar suas tarefas e acessar o workspace." />
 
       {/* Container flexível para o AutoSizer medir a altura exata disponível */}
       <TableContainer sx={{ mt: 2 }}>

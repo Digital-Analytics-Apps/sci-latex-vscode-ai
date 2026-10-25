@@ -144,9 +144,9 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
       size="md"
       icon={<LocalOfferIcon color="primary" />}
       title="Release Candidates (RCs) & Publicações do Artigo"
-      subtitle="Gerencie os snapshots consolidados enviados ao Revisor Técnico e as versões de submissão oficial na branch main."
+      subtitle="Gerencie os snapshots consolidados enviados ao Revisor Técnico e as versões de submissão oficial do artigo."
       cancelText="Fechar"
-      confirmText="Publicar Release Oficial (v1.0 na Main)"
+      confirmText="Publicar Release Oficial (v1.0)"
       confirmColor="success"
       onConfirm={handlePublishRelease}
       isSubmitting={publishReleaseMutation.isPending}

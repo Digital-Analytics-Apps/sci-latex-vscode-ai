@@ -9,7 +9,7 @@ import {
 import { useMemo, useState } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useUserSearchQuery } from "../../hooks/useUserQueries";
-import { MEMBER_ROLE_LABELS } from "../../constants/teams";
+import { MEMBER_ROLE_LABELS } from "../../constants/roles";
 import type { UserMemberItem } from "../../types/user.types";
 
 function normalizeRoles(roles?: string[] | string): string[] {

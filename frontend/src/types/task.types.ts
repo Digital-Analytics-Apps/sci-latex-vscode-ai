@@ -7,7 +7,6 @@ export interface TaskSummary {
   status: TaskStatus;
   assignedToId?: string;
   assignee?: UserSimple | string;
-  branchName?: string;
   stageId?: string;
   startDate?: string;
   startedAt?: string;
@@ -15,7 +14,6 @@ export interface TaskSummary {
   createdAt?: string;
   updatedAt?: string;
   progress?: number;
-  isMerged?: boolean;
 }
 
 export interface TaskItem {
@@ -23,7 +21,6 @@ export interface TaskItem {
   projectId: string;
   projectName?: string;
   title: string;
-  branchName: string;
   status: TaskStatus;
   startDate?: string;
   startedAt?: string;
@@ -34,17 +31,6 @@ export interface TaskItem {
   assignedToId?: string;
   stageId?: string;
   progress?: number;
-  isMerged?: boolean;
-  prUrl?: string;
-  pullRequests?: Array<{
-    id: string;
-    title: string;
-    description?: string | null;
-    status: string;
-    nitStatus?: string;
-    createdAt?: string;
-    updatedAt?: string;
-  }>;
   stage?: {
     id: string;
     title: string;
@@ -52,8 +38,6 @@ export interface TaskItem {
     isGatekeeper?: boolean;
     gatekeeperType?: string | null;
   };
-  isOccupied?: boolean;
-  occupiedBy?: { id: string; name: string } | null;
   isBlockedByPrevious?: boolean;
 }
 

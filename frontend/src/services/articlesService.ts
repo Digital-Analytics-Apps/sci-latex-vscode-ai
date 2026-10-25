@@ -18,7 +18,7 @@ export const articlesService = {
       projectId: proj.id,
       title: proj.name,
       conference: proj.targetConferenceName || "Sem conferência",
-      repo: proj.gitRepoPath,
+      repo: proj.gitRepoPath || "",
       role:
         proj.members?.[0]?.role === Role.REVIEWER ? "Revisor de Par" : "Autor",
       status: proj.submissionStatus,

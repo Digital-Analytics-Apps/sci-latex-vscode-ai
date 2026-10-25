@@ -169,7 +169,7 @@ export const GanttHeaderStats = ({
               color="text.secondary"
               sx={{ fontWeight: 600 }}
             >
-              ETAPAS / FEATURE BRANCHES
+              ETAPAS DE ESCRITA
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 800 }}>
               {completedStages} / {totalStages}

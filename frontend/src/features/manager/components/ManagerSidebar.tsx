@@ -1,6 +1,5 @@
 import ArticleIcon from "@mui/icons-material/Article";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import GroupsIcon from "@mui/icons-material/Groups";
 import HomeIcon from "@mui/icons-material/Home";
 import {
   List,
@@ -31,8 +30,6 @@ export const ManagerSidebar = ({
     pathname.startsWith("/manager/academic-periods");
   const isArticles =
     pathname === "/articles" || pathname.startsWith("/manager/articles");
-  const isTeams =
-    pathname === "/teams" || pathname.startsWith("/manager/teams");
 
   return (
     <Paper
@@ -147,40 +144,6 @@ export const ManagerSidebar = ({
               primary: {
                 variant: "body2",
                 sx: { fontWeight: isArticles ? 700 : 500 },
-              },
-            }}
-          />
-        </ListItemButton>
-
-        <ListItemButton
-          selected={isTeams}
-          onClick={() => navigate("/teams")}
-          sx={{
-            borderRadius: 1.5,
-            mb: 1,
-            "&.Mui-selected": {
-              bgcolor: "info.soft",
-              color: "info.main",
-              fontWeight: 700,
-              borderLeft: "4px solid",
-              borderColor: "info.main",
-            },
-          }}
-        >
-          <ListItemIcon
-            sx={{
-              minWidth: 36,
-              color: isTeams ? "info.main" : "text.secondary",
-            }}
-          >
-            <GroupsIcon />
-          </ListItemIcon>
-          <ListItemText
-            primary="Gestão de Equipes"
-            slotProps={{
-              primary: {
-                variant: "body2",
-                sx: { fontWeight: isTeams ? 700 : 500 },
               },
             }}
           />

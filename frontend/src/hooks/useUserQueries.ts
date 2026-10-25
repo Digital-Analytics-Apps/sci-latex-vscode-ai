@@ -16,15 +16,13 @@ export function useUserSearchQuery(search: string = "", role?: string) {
 export function useUsersListQuery(filters?: {
   search?: string;
   role?: string;
-  teamId?: string;
 }) {
   const search = filters?.search || "";
   const role = filters?.role || "";
-  const teamId = filters?.teamId || "";
 
   return useQuery({
-    queryKey: ["users", "list", search, role, teamId],
-    queryFn: () => usersService.searchUsers(search, role, teamId),
+    queryKey: ["users", "list", search, role],
+    queryFn: () => usersService.searchUsers(search, role),
   });
 }
 

@@ -1,6 +1,6 @@
 # 📚 Central de Planejamento & Documentação (`docs/planning`)
 
-Bem-vindo à Central de Documentação e Planejamento do **SCIA — Scientific Collaboration + AI**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
+Bem-vindo à Central de Documentação e Planejamento do **SCIA — Scientific Collaboration and Intelligent Assistance**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
 
 ---
 
@@ -12,8 +12,13 @@ Se você está procurando entender o projeto ou retomar uma tarefa, utilize os a
 | :--- | :--- | :--- |
 | **"Onde parei e como retomar o trabalho?"** | 📌 [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md) | **Ponto de Retomada.** Exibe o estado atual da aplicação, última task feita e próximos passos imediatos. |
 | **"Qual é o nosso PRD e visão de produto?"** | 📄 [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) | Visão geral do produto, personas, as 7 fases do ciclo de vida do artigo e decisões de alto nível. |
+| **"Quais os requisitos técnicos e de engenharia?"** | ⚙️ [`TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md) | **Documento de Requisitos Técnicos.** Arquitetura K8s, Git, SciAI, APIs, modelos e SLOs. |
+| **"Quais são todos os fluxos e jornadas do app?"** | 🔄 [`APP_FLOWS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/APP_FLOWS.md) | **Documento de Fluxos da Aplicação.** Jornadas, telas, estados, modais e gatekeepers. |
 | **"O que já foi feito e quais as próximas tarefas?"** | 🗺️ [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) | Checklist mestre de pendências e funcionalidades concluídas (Blocos 1 ao 5). |
 | **"Quais as regras de Git, Jira e Código?"** | 🛠️ [`WORKFLOW.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/WORKFLOW.md) | Regras de nomeação de branches, padrões de commit, ciclo no Jira (Fazendo -> Feito) e suíte de testes. |
+| **"Qual é a especificação do nosso Banco de Dados?"** | 🗄️ [`DATABASE.md`](../DATABASE.md) | **Especificação Técnica do Banco de Dados.** ERD, Dicionário de Dados, enums, cascading, Prisma e Redis. |
+| **"Quais são os padrões do nosso Design System?"** | 🎨 [`DESIGN_SYSTEM.md`](../DESIGN_SYSTEM.md) | **SCIA Design System.** Tokens, cores (Light/Dark), tipografia, componentes e regras de UX. |
+| **"Qual é o nosso Plano de Implementação Técnico?"** | 📋 [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) | **Plano Mestre de Implementação.** Frentes de trabalho, marcos (M1 a M6), riscos, dependências e DoD. |
 
 ---
 
@@ -24,6 +29,8 @@ docs/planning/
 ├── README.md                   <-- Hub Central de Navegação (Este Arquivo)
 ├── STATUS.md                   <-- Estado Atual & Checkpoint de Retomada
 ├── PRD.md                      <-- Documento de Requisitos de Produto
+├── TRD.md                      <-- Documento de Requisitos Técnicos
+├── APP_FLOWS.md                <-- Documento de Fluxos da Aplicação & Jornadas
 ├── ROADMAP.md                  <-- Roadmap Mestre & Checklist Concluído vs Pendente
 ├── WORKFLOW.md                 <-- Guia de Contribuição, Git, Jira & Testes
 │
@@ -45,6 +52,8 @@ docs/planning/
 │   ├── adr-004-redis-pod-lifecycle-heartbeat.md
 │   ├── adr-005-production-storage-strategy.md
 │   ├── adr-006-sciai-integration-architecture.md (Integração da IA SciAI e Governança)
+│   ├── adr-007-collaborative-editor-architecture-scaling.md (Arquitetura, Persistência e Escalabilidade do Editor)
+│   ├── adr-007.1-document-ownership-fencing-and-routing.md (Roteamento de Posse e Fencing Tokens contra Split-Brain)
 │   └── parecer-tecnico-code-server-coder.md
 │
 ├── reports/                    <-- 📈 Relatórios de Execução (Fases & Sprints)
@@ -53,6 +62,7 @@ docs/planning/
 │   ├── relatorio-fase-3.md     (Work Item Branches & Fluxo NIT)
 │   ├── relatorio-fase-4.md     (Integração Tasks + Projeções & SSE em Tempo Real)
 │   ├── analise-comparativa-sci-project.md (Análise Comparativa de Arquitetura com sci-project)
+│   ├── relatorio-benchmark-kind-500-users-scaling.md (Benchmark KinD 500 Autores & Auto-Scaling HPA)
 │   └── backend-sprint-*.md     (Histórico de Sprints 1 a 4 do Backend)
 │
 └── backlog/                    <-- 💡 Análises Pendentes e Ideias Futuras

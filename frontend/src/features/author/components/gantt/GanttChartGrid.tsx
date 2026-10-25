@@ -303,7 +303,7 @@ export const GanttChartGrid: React.FC<GanttChartGridProps> = ({
 
           return (
             <React.Fragment key={stage.id}>
-              {/* BARRA DA ETAPA (TASK PRINCIPAL / FEATURE BRANCH) */}
+              {/* BARRA DA ETAPA */}
               <Box
                 onClick={() => onSelectEntity(stage, null)}
                 sx={{

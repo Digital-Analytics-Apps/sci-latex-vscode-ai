@@ -91,7 +91,7 @@ export const GanttTableTree = ({
           variant="caption"
           sx={{ fontWeight: 800, color: "text.secondary", letterSpacing: 0.5 }}
         >
-          ETAPAS / FEATURE BRANCHES & SUB-TASKS
+          ETAPAS & SUB-TAREFAS
         </Typography>
         <Box
           sx={{
@@ -123,13 +123,13 @@ export const GanttTableTree = ({
           const stageTasks = tasks.filter((t) => t.stageId === stage.id);
           const stageProgress = calculateStageProgress(stageTasks);
           const isSelected = selectedEntityId === stage.id;
-          const hasUnmergedSubtasks = stageTasks.some(
-            (t) => t.status !== TaskStatus.MERGED,
+          const hasUncompletedSubtasks = stageTasks.some(
+            (t) => t.status !== TaskStatus.COMPLETED,
           );
 
           return (
             <React.Fragment key={stage.id}>
-              {/* LINHA DE ETAPA (TASK PRINCIPAL / FEATURE BRANCH) */}
+              {/* LINHA DE ETAPA */}
               <Box
                 onClick={() => onSelectEntity(stage, null)}
                 sx={{
@@ -198,8 +198,8 @@ export const GanttTableTree = ({
 
                   {/* AÇÃO RÁPIDA DE WORKSPACE NA ETAPA */}
                   {!stage.isGatekeeper &&
-                    (hasUnmergedSubtasks ? (
-                      <Tooltip title="🔒 Conclua e mescle todas as sub-tarefas desta etapa antes de abrir a workspace da Feature.">
+                    (hasUncompletedSubtasks ? (
+                      <Tooltip title="🔒 Conclua todas as sub-tarefas desta etapa antes de abrir o workspace da etapa.">
                         <span>
                           <IconButton size="small" disabled sx={{ p: 0.3 }}>
                             <LockIcon
@@ -209,7 +209,7 @@ export const GanttTableTree = ({
                         </span>
                       </Tooltip>
                     ) : (
-                      <Tooltip title="🚀 Iniciar Workspace da Feature">
+                      <Tooltip title="🚀 Iniciar Workspace da Etapa">
                         <IconButton
                           size="small"
                           color="secondary"
@@ -220,8 +220,7 @@ export const GanttTableTree = ({
                                 id: `stage-${stage.id}`,
                                 projectId: stage.projectId,
                                 stageId: stage.id,
-                                title: `Workspace da Feature: ${stage.title}`,
-                                branchName: `feature/stage-${stage.order}`,
+                                title: `Workspace da Etapa: ${stage.title}`,
                                 status: TaskStatus.IN_PROGRESS,
                                 dueDate: new Date().toISOString(),
                               };
@@ -243,11 +242,6 @@ export const GanttTableTree = ({
                   const isTaskSelected = selectedEntityId === task.id;
                   const isMerged = isTaskCompleted(task);
                   const isProvisioning = provisioningTaskId === task.id;
-                  const isOccupiedByOther = Boolean(
-                    task.isOccupied &&
-                    task.occupiedBy &&
-                    task.occupiedBy.id !== currentUserId,
-                  );
                   const { user, name } = extractAssigneeUserAndName(
                     task.assignee,
                   );
@@ -296,14 +290,6 @@ export const GanttTableTree = ({
                           />
                         ) : task.isBlockedByPrevious ? (
                           <Tooltip title="🔒 Aguardando conclusão e merge da sub-tarefa anterior">
-                            <LockIcon
-                              sx={{ fontSize: 14, color: "warning.main" }}
-                            />
-                          </Tooltip>
-                        ) : isOccupiedByOther ? (
-                          <Tooltip
-                            title={`🔒 Workspace em uso por ${task.occupiedBy?.name || "outro autor"}`}
-                          >
                             <LockIcon
                               sx={{ fontSize: 14, color: "warning.main" }}
                             />
@@ -381,16 +367,6 @@ export const GanttTableTree = ({
                             <IconButton size="small" disabled sx={{ p: 0.2 }}>
                               <LockIcon
                                 sx={{ fontSize: 14, color: "action.disabled" }}
-                              />
-                            </IconButton>
-                          </Tooltip>
-                        ) : isOccupiedByOther ? (
-                          <Tooltip
-                            title={`🔒 Aberto no momento por ${task.occupiedBy?.name}`}
-                          >
-                            <IconButton size="small" disabled sx={{ p: 0.2 }}>
-                              <LockIcon
-                                sx={{ fontSize: 14, color: "warning.main" }}
                               />
                             </IconButton>
                           </Tooltip>

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sci-latex-compiler
+  namespace: default
+  labels:
+    app: sci-latex-compiler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sci-latex-compiler
+  template:
+    metadata:
+      labels:
+        app: sci-latex-compiler
+    spec:
+      containers:
+        - name: compiler
+          image: sci-latex-vscode-compiler:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PORT
+              value: "4000"
+            - name: HOST
+              value: "0.0.0.0"
+          ports:
+            - containerPort: 4000
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1500m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: compiler
+  namespace: default
+  labels:
+    app: sci-latex-compiler
+spec:
+  type: ClusterIP
+  selector:
+    app: sci-latex-compiler
+  ports:
+    - port: 4000
+      targetPort: 4000
+      name: http

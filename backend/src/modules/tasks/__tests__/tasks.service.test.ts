@@ -21,20 +21,6 @@ vi.mock('../../../db/prisma', () => ({
   },
 }));
 
-vi.mock('../../git/git.service', () => ({
-  GitService: vi.fn().mockImplementation(() => ({})),
-}));
-
-vi.mock('../../../infra/k8s/k8s-pod-manager.service', () => ({
-  K8sPodManagerService: vi.fn().mockImplementation(() => ({
-    claimPodForProject: vi.fn().mockResolvedValue({
-      podName: 'workspace-p1-user1-12345',
-      pvcName: 'pvc-project-p1',
-      status: 'created_on_demand',
-      codeServerUrl: 'http://localhost:30080',
-    }),
-  })),
-}));
 
 describe('TasksService (Unit Tests)', () => {
   let mockTasksRepository: ITasksRepository;
@@ -51,23 +37,19 @@ describe('TasksService (Unit Tests)', () => {
     service = new TasksService(mockTasksRepository);
   });
 
-  it('should create a new Task and generate a clean branch name', async () => {
-    const mockTask: any = {
+  it('should create a new Task', async () => {
+    const mockTask = {
       id: 'task-uuid-123',
       projectId: 'proj-1',
       assignedToId: 'user-1',
       title: 'Escrever a Introdução',
-      branchName: 'pending',
       status: 'NOT_STARTED',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    (mockTasksRepository.create as any).mockImplementation((data: any) =>
-      Promise.resolve({ ...mockTask, ...data })
-    );
-    (mockTasksRepository.update as any).mockImplementation((_id: string, data: any) =>
-      Promise.resolve({ ...mockTask, ...data })
+    vi.mocked(mockTasksRepository.create).mockImplementation((data) =>
+      Promise.resolve({ ...mockTask, ...data } as unknown as any)
     );
 
     const result = await service.createTask({
@@ -78,7 +60,8 @@ describe('TasksService (Unit Tests)', () => {
     });
 
     expect(mockTasksRepository.create).toHaveBeenCalled();
-    expect(result.branchName).toMatch(/^task\/escrever-a-introducao-[a-f0-9-]{6}$/);
+    expect(result.title).toBe('Escrever a Introdução');
+    expect(result.status).toBe('NOT_STARTED');
   });
 
   it('should list tasks for a project', async () => {
@@ -100,16 +83,12 @@ describe('TasksService (Unit Tests)', () => {
         id: 'task-1',
         title: 'Task 1',
         projectId: 'proj-1',
-        isOccupied: false,
-        occupiedBy: null,
         isBlockedByPrevious: false,
       },
       {
         id: 'task-2',
         title: 'Task 2',
         projectId: 'proj-1',
-        isOccupied: false,
-        occupiedBy: null,
         isBlockedByPrevious: false,
       },
     ]);

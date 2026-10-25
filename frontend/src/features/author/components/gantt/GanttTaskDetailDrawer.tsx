@@ -2,7 +2,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import LockIcon from "@mui/icons-material/Lock";
-import MergeIcon from "@mui/icons-material/MergeType";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import {
   Alert,
@@ -59,7 +59,6 @@ export const GanttTaskDetailDrawer = ({
   const {
     isStageNode,
     title,
-    branchName,
     status,
     startDate,
     endDate,
@@ -72,18 +71,12 @@ export const GanttTaskDetailDrawer = ({
   const isAssignedToMe = Boolean(
     task?.assignedToId && currentUserId && task.assignedToId === currentUserId,
   );
-  const isOccupiedByOther = Boolean(
-    task?.isOccupied &&
-    task?.occupiedBy &&
-    task?.occupiedBy?.id !== currentUserId,
-  );
-  const occupiedByName = task?.occupiedBy?.name || "outro autor";
   const isBlockedByPrevious = Boolean(task?.isBlockedByPrevious);
   const isProvisioning = task && provisioningTaskId === task.id;
   const isReadOnly =
     !isStageNode &&
     Boolean(task) &&
-    (!isAssignedToMe || isOccupiedByOther || isMerged);
+    (!isAssignedToMe || isMerged);
 
   return (
     <Drawer
@@ -116,7 +109,7 @@ export const GanttTaskDetailDrawer = ({
           sx={{ fontWeight: 800, letterSpacing: 1 }}
         >
           {isStageNode
-            ? "DETALHES DA ETAPA (FEATURE BRANCH)"
+            ? "DETALHES DA ETAPA"
             : `DETALHES DA SUB-TASK ${isReadOnly ? "(SOMENTE LEITURA)" : ""}`}
         </Typography>
         <IconButton size="small" onClick={onClose}>
@@ -125,20 +118,8 @@ export const GanttTaskDetailDrawer = ({
       </Box>
 
       {/* ALERTAS DE SEGURANÇA, BLOQUEIO E READ-ONLY */}
-      {isOccupiedByOther && (
-        <Alert severity="warning" icon={<LockIcon fontSize="small" />}>
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 700, display: "block" }}
-          >
-            Workspace em Uso Ativo por {occupiedByName}
-          </Typography>
-          A sessão do Pod está em execução por outro autor. Exibindo em modo
-          somente leitura (Read-Only).
-        </Alert>
-      )}
 
-      {!isOccupiedByOther &&
+      {!isStageNode &&
         !isStageNode &&
         task?.assignedToId &&
         !isAssignedToMe && (
@@ -154,7 +135,7 @@ export const GanttTaskDetailDrawer = ({
           </Alert>
         )}
 
-      {!isOccupiedByOther && !isStageNode && !task?.assignedToId && (
+      {!isStageNode && !task?.assignedToId && (
         <Alert severity="info" icon={<LockIcon fontSize="small" />}>
           <Typography
             variant="caption"
@@ -180,7 +161,7 @@ export const GanttTaskDetailDrawer = ({
         </Alert>
       )}
 
-      {/* TÍTULO E FEATURE BRANCH */}
+      {/* TÍTULO E STATUS */}
       <Box>
         <Typography
           variant="h6"
@@ -194,26 +175,18 @@ export const GanttTaskDetailDrawer = ({
           spacing={1}
           sx={{ alignItems: "center", flexWrap: "wrap" }}
         >
-          <Chip
-            icon={<CodeIcon fontSize="small" />}
-            label={branchName}
-            size="small"
-            color="primary"
-            variant="outlined"
-            sx={{ fontWeight: 700, fontFamily: "monospace" }}
-          />
 
           {isMerged ? (
             <Chip
-              icon={<MergeIcon fontSize="small" />}
-              label="PR Mergeado"
+              icon={<CheckCircleIcon fontSize="small" />}
+              label="Concluída"
               size="small"
               color="success"
               sx={{ fontWeight: 700 }}
             />
           ) : (
             <Chip
-              label="Branch Ativa"
+              label="Em Andamento"
               size="small"
               color="info"
               variant="outlined"
@@ -244,13 +217,8 @@ export const GanttTaskDetailDrawer = ({
             sx={{ fontWeight: 700, fontSize: "0.85rem" }}
           >
             <MenuItem value={TaskStatus.NOT_STARTED}>Não Iniciada</MenuItem>
-            <MenuItem value={TaskStatus.IN_PROGRESS}>Em Progresso</MenuItem>
-            <MenuItem value={TaskStatus.UNDER_REVIEW}>Em Avaliação</MenuItem>
-            <MenuItem value={TaskStatus.CHANGES_REQUESTED}>
-              Ajustes Solicitados
-            </MenuItem>
-            <MenuItem value={TaskStatus.APPROVED}>Aprovada</MenuItem>
-            <MenuItem value={TaskStatus.MERGED}>Concluída (Mergeada)</MenuItem>
+            <MenuItem value={TaskStatus.IN_PROGRESS}>Em Andamento</MenuItem>
+            <MenuItem value={TaskStatus.COMPLETED}>Concluída</MenuItem>
           </Select>
         </Box>
 
@@ -299,7 +267,7 @@ export const GanttTaskDetailDrawer = ({
                   variant="outlined"
                   color="primary"
                   size="small"
-                  disabled={isClaiming || isOccupiedByOther}
+                  disabled={isClaiming}
                   startIcon={
                     isClaiming ? (
                       <CircularProgress size={14} color="inherit" />
@@ -319,7 +287,7 @@ export const GanttTaskDetailDrawer = ({
                   variant="outlined"
                   color="secondary"
                   size="small"
-                  disabled={isUnclaiming || isOccupiedByOther}
+                  disabled={isUnclaiming}
                   startIcon={
                     isUnclaiming ? (
                       <CircularProgress size={14} color="inherit" />
@@ -402,14 +370,12 @@ export const GanttTaskDetailDrawer = ({
             disabled={
               isProvisioning ||
               isBlockedByPrevious ||
-              isOccupiedByOther ||
               !isAssignedToMe
             }
             startIcon={
               isProvisioning ? (
                 <CircularProgress size={16} color="inherit" />
               ) : isBlockedByPrevious ||
-                isOccupiedByOther ||
                 !isAssignedToMe ? (
                 <LockIcon />
               ) : (
@@ -423,13 +389,11 @@ export const GanttTaskDetailDrawer = ({
               ? "⚡ Provisionando Pod..."
               : isBlockedByPrevious
                 ? "🔒 Aguardando Sub-tarefa Anterior"
-                : isOccupiedByOther
-                  ? `🔒 Em uso por ${occupiedByName}`
                   : !task.assignedToId
                     ? "✍️ Assine a Tarefa para Abrir Workspace"
                     : !isAssignedToMe
                       ? "🔒 Atribuída a Outro Autor"
-                      : "🚀 Abrir Workspace no VS Code"}
+                      : "🚀 Abrir Workspace de Escrita"}
           </Button>
         )}
 
@@ -444,8 +408,7 @@ export const GanttTaskDetailDrawer = ({
                 id: `stage-${stage.id}`,
                 projectId: stage.projectId,
                 stageId: stage.id,
-                title: `Workspace da Feature: ${stage.title}`,
-                branchName: `feature/stage-${stage.order}`,
+                title: `Workspace da Etapa: ${stage.title}`,
                 status: TaskStatus.IN_PROGRESS,
                 dueDate: new Date().toISOString(),
               };

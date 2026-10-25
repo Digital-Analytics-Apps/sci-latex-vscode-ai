@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
-**Projeto:** SCIA — Scientific Collaboration + AI (`sci-latex-vscode`)  
-**Última Atualização:** 04 de Outubro de 2026  
-**Status Geral do Projeto:** 🟢 **Resolução de Sincronização Remota de Workspaces & Autenticação Git CLI.** Correção na resolução dinâmica de tokens do GitHub CLI (`gh auth token` fallback) e sincronização do TeX paper template na branch da tarefa. Refatoração Arquitetural de Frontend (TanStack Query Hooks, Asynchronous Invalidation, Named Exports, DRY Sub-components & Processamento Paralelo via Promise.all) 100% operacionais.
+**Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
+**Última Atualização:** 24 de Outubro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura do Editor Colaborativo Consolidada (ADR-007) & Camada de IA Científica (`ai-service`).** Finalizada a implementação completa da ADR-007 para escalabilidade horizontal do editor colaborativo CodeMirror 6, eliminando I/O desnecessário no Redis, blindando a persistência com debounce híbrido e transações atômicas no PostgreSQL, e estabilizando a sincronização multi-arquivo.
 
 ---
 
@@ -12,6 +12,36 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
+  * **Branch Ativa:** `feature/sciai-integration-layer`
+  * **Refatoração e Blindagem do Editor Colaborativo (ADR-007 Implementada e Aprovada):**
+    * **Limpeza do Hot Path no Redis:** Removido o `rpush` de deltas de texto no Redis em `documents.service.ts`. A digitação opera em memória RAM do Pod dono com latência < 2ms.
+    * **Debounce Híbrido Multi-Critério:** Implementado timer de inatividade (3s), teto máximo contínuo (15s) e corte por volume (50 ops) para garantir checkpoints regulares no PostgreSQL sem risco de perda sob digitação ininterrupta.
+    * **Graceful Shutdown (`server.ts`):** Tratamento de `SIGTERM`/`SIGINT` para persistir todos os documentos ativos de `activeDocs` no PostgreSQL antes de encerrar o processo.
+    * **Concorrência Otimista & Transação Atômica (`documents.repository.ts`):** `saveCheckpoint` unifica a atualização da versão do projeto, `ProjectFile.content` (`main.tex`), arquivos secundários (`filesCollab`) e `DocumentSnapshot` em uma única chamada `prisma.$transaction`, com validação de `expectedOldVersion`.
+    * **Coordenação de Posse (Document Ownership Lease):** Primitivas `acquireDocumentLease` e `renewDocumentLease` no Redis (`editor:document:<docId>:owner`, TTL 10s renovado a cada 3s) garantindo autoridade Single-Writer por documento para orquestração multi-pod em Kubernetes.
+    * **Estabilização do WebSocket no Frontend (`useCollabWebSocket.ts`):** Removido `activeFile` das dependências do socket para eliminar reconexões indesejadas ao alternar abas, e adicionada fila de retry offline (`messageQueueRef`).
+    * **Sincronização Multi-Arquivo em Tempo Real:** O backend expõe `getAllCollabVersions` no `SYNC_INIT` e une o estado em memória quente em `listProjectFiles`. O frontend rastreia `fileCollabVersions` de forma isolada, corrigindo a propagação de alterações entre arquivos secundários.
+  * **Estruturação da Nova Camada de IA (`ai-service/`):**
+    * **Triagem Limpa do `sci-project`**: Descartados códigos legados e complexidade acidental (compilador Docker síncrono bloqueante, WebSockets colaborativos YRoom com vazamento de memória, autenticação duplicada e CRUDs SQLModel locais).
+    * **Extração do Núcleo de Agentes LangGraph**:
+      * `ai-service/app/agents/state.py`: Estado compartilhado tipado (`OnboardingState`, `Article`, `TaskItem`).
+      * `ai-service/app/agents/sub_agents/supervisor.py`: Orquestrador geral do fluxo guiado de 4 estágios.
+      * `ai-service/app/agents/sub_agents/idea_refiner.py`: Guia de Exploração para refinamento de hipóteses e tema de pesquisa.
+      * `ai-service/app/agents/sub_agents/search_specialist.py`: Especialista de busca bibliográfica com `interrupt` Human-in-the-Loop.
+      * `ai-service/app/agents/sub_agents/curation.py`: Curadoria de artigos e roadmap preliminar (limpo de acoplamentos locais com banco).
+      * `ai-service/app/agents/writer.py`: Redator acadêmico LaTeX.
+    * **Ferramentas de Pesquisa Científica com Connection Pooling**:
+      * `ai-service/app/agents/tools/openalex.py`: Conector com semáforo de concorrência e reaproveitamento de conexões TCP.
+      * `ai-service/app/agents/tools/semantic_scholar.py`: Conector Semantic Scholar com retries e exponential backoff.
+      * `ai-service/app/agents/tools/academic_search.py`: Facade unificada com fallback resiliente (S2 ➡️ OpenAlex).
+      * `ai-service/app/agents/tools/tavily_search.py`: Busca web com Tavily.
+    * **APIs e Streaming SSE**:
+      * `ai-service/app/api/v1/endpoints/chat.py`: Endpoints `/chat/stream` e `/chat/resume` para o chat interativo.
+      * `ai-service/app/api/v1/endpoints/runs.py`: Endpoints M2M assíncronos (`POST /runs`, `/resume`, `/cancel`) com autenticação `X-Internal-Service-Key`.
+      * `ai-service/app/streaming/stream_processor.py`: Formatador enxuto de eventos Server-Sent Events.
+  * **Referências de Chat Copilot & Onboarding no Frontend (`frontend/references-ai-chat/`):**
+    * Copiados como modelo de implementação: `OnboardingChat.reference.tsx`, `onboardingApi.reference.ts` e `AIChatSidebar.reference.tsx`.
+    * Criado `frontend/references-ai-chat/README.md` com diretrizes para adaptação ao design system do SCIA, tipagens e proxy Fastify.
   * **Resolução Dinâmica de Tokens Git & Sincronização de Workspace:**
     * **Simplificação e Clone Direto da Branch (`EditorProxyService`)**: Refatorado o método `ensureTaskWorkspace` eliminando tentativas aninhadas e fallbacks desnecessários. O Git clona diretamente a branch remota da tarefa (`git clone --branch <branchName>`) em um único comando e só executa a criação de templates genéricos se o arquivo `main.tex` não existir, preservando integralmente os arquivos da branch remota.
     * **Ajuste de Escopo do JWT no Reverse Proxy (`editorProxyRoutes`)**: O middleware `verifyJwt` foi aplicado especificamente à rota de entrada `GET /:projectId`, liberando o Reverse Proxy `/app/*` para servir sub-recursos estáticos (HTML, JS, CSS) e conexões WebSocket do VS Code sem ser travado com erros 401 Unauthorized.

@@ -16,15 +16,6 @@ enum Role {
   ADMIN
 }
 
-enum PRStatus {
-  DRAFT
-  UNDER_REVIEW
-  CHANGES_REQUESTED
-  APPROVED
-  MERGED
-  CANCELLED
-}
-
 enum NITStatus {
   NOT_REQUIRED
   WAITING_NIT
@@ -67,89 +58,43 @@ model User {
   deletedAt    DateTime?
 
   // Relations
-  coordinatedTeams Team[]       @relation("TeamCoordinator")
-  managedTeams     Team[]       @relation("ManagerTeams")
-  teamMemberships  TeamMember[]
+  coordinatedProjects Project[] @relation("ProjectCoordinator")
+  managedProjects     Project[] @relation("ProjectManager")
 
   projects        ProjectMember[]
-  pullRequests    PullRequest[]      @relation("AuthorPRs")
-  reviews         PullRequest[]      @relation("ReviewerPRs")
-  comments        ReviewComment[]
   sessions        Session[]
   auditLogs       AuditLog[]
   userTasks       Task[]             @relation("UserTasks")
-  workspaces      Workspace[]
   reviewerRCs     ReleaseCandidate[] @relation("ReviewerRCs")
   academicPeriods AcademicPeriod[]   @relation("ManagerAcademicPeriods")
 }
 
 model AcademicPeriod {
-  id                  String             @id @default(uuid())
+  id                  String       @id @default(uuid())
   name                String // e.g., "Academic Cycle 2026/2027"
   startDate           DateTime
   endDate             DateTime
-  targetArticlesCount Int                @default(0)
-  status              PeriodStatus       @default(ACTIVE)
+  targetArticlesCount Int          @default(0)
+  status              PeriodStatus @default(ACTIVE)
   managerId           String?
-  manager             User?              @relation("ManagerAcademicPeriods", fields: [managerId], references: [id])
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  manager             User?        @relation("ManagerAcademicPeriods", fields: [managerId], references: [id])
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
   deletedAt           DateTime?
   projects            Project[]
-  teamGoals           TeamAcademicGoal[]
-}
-
-model Team {
-  id            String             @id @default(uuid())
-  name          String
-  description   String?
-  managerId     String?
-  coordinatorId String
-  manager       User?              @relation("ManagerTeams", fields: [managerId], references: [id])
-  coordinator   User               @relation("TeamCoordinator", fields: [coordinatorId], references: [id])
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  deletedAt     DateTime?
-  members       TeamMember[]
-  projects      Project[]
-  academicGoals TeamAcademicGoal[]
-}
-
-model TeamMember {
-  id     String @id @default(uuid())
-  teamId String
-  userId String
-  role   Role   @default(AUTHOR)
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([teamId, userId])
-}
-
-model TeamAcademicGoal {
-  id               String         @id @default(uuid())
-  academicPeriodId String
-  teamId           String
-  targetArticles   Int            @default(0)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  academicPeriod   AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
-  team             Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
-  @@unique([academicPeriodId, teamId])
 }
 
 model Project {
   id               String  @id @default(uuid())
   name             String
   description      String?
-  gitRepoPath      String
-  teamId           String
   academicPeriodId String?
+  coordinatorId    String
+  managerId        String
 
   submissionStatus SubmissionStatus @default(IN_PROGRESS)
   currentVersion   Int              @default(1)
-
+  ownerGeneration  Int              @default(0)
   targetConferenceName String?
   targetConferenceDate DateTime?
   backupConferenceName String?
@@ -162,20 +107,21 @@ model Project {
 
   reviewerFeedback String?
 
-  team               Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  academicPeriod     AcademicPeriod?     @relation(fields: [academicPeriodId], references: [id])
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  deletedAt          DateTime?
-  members            ProjectMember[]
-  prs                PullRequest[]
-  tasks              Task[]
-  workspaces         Workspace[]
-  releaseCandidates  ReleaseCandidate[]
-  releases           Release[]
-  githubIntegrations GithubIntegration[]
-  nitProcesses       NitProcess[]
-  stages             ProjectStage[]
+  coordinator       User                @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
+  manager           User                @relation("ProjectManager", fields: [managerId], references: [id])
+  academicPeriod    AcademicPeriod?     @relation(fields: [academicPeriodId], references: [id])
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+  members           ProjectMember[]
+  tasks             Task[]
+  releaseCandidates ReleaseCandidate[]
+  releases          Release[]
+  nitProcesses      NitProcess[]
+  stages            ProjectStage[]
+  files             ProjectFile[]
+  operations        DocumentOperation[]
+  snapshots         DocumentSnapshot[]
 }
 
 model ProjectMember {
@@ -187,59 +133,6 @@ model ProjectMember {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
-}
-
-model PullRequest {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  status      PRStatus @default(DRAFT)
-
-  nitStatus      NITStatus @default(NOT_REQUIRED)
-  nitNotes       String?
-  sentToNitAt    DateTime?
-  sentToNitNotes String?
-  nitApprovedAt  DateTime?
-
-  taskId     String?
-  authorId   String
-  reviewerId String?
-  projectId  String
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  mergedAt   DateTime?
-  task       Task?           @relation("TaskPullRequest", fields: [taskId], references: [id], onDelete: SetNull)
-  author     User            @relation("AuthorPRs", fields: [authorId], references: [id])
-  reviewer   User?           @relation("ReviewerPRs", fields: [reviewerId], references: [id])
-  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  comments   ReviewComment[]
-  rounds     ReviewRound[]
-}
-
-model ReviewRound {
-  id                          String   @id @default(uuid())
-  pullRequestId               String
-  roundNumber                 Int
-  baseCommitHash              String
-  submittedCommitHash         String
-  previousSubmittedCommitHash String?
-  createdAt                   DateTime @default(now())
-
-  pullRequest PullRequest     @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  comments    ReviewComment[]
-}
-
-model ReviewComment {
-  id            String       @id @default(uuid())
-  pullRequestId String
-  reviewRoundId String?
-  userId        String
-  lineNumer     Int?
-  comment       String
-  createdAt     DateTime     @default(now())
-  pullRequest   PullRequest  @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  reviewRound   ReviewRound? @relation(fields: [reviewRoundId], references: [id], onDelete: SetNull)
-  user          User         @relation(fields: [userId], references: [id])
 }
 
 model AuditLog {
@@ -260,36 +153,6 @@ model Session {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Workspace {
-  id        String          @id @default(uuid())
-  projectId String
-  userId    String
-  stageId   String          @default("general")
-  taskId    String
-  podName   String?
-  status    WorkspaceStatus @default(PROVISIONING)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stage   ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  task    Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, userId, stageId, taskId])
-}
-
-enum WorkspaceStatus {
-  PROVISIONING
-  READY
-  DIRTY
-  SYNCING
-  BEHIND
-  CONFLICTED
-  ERROR
-  TERMINATED
 }
 
 enum StageStatus {
@@ -316,9 +179,8 @@ model ProjectStage {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks      Task[]
-  workspaces Workspace[]
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
 
   @@unique([projectId, order])
 }
@@ -329,7 +191,6 @@ model Task {
   assignedToId String?
   stageId      String?
   title        String
-  branchName   String
   status       TaskStatus @default(NOT_STARTED)
   startDate    DateTime?
   startedAt    DateTime?
@@ -337,27 +198,22 @@ model Task {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stage        ProjectStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
-  assignee     User?         @relation("UserTasks", fields: [assignedToId], references: [id])
-  pullRequests PullRequest[] @relation("TaskPullRequest")
-  workspaces   Workspace[]
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage    ProjectStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  assignee User?         @relation("UserTasks", fields: [assignedToId], references: [id])
 }
 
 enum TaskStatus {
   NOT_STARTED
   IN_PROGRESS
-  UNDER_REVIEW
-  CHANGES_REQUESTED
-  APPROVED
-  MERGED
+  COMPLETED
 }
 
 model ReleaseCandidate {
   id         String   @id @default(uuid())
   projectId  String
   versionTag String
-  commitSha  String
+  snapshotId String?
   status     RCStatus @default(SUBMITTED)
   feedback   String?
   reviewerId String?
@@ -380,7 +236,7 @@ model Release {
   id         String   @id @default(uuid())
   projectId  String
   versionTag String
-  commitSha  String
+  version    Int      @default(1)
   title      String
   conference String?
   pdfUrl     String?
@@ -389,58 +245,9 @@ model Release {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-model GithubIntegration {
-  id                 String   @id @default(uuid())
-  articleId          String
-  githubRepositoryId BigInt
-  githubRepoName     String
-  githubProjectV2Id  String
-  createdAt          DateTime @default(now())
-
-  article Project @relation(fields: [articleId], references: [id], onDelete: Cascade)
-}
-
-model GithubWebhookEvent {
-  id             String    @id @default(uuid())
-  deliveryId     String    @unique
-  eventType      String
-  action         String?
-  signatureValid Boolean
-  installationId BigInt
-  payload        Json
-  receivedAt     DateTime  @default(now())
-  processedAt    DateTime?
-  status         String    @default("PENDING")
-}
-
-model GithubIssueProjection {
-  githubIssueId          BigInt    @id
-  githubRepositoryId     BigInt
-  issueNumber            Int
-  title                  String
-  state                  String
-  authorGithubUsername   String?
-  assigneeGithubUsername String?
-  htmlUrl                String
-  updatedAt              DateTime
-  lastGithubEventAt      DateTime?
-  lastSyncedAt           DateTime  @default(now())
-}
-
-model GithubProjectItemProjection {
-  githubProjectItemId String   @id
-  githubProjectV2Id   String
-  githubIssueId       BigInt
-  statusValue         String?
-  nitStatusValue      String?
-  updatedAt           DateTime
-  lastSyncedAt        DateTime @default(now())
-}
-
 model NitProcess {
   id             String    @id @default(uuid())
   articleId      String
-  githubPrNodeId String
   status         NITStatus @default(WAITING_NIT)
   sentAt         DateTime
   sentNotes      String?
@@ -450,4 +257,45 @@ model NitProcess {
   createdAt      DateTime  @default(now())
 
   article Project @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model ProjectFile {
+  id         String   @id @default(uuid())
+  projectId  String
+  path       String
+  fileType   String // "text" | "binary"
+  mimeType   String
+  sizeBytes  BigInt
+  content    String?  @db.Text
+  storageKey String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, path])
+}
+
+model DocumentOperation {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  userName  String
+  type      String
+  position  Int
+  text      String?  @db.Text
+  length    Int?
+  timestamp BigInt
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model DocumentSnapshot {
+  id        String   @id @default(uuid())
+  projectId String
+  version   Int
+  content   String   @db.Text
+  savedBy   String
+  reason    String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

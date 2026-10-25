@@ -10,11 +10,10 @@ export class UsersController {
     const querySchema = z.object({
       search: z.string().optional(),
       role: z.nativeEnum(Role).optional(),
-      teamId: z.string().uuid().optional(),
     });
 
-    const { search, role, teamId } = querySchema.parse(request.query);
-    const users = await this.usersService.searchUsers(search, role, teamId);
+    const { search, role } = querySchema.parse(request.query);
+    const users = await this.usersService.searchUsers(search, role);
 
     return reply.send({ users });
   }

@@ -1,4 +1,3 @@
-import type { CreatePRFormData } from "../schemas/pr.schema";
 import type { StageStatus } from "../constants/status";
 import type {
   CreateProjectInput,
@@ -17,12 +16,12 @@ export type {
 } from "../types/project.types";
 
 const PROJETCT_URL = "/projects";
-const PULL_REQUESTS_URL = "/pull-requests";
 
 export const projectsService = {
   // Buscar lista de projetos/artigos aos quais o usuário tem acesso
   async getProjectsList(filters?: {
-    teamId?: string;
+    coordinatorId?: string;
+    managerId?: string;
     academicPeriodId?: string;
   }): Promise<ProjectListItem[]> {
     const response = await api.get(PROJETCT_URL, { params: filters });
@@ -58,30 +57,6 @@ export const projectsService = {
     return response.data;
   },
 
-  // Criar Pull Request (Abertura de Revisão Acadêmica)
-  async createPullRequest(projectId: string, data: CreatePRFormData) {
-    const response = await api.post(PULL_REQUESTS_URL, {
-      ...data,
-      projectId,
-    });
-    return response.data;
-  },
-
-  // Listar Pull Requests filtrados por projeto
-  async getPullRequestsList(projectId?: string) {
-    const response = await api.get(PULL_REQUESTS_URL, {
-      params: { projectId },
-    });
-    return response.data.pullRequests || [];
-  },
-
-  // Realizar Merge da Seção
-  async mergePullRequest(pullRequestId: string) {
-    const response = await api.post(
-      `${PULL_REQUESTS_URL}/${pullRequestId}/merge`,
-    );
-    return response.data;
-  },
 
   // Criar Novo Projeto / Artigo Científico
   async createProject(data: CreateProjectInput) {

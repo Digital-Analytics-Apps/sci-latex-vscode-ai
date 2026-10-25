@@ -9,7 +9,6 @@ export class DashboardController {
     const querySchema = z.object({
       projectId: z.string().optional(),
       academicPeriodId: z.string().optional(),
-      teamId: z.string().optional(),
     });
 
     const filters = querySchema.parse(request.query);
@@ -23,13 +22,11 @@ export class DashboardController {
   async getManagerDashboard(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
       academicPeriodId: z.string().uuid().optional(),
-      teamId: z.string().uuid().optional(),
     });
 
-    const { academicPeriodId, teamId } = querySchema.parse(request.query);
+    const { academicPeriodId } = querySchema.parse(request.query);
     const data = await this.dashboardService.getManagerDashboard({
       academicPeriodId,
-      teamId,
     });
 
     return reply.send(data);

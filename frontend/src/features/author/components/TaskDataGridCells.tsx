@@ -105,21 +105,6 @@ export const TaskTitleBranchCell = ({ row }: { row: TaskItem }) => {
           }}
         />
       </Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        {row.branchName && (
-          <Chip
-            label={row.branchName}
-            size="small"
-            variant="outlined"
-            sx={{
-              height: 18,
-              fontSize: "0.65rem",
-              fontFamily: "monospace",
-              borderColor: "divider",
-            }}
-          />
-        )}
-      </Box>
     </Box>
   );
 };
@@ -149,10 +134,6 @@ export const TaskAssigneeCell = ({
         !(row.assignee as { name?: string }).name));
 
   const isAssignedToMe = row.assignedToId === currentUserId;
-  const isOccupiedByOther = Boolean(
-    row.isOccupied && row.occupiedBy && row.occupiedBy.id !== currentUserId,
-  );
-  const occupiedByName = row.occupiedBy?.name || "outro autor";
 
   if (isUnassigned) {
     return (
@@ -168,55 +149,31 @@ export const TaskAssigneeCell = ({
             borderColor: "divider",
           }}
         />
-        {onClaimTask &&
-          (isOccupiedByOther ? (
-            <Tooltip
-              title={`🔒 Em uso por ${occupiedByName}. O workspace está aberto no momento.`}
-            >
-              <span>
-                <Button
-                  variant="outlined"
-                  color="warning"
-                  size="small"
-                  disabled
-                  startIcon={<LockIcon sx={{ fontSize: 16 }} />}
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    py: 0.3,
-                    px: 1.2,
-                    height: 28,
-                  }}
-                >
-                  Ocupado
-                </Button>
-              </span>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="outlined"
-              color="primary"
-              size="small"
-              disabled={isClaiming}
-              startIcon={
-                isClaiming ? (
-                  <CircularProgress size={14} color="inherit" />
-                ) : (
-                  <HowToRegIcon sx={{ fontSize: 16 }} />
-                )
-              }
-              onClick={() => onClaimTask(row.id)}
-              sx={{
-                fontWeight: 700,
-                fontSize: "0.75rem",
-                py: 0.3,
-                px: 1.2,
-                height: 28,
-              }}
-            >
-              {isClaiming ? "Assinando..." : "Assinar"}
-            </Button>
-          ))}
+        {onClaimTask && (
+          <Button
+            variant="outlined"
+            color="primary"
+            size="small"
+            disabled={isClaiming}
+            startIcon={
+              isClaiming ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <HowToRegIcon sx={{ fontSize: 16 }} />
+              )
+            }
+            onClick={() => void onClaimTask(row.id)}
+            sx={{
+              fontWeight: 700,
+              fontSize: "0.75rem",
+              py: 0.3,
+              px: 1.2,
+              height: 28,
+            }}
+          >
+            {isClaiming ? "Assinando..." : "Assinar"}
+          </Button>
+        )}
       </Box>
     );
   }
@@ -276,24 +233,16 @@ export const TaskAssigneeCell = ({
       </Box>
 
       {isAssignedToMe && onUnclaimTask && (
-        <Tooltip
-          title={
-            isOccupiedByOther
-              ? `🔒 Workspace aberto por ${occupiedByName}.`
-              : "Desassinar tarefa (liberar para outros autores)"
-          }
-        >
+        <Tooltip title="Desassinar tarefa (liberar para outros autores)">
           <span>
             <Button
               variant="outlined"
               color="secondary"
               size="small"
-              disabled={isUnclaiming || isOccupiedByOther}
+              disabled={isUnclaiming}
               startIcon={
                 isUnclaiming ? (
                   <CircularProgress size={14} color="inherit" />
-                ) : isOccupiedByOther ? (
-                  <LockIcon sx={{ fontSize: 16 }} />
                 ) : (
                   <PersonRemoveIcon sx={{ fontSize: 16 }} />
                 )
@@ -315,19 +264,13 @@ export const TaskAssigneeCell = ({
       )}
 
       {!isAssignedToMe && onClaimTask && (
-        <Tooltip
-          title={
-            isOccupiedByOther
-              ? `🔒 Workspace aberto no momento por ${occupiedByName}.`
-              : "Assumir esta tarefa e criar/abrir seu workspace na branch remota"
-          }
-        >
+        <Tooltip title="Assumir esta tarefa e abrir seu workspace de escrita">
           <span>
             <Button
               variant="outlined"
               color="primary"
               size="small"
-              disabled={isClaiming || isOccupiedByOther}
+              disabled={isClaiming}
               startIcon={
                 isClaiming ? (
                   <CircularProgress size={14} color="inherit" />
@@ -397,16 +340,10 @@ export const getTaskStatusConfig = (
   status: TaskStatus,
 ): { color: ChipColor; label: string } => {
   switch (status) {
-    case TaskStatus.MERGED:
-      return { color: "success", label: "Concluída (Merged)" };
-    case TaskStatus.APPROVED:
-      return { color: "success", label: "Aprovada" };
-    case TaskStatus.UNDER_REVIEW:
-      return { color: "warning", label: "Em Avaliação" };
-    case TaskStatus.CHANGES_REQUESTED:
-      return { color: "error", label: "Ajustes Solicitados" };
+    case TaskStatus.COMPLETED:
+      return { color: "success", label: "Concluída" };
     case TaskStatus.IN_PROGRESS:
-      return { color: "primary", label: "Em Progresso" };
+      return { color: "primary", label: "Em Andamento" };
     case TaskStatus.NOT_STARTED:
     default:
       return { color: "default", label: "Não Iniciada" };
@@ -442,11 +379,11 @@ export const TaskActionCell = ({
   isClaiming?: boolean;
   isUnclaiming?: boolean;
 }) => {
-  const isMerged = row.status === TaskStatus.MERGED;
+  const isCompleted = row.status === TaskStatus.COMPLETED;
   const isProvisioning = provisioningTaskId === row.id;
   const isAssignedToMe = row.assignedToId === currentUserId;
 
-  if (isMerged) {
+  if (isCompleted) {
     return (
       <Button
         variant="outlined"
@@ -498,26 +435,11 @@ export const TaskActionCell = ({
         onClick={() => void onStartWorkspace(row)}
         sx={{ fontWeight: 700 }}
       >
-        {isProvisioning ? "⚡ Provisionando..." : "🚀 Iniciar Workspace"}
+        {isProvisioning ? "⚡ Carregando..." : "🚀 Abrir Editor"}
       </Button>
     );
   }
 
-  // Tarefa não atribuída ao usuário atual
-  if (row.isOccupied && row.occupiedBy && row.occupiedBy.id !== currentUserId) {
-    return (
-      <Button
-        variant="outlined"
-        color="warning"
-        size="small"
-        disabled
-        startIcon={<LockIcon fontSize="small" />}
-        sx={{ fontWeight: 600 }}
-      >
-        Em uso por {row.occupiedBy.name}
-      </Button>
-    );
-  }
 
   return (
     <Typography

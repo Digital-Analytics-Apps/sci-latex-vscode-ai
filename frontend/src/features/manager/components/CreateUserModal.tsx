@@ -11,8 +11,7 @@ import type { SyntheticEvent } from "react";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { StandardModal } from "../../../components/common/StandardModal";
-import { Role } from "../../../constants/roles";
-import { MEMBER_ROLE_LABELS } from "../../../constants/teams";
+import { MEMBER_ROLE_LABELS, Role } from "../../../constants/roles";
 import { useCreateUserMutation } from "../../../hooks/useUserQueries";
 import { showNotification } from "../../../store/slices/notificationSlice";
 
@@ -115,9 +114,6 @@ export const CreateUserModal = ({ open, onClose }: CreateUserModalProps) => {
             onChange={(e) => setRole(e.target.value)}
           >
             <MenuItem value={Role.AUTHOR}>{MEMBER_ROLE_LABELS.AUTHOR}</MenuItem>
-            <MenuItem value={Role.REVIEWER}>
-              {MEMBER_ROLE_LABELS.REVIEWER}
-            </MenuItem>
             <MenuItem value={Role.COORDINATOR}>
               {MEMBER_ROLE_LABELS.COORDINATOR}
             </MenuItem>

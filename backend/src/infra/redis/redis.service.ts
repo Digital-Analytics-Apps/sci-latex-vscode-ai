@@ -1,10 +1,12 @@
 import Redis from 'ioredis';
 import { env } from '../../config/env';
 
-export interface WorkspaceKeyInfo {
-  projectId: string;
-  userId: string;
-  taskId: string;
+export const POD_ID = process.env.POD_NAME || process.env.HOSTNAME || `pod-${Math.random().toString(36).substring(2, 9)}`;
+
+export interface DocumentLeaseResult {
+  acquired: boolean;
+  ownerId: string;
+  generation: number;
 }
 
 export class RedisService {
@@ -46,122 +48,99 @@ export class RedisService {
     return this.isConnected && this.client !== null;
   }
 
-  private buildKey(projectId: string, userId: string, taskId: string, mode = 'editor'): string {
-    return `workspace:active:${mode}:${projectId}:${userId}:${taskId}`;
-  }
-
   /**
-   * Renovador de presença atômico (TTL por padrão 180 segundos = 3 minutos)
+   * Tenta adquirir o lease de posse do documento com Fencing Token monotônico (ownerGeneration)
    */
-  async setWorkspaceActive(
-    projectId: string,
-    userId: string,
-    taskId: string = 'default-task',
-    ttlSeconds = 180,
-    mode = 'editor'
-  ): Promise<void> {
-    if (!this.client || !this.isConnected) return;
+  async acquireDocumentLease(
+    documentId: string,
+    podId: string = POD_ID,
+    ttlSeconds = 15
+  ): Promise<DocumentLeaseResult> {
+    if (!this.client || !this.isConnected) {
+      return { acquired: true, ownerId: podId, generation: 1 };
+    }
+
     try {
-      const key = this.buildKey(projectId, userId, taskId, mode);
-      await this.client.set(key, 'true', 'EX', ttlSeconds);
-    } catch (err: any) {
-      console.warn('⚠️ Error setting active workspace in Redis:', err.message || err);
+      const ownerKey = `editor:document:${documentId}:owner`;
+      const genKey = `editor:document:${documentId}:generation`;
+
+      // Tenta setar a chave de owner com NX (se não existir)
+      const result = await this.client.set(ownerKey, podId, 'EX', ttlSeconds, 'NX');
+      if (result === 'OK') {
+        const gen = await this.client.incr(genKey);
+        return { acquired: true, ownerId: podId, generation: gen };
+      }
+
+      const currentOwner = (await this.client.get(ownerKey)) || podId;
+      const genStr = await this.client.get(genKey);
+      const generation = genStr ? parseInt(genStr, 10) : 1;
+
+      return {
+        acquired: currentOwner === podId,
+        ownerId: currentOwner,
+        generation,
+      };
+    } catch (err) {
+      console.warn(`[Redis Lease Warning]: Falha ao adquirir lease para ${documentId}:`, err);
+      return { acquired: true, ownerId: podId, generation: 1 };
     }
   }
-
   /**
-   * Verifica estritamente a presença ativa no Redis para a tríade (projectId, userId, taskId)
+   * Renova o lease de um documento mantido por este Pod
    */
-  async isWorkspaceActive(
-    projectId: string,
-    userId: string,
-    taskId: string = 'default-task'
-  ): Promise<boolean> {
-    if (!this.client || !this.isConnected) return true; // Fallback permissivo apenas se Redis indisponível
+  async renewDocumentLease(documentId: string, podId: string = POD_ID, ttlSeconds = 15): Promise<boolean> {
+    if (!this.client || !this.isConnected) return true;
     try {
-      const keys = await this.client.keys(`workspace:active:*:${projectId}:${userId}:${taskId}`);
-      return keys.length > 0;
-    } catch {
+      const key = `editor:document:${documentId}:owner`;
+      const currentOwner = await this.client.get(key);
+      if (currentOwner === podId) {
+        await this.client.expire(key, ttlSeconds);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn(`[Redis Lease Warning]: Falha ao renovar lease para ${documentId}:`, err);
       return true;
     }
   }
 
   /**
-   * Remove a chave de presença imediatamente (ao desconectar manualmente)
+   * Libera voluntariamente o lease do documento (ex: encerramento da sala ou eviction)
    */
-  async removeWorkspaceActive(
-    projectId: string,
-    userId: string,
-    taskId: string = 'default-task'
-  ): Promise<void> {
-    if (!this.client || !this.isConnected) return;
+  async releaseDocumentLease(documentId: string, podId: string = POD_ID): Promise<boolean> {
+    if (!this.client || !this.isConnected) return true;
+
     try {
-      const keys = await this.client.keys(`workspace:active:*:${projectId}:${userId}:${taskId}`);
-      if (keys.length > 0) {
-        await this.client.del(...keys);
+      const key = `editor:document:${documentId}:owner`;
+      const currentOwner = await this.client.get(key);
+      if (currentOwner === podId) {
+        await this.client.del(key);
+        return true;
       }
-    } catch (err: any) {
-      console.warn('⚠️ Error removing active workspace key from Redis:', err.message || err);
+      return false;
+    } catch (err) {
+      console.warn(`[Redis Lease Warning]: Falha ao liberar lease para ${documentId}:`, err);
+      return false;
     }
   }
 
   /**
-   * Retorna todas as chaves ativas registradas no Redis
+   * Consulta o dono atual e a geração de um documento
    */
-  async listAllActiveWorkspaces(): Promise<WorkspaceKeyInfo[]> {
-    if (!this.client || !this.isConnected) return [];
+  async getDocumentLease(documentId: string): Promise<{ owner: string | null; generation: number }> {
+    if (!this.client || !this.isConnected) return { owner: null, generation: 0 };
     try {
-      const keys = await this.client.keys('workspace:active:*');
-      return keys.map((key) => {
-        const parts = key.split(':'); // workspace:active:<mode>:<projectId>:<userId>:<taskId>
-        return {
-          projectId: parts[3] || '',
-          userId: parts[4] || '',
-          taskId: parts[5] || 'default-task',
-        };
-      });
+      const owner = await this.client.get(`editor:document:${documentId}:owner`);
+      const genStr = await this.client.get(`editor:document:${documentId}:generation`);
+      return { owner, generation: genStr ? parseInt(genStr, 10) : 0 };
     } catch {
-      return [];
+      return { owner: null, generation: 0 };
     }
   }
 
-  /**
-   * Encontra o ID do usuário que atualmente possui uma sessão ativa de EDIÇÃO na tarefa (se houver)
-   */
-  async findActiveUserForTask(projectId: string, taskId: string): Promise<string | null> {
-    if (!this.client || !this.isConnected) return null;
-    try {
-      const keys = await this.client.keys(`workspace:active:editor:${projectId}:*:${taskId}`);
-      if (keys.length > 0) {
-        const parts = keys[0].split(':'); // workspace:active:editor:<projectId>:<userId>:<taskId>
-        return parts[4] || null;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Retorna um Map (taskId -> userId) com a presença ativa de EDITORES de todas as tarefas de um projeto
-   */
-  async getTaskPresenceMap(projectId: string): Promise<Map<string, string>> {
-    const presenceMap = new Map<string, string>();
-    if (!this.client || !this.isConnected) return presenceMap;
-    try {
-      const keys = await this.client.keys(`workspace:active:editor:${projectId}:*:*`);
-      for (const key of keys) {
-        const parts = key.split(':'); // workspace:active:editor:<projectId>:<userId>:<taskId>
-        const userId = parts[4];
-        const taskId = parts[5];
-        if (userId && taskId) {
-          presenceMap.set(taskId, userId);
-        }
-      }
-    } catch {
-      // Retorna Map vazio em caso de erro
-    }
-    return presenceMap;
+  async getDocumentOwner(documentId: string): Promise<string | null> {
+    const lease = await this.getDocumentLease(documentId);
+    return lease.owner;
   }
 }
 

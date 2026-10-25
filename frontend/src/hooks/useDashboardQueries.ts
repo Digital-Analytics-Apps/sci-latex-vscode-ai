@@ -9,7 +9,6 @@ export interface DashboardSummaryResponse {
 export interface DashboardSummaryFilters {
   projectId?: string;
   academicPeriodId?: string;
-  teamId?: string;
 }
 
 export function useDashboardSummaryQuery(filters?: DashboardSummaryFilters) {
@@ -22,9 +21,6 @@ export function useDashboardSummaryQuery(filters?: DashboardSummaryFilters) {
       }
       if (filters?.academicPeriodId) {
         cleanParams.academicPeriodId = filters.academicPeriodId;
-      }
-      if (filters?.teamId) {
-        cleanParams.teamId = filters.teamId;
       }
 
       const response = await api.get("/dashboard/summary", {

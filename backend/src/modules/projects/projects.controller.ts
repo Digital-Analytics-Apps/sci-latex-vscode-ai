@@ -9,14 +9,16 @@ import { ProjectsService } from './projects.service';
 export const createProjectSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  teamId: z.string().uuid().optional(),
   academicPeriodId: z.string().uuid().optional(),
+  coordinatorId: z.string().uuid(),
+  managerId: z.string().uuid(),
   targetConferenceName: z.string().optional(),
   targetConferenceDate: z.coerce.date().optional(),
   backupConferenceName: z.string().optional(),
   backupConferenceDate: z.coerce.date().optional(),
-  coAuthorIds: z.array(z.string()).optional(),
-  reviewerId: z.string().optional(),
+  additionalAuthorIds: z.array(z.string().uuid()).default([]),
+  authorIds: z.array(z.string().uuid()).optional(),
+  reviewerId: z.string().uuid().optional(),
   stages: z
     .array(
       z.object({
@@ -109,15 +111,17 @@ export class ProjectsController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
-      teamId: z.string().uuid().optional(),
+      coordinatorId: z.string().uuid().optional(),
+      managerId: z.string().uuid().optional(),
       academicPeriodId: z.string().uuid().optional(),
     });
 
-    const { teamId, academicPeriodId } = querySchema.parse(request.query);
+    const { coordinatorId, managerId, academicPeriodId } = querySchema.parse(request.query);
     const userId = request.user.sub;
 
     const projects = await this.projectsService.listProjects({
-      teamId,
+      coordinatorId,
+      managerId,
       academicPeriodId,
       userId,
     });

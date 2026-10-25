@@ -1,11 +1,10 @@
-import { NITStatus, Prisma, PRStatus, Role } from '@prisma/client';
+import { NITStatus, Prisma, Role } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { deadlineService } from '../../utils/deadlines';
 
 export interface DashboardFilterDTO {
   projectId?: string;
   academicPeriodId?: string;
-  teamId?: string;
 }
 
 export class DashboardService {
@@ -19,7 +18,7 @@ export class DashboardService {
       case Role.COORDINATOR:
         return {
           role,
-          metrics: await this.getCoordinatorMetrics(userId, filters?.teamId, filters?.projectId),
+          metrics: await this.getCoordinatorMetrics(userId, filters?.projectId),
         };
       case Role.MANAGER:
       case Role.ADMIN:
@@ -36,36 +35,22 @@ export class DashboardService {
     }
   }
 
-  async getReviewerMetrics(projectId?: string) {
-    const where: Prisma.PullRequestWhereInput = {};
-    if (projectId && projectId !== 'all') {
-      where.projectId = projectId;
-    }
-
-    const [pendingReview, waitingNIT, approved, changesRequested, total] = await Promise.all([
-      prisma.pullRequest.count({ where: { ...where, status: PRStatus.UNDER_REVIEW } }),
-      prisma.pullRequest.count({ where: { ...where, nitStatus: NITStatus.WAITING_NIT } }),
-      prisma.pullRequest.count({ where: { ...where, status: PRStatus.APPROVED } }),
-      prisma.pullRequest.count({ where: { ...where, status: PRStatus.CHANGES_REQUESTED } }),
-      prisma.pullRequest.count({ where }),
-    ]);
-
+  async getReviewerMetrics(_projectId?: string) {
     return {
-      pendingReview,
-      waitingNIT,
-      approved,
-      changesRequested,
-      total,
+      pendingReview: 0,
+      waitingNIT: 0,
+      approved: 0,
+      changesRequested: 0,
+      total: 0,
     };
   }
 
-  async getCoordinatorMetrics(userId: string, teamId?: string, projectId?: string) {
+  async getCoordinatorMetrics(userId: string, projectId?: string) {
     const where: Prisma.TaskWhereInput = {};
     if (projectId && projectId !== 'all') {
       where.projectId = projectId;
-    }
-    if (teamId) {
-      where.project = { teamId };
+    } else {
+      where.project = { coordinatorId: userId };
     }
 
     const tasks = await prisma.task.findMany({
@@ -110,7 +95,7 @@ export class DashboardService {
       }),
       prisma.task.count({ where }),
       prisma.task.count({ where: { ...where, status: 'IN_PROGRESS' } }),
-      prisma.task.count({ where: { ...where, status: 'MERGED' } }),
+      prisma.task.count({ where: { ...where, status: 'COMPLETED' } }),
     ]);
 
     return {
@@ -126,20 +111,14 @@ export class DashboardService {
     if (filters?.academicPeriodId) {
       where.academicPeriodId = filters.academicPeriodId;
     }
-
-    if (filters?.teamId) {
-      where.teamId = filters.teamId;
-    }
-
     const projects = await prisma.project.findMany({
       where,
       include: {
-        team: {
-          include: {
-            coordinator: {
-              select: { id: true, name: true, email: true },
-            },
-          },
+        coordinator: {
+          select: { id: true, name: true, email: true },
+        },
+        manager: {
+          select: { id: true, name: true, email: true },
         },
         academicPeriod: true,
         members: {
@@ -150,7 +129,6 @@ export class DashboardService {
           },
         },
         tasks: true,
-        prs: true,
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -164,8 +142,7 @@ export class DashboardService {
     let warningSoonCount = 0;
     let overdueCount = 0;
 
-    const teamSummaryMap = new Map<string, any>();
-
+    const coordinatorSummaryMap = new Map<string, any>();
     for (const proj of projects) {
       // 1. Status de Submissão
       if (
@@ -191,21 +168,20 @@ export class DashboardService {
       else if (deadlineStatus === 'WARNING_SOON') warningSoonCount++;
       else onTimeCount++;
 
-      // 3. Agrupamento por Equipe / Coordenador
-      const teamId = proj.teamId;
-      if (!teamSummaryMap.has(teamId)) {
-        teamSummaryMap.set(teamId, {
-          teamId,
-          teamName: proj.team.name,
-          coordinator: proj.team.coordinator,
+      // 3. Agrupamento por Coordenador
+      const coordId = proj.coordinatorId;
+      if (!coordinatorSummaryMap.has(coordId)) {
+        coordinatorSummaryMap.set(coordId, {
+          coordinatorId: coordId,
+          coordinator: proj.coordinator,
           totalProjects: 0,
           publishedCount: 0,
         });
       }
-      const teamEntry = teamSummaryMap.get(teamId);
-      teamEntry.totalProjects++;
+      const coordEntry = coordinatorSummaryMap.get(coordId);
+      coordEntry.totalProjects++;
       if (proj.doi || proj.submissionStatus === 'COMPLETED_PUBLISHED') {
-        teamEntry.publishedCount++;
+        coordEntry.publishedCount++;
       }
     }
 
@@ -231,7 +207,8 @@ export class DashboardService {
         warningSoonCount,
         overdueCount,
       },
-      teams: Array.from(teamSummaryMap.values()),
+      coordinators: Array.from(coordinatorSummaryMap.values()),
+      teams: [],
       recentActivity: recentActivity.map((log) => ({
         id: log.id,
         action: log.action,

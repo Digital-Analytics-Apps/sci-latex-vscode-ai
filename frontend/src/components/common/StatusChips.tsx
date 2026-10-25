@@ -1,57 +1,6 @@
 import { Chip } from "@mui/material";
 import React from "react";
-import { NITStatus, PRStatus } from "../../constants/status";
-
-export interface PRStatusChipProps {
-  status: string;
-}
-
-export const PRStatusChip: React.FC<PRStatusChipProps> = ({ status }) => {
-  switch (status) {
-    case PRStatus.APPROVED:
-      return (
-        <Chip
-          label="Aprovado"
-          size="small"
-          color="success"
-          variant="outlined"
-          sx={{ fontWeight: 600 }}
-        />
-      );
-    case PRStatus.CHANGES_REQUESTED:
-      return (
-        <Chip
-          label="Ajustes Solicitados"
-          size="small"
-          color="error"
-          variant="outlined"
-          sx={{ fontWeight: 600 }}
-        />
-      );
-    case PRStatus.UNDER_REVIEW:
-      return (
-        <Chip
-          label="Em Avaliação"
-          size="small"
-          color="warning"
-          variant="outlined"
-          sx={{ fontWeight: 600 }}
-        />
-      );
-    case PRStatus.MERGED:
-      return (
-        <Chip
-          label="Mesclado (Merged)"
-          size="small"
-          color="info"
-          variant="outlined"
-          sx={{ fontWeight: 600 }}
-        />
-      );
-    default:
-      return <Chip label={status} size="small" variant="outlined" />;
-  }
-};
+import { NITStatus } from "../../constants/status";
 
 export interface NITStatusChipProps {
   status: string;

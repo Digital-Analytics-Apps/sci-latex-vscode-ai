@@ -7,19 +7,16 @@ import {
   useManagerDashboardQuery,
 } from "../../hooks/useManagementQueries";
 import { useProjectsList } from "../../hooks/useProjectQueries";
-import { useTeamsQuery } from "../../hooks/useTeamQueries";
+import { useUsersListQuery } from "../../hooks/useUserQueries";
 import type { AcademicPeriod } from "../../types/academic-period.types";
 import type { ProjectListItem } from "../../types/project.types";
-import type { TeamItem } from "../../types/team.types";
 import { CreateProjectModal } from "../author/modals/CreateProjectModal";
 import { AcademicPeriodsSection } from "./components/AcademicPeriodsSection";
 import { CreateAcademicPeriodModal } from "./components/CreateAcademicPeriodModal";
 import { CreateUserModal } from "./components/CreateUserModal";
 import { InstitutionalProjectsSection } from "./components/InstitutionalProjectsSection";
-import { ManageTeamModal } from "./components/ManageTeamModal";
 import { ManagerSidebar } from "./components/ManagerSidebar";
 import { OverviewSection } from "./components/OverviewSection";
-import { TeamsManagementSection } from "./components/TeamsManagementSection";
 
 export interface ManagerDashboardContext {
   overview: {
@@ -35,19 +32,11 @@ export interface ManagerDashboardContext {
   isLoadingPeriods: boolean;
   allProjects: ProjectListItem[];
   isLoadingProjects: boolean;
-  allTeams: TeamItem[];
-  isLoadingTeams: boolean;
-  totalTeamsCount: number;
   totalMembersCount: number;
-  teamsWithCoordinatorCount: number;
-  activeProjectsInTeamsCount: number;
   onOpenCreatePeriod: () => void;
   onOpenCreateProject: () => void;
-  onOpenCreateTeam: () => void;
   onOpenCreateUser: () => void;
-  onManageTeam: (team: TeamItem) => void;
 }
-
 export function useManagerContext() {
   return useOutletContext<ManagerDashboardContext>();
 }
@@ -60,8 +49,6 @@ export const ManagerOverviewView = () => {
       overview={ctx.overview}
       isLoadingDashboard={ctx.isLoadingDashboard}
       activePeriod={ctx.activePeriod}
-      isLoadingTeams={ctx.isLoadingTeams}
-      totalTeamsCount={ctx.totalTeamsCount}
       totalMembersCount={ctx.totalMembersCount}
     />
   );
@@ -89,39 +76,19 @@ export const InstitutionalProjectsView = () => {
   );
 };
 
-export const TeamsManagementView = () => {
-  const ctx = useManagerContext();
-  return (
-    <TeamsManagementSection
-      allTeams={ctx.allTeams}
-      isLoadingTeams={ctx.isLoadingTeams}
-      totalTeamsCount={ctx.totalTeamsCount}
-      totalMembersCount={ctx.totalMembersCount}
-      teamsWithCoordinatorCount={ctx.teamsWithCoordinatorCount}
-      activeProjectsInTeamsCount={ctx.activeProjectsInTeamsCount}
-      onOpenCreateTeam={ctx.onOpenCreateTeam}
-      onOpenCreateUser={ctx.onOpenCreateUser}
-      onManageTeam={ctx.onManageTeam}
-    />
-  );
-};
 
 export const ManagerDashboardPage = () => {
   const [selectedPeriod] = useState<string>("");
 
   // Modais de Criação e Gestão CRUD
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
-  const [isManageTeamOpen, setIsManageTeamOpen] = useState(false);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
-
-  // Estado para Modal Unificado de Gestão de Equipes
-  const [managingTeam, setManagingTeam] = useState<TeamItem | null>(null);
 
   const { data: rawPeriods, isLoading: isLoadingPeriods } =
     useAcademicPeriods();
   const { data: rawProjects, isLoading: isLoadingProjects } = useProjectsList();
-  const { data: rawTeams, isLoading: isLoadingTeams } = useTeamsQuery();
+  const { data: rawUsers } = useUsersListQuery();
 
   const periods = React.useMemo(
     () => (Array.isArray(rawPeriods) ? rawPeriods : []),
@@ -130,10 +97,6 @@ export const ManagerDashboardPage = () => {
   const allProjects = React.useMemo(
     () => (Array.isArray(rawProjects) ? rawProjects : []),
     [rawProjects],
-  );
-  const allTeams = React.useMemo(
-    () => (Array.isArray(rawTeams) ? rawTeams : []),
-    [rawTeams],
   );
 
   const { data: dashboard, isLoading: isLoadingDashboard } =
@@ -151,20 +114,7 @@ export const ManagerDashboardPage = () => {
 
   const activePeriod = periods.find((p) => p.id === selectedPeriod);
 
-  // Métricas Calculadas de Gestão de Equipes
-  const totalTeamsCount = allTeams.length;
-  const totalMembersCount = React.useMemo(
-    () => allTeams.reduce((acc, t) => acc + (t._count?.members || 0), 0),
-    [allTeams],
-  );
-  const teamsWithCoordinatorCount = React.useMemo(
-    () => allTeams.filter((t) => !!t.coordinator?.email).length,
-    [allTeams],
-  );
-  const activeProjectsInTeamsCount = React.useMemo(
-    () => allTeams.reduce((acc, t) => acc + (t._count?.projects || 0), 0),
-    [allTeams],
-  );
+  const totalMembersCount = Array.isArray(rawUsers) ? rawUsers.length : 0;
 
   const contextValue: ManagerDashboardContext = {
     overview,
@@ -174,23 +124,10 @@ export const ManagerDashboardPage = () => {
     isLoadingPeriods,
     allProjects,
     isLoadingProjects,
-    allTeams,
-    isLoadingTeams,
-    totalTeamsCount,
     totalMembersCount,
-    teamsWithCoordinatorCount,
-    activeProjectsInTeamsCount,
     onOpenCreatePeriod: () => setIsCreatePeriodOpen(true),
     onOpenCreateProject: () => setIsCreateProjectOpen(true),
-    onOpenCreateTeam: () => {
-      setManagingTeam(null);
-      setIsManageTeamOpen(true);
-    },
     onOpenCreateUser: () => setIsCreateUserOpen(true),
-    onManageTeam: (team) => {
-      setManagingTeam(team);
-      setIsManageTeamOpen(true);
-    },
   };
 
   return (
@@ -223,15 +160,6 @@ export const ManagerDashboardPage = () => {
         onClose={() => setIsCreateProjectOpen(false)}
       />
 
-      {/* Modal Unificado de Gestão de Equipe (Criação & Edição) */}
-      <ManageTeamModal
-        open={isManageTeamOpen}
-        onClose={() => {
-          setIsManageTeamOpen(false);
-          setManagingTeam(null);
-        }}
-        team={managingTeam}
-      />
     </Box>
   );
 };

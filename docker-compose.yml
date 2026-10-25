@@ -30,6 +30,31 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  minio:
+    image: cleanstart/minio:latest
+    container_name: sci_latex_minio
+    user: "0:0"
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  compiler:
+    build:
+      context: ./compiler
+    container_name: sci_latex_compiler
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      HOST: "0.0.0.0"
 
   backend:
     build:
@@ -45,30 +70,28 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: super-secret-jwt-key-change-in-production
-      GITHUB_ORG: ${GITHUB_ORG:-}
-      GITHUB_REPO_PREFIX: ${GITHUB_REPO_PREFIX:-sci-paper-}
-      CODE_SERVER_URL: http://code-server:8080
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: collab-assets
+      COMPILER_URL: http://compiler:4000
       PORT: 3333
       HOST: "::"
       NODE_ENV: development
     volumes:
       - ./backend:/app
       - ./storage:/app/storage
-      - ./docker/code-server:/app/docker/code-server:ro
       - /app/node_modules
-      - ${HOME}/.kube/config:/root/.kube/config:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: sh -c "npx prisma generate && npm run dev"
-    networks:
-      - default
-      - kind
-
+      minio:
+        condition: service_started
+      compiler:
+        condition: service_started
+    command: sh -c "npx prisma generate && exec npm run dev"
   frontend:
     build:
       context: ./frontend
@@ -79,6 +102,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:3333/api/v1
+      VITE_WS_URL: ws://localhost:3333
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -86,12 +110,6 @@ services:
       - backend
     command: npm run dev -- --host 0.0.0.0
 
-networks:
-  default:
-  kind:
-    external: true
-    name: kind
-
 volumes:
   postgres_data:
-
+  minio_data:

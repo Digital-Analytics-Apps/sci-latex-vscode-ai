@@ -2,7 +2,6 @@ import {
   CreateAcademicPeriodData,
   IAcademicPeriodsRepository,
   PrismaAcademicPeriodsRepository,
-  SetTeamGoalData,
 } from '../../repositories/academic-periods.repository';
 
 export class AcademicPeriodsService {
@@ -20,13 +19,5 @@ export class AcademicPeriodsService {
 
   async getPeriodById(id: string) {
     return this.repository.findById(id);
-  }
-
-  async setTeamGoal(data: SetTeamGoalData) {
-    return this.repository.setTeamGoal(data);
-  }
-
-  async getTeamGoals(academicPeriodId: string) {
-    return this.repository.getTeamGoals(academicPeriodId);
   }
 }

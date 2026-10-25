@@ -26,72 +26,6 @@ export function useSSEEventSource(projectId?: string, taskId?: string) {
       ? `${baseUrl}/events/stream?${queryString}`
       : `${baseUrl}/events/stream`;
 
-    // Função auxiliar para enviar o batimento HTTP que renova o Redis e cancela destruição de Pod
-    async function sendHeartbeatPing() {
-      if (!projectId) return;
-      try {
-        const heartbeatUrl = queryString
-          ? `${baseUrl}/events/heartbeat?${queryString}`
-          : `${baseUrl}/events/heartbeat`;
-        await fetch(heartbeatUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      } catch {
-        // Ignora falhas temporárias de ping
-      }
-    }
-
-    // Criar Web Worker dedicado para batimentos em segundo plano (Web Workers NÃO são desacelerados pelos navegadores quando a aba perde o foco)
-    let pingWorker: Worker | null = null;
-    let workerUrl = "";
-    try {
-      const workerBlob = new Blob(
-        [
-          `
-          let timer = null;
-          self.onmessage = function(e) {
-            if (e.data === 'start') {
-              if (timer) clearInterval(timer);
-              timer = setInterval(function() {
-                self.postMessage('ping');
-              }, 20000); // Envia ping a cada 20s em segundo plano
-            } else if (e.data === 'stop') {
-              if (timer) clearInterval(timer);
-              timer = null;
-            }
-          };
-        `,
-        ],
-        { type: "application/javascript" },
-      );
-      workerUrl = URL.createObjectURL(workerBlob);
-      pingWorker = new Worker(workerUrl);
-      pingWorker.onmessage = (e) => {
-        if (e.data === "ping") {
-          sendHeartbeatPing();
-        }
-      };
-      pingWorker.postMessage("start");
-    } catch {
-      // Fallback para setInterval se Web Workers forem bloqueados por CSP
-      const fallbackInterval = setInterval(() => {
-        sendHeartbeatPing();
-      }, 20000);
-      controller.signal.addEventListener("abort", () => {
-        clearInterval(fallbackInterval);
-      });
-    }
-
-    // Escuta a volta do foco da aba para enviar batimento e reconectar o SSE imediatamente
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        sendHeartbeatPing();
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     async function connectSSE() {
       try {
@@ -135,53 +69,79 @@ export function useSSEEventSource(projectId?: string, taskId?: string) {
               }
             }
 
+            let parsedTitle = "";
             if (dataStr) {
               try {
-                JSON.parse(dataStr);
+                const parsed: unknown = JSON.parse(dataStr);
+                if (parsed && typeof parsed === "object" && "title" in parsed && typeof parsed.title === "string") {
+                  parsedTitle = parsed.title;
+                }
               } catch {
                 // Ignore parse errors for raw event strings
               }
             }
 
-            if (
-              eventName === "WORK_ITEM_UPDATED" ||
-              eventName === "PROJECT_ITEM_UPDATED" ||
-              chunk.includes("WORK_ITEM_UPDATED")
+            if (eventName === "TASK_CREATED" || chunk.includes("TASK_CREATED")) {
+              queryClient.invalidateQueries({ queryKey: ["tasks"] });
+              if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+              }
+              dispatch(
+                showNotification({
+                  message: parsedTitle ? `Nova tarefa criada: ${parsedTitle}` : "Nova tarefa criada no projeto!",
+                  severity: "info",
+                }),
+              );
+            } else if (
+              eventName === "TASK_CLAIMED" ||
+              eventName === "TASK_UNCLAIMED" ||
+              chunk.includes("TASK_CLAIMED")
             ) {
               queryClient.invalidateQueries({ queryKey: ["tasks"] });
-              queryClient.invalidateQueries({ queryKey: ["work-items"] });
+              if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+              }
+            } else if (
+              eventName === "TASK_COMPLETED" ||
+              eventName === "TASK_STATUS_UPDATED" ||
+              chunk.includes("TASK_COMPLETED")
+            ) {
+              queryClient.invalidateQueries({ queryKey: ["tasks"] });
+              if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+                queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+              }
+              if (eventName === "TASK_COMPLETED") {
+                dispatch(
+                  showNotification({
+                    message: "Tarefa concluída com sucesso!",
+                    severity: "success",
+                  }),
+                );
+              }
+            } else if (
+              eventName === "ARTICLE_CREATED" ||
+              eventName === "ARTICLE_UPDATED"
+            ) {
               queryClient.invalidateQueries({ queryKey: ["projects"] });
+              queryClient.invalidateQueries({ queryKey: ["articles"] });
+              queryClient.invalidateQueries({ queryKey: ["user-articles"] });
             } else if (
               eventName === "PDF_COMPILED" ||
               chunk.includes("PDF_COMPILED")
             ) {
               dispatch(
                 showNotification({
-                  message: "PDF compilado com sucesso para o projeto!",
+                  message: "PDF compilado com sucesso!",
                   severity: "success",
                 }),
               );
-            } else if (
-              eventName === "MERGE_UNLOCKED" ||
-              chunk.includes("MERGE_UNLOCKED")
-            ) {
-              dispatch(
-                showNotification({
-                  message:
-                    "Parecer do NIT aprovado! O botão de Merge foi liberado.",
-                  severity: "success",
-                }),
-              );
-              if (projectId) {
-                queryClient.invalidateQueries({
-                  queryKey: ["pull-requests", projectId],
-                });
-              }
             }
           }
         }
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
+      } catch (err: unknown) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        if (!isAbort) {
           setIsConnected(false);
         }
       }
@@ -191,14 +151,6 @@ export function useSSEEventSource(projectId?: string, taskId?: string) {
 
     return () => {
       controller.abort();
-      if (pingWorker) {
-        pingWorker.postMessage("stop");
-        pingWorker.terminate();
-      }
-      if (workerUrl) {
-        URL.revokeObjectURL(workerUrl);
-      }
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
       setIsConnected(false);
     };
   }, [token, projectId, taskId, dispatch, queryClient]);

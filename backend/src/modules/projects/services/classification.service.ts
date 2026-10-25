@@ -1,5 +1,10 @@
 import path from 'node:path';
-import type { RawFileDiffFact } from '../../../infra/git/git.service';
+export interface RawFileDiffFact {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+  additions: number;
+  deletions: number;
+}
 
 export interface ClassifiedFileDiff extends RawFileDiffFact {
   category: 'section' | 'bibliography' | 'figure' | 'other';
