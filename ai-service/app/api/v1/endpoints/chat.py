@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
+from langgraph.checkpoint.memory import MemorySaver
 from app.agents.sub_agents.supervisor import get_onboarding_supervisor
 from app.streaming.stream_processor import StreamProcessor
 from app.core.config import settings
@@ -14,10 +15,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 processor = StreamProcessor()
 
-# Instância padrão do supervisor em memória (para MVP)
-# Checkpointer persistente em PostgreSQL pode ser injetado quando configurado
-supervisor_graph = get_onboarding_supervisor()
-
+# Instância padrão do supervisor com checkpointer em memória (para MVP e experimentação)
+# Preserva o histórico de mensagens e o estado por thread_id (conversation_id)
+# Permite paradas com interrupt() e retomadas via /chat/resume
+chat_checkpointer = MemorySaver()
+supervisor_graph = get_onboarding_supervisor(checkpointer=chat_checkpointer)
 
 class ChatStreamRequest(BaseModel):
     conversation_id: str
@@ -40,6 +42,7 @@ async def chat_stream_endpoint(request: ChatStreamRequest):
 
     async def event_generator():
         try:
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Conectado ao SCIA. Consultando especialistas...'})}\n\n"
             input_data = {
                 "messages": [HumanMessage(content=request.message)],
                 "conversation_id": request.conversation_id,
@@ -81,6 +84,7 @@ async def chat_resume_endpoint(request: ChatResumeRequest):
 
     async def resume_generator():
         try:
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Retomando o fluxo com sua decisão...'})}\n\n"
             resume_cmd = Command(resume=request.decision)
             graph_stream = supervisor_graph.astream(
                 resume_cmd, config=config, stream_mode="updates"

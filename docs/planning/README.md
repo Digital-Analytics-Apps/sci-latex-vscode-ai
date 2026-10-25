@@ -54,6 +54,8 @@ docs/planning/
 │   ├── adr-006-sciai-integration-architecture.md (Integração da IA SciAI e Governança)
 │   ├── adr-007-collaborative-editor-architecture-scaling.md (Arquitetura, Persistência e Escalabilidade do Editor)
 │   ├── adr-007.1-document-ownership-fencing-and-routing.md (Roteamento de Posse e Fencing Tokens contra Split-Brain)
+│   ├── adr-008-workflow-6-etapas-revisao-desacoplamento-git.md (Workflow Oficial em 6 Etapas Fixas e Desacoplamento Git)
+│   ├── adr-009-sciai-api-first-experimentation-and-service-enablement.md (Experimentação Headless via API e Habilitação do SciAI)
 │   └── parecer-tecnico-code-server-coder.md
 │
 ├── reports/                    <-- 📈 Relatórios de Execução (Fases & Sprints)

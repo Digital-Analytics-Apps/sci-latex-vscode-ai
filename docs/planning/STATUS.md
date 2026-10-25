@@ -39,6 +39,7 @@
       * `ai-service/app/api/v1/endpoints/chat.py`: Endpoints `/chat/stream` e `/chat/resume` para o chat interativo.
       * `ai-service/app/api/v1/endpoints/runs.py`: Endpoints M2M assíncronos (`POST /runs`, `/resume`, `/cancel`) com autenticação `X-Internal-Service-Key`.
       * `ai-service/app/streaming/stream_processor.py`: Formatador enxuto de eventos Server-Sent Events.
+    * **ADR 009 Proposta (Em Discussão):** Documentada em [`docs/planning/adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) a estratégia de experimentação headless via API, sem acoplamento ao frontend, cobrindo o harness CLI, injeção de `MemorySaver` para suportar `interrupt()`, alinhamento do Ollama local (`qwen3.5:4b`) e rota para o redator LaTeX (`writer.py`).
   * **Referências de Chat Copilot & Onboarding no Frontend (`frontend/references-ai-chat/`):**
     * Copiados como modelo de implementação: `OnboardingChat.reference.tsx`, `onboardingApi.reference.ts` e `AIChatSidebar.reference.tsx`.
     * Criado `frontend/references-ai-chat/README.md` com diretrizes para adaptação ao design system do SCIA, tipagens e proxy Fastify.

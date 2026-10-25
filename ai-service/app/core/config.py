@@ -22,16 +22,23 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    # LLM & Providers
+    @property
+    def cors_origins(self) -> List[str]:
+        if isinstance(self.BACKEND_CORS_ORIGINS, list):
+            return self.BACKEND_CORS_ORIGINS
+        return [self.BACKEND_CORS_ORIGINS]
+    # LLM & Providers ("gemini" | "openai" | "ollama" | "auto")
+    LLM_PROVIDER: str = "auto"
+    
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     
     OPENAI_API_KEY: str | None = None
-    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_MODEL: str = "gpt-4o-mini"
     
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3:8b"
-
+    OLLAMA_MODEL: str = "qwen3.5:4b"
+    OLLAMA_NUM_CTX: int = 16384
     # Ferramentas de Busca
     TAVILY_API_KEY: str | None = None
     

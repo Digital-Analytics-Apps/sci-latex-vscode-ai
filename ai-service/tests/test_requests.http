@@ -1,0 +1,72 @@
+### 1. Healthcheck
+GET http://localhost:8000/health
+Accept: application/json
+
+### 2. Iniciar Diálogo de Onboarding (SSE Streaming)
+POST http://localhost:8000/internal/v1/chat/stream
+Content-Type: application/json
+
+{
+  "conversation_id": "test-session-dev-01",
+  "message": "Quero escrever um artigo científico sobre tolerância a falhas bizantinas em redes veiculares (VANETs).",
+  "user_id": "usr-dev-test"
+}
+
+### 3. Continuar Diálogo (Refinamento do Problema)
+POST http://localhost:8000/internal/v1/chat/stream
+Content-Type: application/json
+
+{
+  "conversation_id": "test-session-dev-01",
+  "message": "O foco é em consenso assíncrono para comunicação V2V sob alta mobilidade. Pode executar a busca bibliográfica.",
+  "user_id": "usr-dev-test"
+}
+
+### 4. Retomar após Interrupção (Seleção de Artigos - HITL)
+POST http://localhost:8000/internal/v1/chat/resume
+Content-Type: application/json
+
+{
+  "conversation_id": "test-session-dev-01",
+  "decision": {
+    "decisions": [
+      {
+        "type": "selected",
+        "args": {
+          "selected_articles": [
+            {
+              "title": "BFT-VANET: A Byzantine Fault-Tolerant Consensus for Connected Vehicles",
+              "doi": "https://doi.org/10.1109/TVT.2023.123456"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+
+### 5. Definir Congresso e Prazo (Geração do Roadmap)
+POST http://localhost:8000/internal/v1/chat/stream
+Content-Type: application/json
+
+{
+  "conversation_id": "test-session-dev-01",
+  "message": "O congresso alvo é o SBSEG 2027 e temos 10 semanas até a submissão final.",
+  "user_id": "usr-dev-test"
+}
+
+### 6. Aprovação Final do Roadmap (Criação do Projeto)
+POST http://localhost:8000/internal/v1/chat/resume
+Content-Type: application/json
+
+{
+  "conversation_id": "test-session-dev-01",
+  "decision": {
+    "decisions": [
+      {
+        "type": "approve",
+        "args": {}
+      }
+    ]
+  }
+}

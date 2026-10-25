@@ -17,9 +17,17 @@ class Article(TypedDict, total=False):
 class TaskItem(TypedDict, total=False):
     title: str
     description: str
+    section_file: Optional[str]  # Ex: "sections/03_methodology.tex"
+    stage_order: int             # Etapa a que pertence (3 = Escrita do Artigo, 2 = Experimentos)
     due_in_days: int
 
 
+class FixedStage(TypedDict, total=False):
+    order: int
+    title: str
+    planned_days: int
+    is_gatekeeper: bool
+    gatekeeper_type: Optional[str]
 class OnboardingState(TypedDict, total=False):
     # Contexto e Identificação
     conversation_id: str
@@ -42,11 +50,13 @@ class OnboardingState(TypedDict, total=False):
     selected_articles: Optional[List[Article]]
 
     # Proposta Estruturada Final
-    roadmap: Optional[List[TaskItem]]
+    # Proposta Estruturada Final (Régua Fixa + Tarefas de Escrita)
+    stages_timeline: Optional[List[FixedStage]]
+    tasks: Optional[List[TaskItem]]
+    roadmap: Optional[List[TaskItem]]  # Compatibilidade com visualizadores anteriores
     project_title: Optional[str]
     abstract: Optional[str]
     project_structure: Optional[Dict[str, str]]
-
     # Controle de Etapa e Flags
     current_step: str  # 'clarify', 'search', 'roadmap', 'confirm'
     has_searched: bool

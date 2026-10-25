@@ -68,30 +68,37 @@ ai-service/
 
 ---
 
-## 🚀 Como Executar Localmente
+## 🚀 Como Executar Localmente com `uv`
 
-### 1. Criar ambiente virtual Python:
+O projeto utiliza o **`uv`** como gerenciador rápido e determinístico de ambiente e dependências.
+
+### 1. Sincronizar o ambiente com o `uv`:
 ```bash
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -e .
+cd ai-service
+uv sync
 ```
+*Isso criará o `.venv` automaticamente e instalará todas as dependências com base no `uv.lock` em frações de segundo.*
 
 ### 2. Configurar variáveis de ambiente (`.env`):
-Crie ou configure o arquivo `.env` na raiz ou dentro de `ai-service/`:
-```ini
-INTERNAL_SERVICE_KEY=scia-internal-secret-change-in-production
-GEMINI_API_KEY=sua-chave-gemini-aqui
-# ou OPENAI_API_KEY=sua-chave-openai-aqui
-TAVILY_API_KEY=sua-chave-tavily-aqui
-```
-
-### 3. Iniciar o servidor de desenvolvimento:
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+cp .env.example .env
+# Edite o arquivo com suas chaves (Gemini, OpenAI ou escape hatch Ollama)
 ```
 
----
+### 3. Validar conexão com o modelo (Smoke Test):
+```bash
+uv run python scripts/smoke_llm.py
+```
+
+### 4. Iniciar o servidor de desenvolvimento:
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 5. Experimentar via Chat no Terminal (CLI Test Harness):
+```bash
+uv run python scripts/test_chat_cli.py
+```
 
 ## 🔗 Endpoints Principais
 
