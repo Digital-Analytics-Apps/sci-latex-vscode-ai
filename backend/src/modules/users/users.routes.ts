@@ -25,7 +25,6 @@ export async function usersRoutes(app: FastifyInstance) {
         querystring: z.object({
           search: z.string().optional(),
           role: z.nativeEnum(Role).optional(),
-          teamId: z.string().uuid().optional(),
         }),
       },
     },

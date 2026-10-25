@@ -165,7 +165,7 @@ export const LoginPage: React.FC = () => {
                     variant="overline"
                     sx={{ fontWeight: 700, letterSpacing: 1 }}
                   >
-                    SCIA — Scientific Collaboration + AI
+                    SCIA — Scientific Collaboration and Intelligent Assistance
                   </Typography>
                 </Box>
 

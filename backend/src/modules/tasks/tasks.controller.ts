@@ -68,6 +68,18 @@ export class TasksController {
       return reply.status(400).send({ error: 'UNCLAIM_TASK_FAILED', message: err.message });
     }
   }
+  async complete(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { projectId, taskId } = taskWorkspaceParamsSchema.parse(request.params);
+      const userId = request.user.sub;
+      const task = await this.service.completeTask(projectId, taskId, userId);
+      return reply.send(task);
+    } catch (err: unknown) {
+      const error = err as Error;
+      return reply.status(400).send({ error: 'COMPLETE_TASK_FAILED', message: error.message });
+    }
+  }
+
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {

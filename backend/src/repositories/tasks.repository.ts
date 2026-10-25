@@ -5,7 +5,6 @@ export interface CreateTaskData {
   projectId: string;
   assignedToId?: string | null;
   title: string;
-  branchName?: string;
   startDate?: Date;
   startedAt?: Date;
   dueDate?: Date;
@@ -15,7 +14,6 @@ export interface CreateTaskData {
 
 export interface UpdateTaskData {
   title?: string;
-  branchName?: string;
   startDate?: Date;
   startedAt?: Date;
   dueDate?: Date;
@@ -46,7 +44,6 @@ export class PrismaTasksRepository implements ITasksRepository {
         projectId: data.projectId,
         assignedToId: data.assignedToId,
         title: data.title,
-        branchName: data.branchName || 'pending',
         dueDate: data.dueDate,
         status: data.status || 'NOT_STARTED',
         stageId: data.stageId,
@@ -75,7 +72,6 @@ export class PrismaTasksRepository implements ITasksRepository {
       include: {
         stage: true,
         assignee: { select: { id: true, name: true, email: true, role: true } },
-        pullRequests: true,
       },
     });
   }
@@ -93,10 +89,7 @@ export class PrismaTasksRepository implements ITasksRepository {
     }
     if (filters.search && filters.search.trim() !== '') {
       const query = filters.search.trim();
-      where.OR = [
-        { title: { contains: query, mode: 'insensitive' } },
-        { branchName: { contains: query, mode: 'insensitive' } },
-      ];
+      where.title = { contains: query, mode: 'insensitive' };
     }
 
     return prisma.task.findMany({
@@ -104,7 +97,6 @@ export class PrismaTasksRepository implements ITasksRepository {
       include: {
         stage: true,
         assignee: { select: { id: true, name: true, email: true, role: true } },
-        pullRequests: true,
       },
       orderBy: { createdAt: 'desc' },
     });

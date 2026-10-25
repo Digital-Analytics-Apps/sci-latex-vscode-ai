@@ -236,7 +236,7 @@ export const ArticleDetailPage = () => {
         />
       </Box>
 
-      {/* MODAL PARA ADICIONAR NOVA ETAPA DE ESCRITA (FEATURE BRANCH) */}
+      {/* MODAL PARA ADICIONAR NOVA ETAPA DE ESCRITA */}
       <CreateStageModal
         open={isCreateStageOpen}
         onClose={() => setIsCreateStageOpen(false)}

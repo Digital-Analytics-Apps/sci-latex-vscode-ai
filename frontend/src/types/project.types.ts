@@ -7,8 +7,11 @@ export interface ProjectDetails {
   id: string;
   name: string;
   description?: string;
-  gitRepoPath: string;
-  teamId: string;
+  gitRepoPath?: string | null;
+  coordinatorId: string;
+  managerId: string;
+  coordinator?: { id: string; name: string; email: string };
+  manager?: { id: string; name: string; email: string };
   submissionStatus: SubmissionStatus;
   targetConferenceName?: string | null;
   targetConferenceDate?: string | null;
@@ -33,7 +36,8 @@ export interface ProjectListItem {
   createdAt: string;
   updatedAt: string;
   stages?: ProjectStage[];
-  team?: { id: string; name: string };
+  coordinator?: { id: string; name: string; email: string };
+  manager?: { id: string; name: string; email: string };
   _count?: { tasks: number; members: number };
 }
 
@@ -42,8 +46,10 @@ export interface CreateProjectInput {
   description?: string;
   targetConferenceName?: string;
   targetConferenceDate?: string;
-  teamId?: string;
-  coAuthorIds?: string[];
+  coordinatorId: string;
+  managerId: string;
+  additionalAuthorIds?: string[];
+  authorIds?: string[];
   reviewerId?: string;
   stages?: Array<{
     title: string;

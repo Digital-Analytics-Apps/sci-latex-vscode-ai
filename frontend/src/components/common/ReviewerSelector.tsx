@@ -50,8 +50,8 @@ export const ReviewerSelector = ({
       filterSelectedOptions
       noOptionsText={
         peerOptions.length === 0
-          ? "Nenhum co-autor cadastrado neste projeto"
-          : "Todos os co-autores do projeto já foram selecionados"
+          ? "Nenhum outro autor cadastrado neste projeto"
+          : "Todos os autores do projeto já foram selecionados"
       }
       renderValue={(value, getItemProps) =>
         value.map((option, index) => {
@@ -71,14 +71,14 @@ export const ReviewerSelector = ({
         <TextField
           {...params}
           size="small"
-          label="Atribuir Co-autores para Revisão (Pares)"
+          label="Atribuir Autores para Revisão (Pares)"
           placeholder={
             selectedPeers.length === peerOptions.length &&
             peerOptions.length > 0
               ? ""
-              : "Selecione um ou mais co-autores..."
+              : "Selecione um ou mais autores..."
           }
-          helperText="Por padrão, todos os co-autores são selecionados para avaliar esta tarefa."
+          helperText="Por padrão, os demais autores são selecionados para avaliar esta tarefa."
         />
       )}
     />

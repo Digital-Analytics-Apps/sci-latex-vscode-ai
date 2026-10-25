@@ -24,7 +24,6 @@ export async function dashboardRoutes(app: FastifyInstance) {
         querystring: z.object({
           projectId: z.string().optional(),
           academicPeriodId: z.string().optional(),
-          teamId: z.string().optional(),
         }),
       },
     },
@@ -44,7 +43,6 @@ export async function dashboardRoutes(app: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         querystring: z.object({
           academicPeriodId: z.string().uuid().optional(),
-          teamId: z.string().uuid().optional(),
         }),
       },
     },

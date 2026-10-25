@@ -25,7 +25,7 @@ import { useColorMode } from "../../theme";
 import { UserAvatar } from "./UserAvatar";
 
 export interface AppHeaderBarProps {
-  /** Título principal exibido na barra superior. Padrão: "SCIA — Scientific Collaboration + AI" */
+  /** Título principal exibido na barra superior. Padrão: "SCIA — Scientific Collaboration and Intelligent Assistance" */
   title?: React.ReactNode;
   /** Ícone opcional exibido ao lado do título */
   icon?: React.ReactNode;
@@ -39,7 +39,7 @@ export interface AppHeaderBarProps {
  * e menu de perfil/logout em todas as visões de layout por persona.
  */
 export const AppHeaderBar = ({
-  title = "SCIA — Scientific Collaboration + AI",
+  title = "SCIA — Scientific Collaboration and Intelligent Assistance",
   icon,
   extraHeaderActions,
 }: AppHeaderBarProps) => {

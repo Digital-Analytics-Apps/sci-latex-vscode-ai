@@ -1,4 +1,4 @@
-# SCI-LaTeX Platform 🚀
+# SCIA — Scientific Collaboration and Intelligent Assistance 🚀
 
 Repositório monorepo da plataforma de escrita científica **SCI-LaTeX**. Este repositório contém o backend (API Fastify), o frontend (Vite/React) e as configurações de infraestrutura.
 

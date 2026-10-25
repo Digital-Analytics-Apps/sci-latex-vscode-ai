@@ -1,14 +1,6 @@
 import type { PeriodStatus } from "../constants/status";
 import type { UserSimple } from "./user.types";
 
-export interface TeamAcademicGoal {
-  id: string;
-  academicPeriodId: string;
-  teamId: string;
-  targetArticles: number;
-  team?: { id: string; name: string };
-}
-
 export interface AcademicPeriod {
   id: string;
   name: string;
@@ -17,7 +9,6 @@ export interface AcademicPeriod {
   targetArticlesCount: number;
   status: PeriodStatus;
   managerId?: string | null;
-  teamGoals?: TeamAcademicGoal[];
 }
 
 export interface ManagerMetrics {
@@ -31,14 +22,12 @@ export interface ManagerMetrics {
   academicPeriodTargetCount?: number;
 }
 
-export interface ManagerDashboardTeamSummary {
-  teamId: string;
-  teamName: string;
+export interface ManagerDashboardCoordinatorSummary {
+  coordinatorId: string;
   coordinator: UserSimple | null;
   totalProjects: number;
   publishedCount: number;
 }
-
 export interface ManagerDashboardData {
   overview: {
     totalProjects: number;
@@ -52,7 +41,8 @@ export interface ManagerDashboardData {
     warningSoonCount: number;
     overdueCount: number;
   };
-  teams: ManagerDashboardTeamSummary[];
+  coordinators?: ManagerDashboardCoordinatorSummary[];
+  teams?: unknown[];
   recentActivity: Array<{
     id: string;
     action: string;

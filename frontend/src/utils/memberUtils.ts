@@ -71,11 +71,12 @@ export const getRandomColor = getMemberAvatarColor;
 
 export function categorizeProjectMembers(members: ProjectMember[] = []): {
   allMembers: UserOption[];
+  authors: UserOption[];
   coAuthors: UserOption[];
   reviewers: UserOption[];
 } {
   const allMembers: UserOption[] = [];
-  const coAuthors: UserOption[] = [];
+  const authors: UserOption[] = [];
   const reviewers: UserOption[] = [];
 
   for (const m of members) {
@@ -88,9 +89,9 @@ export function categorizeProjectMembers(members: ProjectMember[] = []): {
     if (role === Role.REVIEWER) {
       reviewers.push(option);
     } else {
-      coAuthors.push(option);
+      authors.push(option);
     }
   }
 
-  return { allMembers, coAuthors, reviewers };
+  return { allMembers, authors, coAuthors: authors, reviewers };
 }

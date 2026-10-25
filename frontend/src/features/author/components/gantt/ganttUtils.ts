@@ -147,7 +147,7 @@ export const calculateBarPosition = (
  * Retorna true se a tarefa estiver concluída/mergeada
  */
 export const isTaskCompleted = (task: TaskItem): boolean => {
-  return task.status === TaskStatus.MERGED || Boolean(task.isMerged);
+  return task.status === TaskStatus.COMPLETED;
 };
 
 /**
@@ -277,11 +277,10 @@ export const getDrawerEntityDetails = (
   task: TaskItem | null | undefined,
 ) => {
   if (stage) {
-    const slug = stage.title.toLowerCase().replace(/[^a-z0-9]/g, "-");
     return {
       isStageNode: true,
       title: stage.title,
-      branchName: `stage/${slug}`,
+      branchName: undefined,
       status: stage.status,
       startDate: stage.plannedStartAt,
       endDate: stage.plannedEndAt ?? stage.plannedCompletionDate,
@@ -298,7 +297,7 @@ export const getDrawerEntityDetails = (
     return {
       isStageNode: false,
       title: task.title,
-      branchName: task.branchName,
+      branchName: undefined,
       status: task.status,
       startDate: task.startDate,
       endDate: task.dueDate,

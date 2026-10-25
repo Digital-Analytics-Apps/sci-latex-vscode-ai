@@ -2,10 +2,8 @@ import AddTaskIcon from "@mui/icons-material/AddTask";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import {
   Box,
-  Chip,
   InputAdornment,
   TextField,
-  Typography,
 } from "@mui/material";
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -51,14 +49,7 @@ export const CreateStageModal = ({
     return `${day}/${month}/${year}`;
   }, [targetSubmissionDateStr]);
 
-  const slug = title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
 
-  const branchPreview = slug ? `feature/${slug}` : "feature/<slug-da-etapa>";
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -98,7 +89,7 @@ export const CreateStageModal = ({
 
       dispatch(
         showNotification({
-          message: `Nova Etapa "${title}" adicionada com sucesso! Branch configurada: ${branchPreview}`,
+          message: `Nova Etapa "${title}" adicionada com sucesso!`,
           severity: "success",
         }),
       );
@@ -123,7 +114,7 @@ export const CreateStageModal = ({
       size="sm"
       icon={<AddTaskIcon color="primary" />}
       title="Adicionar Nova Etapa de Escrita"
-      subtitle="Crie uma nova etapa/seção para a escrita do artigo. Cada etapa representa uma Feature Branch no Git."
+      subtitle="Crie uma nova etapa/seção para a escrita e planejamento do artigo científico."
       onSubmit={handleSubmit}
       confirmText="Adicionar Etapa"
       confirmColor="primary"
@@ -140,30 +131,6 @@ export const CreateStageModal = ({
           required
         />
 
-        <Box
-          sx={{
-            p: 1.5,
-            borderRadius: 1,
-            bgcolor: "action.hover",
-            border: "1px dashed",
-            borderColor: "divider",
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mb: 0.5 }}
-          >
-            🌿 Branch Git de Feature Associada à Etapa:
-          </Typography>
-          <Chip
-            label={branchPreview}
-            size="small"
-            color="primary"
-            variant="outlined"
-            sx={{ fontFamily: "monospace", fontWeight: 700 }}
-          />
-        </Box>
 
         <TextField
           fullWidth

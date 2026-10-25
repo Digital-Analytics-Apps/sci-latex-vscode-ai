@@ -9,14 +9,9 @@ vi.mock('../../../modules/events/events.manager', () => ({
 
 describe('WorkspaceWatcherService', () => {
   let watcherService: WorkspaceWatcherService;
-  let mockGitService: any;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGitService = {
-      checkUncommittedChanges: vi.fn(),
-    };
-    watcherService = new WorkspaceWatcherService(mockGitService);
+    watcherService = new WorkspaceWatcherService();
   });
 
   it('should initialize watcher service cleanly', () => {

@@ -675,7 +675,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
           <Tab
             icon={<ArticleIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
-            label="Metadados & Repositório Git"
+            label="Metadados & Governança"
             sx={{ fontWeight: 700 }}
           />
         </Tabs>
@@ -703,8 +703,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 Etapas Customizadas de Escrita ({customStages.length})
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Arraste o ícone para alterar a ordem sequencial das Feature
-                Branches no Git.
+                Arraste o ícone para alterar a ordem sequencial das etapas de
+                escrita.
               </Typography>
             </Box>
 
@@ -925,19 +925,18 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             >
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  Releases Oficiais Publicadas (branch main)
+                  Releases Oficiais Publicadas
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Versões finais consolidadas e publicadas na branch main do
-                  repositório.
+                  Versões finais consolidadas e publicadas do artigo.
                 </Typography>
               </Box>
 
               <Tooltip
                 title={
                   !writingStagesCompleted
-                    ? "Para publicar uma Release Oficial na main, 100% das etapas de escrita devem estar concluídas."
-                    : "Publicar versão final na branch main"
+                    ? "Para publicar uma Release Oficial, 100% das etapas de escrita devem estar concluídas."
+                    : "Publicar versão final oficial"
                 }
               >
                 <span>
@@ -967,7 +966,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               }
               if (!officialReleases || officialReleases.length === 0) {
                 return (
-                  <EmptyStateCard message="Nenhuma Release Oficial publicada na branch main até o momento." />
+                  <EmptyStateCard message="Nenhuma Release Oficial publicada até o momento." />
                 );
               }
               return (
@@ -1169,7 +1168,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       {/* ABA 3: METADADOS DO PROJETO & CONGRESSO */}
       {activeTab === 3 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* PAINEL DE INFORMAÇÕES DO REPOSITÓRIO GIT & BRANCH */}
+          {/* PAINEL DE GOVERNANÇA E METADADOS */}
           <Paper
             variant="outlined"
             sx={{
@@ -1191,8 +1190,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 gap: 1,
               }}
             >
-              <CodeIcon color="primary" fontSize="small" /> Repositório & Branch
-              Git do Projeto
+              <CodeIcon color="primary" fontSize="small" /> Governança Institucional
             </Typography>
             <Box
               sx={{
@@ -1207,31 +1205,27 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 color="text.secondary"
                 sx={{ fontWeight: 600 }}
               >
-                Git URL:
+                Coordenador:
               </Typography>
               <Typography
                 variant="caption"
-                sx={{
-                  fontFamily: "monospace",
-                  bgcolor: "background.paper",
-                  px: 1.2,
-                  py: 0.4,
-                  borderRadius: 1,
-                  border: "1px solid",
-                  borderColor: "divider",
-                  fontWeight: 600,
-                  fontSize: "0.78rem",
-                }}
+                sx={{ fontWeight: 700 }}
               >
-                {projectDetails?.repo || projectDetails?.gitRepoPath}
+                {projectDetails?.coordinator?.name || "Coordenador Atribuído"}
               </Typography>
-              <Chip
-                label="Branch Base: dev"
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ fontWeight: 700, height: 22 }}
-              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 600, ml: 2 }}
+              >
+                Gerente:
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 700 }}
+              >
+                {projectDetails?.manager?.name || "Gerente Atribuído"}
+              </Typography>
             </Box>
           </Paper>
 

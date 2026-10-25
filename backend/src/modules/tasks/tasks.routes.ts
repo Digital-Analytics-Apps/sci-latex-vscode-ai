@@ -71,6 +71,20 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
     controller.unclaim.bind(controller)
   );
+  // POST /api/v1/projects/:projectId/tasks/:taskId/complete - Concluir tarefa
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/complete',
+    {
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Marcar tarefa como concluída',
+        security: [{ bearerAuth: [] }],
+        params: taskWorkspaceParamsSchema,
+      },
+    },
+    controller.complete.bind(controller)
+  );
+
 
   // POST /api/v1/projects/:projectId/tasks/:taskId/workspace - Iniciar / Continuar Workspace para uma Task
   fastify.post(

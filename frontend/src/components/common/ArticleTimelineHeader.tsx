@@ -732,16 +732,12 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                       >
                                         {task.title}
                                       </Typography>
-                                      {task.branchName && (
-                                        <Typography
-                                          variant="caption"
-                                          color="text.secondary"
-                                          sx={{ fontFamily: "monospace" }}
-                                        >
-                                          🌿 {task.branchName} • Autor:{" "}
-                                          {assigneeName}
-                                        </Typography>
-                                      )}
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        Autor: {assigneeName}
+                                      </Typography>
                                     </Box>
                                   </Box>
 
@@ -776,7 +772,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                         size="small"
                                         variant="outlined"
                                         color={
-                                          task.status === TaskStatus.MERGED
+                                          task.status === TaskStatus.COMPLETED
                                             ? "success"
                                             : "default"
                                         }
@@ -789,7 +785,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
 
                                     <Chip
                                       label={
-                                        task.status === TaskStatus.MERGED
+                                        task.status === TaskStatus.COMPLETED
                                           ? "Concluída"
                                           : task.status ===
                                               TaskStatus.IN_PROGRESS
@@ -798,7 +794,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                       }
                                       size="small"
                                       color={
-                                        task.status === TaskStatus.MERGED
+                                        task.status === TaskStatus.COMPLETED
                                           ? "success"
                                           : "default"
                                       }

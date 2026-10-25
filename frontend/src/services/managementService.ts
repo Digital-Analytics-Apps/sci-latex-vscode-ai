@@ -2,16 +2,13 @@ import type {
   AcademicPeriod,
   ManagerDashboardData,
   ManagerMetrics,
-  TeamAcademicGoal,
 } from "../types/academic-period.types";
 import { api } from "./api";
 
 export type {
   AcademicPeriod,
   ManagerDashboardData,
-  ManagerDashboardTeamSummary,
   ManagerMetrics,
-  TeamAcademicGoal,
 } from "../types/academic-period.types";
 
 const ACADEMIC_PERIODS_URL = "/academic-periods";
@@ -39,36 +36,10 @@ export const managementService = {
     return response.data.academicPeriod || response.data;
   },
 
-  // Definir ou atualizar cota/meta de artigos para um laboratório/time específico
-  async setTeamAcademicGoal(data: {
-    academicPeriodId: string;
-    teamId: string;
-    targetArticles: number;
-  }): Promise<TeamAcademicGoal> {
-    const response = await api.post(
-      `${ACADEMIC_PERIODS_URL}/${data.academicPeriodId}/goals`,
-      {
-        teamId: data.teamId,
-        targetArticles: data.targetArticles,
-      },
-    );
-    return response.data.teamGoal || response.data;
-  },
-
-  // Obter cotas distribuídas por time para um período acadêmico
-  async getTeamAcademicGoals(
-    academicPeriodId: string,
-  ): Promise<TeamAcademicGoal[]> {
-    const response = await api.get(
-      `${ACADEMIC_PERIODS_URL}/${academicPeriodId}/goals`,
-    );
-    return response.data.teamGoals || response.data || [];
-  },
 
   // Buscar o dashboard consolidado do Gerente no backend (Prisma)
   async getManagerDashboard(filters?: {
     academicPeriodId?: string;
-    teamId?: string;
   }): Promise<ManagerDashboardData> {
     const response = await api.get(DASHBOARD_MANAGER_URL, {
       params: filters,

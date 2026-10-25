@@ -16,8 +16,6 @@ interface OverviewSectionProps {
   };
   isLoadingDashboard: boolean;
   activePeriod?: AcademicPeriod | null;
-  isLoadingTeams: boolean;
-  totalTeamsCount: number;
   totalMembersCount: number;
 }
 
@@ -25,8 +23,6 @@ export const OverviewSection = ({
   overview,
   isLoadingDashboard,
   activePeriod,
-  isLoadingTeams,
-  totalTeamsCount,
   totalMembersCount,
 }: OverviewSectionProps) => {
   return (
@@ -81,12 +77,12 @@ export const OverviewSection = ({
 
         <Grid size={{ xs: 12, md: 3 }}>
           <MetricCard
-            title="Laboratórios & Equipes Ativas"
-            value={totalTeamsCount}
+            title="Pesquisadores & Membros"
+            value={totalMembersCount}
             icon={<CheckCircleIcon color="info" />}
             color="info.main"
-            isLoading={isLoadingTeams}
-            subtitle={`${totalMembersCount} pesquisadores cadastrados`}
+            isLoading={isLoadingDashboard}
+            subtitle="Integrantes cadastrados no sistema"
           />
         </Grid>
       </Grid>

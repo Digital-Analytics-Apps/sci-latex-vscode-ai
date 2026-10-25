@@ -60,11 +60,8 @@ const DEFAULT_AUTHOR_TASK_FILTERS: AuthorTaskFilters = {
 const TASK_STATUS_OPTIONS: TableSelectOption[] = [
   { value: "ALL", label: "Todos os Status" },
   { value: TaskStatus.NOT_STARTED, label: "Não Iniciada" },
-  { value: TaskStatus.IN_PROGRESS, label: "Em Progresso" },
-  { value: TaskStatus.UNDER_REVIEW, label: "Em Avaliação" },
-  { value: TaskStatus.CHANGES_REQUESTED, label: "Ajustes Solicitados" },
-  { value: TaskStatus.APPROVED, label: "Aprovada" },
-  { value: TaskStatus.MERGED, label: "Concluída (Merged)" },
+  { value: TaskStatus.IN_PROGRESS, label: "Em Andamento" },
+  { value: TaskStatus.COMPLETED, label: "Concluída" },
 ];
 
 export const AuthorTasksTable = ({
@@ -108,7 +105,7 @@ export const AuthorTasksTable = ({
     () => [
       {
         field: "title",
-        headerName: "Sub-tarefa & Branch",
+        headerName: "Sub-tarefa da Etapa",
         flex: 2,
         minWidth: 260,
         renderCell: (params) => <TaskTitleBranchCell row={params.row} />,
@@ -247,7 +244,7 @@ export const AuthorTasksTable = ({
       >
         <TableHeaderFilterToolbar<AuthorTaskFilters>
           search={{
-            placeholder: "Buscar tarefa por Título, Branch ou Autor...",
+            placeholder: "Buscar tarefa por Título ou Autor...",
             ...searchProps,
           }}
           selectFilters={[
@@ -285,10 +282,10 @@ export const AuthorTasksTable = ({
         const isExpanded = expandedStages[stage.id] ?? true;
         const totalSubtasks = stageTasks.length;
         const completedSubtasks = stageTasks.filter(
-          (t) => t.status === TaskStatus.MERGED,
+          (t) => t.status === TaskStatus.COMPLETED,
         ).length;
-        const hasUnmergedSubtasks = stageTasks.some(
-          (t) => t.status !== TaskStatus.MERGED,
+        const hasUncompletedSubtasks = stageTasks.some(
+          (t) => t.status !== TaskStatus.COMPLETED,
         );
         const progressPct =
           totalSubtasks > 0
@@ -377,7 +374,7 @@ export const AuthorTasksTable = ({
                   />
                 </Box>
 
-                {/* PROGRESSO E AÇÃO DO WORKSPACE DA ETAPA (FEATURE BRANCH) */}
+                {/* PROGRESSO E AÇÃO DO WORKSPACE DA ETAPA */}
                 <Box
                   sx={{
                     display: "flex",
@@ -411,9 +408,9 @@ export const AuthorTasksTable = ({
                     />
                   </Box>
 
-                  {/* BOTÃO DA FEATURE BRANCH DA ETAPA */}
-                  {!stage.isGatekeeper && hasUnmergedSubtasks ? (
-                    <Tooltip title="🔒 Conclua e mescle todas as sub-tarefas desta etapa antes de abrir a workspace da Feature.">
+                  {/* BOTÃO DA ETAPA DE ESCRITA */}
+                  {!stage.isGatekeeper && hasUncompletedSubtasks ? (
+                    <Tooltip title="🔒 Conclua todas as sub-tarefas desta etapa antes de abrir o workspace da etapa.">
                       <span>
                         <Button
                           variant="outlined"
@@ -434,7 +431,7 @@ export const AuthorTasksTable = ({
                     </Tooltip>
                   ) : null}
 
-                  {!stage.isGatekeeper && !hasUnmergedSubtasks ? (
+                  {!stage.isGatekeeper && !hasUncompletedSubtasks ? (
                     <Button
                       variant="contained"
                       color="secondary"
@@ -445,8 +442,7 @@ export const AuthorTasksTable = ({
                           id: `stage-${stage.id}`,
                           projectId,
                           stageId: stage.id,
-                          title: `Workspace da Feature: ${stage.title}`,
-                          branchName: `feature/stage-${stage.order}`,
+                          title: `Workspace da Etapa: ${stage.title}`,
                           status: TaskStatus.IN_PROGRESS,
                           dueDate: new Date().toISOString(),
                         };
@@ -454,7 +450,7 @@ export const AuthorTasksTable = ({
                       }}
                       sx={{ fontWeight: 700, fontSize: "0.75rem", height: 32 }}
                     >
-                      🚀 Workspace da Feature
+                      🚀 Workspace da Etapa
                     </Button>
                   ) : null}
 

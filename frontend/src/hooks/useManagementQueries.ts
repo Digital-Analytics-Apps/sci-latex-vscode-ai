@@ -17,7 +17,6 @@ export function useAcademicPeriods() {
 // Hook para buscar o Dashboard Consolidado do Gerente (Prisma)
 export function useManagerDashboardQuery(filters?: {
   academicPeriodId?: string;
-  teamId?: string;
 }) {
   return useQuery<ManagerDashboardData>({
     queryKey: ["manager-dashboard", filters],
@@ -50,21 +49,6 @@ export function useCreateAcademicPeriodMutation() {
   });
 }
 
-// Hook para definir cota de artigos para uma equipe em um período acadêmico
-export function useSetTeamGoalMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: {
-      academicPeriodId: string;
-      teamId: string;
-      targetArticles: number;
-    }) => managementService.setTeamAcademicGoal(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["academic-periods"] });
-      queryClient.invalidateQueries({ queryKey: ["manager-dashboard"] });
-    },
-  });
-}
 
 // Hook para o Coordenador alterar a data limite de uma tarefa da equipe
 export function useUpdateDeadlineMutation() {

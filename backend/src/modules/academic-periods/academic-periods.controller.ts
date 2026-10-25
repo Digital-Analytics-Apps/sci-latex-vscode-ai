@@ -19,10 +19,6 @@ export const academicPeriodParamsSchema = z.object({
   id: z.string(),
 });
 
-export const setTeamGoalSchema = z.object({
-  teamId: z.string(),
-  targetArticles: z.number().int().nonnegative(),
-});
 
 export class AcademicPeriodsController {
   constructor(private readonly service: AcademicPeriodsService = new AcademicPeriodsService()) {}
@@ -61,22 +57,4 @@ export class AcademicPeriodsController {
     return reply.send({ academicPeriod: period });
   }
 
-  async setTeamGoal(request: FastifyRequest, reply: FastifyReply) {
-    const { id } = academicPeriodParamsSchema.parse(request.params);
-    const body = setTeamGoalSchema.parse(request.body);
-
-    const goal = await this.service.setTeamGoal({
-      academicPeriodId: id,
-      teamId: body.teamId,
-      targetArticles: body.targetArticles,
-    });
-
-    return reply.status(200).send({ teamGoal: goal });
-  }
-
-  async getTeamGoals(request: FastifyRequest, reply: FastifyReply) {
-    const { id } = academicPeriodParamsSchema.parse(request.params);
-    const goals = await this.service.getTeamGoals(id);
-    return reply.send({ teamGoals: goals });
-  }
 }

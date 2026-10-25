@@ -6,7 +6,6 @@ import type { RootState } from "../store";
 import { AuthorLayout } from "./AuthorLayout";
 import { CoordinatorLayout } from "./CoordinatorLayout";
 import { ManagerLayout } from "./ManagerLayout";
-import { ReviewerLayout } from "./ReviewerLayout";
 
 export const RoleLayoutResolver: React.FC<{ children?: React.ReactNode }> = ({
   children,
@@ -17,8 +16,6 @@ export const RoleLayoutResolver: React.FC<{ children?: React.ReactNode }> = ({
   switch (user?.role) {
     case Role.AUTHOR:
       return <AuthorLayout>{content}</AuthorLayout>;
-    case Role.REVIEWER:
-      return <ReviewerLayout>{content}</ReviewerLayout>;
     case Role.COORDINATOR:
       return <CoordinatorLayout>{content}</CoordinatorLayout>;
     case Role.MANAGER:

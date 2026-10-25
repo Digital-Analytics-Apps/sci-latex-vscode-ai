@@ -1,4 +1,4 @@
-import { Role, User } from '@prisma/client';
+import { Prisma, Role, User } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
 export interface CreateUserData {
@@ -11,7 +11,6 @@ export interface CreateUserData {
 export interface SearchUsersParams {
   search?: string;
   role?: Role;
-  teamId?: string;
   limit?: number;
 }
 
@@ -42,21 +41,13 @@ export class PrismaUsersRepository implements IUsersRepository {
     });
   }
 
-  async searchMany({ search, role, teamId, limit = 100 }: SearchUsersParams): Promise<User[]> {
-    const where: any = {
+  async searchMany({ search, role, limit = 100 }: SearchUsersParams): Promise<User[]> {
+    const where: Prisma.UserWhereInput = {
       deletedAt: null,
     };
 
     if (role) {
       where.role = role;
-    }
-
-    if (teamId) {
-      where.teamMemberships = {
-        some: {
-          teamId,
-        },
-      };
     }
 
     if (search) {
@@ -70,16 +61,6 @@ export class PrismaUsersRepository implements IUsersRepository {
       where,
       take: limit,
       include: {
-        teamMemberships: {
-          include: {
-            team: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
         _count: {
           select: {
             projects: true,

@@ -65,40 +65,4 @@ export const academicPeriodsRoutes: FastifyPluginAsyncZod = async (app) => {
     controller.getById.bind(controller)
   );
 
-  // POST /api/v1/academic-periods/:id/goals - Definir Cota do Time no Ciclo (Gerente ou Admin)
-  app.post(
-    '/:id/goals',
-    {
-      onRequest: [requireManagerOrAdmin],
-      schema: {
-        tags: ['AcademicPeriods'],
-        summary: 'Definir Cota de Artigos do Time no Ciclo (Gerente ou Admin)',
-        security: [{ bearerAuth: [] }],
-        params: z.object({
-          id: z.string().uuid(),
-        }),
-        body: z.object({
-          teamId: z.string().uuid(),
-          targetArticles: z.number().int().nonnegative(),
-        }),
-      },
-    },
-    controller.setTeamGoal.bind(controller)
-  );
-
-  // GET /api/v1/academic-periods/:id/goals - Listar Cotas dos Times no Ciclo
-  app.get(
-    '/:id/goals',
-    {
-      schema: {
-        tags: ['AcademicPeriods'],
-        summary: 'Listar Cotas de Artigos dos Times no Ciclo',
-        security: [{ bearerAuth: [] }],
-        params: z.object({
-          id: z.string().uuid(),
-        }),
-      },
-    },
-    controller.getTeamGoals.bind(controller)
-  );
 };

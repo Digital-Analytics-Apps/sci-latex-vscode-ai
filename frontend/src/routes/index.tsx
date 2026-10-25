@@ -10,11 +10,8 @@ import {
   InstitutionalProjectsView,
   ManagerDashboardPage,
   ManagerOverviewView,
-  TeamsManagementView,
 } from "../features/manager/ManagerDashboardPage";
-import { ReviewDetailPage } from "../features/reviewer/ReviewDetailPage";
-import { ReviewsListPage } from "../features/reviewer/ReviewsListPage";
-import { WorkspacePage } from "../features/workspace/WorkspacePage";
+import { EditorPage } from "../features/editor/pages/EditorPage";
 import { RoleLayoutResolver } from "../layouts/RoleLayoutResolver";
 import { PersonaRootResolver } from "./PersonaRootResolver";
 
@@ -31,7 +28,6 @@ export const AppRoutes = () => {
             <Route index element={<PersonaRootResolver />} />
             <Route path="academic-periods" element={<AcademicPeriodsView />} />
             <Route path="articles" element={<InstitutionalProjectsView />} />
-            <Route path="teams" element={<TeamsManagementView />} />
             <Route path="manager" element={<ManagerOverviewView />} />
             <Route
               path="manager/academic-periods"
@@ -41,20 +37,17 @@ export const AppRoutes = () => {
               path="manager/articles"
               element={<InstitutionalProjectsView />}
             />
-            <Route path="manager/teams" element={<TeamsManagementView />} />
           </Route>
 
           {/* Rotas por Persona */}
           <Route path="/articles" element={<AuthorArticlesPage />} />
           <Route path="/articles/:projectId" element={<ArticleDetailPage />} />
-          <Route path="/reviews" element={<ReviewsListPage />} />
-          <Route path="/reviews/:prId" element={<ReviewDetailPage />} />
           <Route path="/coordinator" element={<CoordinatorDashboardPage />} />
           <Route path="/manager" element={<ManagerDashboardPage />} />
-          <Route path="/workspace/:projectId" element={<WorkspacePage />} />
+          <Route path="/workspace/:projectId" element={<EditorPage />} />
           <Route
             path="/workspace/:projectId/task/:taskId"
-            element={<WorkspacePage />}
+            element={<EditorPage />}
           />
         </Route>
       </Route>

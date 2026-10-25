@@ -31,7 +31,7 @@ export const releasesService = {
     return response.data.releaseCandidate;
   },
 
-  // Publicar release oficial na branch main (v1.0)
+  // Publicar release oficial do artigo (v1.0)
   async publishRelease(projectId: string, versionTag: string = "v1.0") {
     const response = await api.post(`/projects/${projectId}/releases`, {
       versionTag,

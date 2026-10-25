@@ -1,16 +1,12 @@
 import { ProjectStage, StageStatus } from '@prisma/client';
 import { prisma } from '../../db/prisma';
-import { GitService } from '../../infra/git/git.service';
 import {
   IProjectStagesRepository,
   UpdateStageData,
 } from '../../repositories/project-stages.repository';
 
 export class ProjectStagesService {
-  constructor(
-    private readonly stagesRepository: IProjectStagesRepository,
-    private readonly gitService: GitService = new GitService()
-  ) {}
+  constructor(private readonly stagesRepository: IProjectStagesRepository) {}
 
   // Helper de validação da data da etapa contra a data de submissão do artigo
   // TODO / NOTE: A data limite da etapa não pode ser maior que a data de submissão do artigo (targetConferenceDate/backupConferenceDate).
@@ -75,10 +71,6 @@ export class ProjectStagesService {
     // 3. Aplica reordenação atômica sem colisões de índice único
     await this.stagesRepository.reorderStages(projectId, finalStageOrders);
 
-    // 4. Provisiona a Feature Branch correspondente derivada de dev
-    await this.gitService.createFeatureBranch(projectId, data.title).catch((err) => {
-      console.warn(`⚠️ Warning provisioning feature branch for stage "${data.title}":`, err);
-    });
 
     const updated = await this.stagesRepository.findById(newStage.id);
     return updated || newStage;

@@ -1,10 +1,7 @@
 export const TaskStatus = {
   NOT_STARTED: "NOT_STARTED",
   IN_PROGRESS: "IN_PROGRESS",
-  UNDER_REVIEW: "UNDER_REVIEW",
-  CHANGES_REQUESTED: "CHANGES_REQUESTED",
-  APPROVED: "APPROVED",
-  MERGED: "MERGED",
+  COMPLETED: "COMPLETED",
 } as const;
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
@@ -18,16 +15,6 @@ export const RCStatus = {
 
 export type RCStatus = (typeof RCStatus)[keyof typeof RCStatus];
 
-export const PRStatus = {
-  DRAFT: "DRAFT",
-  UNDER_REVIEW: "UNDER_REVIEW",
-  CHANGES_REQUESTED: "CHANGES_REQUESTED",
-  APPROVED: "APPROVED",
-  MERGED: "MERGED",
-  CANCELLED: "CANCELLED",
-} as const;
-
-export type PRStatus = (typeof PRStatus)[keyof typeof PRStatus];
 
 export const NITStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",

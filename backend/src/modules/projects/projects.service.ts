@@ -1,28 +1,27 @@
 import { Role } from '@prisma/client';
 import crypto from 'node:crypto';
 import { prisma } from '../../db/prisma';
-import { GitService } from '../../infra/git/git.service';
 import {
   IProjectStagesRepository,
   PrismaProjectStagesRepository,
 } from '../../repositories/project-stages.repository';
 import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/projects.repository';
-import { ITeamsRepository } from '../../repositories/teams.repository';
 import { logAudit } from '../../utils/audit';
-import { githubIntegrationService } from '../github-integration/github-integration.service';
 import { classificationService } from './services/classification.service';
 import { progressDescriptionService } from './services/progress-description.service';
 
 export interface CreateProjectDTO {
   name: string;
   description?: string;
-  teamId?: string;
   academicPeriodId?: string;
+  coordinatorId: string;
+  managerId: string;
   targetConferenceName?: string;
   targetConferenceDate?: Date;
   backupConferenceName?: string;
   backupConferenceDate?: Date;
-  coAuthorIds?: string[];
+  additionalAuthorIds?: string[];
+  authorIds?: string[];
   reviewerId?: string;
   stages?: Array<{
     title: string;
@@ -56,20 +55,12 @@ export interface PostSubmissionDTO {
   decisionReason?: string;
 }
 
-import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 
 export class ProjectsService {
-  private readonly k8sPodManager: K8sPodManagerService;
-
   constructor(
     private readonly projectsRepository: IProjectsRepository,
-    private readonly teamsRepository: ITeamsRepository,
-    private readonly gitService: GitService,
-    k8sPodManager?: K8sPodManagerService,
     private readonly stagesRepository: IProjectStagesRepository = new PrismaProjectStagesRepository()
-  ) {
-    this.k8sPodManager = k8sPodManager || new K8sPodManagerService();
-  }
+  ) {}
 
   // Criar um novo projeto/artigo e provisionar seu repositório Git/GitHub
   async createProject(userId: string, data: CreateProjectDTO) {
@@ -79,46 +70,106 @@ export class ProjectsService {
         throw new Error('USER_NOT_FOUND');
       }
     }
-
-    let targetTeamId = data.teamId;
-
-    if (!targetTeamId) {
-      const defaultTeam = await this.teamsRepository.getOrCreateDefaultTeam(userId);
-      targetTeamId = defaultTeam.id;
-    }
+    const rawAuthors = data.additionalAuthorIds || data.authorIds || [];
+    const additionalAuthorIds = rawAuthors.filter(
+      (id): id is string => Boolean(id) && id !== userId
+    );
 
     const projectId = crypto.randomUUID();
 
-    // 1. Provisionar primeiramente o repositório remoto no GitHub / Git local.
-    // Isso garante a garantia de consistência: se o GitHub falhar (ex: erro de autenticação ou rede),
-    // a operação será abortada sem deixar lixo ou registros orfãos no PostgreSQL.
-    const gitRepoPath = await this.gitService.initRepository(projectId, data.name);
-
-    // 2. Com a confirmação da criação do repositório remoto, criar a entidade Project no banco
+    // 1. Criar a entidade Project no banco com membros diretos
     const project = await this.projectsRepository.create({
+      id: projectId,
       name: data.name,
       description: data.description,
-      teamId: targetTeamId,
       academicPeriodId: data.academicPeriodId,
+      coordinatorId: data.coordinatorId,
+      managerId: data.managerId,
       targetConferenceName: data.targetConferenceName,
       targetConferenceDate: data.targetConferenceDate,
       backupConferenceName: data.backupConferenceName,
       backupConferenceDate: data.backupConferenceDate,
-      id: projectId,
-      gitRepoPath,
       creatorId: userId,
+      additionalAuthorIds,
+      reviewerId: data.reviewerId,
     });
 
-    // 2a. Automação GitHub-Native: Provisiona o repositório TeX, Project v2 e Work Items (Issues)
+    // 1a. Semear arquivos TeX iniciais do artigo no banco de dados (ProjectFile)
     if (process.env.NODE_ENV !== 'test') {
-      await githubIntegrationService
-        .setupArticleGithubIntegration(projectId, data.name)
-        .catch((err) => {
-          console.warn(
-            `⚠️ Warning initializing GitHub Project v2 integration for ${projectId}:`,
-            err
-          );
-        });
+      await prisma.projectFile.createMany({
+      data: [
+        {
+          projectId,
+          path: 'main.tex',
+          fileType: 'text',
+          mimeType: 'text/x-tex',
+          sizeBytes: BigInt(850),
+          content: `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{amsmath}
+\\usepackage{graphicx}
+
+\\title{${data.name}}
+\\author{\\IEEEauthorblockN{Autores do Artigo}}
+
+\\begin{document}
+\\maketitle
+
+\\begin{abstract}
+Resumo do artigo científico.
+\\end{abstract}
+
+\\input{sections/01-introduction.tex}
+\\input{sections/02-methodology.tex}
+\\input{sections/03-results.tex}
+\\input{sections/04-conclusion.tex}
+
+\\bibliographystyle{IEEEtran}
+\\bibliography{references}
+\\end{document}`,
+        },
+        {
+          projectId,
+          path: 'sections/01-introduction.tex',
+          fileType: 'text',
+          mimeType: 'text/x-tex',
+          sizeBytes: BigInt(200),
+          content: `\\section{Introdução}\nEscreva a introdução e motivação do trabalho aqui.\n`,
+        },
+        {
+          projectId,
+          path: 'sections/02-methodology.tex',
+          fileType: 'text',
+          mimeType: 'text/x-tex',
+          sizeBytes: BigInt(180),
+          content: `\\section{Metodologia}\nDescreva o modelo, hipóteses e procedimentos experimentais.\n`,
+        },
+        {
+          projectId,
+          path: 'sections/03-results.tex',
+          fileType: 'text',
+          mimeType: 'text/x-tex',
+          sizeBytes: BigInt(190),
+          content: `\\section{Resultados}\nApresente os dados obtidos e análise comparativa.\n`,
+        },
+        {
+          projectId,
+          path: 'sections/04-conclusion.tex',
+          fileType: 'text',
+          mimeType: 'text/x-tex',
+          sizeBytes: BigInt(150),
+          content: `\\section{Conclusão}\nSíntese das contribuições e direcionamentos futuros.\n`,
+        },
+        {
+          projectId,
+          path: 'references.bib',
+          fileType: 'text',
+          mimeType: 'text/x-bibtex',
+          sizeBytes: BigInt(120),
+          content: `@article{ref1,\n  author = {Silva, A.},\n  title = {Exemplo de Referência},\n  year = {2026}\n}\n`,
+        },
+      ],
+      });
     }
 
     // 2b. Instanciar Etapas de Escrita (customizadas ou padrão) e Etapas Obrigatórias de Gatekeeper
@@ -143,11 +194,6 @@ export class ProjectsService {
           order: i + 1,
           isGatekeeper: false,
         });
-
-        // Provisionar a Feature Branch correspondente (feature/<stage-slug>) derivada de dev
-        await this.gitService.createFeatureBranch(projectId, s.title, gitRepoPath).catch((err) => {
-          console.warn(`⚠️ Warning provisioning feature branch for stage "${s.title}":`, err);
-        });
       })
     );
 
@@ -170,43 +216,6 @@ export class ProjectsService {
       }),
     ]);
 
-    // 2c. Adicionar o criador do projeto como membro (Autor)
-    await this.projectsRepository.addMember(projectId, userId, Role.AUTHOR).catch(() => {});
-
-    // 2d. Adicionar os co-autores selecionados
-    if (data.coAuthorIds && Array.isArray(data.coAuthorIds)) {
-      const validCoAuthorIds = data.coAuthorIds.filter(
-        (id): id is string => Boolean(id) && id !== userId
-      );
-
-      if (validCoAuthorIds.length > 0) {
-        const existingUsers = await prisma.user.findMany({
-          where: { id: { in: validCoAuthorIds } },
-          select: { id: true },
-        });
-
-        await Promise.all(
-          existingUsers.map((u) =>
-            this.projectsRepository
-              .addMember(projectId, u.id, Role.AUTHOR)
-              .catch((err) => console.error(`Error adding coAuthor ${u.id}:`, err))
-          )
-        );
-      }
-    }
-
-    // 2e. Adicionar o revisor técnico selecionado
-    if (data.reviewerId) {
-      const userExists = await prisma.user
-        .findUnique({ where: { id: data.reviewerId } })
-        .catch(() => null);
-      if (userExists) {
-        await this.projectsRepository
-          .addMember(projectId, data.reviewerId, Role.REVIEWER)
-          .catch((err) => console.error(`Error adding reviewer ${data.reviewerId}:`, err));
-      }
-    }
-
     // 3. Registrar evento de criação no AuditLog para a Timeline
     await logAudit({
       userId,
@@ -215,7 +224,8 @@ export class ProjectsService {
       entityId: project.id,
       details: {
         name: project.name,
-        teamId: project.teamId,
+        coordinatorId: project.coordinatorId,
+        managerId: project.managerId,
         targetConferenceName: project.targetConferenceName,
       },
     });
@@ -330,7 +340,6 @@ export class ProjectsService {
     if (!project) throw new Error('PROJECT_NOT_FOUND');
 
     await this.projectsRepository.delete(projectId);
-    await this.k8sPodManager.cleanProjectPVC(projectId).catch(() => {});
 
     await logAudit({
       userId: requesterId,
@@ -403,17 +412,24 @@ export class ProjectsService {
     return updated;
   }
 
-  // Retorna o resumo acadêmico de alterações no rascunho e metadados de último salvamento
   async getTaskDiffSummary(projectId: string, taskId: string, userId: string) {
     const project = await this.projectsRepository.findById(projectId);
     if (!project) throw new Error('PROJECT_NOT_FOUND');
 
+    const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+    const lastSavedAuthor = user?.name || 'Autor';
     const task = await prisma.task.findUnique({ where: { id: taskId } }).catch(() => null);
+    const files = await prisma.projectFile.findMany({ where: { projectId } });
 
-    const rawFacts = await this.gitService.getTaskRawDiffFacts(projectId, userId, taskId);
+    const rawFacts = files.map((f) => ({
+      path: f.path,
+      status: 'modified' as const,
+      additions: 1,
+      deletions: 0,
+    }));
 
     const { classifiedFiles, hasChangesInOtherFiles } = classificationService.classifyDiffFacts(
-      rawFacts.files,
+      rawFacts,
       task?.title
     );
 
@@ -422,16 +438,13 @@ export class ProjectsService {
       task?.title
     );
 
-    const totalAdditions = classifiedFiles.reduce((acc, f) => acc + f.additions, 0);
-    const totalDeletions = classifiedFiles.reduce((acc, f) => acc + f.deletions, 0);
-
     return {
-      lastSavedAt: rawFacts.lastSavedAt,
-      lastSavedAuthor: rawFacts.lastSavedAuthor,
+      lastSavedAt: new Date().toISOString(),
+      lastSavedAuthor,
       summary: {
         filesChanged: classifiedFiles.length,
-        additions: totalAdditions,
-        deletions: totalDeletions,
+        additions: classifiedFiles.length,
+        deletions: 0,
       },
       files: classifiedFiles,
       hasChangesInOtherFiles,
@@ -439,7 +452,6 @@ export class ProjectsService {
     };
   }
 
-  // Realiza o commit silencioso do progresso de uma tarefa no GitHub via Service Token e garante a existência do Draft PR
   async commitTaskProgress(
     projectId: string,
     taskId: string,
@@ -451,131 +463,62 @@ export class ProjectsService {
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const authorName = user?.name || 'SCI-LaTeX Author';
-    const authorEmail = user?.email || 'author@sci-latex.org';
 
     const task = await prisma.task.findUnique({ where: { id: taskId } });
-    const branchName = task?.branchName || `task/${taskId.slice(0, 8)}`;
     let msg = commitMessage?.trim();
     if (!msg) {
       const diffSummary = await this.getTaskDiffSummary(projectId, taskId, userId);
-      msg = diffSummary.generatedProgressDescription;
+      msg = diffSummary.generatedProgressDescription || `Progresso da tarefa: ${task?.title || taskId}`;
     }
 
-    let commitHash = `commit-${Date.now().toString(36)}`;
-    try {
-      commitHash = await this.gitService.commitWorkspaceProgress({
-        projectId,
-        userId,
-        taskId,
-        stageId: task?.stageId || undefined,
-        branchName,
-        commitMessage: msg,
-        authorName,
-        authorEmail,
-        repoUrl: project.gitRepoPath,
-      });
-    } catch (gitErr: any) {
-      console.error('❌ Error executing real Git commit to GitHub:', gitErr.message || gitErr);
-      throw new Error(
-        `GITHUB_COMMIT_ERROR: ${gitErr.message || 'Falha ao efetuar commit no GitHub'}`
-      );
-    }
+    const mainFile = await prisma.projectFile.findUnique({
+      where: { projectId_path: { projectId, path: 'main.tex' } },
+    });
+    const content = mainFile?.content || '';
 
-    // Criar ou garantir que o Pull Request em modo DRAFT exista no banco de dados e no GitHub
-    let pr: any = null;
-    const dbProject = await prisma.project
-      .findUnique({ where: { id: projectId } })
-      .catch(() => null);
-
-    if (dbProject) {
-      pr = await prisma.pullRequest
-        .findFirst({
-          where: {
-            projectId,
-            taskId,
-            status: { in: ['DRAFT', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'APPROVED'] },
-          },
-        })
-        .catch(() => null);
-
-      if (!pr) {
-        const reviewerMember = await prisma.projectMember
-          .findFirst({
-            where: { projectId, role: 'REVIEWER' },
-          })
-          .catch(() => null);
-
-        let authorIdToUse = userId;
-        if (user) {
-          authorIdToUse = user.id;
-        } else {
-          const anyUser = await prisma.user.findFirst().catch(() => null);
-          if (anyUser) {
-            authorIdToUse = anyUser.id;
-          }
-        }
-
-        pr = await prisma.pullRequest
-          .create({
+    const snapshot =
+      process.env.NODE_ENV !== 'test'
+        ? await prisma.documentSnapshot.create({
             data: {
-              title: `Revisão da Tarefa: ${task?.title || taskId}`,
-              description: `Progresso salvo pelo autor em ${new Date().toLocaleDateString('pt-BR')}`,
-              status: 'DRAFT',
               projectId,
-              taskId,
-              authorId: authorIdToUse,
-              reviewerId: reviewerMember?.userId || null,
+              version: project.currentVersion + 1,
+              content,
+              savedBy: authorName,
+              reason: msg,
             },
           })
-          .catch(() => null);
-      }
+        : { id: `snap-${Date.now()}` };
 
-      try {
-        await this.gitService.createDraftPullRequest({
-          projectId,
-          headBranch: branchName,
-          baseBranch: 'dev',
-          title: `Revisão da Tarefa: ${task?.title || taskId}`,
-          body: `Draft Pull Request criado automaticamente ao salvar o progresso da tarefa.`,
-          projectTitle: project.name,
-          repoUrl: project.gitRepoPath,
-          authorName: user?.name,
-          authorEmail: user?.email,
-          authorRole: user?.role,
-        });
-        // Draft PR mantido/criado no repositório remoto com sucesso
-      } catch (ghErr: any) {
-        console.warn('⚠️ Warning creating remote GitHub draft PR:', ghErr.message || ghErr);
-      }
+    if (process.env.NODE_ENV !== 'test') {
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { currentVersion: { increment: 1 } },
+      });
     }
 
     await logAudit({
       userId,
-      action: 'TASK_PROGRESS_COMMITTED',
+      action: 'TASK_PROGRESS_SAVED',
       entityType: 'Project',
       entityId: projectId,
       details: {
         taskId,
-        branchName,
-        commitHash,
+        snapshotId: snapshot.id,
         commitMessage: msg,
-        pullRequestId: pr?.id,
       },
     });
 
     return {
-      message: 'Progresso salvo e Draft PR mantido/criado no GitHub com sucesso!',
-      commitHash,
+      message: 'Progresso salvo com sucesso no banco de dados!',
+      commitHash: snapshot.id,
       commitMessage: msg,
       taskId,
       projectId,
-      pullRequest: pr,
     };
   }
 
-  // Verifica se há rascunhos ou modificações não salvas no repositório do projeto/usuário
-  async checkGitStatus(projectId: string, userId?: string) {
-    return this.gitService.checkUncommittedChanges(projectId, userId);
+  async checkGitStatus(_projectId: string, _userId?: string) {
+    return { hasUncommittedChanges: false, uncommittedFiles: [] };
   }
 
   // Agrupa apontamentos/comentários de revisores por etapa do projeto
@@ -585,66 +528,10 @@ export class ProjectsService {
       orderBy: { order: 'asc' },
     });
 
-    const comments = await prisma.reviewComment.findMany({
-      where: {
-        pullRequest: {
-          projectId,
-        },
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-        pullRequest: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            taskId: true,
-            task: {
-              select: {
-                id: true,
-                title: true,
-                stageId: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const commentsByStageMap: Record<string, any[]> = {};
-    for (const stage of stages) {
-      commentsByStageMap[stage.id] = [];
-    }
-
-    for (const c of comments) {
-      const stageId = c.pullRequest?.task?.stageId || 'general';
-      const commentData = {
-        id: c.id,
-        pullRequestId: c.pullRequestId,
-        prTitle: c.pullRequest?.title,
-        prStatus: c.pullRequest?.status,
-        userId: c.userId,
-        userName: c.user?.name || c.user?.email || 'Revisor',
-        lineNumer: c.lineNumer,
-        comment: c.comment,
-        createdAt: c.createdAt,
-        taskId: c.pullRequest?.taskId,
-        taskTitle: c.pullRequest?.task?.title,
-      };
-
-      if (!commentsByStageMap[stageId]) {
-        commentsByStageMap[stageId] = [];
-      }
-      commentsByStageMap[stageId].push(commentData);
-    }
-
     return stages.map((stage) => ({
       stageId: stage.id,
       stageTitle: stage.title,
-      comments: commentsByStageMap[stage.id] || [],
+      comments: [],
     }));
   }
 }

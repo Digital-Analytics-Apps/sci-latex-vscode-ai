@@ -1,11 +1,12 @@
 import { FastifyReply } from 'fastify';
-import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
-import { redisService } from '../../infra/redis/redis.service';
-import { workspaceWatcher } from '../../infra/watcher/workspace-watcher.service';
-import {
-  IWorkspacesRepository,
-  PrismaWorkspacesRepository,
-} from '../../repositories/workspaces.repository';
+import { redisPubClient, redisSubClient } from '../../infra/redis';
+
+export interface DomainNotificationEvent {
+  eventName: string;
+  projectId?: string;
+  userId?: string;
+  data: unknown;
+}
 
 interface SSEClient {
   userId: string;
@@ -14,118 +15,66 @@ interface SSEClient {
   reply: FastifyReply;
 }
 
-const GRACE_PERIOD_MS = 120_000; // 2 Minutos de Grace Period (Tolerância em Dev/Testes)
-
-// Gerenciador central de clientes ativos de Server-Sent Events (SSE)
+// Gerenciador central de clientes ativos de Server-Sent Events (SSE) integrado com Redis Pub/Sub
 export class EventsManagerService {
   private clients: SSEClient[] = [];
-  private readonly k8sPodManager = new K8sPodManagerService();
-  private readonly workspacesRepository: IWorkspacesRepository;
-  private readonly releaseTimers = new Map<string, NodeJS.Timeout>();
-  private readonly activeProjectConnections = new Map<string, number>();
 
-  constructor(workspacesRepository: IWorkspacesRepository = new PrismaWorkspacesRepository()) {
-    this.workspacesRepository = workspacesRepository;
+  async initRedisSubscription() {
+    try {
+      if (redisSubClient.status === 'ready') {
+        await redisSubClient.subscribe('events:notifications');
+        redisSubClient.on('message', (channel, message) => {
+          if (channel === 'events:notifications') {
+            try {
+              const payload = JSON.parse(message) as DomainNotificationEvent;
+              if (payload.projectId) {
+                this.broadcastToProject(payload.projectId, payload.eventName, payload.data);
+              } else if (payload.userId) {
+                this.sendToUser(payload.userId, payload.eventName, payload.data);
+              } else {
+                this.broadcast(payload.eventName, payload.data);
+              }
+            } catch (err) {
+              console.warn('[Redis Events Error]:', err);
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[Redis Subscription Warning]:', err);
+    }
   }
 
-  // Adiciona novo cliente à lista de conexões ativas e renova chave no Redis
+  async publishDomainEvent(event: DomainNotificationEvent) {
+    if (event.projectId) {
+      this.broadcastToProject(event.projectId, event.eventName, event.data);
+    } else if (event.userId) {
+      this.sendToUser(event.userId, event.eventName, event.data);
+    } else {
+      this.broadcast(event.eventName, event.data);
+    }
+
+    if (redisPubClient.status === 'ready') {
+      try {
+        await redisPubClient.publish('events:notifications', JSON.stringify(event));
+      } catch (err) {
+        console.warn('[Redis Publish Error]:', err);
+      }
+    }
+  }
+
   addClient(
     userId: string,
     reply: FastifyReply,
     projectId?: string,
-    taskId?: string,
-    mode: string = 'editor'
+    taskId?: string
   ) {
     this.clients.push({ userId, projectId, taskId, reply });
-
-    if (projectId) {
-      const current = this.activeProjectConnections.get(projectId) || 0;
-      this.activeProjectConnections.set(projectId, current + 1);
-
-      // Renova presença ativa no Redis por 180 segundos (3 minutos) com escopo de modo (editor vs review)
-      redisService.setWorkspaceActive(projectId, userId, taskId || 'default-task', 180, mode);
-
-      // Inicia o monitoramento de arquivo por sistema operacional para este projeto
-      workspaceWatcher.watchProject(projectId, userId);
-
-      // Se houver um timer de destruição pendente para este projeto, cancela! (Reconexão/F5 dentro do Grace Period)
-      if (this.releaseTimers.has(projectId)) {
-        clearTimeout(this.releaseTimers.get(projectId));
-        this.releaseTimers.delete(projectId);
-        console.log(
-          `⏱️ Reconexão detectada no projeto ${projectId} dentro do Grace Period. Destruição do Pod cancelada.`
-        );
-      }
-    }
   }
 
-  // Renova batimento cardíaco da workspace no Redis e cancela destruição pendente
-  refreshHeartbeat(userId: string, projectId?: string, taskId?: string, mode: string = 'editor') {
-    if (projectId) {
-      redisService.setWorkspaceActive(projectId, userId, taskId || 'default-task', 180, mode);
-      if (this.releaseTimers.has(projectId)) {
-        clearTimeout(this.releaseTimers.get(projectId));
-        this.releaseTimers.delete(projectId);
-        console.log(
-          `⏱️ Batimento/Foco recebido no projeto ${projectId}. Destruição do Pod cancelada.`
-        );
-      }
-    }
-  }
-
-  // Remove cliente desconectado
-  removeClient(userId: string, reply: FastifyReply, projectId?: string, taskId?: string) {
+  removeClient(userId: string, reply: FastifyReply, _projectId?: string, _taskId?: string) {
     this.clients = this.clients.filter((c) => !(c.userId === userId && c.reply === reply));
-
-    if (projectId) {
-      const current = this.activeProjectConnections.get(projectId) || 1;
-      const updated = Math.max(0, current - 1);
-      this.activeProjectConnections.set(projectId, updated);
-
-      // Se não restar nenhuma conexão SSE ativa para o projeto, inicia o Grace Period de 3 minutos
-      if (updated === 0) {
-        console.log(
-          `⏳ 0 conexões ativas no projeto ${projectId}. Iniciando Grace Period de 3 minutos antes de destruir o Pod...`
-        );
-
-        if (this.releaseTimers.has(projectId)) {
-          clearTimeout(this.releaseTimers.get(projectId));
-        }
-
-        const timer = setTimeout(async () => {
-          this.releaseTimers.delete(projectId);
-
-          // Re-verifica se o número de conexões ativas ainda é 0 e se o Redis confirmou ausência de heartbeat
-          const isStillActiveInRedis = await redisService.isWorkspaceActive(
-            projectId,
-            userId,
-            taskId || 'default-task'
-          );
-
-          if ((this.activeProjectConnections.get(projectId) || 0) === 0 && !isStillActiveInRedis) {
-            console.log(
-              `🧹 Grace Period de 3 minutos expirado para o projeto ${projectId}. Encerrando Pod no K8s e liberando RAM...`
-            );
-            await this.k8sPodManager.releasePodForProject(projectId).catch((err) => {
-              console.warn(`⚠️ Error releasing Pod after Grace Period:`, err.message || err);
-            });
-            await this.workspacesRepository
-              .updateStatusByProjectId(projectId, 'TERMINATED')
-              .catch((err) => {
-                console.warn(
-                  `⚠️ Error updating Workspace status to TERMINATED:`,
-                  err.message || err
-                );
-              });
-            workspaceWatcher.unwatchProject(projectId);
-          }
-        }, GRACE_PERIOD_MS);
-
-        this.releaseTimers.set(projectId, timer);
-      }
-    }
   }
-
   // Envia um evento em tempo real para um usuário específico
   sendToUser(userId: string, eventName: string, data: any) {
     const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;

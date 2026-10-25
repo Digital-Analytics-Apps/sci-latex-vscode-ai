@@ -4,15 +4,9 @@ import { Role } from '@prisma/client';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireCoordinatorOrAbove } from '../../middlewares/rbac.middleware';
 import { PrismaProjectsRepository } from '../../repositories/projects.repository';
-import { PrismaTeamsRepository } from '../../repositories/teams.repository';
-import { GitService } from '../../infra/git/git.service';
-import { K8sPodManagerService } from '../../infra/k8s/k8s-pod-manager.service';
 import { createProjectSchema, ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
-import { PrismaPullRequestsRepository } from '../../repositories/pull-requests.repository';
-import { PullRequestsService } from '../pull-requests/pull-requests.service';
-import { PullRequestsController } from '../pull-requests/pull-requests.controller';
 
 import { PrismaProjectStagesRepository } from '../../repositories/project-stages.repository';
 import { ProjectStagesService } from './project-stages.service';
@@ -20,15 +14,9 @@ import { ProjectStagesController } from './project-stages.controller';
 
 export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
-  const teamsRepository = new PrismaTeamsRepository();
-  const gitService = new GitService();
-  const k8sPodManager = new K8sPodManagerService();
-  const projectsService = new ProjectsService(projectsRepository, teamsRepository, gitService);
+  const projectsService = new ProjectsService(projectsRepository);
   const controller = new ProjectsController(projectsService);
 
-  const prRepository = new PrismaPullRequestsRepository();
-  const prService = new PullRequestsService(prRepository, gitService, k8sPodManager);
-  const prController = new PullRequestsController(prService);
 
   const stagesRepository = new PrismaProjectStagesRepository();
   const stagesService = new ProjectStagesService(stagesRepository);
@@ -302,48 +290,6 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
     },
     (req, reply) => controller.getGitStatus(req, reply)
-  );
-
-  // POST /api/v1/projects/:projectId/pull-requests - Abertura de PR via alias de projeto
-  app.post(
-    '/:projectId/pull-requests',
-    {
-      schema: {
-        tags: ['PullRequests'],
-        summary: 'Abrir novo Pull Request para um projeto',
-        security: [{ bearerAuth: [] }],
-        params: z.object({
-          projectId: z.string(),
-        }),
-        body: z.object({
-          title: z.string().min(3),
-          description: z.string().optional().nullable(),
-          taskId: z.string().optional().nullable(),
-          reviewerId: z.string().optional().nullable().or(z.literal('')),
-        }),
-      },
-    },
-    (req: any, reply) => {
-      req.body = { ...req.body, projectId: req.params.projectId };
-      return prController.create(req, reply);
-    }
-  );
-
-  // POST /api/v1/projects/:projectId/pull-requests/:id/merge - Executar Merge via alias de projeto
-  app.post(
-    '/:projectId/pull-requests/:id/merge',
-    {
-      schema: {
-        tags: ['PullRequests'],
-        summary: 'Executar Merge do PR de um projeto',
-        security: [{ bearerAuth: [] }],
-        params: z.object({
-          projectId: z.string(),
-          id: z.string(),
-        }),
-      },
-    },
-    (req: any, reply) => prController.merge(req, reply)
   );
 
   // GET /api/v1/projects/:projectId/stages - Listar etapas do artigo

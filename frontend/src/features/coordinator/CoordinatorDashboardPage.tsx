@@ -56,7 +56,7 @@ export const CoordinatorDashboardPage = () => {
         id: `proj-${proj.id}`,
         projectName: proj.name || "Artigo Científico",
         taskTitle: "Estrutura do LaTeX & Conteúdo",
-        authorName: proj.team?.name || "Equipe de Pesquisa",
+        authorName: "Autores do Artigo",
         dueDate: proj.targetConferenceDate
           ? new Date(proj.targetConferenceDate).toISOString().split("T")[0]
           : "2026-12-31",

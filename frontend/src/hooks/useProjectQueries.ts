@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreatePRFormData } from "../schemas/pr.schema";
 import {
   type ProjectDetails,
   type ProjectListItem,
@@ -9,7 +8,8 @@ import type { CreateStageInput } from "../types/stage.types";
 
 // Hook para buscar a lista de projetos/artigos aos quais o usuário tem acesso
 export function useProjectsList(filters?: {
-  teamId?: string;
+  coordinatorId?: string;
+  managerId?: string;
   academicPeriodId?: string;
 }) {
   return useQuery<ProjectListItem[]>({
@@ -49,43 +49,6 @@ export function useSaveProgressMutation(projectId: string) {
       projectsService.saveProgress(projectId, data.taskId, data.commitMessage),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-    },
-  });
-}
-
-// Mutação para Criar Pull Request (Abertura de Revisão Acadêmica)
-export function useCreatePRMutation(projectId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreatePRFormData) =>
-      projectsService.createPullRequest(projectId, data),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      await queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
-    },
-  });
-}
-
-// Hook para listar Pull Requests filtrados por projeto
-export function usePullRequestsList(projectId?: string) {
-  return useQuery({
-    queryKey: ["pull-requests", projectId],
-    queryFn: () => projectsService.getPullRequestsList(projectId),
-    enabled: Boolean(projectId),
-  });
-}
-
-// Mutação para Realizar Merge da Seção
-export function useMergePRMutation(projectId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (pullRequestId: string) =>
-      projectsService.mergePullRequest(pullRequestId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      await queryClient.invalidateQueries({ queryKey: ["pull-requests"] });
     },
   });
 }
@@ -158,8 +121,9 @@ export function useCreateProjectMutation() {
       targetConference?: string;
       submissionDeadline?: string;
       template?: string;
-      teamId?: string;
-      coAuthorIds?: string[];
+      coordinatorId: string;
+      managerId: string;
+      additionalAuthorIds?: string[];
       reviewerId?: string;
       stages?: Array<{
         title: string;
@@ -171,8 +135,9 @@ export function useCreateProjectMutation() {
         name: data.name,
         targetConferenceName: data.targetConference,
         targetConferenceDate: data.submissionDeadline,
-        teamId: data.teamId,
-        coAuthorIds: data.coAuthorIds || [],
+        coordinatorId: data.coordinatorId,
+        managerId: data.managerId,
+        additionalAuthorIds: data.additionalAuthorIds || [],
         reviewerId: data.reviewerId,
         stages: data.stages,
       }),

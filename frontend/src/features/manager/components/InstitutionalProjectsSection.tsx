@@ -35,7 +35,7 @@ export const InstitutionalProjectsSection = ({
     return allProjects.map((p) => ({
       id: p.id,
       name: p.name,
-      teamName: p.team?.name || "Sem Equipe",
+      coordinatorName: p.coordinator?.name || "Não atribuído",
       submissionStatus: p.submissionStatus || "DRAFT",
       targetConference: p.targetConferenceName || "Não definida",
       targetDate: p.targetConferenceDate || null,
@@ -52,8 +52,8 @@ export const InstitutionalProjectsSection = ({
         minWidth: 260,
       }),
       {
-        field: "teamName",
-        headerName: "Equipe",
+        field: "coordinatorName",
+        headerName: "Coordenador",
         flex: 1.2,
         minWidth: 180,
       },

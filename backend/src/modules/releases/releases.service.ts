@@ -27,7 +27,7 @@ export class ReleasesService {
       data: {
         projectId: dto.projectId,
         versionTag,
-        commitSha: `sha-${Date.now().toString(36)}`,
+        snapshotId: null,
         status: 'SUBMITTED',
         feedback: dto.feedback,
         reviewerId: dto.reviewerId,
@@ -54,7 +54,7 @@ export class ReleasesService {
       data: {
         projectId: dto.projectId,
         versionTag: dto.versionTag,
-        commitSha: `main-sha-${Date.now().toString(36)}`,
+        version: 1,
         title: dto.title,
         conference: dto.conference,
       },

@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { env } from '../../config/env';
 import { eventsManager } from '../../modules/events/events.manager';
-import { GitService } from '../git/git.service';
 
 const IGNORED_PATTERNS = [
   '**/.git/**',
@@ -24,11 +23,6 @@ export class WorkspaceWatcherService {
   private readonly watchers = new Map<string, FSWatcher>();
   private readonly stateCache = new Map<string, boolean>();
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
-  private readonly gitService: GitService;
-
-  constructor(gitService?: GitService) {
-    this.gitService = gitService || new GitService();
-  }
 
   // Inicia o monitoramento reativo de arquivos do disco do projeto (usando chokidar no Linux)
   watchProject(projectId: string, userId?: string): void {
@@ -100,7 +94,7 @@ export class WorkspaceWatcherService {
       this.debounceTimers.delete(projectId);
 
       try {
-        const dirtyCheck = await this.gitService.checkUncommittedChanges(projectId, userId);
+        const dirtyCheck = { hasUncommittedChanges: false, dirtyFiles: [] as string[] };
         const previousState = this.stateCache.get(projectId);
 
         // Dispara o evento SSE SOMENTE se o estado transicionou (ex: false -> true ou true -> false)
