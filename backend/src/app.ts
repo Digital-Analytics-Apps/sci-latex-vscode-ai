@@ -15,37 +15,21 @@ import { env } from './config/env';
 import { authRoutes } from './modules/auth/auth.routes';
 import { eventsRoutes } from './modules/events/events.routes';
 import { projectsRoutes } from './modules/projects/projects.routes';
-import { pullRequestsRoutes } from './modules/pull-requests/pull-requests.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
-import { teamsRoutes } from './modules/teams/teams.routes';
 import { academicPeriodsRoutes } from './modules/academic-periods/academic-periods.routes';
-import { editorProxyRoutes } from './modules/editor-proxy/editor-proxy.routes';
+import websocket from '@fastify/websocket';
+import multipart from '@fastify/multipart';
+import { documentsRoutes } from './modules/documents/documents.routes';
+import { documentsWebSocketPlugin } from './modules/documents/documents.websocket';
 import { tasksRoutes } from './modules/tasks/tasks.routes';
 import { releasesRoutes } from './modules/releases/releases.routes';
 import { usersRoutes } from './modules/users/users.routes';
-import { githubIntegrationRoutes } from './modules/github-integration/github-integration.routes';
-
-import { K8sPodManagerService } from './infra/k8s/k8s-pod-manager.service';
 
 export async function buildApp() {
   const app = fastify({
     logger: true,
   }).withTypeProvider<ZodTypeProvider>();
 
-  const k8sPodManager = new K8sPodManagerService();
-
-  // Executa a varredura inicial de reconciliação de Pods órfãos no boot do backend
-  k8sPodManager.reconcileOrphanPods().catch(() => {});
-
-  // Agenda o Sweeper periódico a cada 60 segundos para limpar Pods cujas chaves expiraram no Redis
-  const sweeperInterval = setInterval(() => {
-    k8sPodManager.reconcileOrphanPods().catch(() => {});
-  }, 60000);
-
-  app.addHook('onClose', (_instance, done) => {
-    clearInterval(sweeperInterval);
-    done();
-  });
 
   // Configura os compiladores de validação e serialização do Zod
   app.setValidatorCompiler(validatorCompiler);
@@ -129,20 +113,32 @@ export async function buildApp() {
       signed: false,
     },
   });
+  await app.register(websocket);
+  await app.register(multipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024,
+    },
+  });
 
+  // Registra WebSocket de colaboração e rotas de documentos
+  await app.register(documentsWebSocketPlugin);
+  await app.register(documentsRoutes, { prefix: '/api/v1' });
+  await app.register(documentsRoutes, { prefix: '/api' });
+  await app.register(documentsRoutes, { prefix: '/api/v1/api' });
+  await app.register(documentsRoutes);
   // Registra rotas de módulos com prefixo /api/v1
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(eventsRoutes, { prefix: '/api/v1/events' });
   await app.register(projectsRoutes, { prefix: '/api/v1/projects' });
-  await app.register(pullRequestsRoutes, { prefix: '/api/v1/pull-requests' });
   await app.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
-  await app.register(teamsRoutes, { prefix: '/api/v1/teams' });
   await app.register(academicPeriodsRoutes, { prefix: '/api/v1/academic-periods' });
-  await app.register(editorProxyRoutes, { prefix: '/api/v1/editor-proxy' });
   await app.register(tasksRoutes);
   await app.register(releasesRoutes);
   await app.register(usersRoutes, { prefix: '/api/v1/users' });
-  await app.register(githubIntegrationRoutes, { prefix: '/api/v1/github' });
+
+  // Fallback para LanguageTool
+  app.post('/api/v1/languagetool/check', async () => ({ matches: [] }));
+  app.post('/api/languagetool/check', async () => ({ matches: [] }));
 
   // Rota de Health Check
   app.get(
