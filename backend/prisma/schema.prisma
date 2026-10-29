@@ -122,6 +122,7 @@ model Project {
   files             ProjectFile[]
   operations        DocumentOperation[]
   snapshots         DocumentSnapshot[]
+  comments          ReviewComment[]
 }
 
 model ProjectMember {
@@ -301,4 +302,23 @@ model DocumentSnapshot {
   reason    String
   createdAt DateTime @default(now())
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ReviewComment {
+  id           String   @id @default(uuid())
+  projectId    String
+  file         String   @default("main.tex")
+  from         Int      @map("from")
+  to           Int      @map("to")
+  selectedText String   @db.Text
+  userId       String
+  userName     String
+  userColor    String   @default("#3b82f6")
+  content      String   @db.Text
+  status       String   @default("open") // "open" | "resolved"
+  replies      Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

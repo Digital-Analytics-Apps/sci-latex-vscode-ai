@@ -2,14 +2,19 @@ import { describe, beforeEach, it as test, assert } from 'vitest';
 import { ChangeSet } from '@codemirror/state';
 import { DocumentsService } from './documents.service';
 import { IDocumentsRepository, CheckpointFlushData } from './documents.repository';
-import { Document, DocumentOperation, DocumentSnapshot, ProjectFile } from './documents.schema';
-
+import {
+  Document,
+  DocumentOperation,
+  DocumentSnapshot,
+  ProjectFile,
+  ReviewComment,
+} from './documents.schema';
 class InMemoryDocumentsRepository implements IDocumentsRepository {
   private docs = new Map<string, Document>();
   private snapshots: DocumentSnapshot[] = [];
   private operations: DocumentOperation[] = [];
   private files: ProjectFile[] = [];
-
+  private comments: ReviewComment[] = [];
   async findById(id: string): Promise<Document | null> {
     const doc = this.docs.get(id);
     return doc ? { ...doc } : null;
@@ -102,6 +107,35 @@ class InMemoryDocumentsRepository implements IDocumentsRepository {
 
   async deleteProjectFile(fileId: string): Promise<void> {
     this.files = this.files.filter((f) => f.id !== fileId);
+  }
+
+  async listComments(projectId: string): Promise<ReviewComment[]> {
+    return this.comments.filter((c) => c.documentId === projectId);
+  }
+
+  async saveComment(comment: ReviewComment): Promise<ReviewComment> {
+    const idx = this.comments.findIndex((c) => c.id === comment.id);
+    if (idx >= 0) {
+      this.comments[idx] = comment;
+    } else {
+      this.comments.push(comment);
+    }
+    return comment;
+  }
+
+  async updateComment(comment: ReviewComment): Promise<ReviewComment | null> {
+    const idx = this.comments.findIndex((c) => c.id === comment.id);
+    if (idx >= 0) {
+      this.comments[idx] = comment;
+      return comment;
+    }
+    return null;
+  }
+
+  async deleteComment(commentId: string): Promise<boolean> {
+    const initialLen = this.comments.length;
+    this.comments = this.comments.filter((c) => c.id !== commentId);
+    return this.comments.length !== initialLen;
   }
 }
 
@@ -234,5 +268,58 @@ describe('DocumentsService - Motor Colaborativo com @codemirror/collab', () => {
     const repoSnapshots = await repo.getSnapshots('doc-test-1');
     assert.equal(repoSnapshots.length, 1);
     assert.equal(repoSnapshots[0].content, 'Hello World!');
+  });
+
+  test('deve persistir e carregar comentários de revisão (ReviewComment) via repositório', async () => {
+    const comment: ReviewComment = {
+      id: 'comm-persistent-1',
+      documentId: 'doc-test-1',
+      file: 'main.tex',
+      from: 0,
+      to: 5,
+      selectedText: 'Hello',
+      userId: 'rev-1',
+      userName: 'Reviewer Teste',
+      userColor: '#10b981',
+      content: 'Excelente introdução, favor verificar referência.',
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      replies: [],
+    };
+
+    service.addComment('doc-test-1', comment);
+
+    // Valida no repositório
+    const savedInRepo = await repo.listComments('doc-test-1');
+    assert.equal(savedInRepo.length, 1);
+    assert.equal(savedInRepo[0].id, 'comm-persistent-1');
+    assert.equal(savedInRepo[0].content, 'Excelente introdução, favor verificar referência.');
+
+    // Adiciona resposta (reply)
+    service.replyComment('doc-test-1', 'comm-persistent-1', {
+      id: 'reply-1',
+      userId: 'auth-1',
+      userName: 'Autor',
+      userColor: '#3b82f6',
+      content: 'Referência adicionada!',
+      createdAt: new Date().toISOString(),
+    });
+
+    const withReply = service.getComments('doc-test-1');
+    assert.equal(withReply[0].replies.length, 1);
+
+    // Resolve comentário
+    service.resolveComment('doc-test-1', 'comm-persistent-1', 'resolved');
+    const resolved = service.getComments('doc-test-1');
+    assert.equal(resolved[0].status, 'resolved');
+
+    // Valida persistência após novo getDocument em instância fresca
+    const freshService = new DocumentsService(repo);
+    await freshService.getDocument('doc-test-1');
+    const loadedFromDb = freshService.getComments('doc-test-1');
+    assert.equal(loadedFromDb.length, 1);
+    assert.equal(loadedFromDb[0].id, 'comm-persistent-1');
+    assert.equal(loadedFromDb[0].status, 'resolved');
+    assert.equal(loadedFromDb[0].replies.length, 1);
   });
 });

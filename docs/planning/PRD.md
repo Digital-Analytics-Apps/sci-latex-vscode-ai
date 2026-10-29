@@ -38,8 +38,8 @@ graph LR
 | :--- | :--- |
 | **Autor** | Cria o artigo, estabelece datas planejadas das etapas fixas, redige no editor CodeMirror 6, solicita revisão de tarefas, atua em ajustes apontados pelo revisor, solicita análise do NIT (ao aprovar a Etapa 4) e executa a submissão final ao congresso. |
 | **Revisor** | Atua como Orientador ou Revisor Técnico do projeto. Acessa as mesmas telas do autor (com filtro e badges dedicados), avalia o texto no CodeMirror em modo **Read-Only** com capacidade total de comentários inline ancorados (`ReviewSidebar`), emitindo pareceres em nível de tarefa (Etapa 3) e na Revisão Geral (Etapa 4). |
-| **Coordenador** | Coordena 1 ou mais Times (`1:N`). Gerencia prazos, monitora tarefas em revisão, reatribui orientadores/revisores e resolve gargalos das equipes. |
-| **Gerente** | Suporte a **Múltiplos Gerentes (`Role.MANAGER`)** por departamento/área. Visão estratégica executiva por **Ciclo Acadêmico**, define a Meta Global da sua unidade, distribui cotas entre os times (`TeamAcademicGoal`), acompanha métricas de tempo de revisão e rodadas de retrabalho. |
+| **Coordenador** | Líder técnico responsável por acompanhar os projetos sob sua coordenação (`coordinatorId`). Gerencia prazos no Gantt, monitora tarefas em revisão, reatribui orientadores/revisores e resolve gargalos das pesquisas. |
+| **Gerente** | Suporte a **Múltiplos Gerentes (`Role.MANAGER`)** por departamento/área. Visão estratégica executiva por **Ciclo Acadêmico** (`AcademicPeriod`), supervisiona a meta de artigos, aprova projetos institucionais (`managerId`), acompanha métricas de tempo de revisão e rodadas de retrabalho. |
 
 ---
 
@@ -71,13 +71,12 @@ graph TD
 
 ## 🏗️ 4. Principais Decisões de Arquitetura (Consolidadas)
 
-* **Editor Web-Nativo com CodeMirror 6 & @codemirror/collab (ADR-007):** Arquitetura Single-Leader OT com rebase em memória, zero dependência de terminais e flush periódico no PostgreSQL.
-* **Extensão Read-Only Nativa para o Revisor:** Proteção contra edição acidental via `EditorState.readOnly.of(true)`, permitindo seleção de trechos e inclusão de anotações via `ReviewSidebar`.
+* **Editor Web-Nativo com CodeMirror 6 & @codemirror/collab (ADR-007):** Arquitetura Single-Writer OT com rebase em memória, zero dependência de terminais e persistência confiável com debounce híbrido no PostgreSQL.
+* **Fencing Monotônico de Posse & Resiliência (ADR-007.1):** Coordenação distribuída com token monotônico `ownerGeneration` no PostgreSQL e leases no Redis (TTL 15s / Heartbeat 2s), prevenindo sobrescrita por Pods zumbis.
+* **Extensão Read-Only & Apontamentos Duráveis (ADR-008 & ADR-010):** Proteção contra edição acidental para revisores via `readOnly: true`, com comentários inline ancorados e histórico persistido no PostgreSQL (`ReviewComment`).
 * **Régua Institucional de 6 Etapas Imutáveis (ADR-008):** Todas as etapas são sequenciais e obrigatórias; remoção de reordenação e deleção de etapas, eliminando a dependência de `@dnd-kit`.
 * **Modelo de Revisão em Dois Níveis:** Separação entre o bate e volta granular por tarefas (Etapa 3) e a Revisão Geral macro institucional (Etapa 4).
 * **Sincronização em Tempo Real (SSE & WebSockets):** Atualização instantânea na interface React através de SSE e WebSockets, sem necessidade de reload de página.
-
----
 
 ## 🔗 5. Links para Especificações Detalhadas
 

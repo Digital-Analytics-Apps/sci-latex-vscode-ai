@@ -15,11 +15,10 @@ O **Technical Requirements Document (TRD)** formaliza a arquitetura de engenhari
 
 ### 1.2 Princípios de Engenharia
 1. **Padrão de Código Estrito em Inglês:** Todos os identificadores de código (modelos, tabelas, colunas, enums, interfaces, variáveis, métodos, rotas de API, propriedades e classes) devem ser estritamente em **Inglês**. A documentação de arquitetura e comentários de negócio podem ser em **Português**.
-2. **Arquitetura 100% Self-Hosted & Infraestrutura Leve:** Eliminação de intermediários pesados (ex: RabbitMQ/Erlang) em favor da compilação TeX nativa no Pod do editor e orquestração direta em Kubernetes local (**KinD**).
-3. **GitHub como Fonte Única da Verdade (Single Source of Truth):** Custódia centralizada de artigos científicos via Conta de Serviço com Token de Acesso (`GITHUB_TOKEN`), sem necessidade de configuração de chaves SSH pelos pesquisadores.
-4. **Isolamento de Workspaces por Pods Efêmeros:** Workspaces de escrita e revisão executados em containers isolados (`code-server`) montando diretórios específicos de persistência (`subPath`).
+2. **Arquitetura 100% Self-Hosted & Infraestrutura Leve:** Eliminação de intermediários pesados em favor do editor web-nativo CodeMirror 6, microserviço de compilação TeX Live (`sci-latex-compiler`) e orquestração direta em Kubernetes local (**KinD**).
+3. **PostgreSQL como Única Fonte de Verdade Persistente (ADR-007 / ADR-008):** Custódia centralizada e durável de metadados, arquivos e snapshots TeX via transações ACID no PostgreSQL com Prisma v7 (`@prisma/adapter-pg`), sem dependência de branches Git, chaves SSH ou repositórios remotos para a escrita cotidiana.
+4. **Edição Colaborativa Single-Writer com Fencing Monotônico (ADR-007.1):** Coordenação distribuída entre Pods via leases no Redis (TTL 15s / Heartbeat 2s / Failsafe 8s) e validação estrita de posse no PostgreSQL (`ownerGeneration`).
 5. **Governança por Máquinas de Estado & Gatekeepers Rígidos:** Imposição técnica das travas institucionais do **NIT (Núcleo de Inovação Tecnológica)** e da **Submissão ao Congresso Alvo**, garantindo integridade de propriedade intelectual e prazos.
-
 ---
 
 ## 🏛️ 2. Arquitetura do Sistema & Topologia de Rede
@@ -29,27 +28,21 @@ O **Technical Requirements Document (TRD)** formaliza a arquitetura de engenhari
 ```mermaid
 graph TB
     subgraph "Navegador do Usuário (Client Layer)"
-        SPA["Frontend SPA (React 19 + TypeScript + Vite)<br/>Porta 5173"]
-        Iframe["Iframe Embutido (VS Code Web / code-server)"]
+        SPA["Frontend SPA (React 19 + TypeScript + Vite)<br/>CodeMirror 6 + PdfPreview (Porta 5173)"]
     end
 
     subgraph "Gateway & Core Backend (Host / Docker Network)"
         Gateway["Fastify Backend Gateway (Node.js 20 + TypeScript)<br/>Porta 3333"]
-        ProxyModule["Editor Reverse Proxy (@fastify/http-proxy)<br/>Suporte a HTTP + WebSockets"]
+        WSHub["WebSocket Collab Hub (@codemirror/collab Engine)"]
         SSEHub["SSE Hub (Server-Sent Events Broadcast)"]
-        GitWorker["GitService (Octokit REST + Git CLI Nativo)"]
         CronWorker["Scheduler (node-cron Prazos & Sweeper)"]
     end
 
-    subgraph "Persistência e Cache"
+    subgraph "Camada de Compilação & Persistência"
+        Compiler["TeX Live Compiler Service (Node.js + latexmk)<br/>Porta 3001"]
         Postgres[("PostgreSQL 16 Alpine<br/>Porta 5432 / sci_latex_db")]
-        Redis[("Redis 7 Alpine<br/>Porta 6379 / PubSub & TTL")]
-    end
-
-    subgraph "Orquestração Kubernetes (KinD Cluster - Rede 'kind')"
-        WarmPool["Warm Standby Pool (sci-workspace-warm-*)"]
-        ActivePods["Active Pods (sci-workspace-project-*-task-*)<br/>code-server + TeX Live + LaTeX Workshop"]
-        PVStorage["Persistência de Arquivos (HostPath / Storage PVC)"]
+        Redis[("Redis 7 Alpine<br/>Porta 6379 / PubSub & TTL Leases")]
+        MinIO[("MinIO S3 Storage<br/>Porta 9000 / PDFs & Assets")]
     end
 
     subgraph "Camada de Inteligência Científica (ai-service)"
@@ -57,22 +50,18 @@ graph TB
         MultiAgents["Multi-Agent Graph (Supervisor, IdeaRefiner, Search, Curation, Writer)"]
     end
 
-    subgraph "Serviços Externos Institucionais & Acadêmicos"
-        GitHubAPI["GitHub REST & GraphQL API (Projetos & Repositórios)"]
+    subgraph "Serviços Acadêmicos Externos"
         AcademicAPIs["OpenAlex & Semantic Scholar & Tavily Search"]
     end
 
-    SPA -->|REST API & SSE /api/v1| Gateway
-    Iframe -->|Reverse Proxy /editor-proxy/:projectId| ProxyModule
-    ProxyModule -->|WebSocket & HTTP Stream| ActivePods
-    Gateway -->|Prisma ORM| Postgres
-    Gateway -->|Heartbeats, Presença & Lock| Redis
-    Gateway -->|K8s SDK Client| WarmPool
-    Gateway -->|K8s SDK Client| ActivePods
-    ActivePods -->|Montagem de Volume| PVStorage
+    SPA -->|REST API, SSE & WebSocket| Gateway
+    Gateway --> WSHub
+    Gateway -->|HTTP POST /compile| Compiler
+    Gateway -->|Prisma ORM v7| Postgres
+    Gateway -->|Leases & Heartbeats| Redis
+    Gateway -->|Binários / S3 API| MinIO
     Gateway -->|M2M Auth X-Internal-Service-Key| AIService
     AIService --> AcademicAPIs
-    GitWorker --> GitHubAPI
 ```
 
 ### 2.2 Tabela de Portas, Endereçamento e Protocolos
@@ -80,100 +69,66 @@ graph TB
 | Serviço | Host / Container | Porta Interna | Porta Exposta | Protocolo | Finalidade |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Frontend** | `sci_latex_frontend` | `5173` | `5173` | HTTP / WS | Aplicação SPA React e servidor de desenvolvimento Vite |
-| **Backend** | `sci_latex_backend` | `3333` | `3333` | HTTP / SSE / WS | API REST v1, Gateway SSE e Reverse Proxy para o editor |
-| **PostgreSQL** | `sci_latex_postgres` | `5432` | `5432` | TCP | Banco de dados relacional oficial do SCIA |
-| **Redis** | `sci_latex_redis` | `6379` | `6379` | TCP / RESP | Controle de presença, locks de edição e heartbeat TTL |
+| **Backend** | `sci_latex_backend` | `3333` | `3333` | HTTP / SSE / WS | API REST v1, Gateway SSE e Hub WebSocket de Colaboração |
+| **PostgreSQL** | `sci_latex_postgres` | `5432` | `5432` | TCP | Banco de dados relacional oficial do SCIA (ACID) |
+| **Redis** | `sci_latex_redis` | `6379` | `6379` | TCP / RESP | Controle de presença, leases de posse e heartbeat TTL |
+| **TeX Compiler** | `sci-latex-compiler` | `3001` | `3001` | HTTP | Microserviço TeX Live / latexmk para compilação síncrona |
+| **MinIO S3** | `sci-latex-minio` | `9000` / `9001`| `9000` / `9001`| HTTP | Storage S3-compatible para PDFs compilados e figuras |
 | **SciAI Engine** | `ai-service` | `8000` | `8000` | HTTP / SSE | Motor de agentes de IA, grafos LangGraph e busca acadêmica |
 | **Kubernetes (KinD)** | Cluster `kind` | `6443` | `43257` (dinâmica) | HTTPS | API Server do Kubernetes para orquestração de Pods sob demanda |
-| **code-server Pod** | Pods isolados K8s | `8080` | ClusterIP dinâmico | HTTP / WS | Instâncias individuais de edição VS Code com TeX Live |
+
+## ☸️ 3. Requisitos de Infraestrutura, Compilação TeX & Auto-Scaling (HPA)
+
+### 3.1 Microserviço de Compilação TeX Live (`sci-latex-compiler`)
+1. **Isolamento de Processamento Pesado:** A compilação TeX Live e a geração de PDFs são desacopladas da API REST do backend, executando em um microserviço síncrono dedicado (`sci-latex-compiler`, porta 3001) baseado em Node.js com TeX Live e utilitário `latexmk`.
+2. **Execução Segura em Diretório Efêmero:**
+   * Ao receber a requisição de compilação com o arquivo principal e arquivos secundários (.tex, .bib, figuras), o serviço cria um diretório temporário isolado em `/tmp/compilations/<id>`;
+   * Invoca `latexmk -pdf -interaction=nonstopmode -synctex=1 main.tex` com timeout de proteção de 60 segundos;
+   * Captura stdout/stderr estruturados e mapeia erros de sintaxe TeX com número de linha e contexto (`parseLatexCompilerError`);
+   * Retorna o buffer do PDF gerado ou payload de diagnósticos e limpa o diretório de compilação.
+3. **Auto-Scaling Horizontal Gradual (HPA no Kubernetes):**
+   * **Backend Fastify (`sci-latex-backend`):** Baseline de 2 pods, escala até 6 réplicas com target de CPU em 70% e memória em 75% (`stabilizationWindowSeconds: 300` para scale-down suave).
+   * **Compilador TeX (`sci-latex-compiler`):** Baseline de 1 pod, escala até 4 réplicas com target de CPU em 80%.
+
+### 3.2 Gerenciamento de Presença e Leases Efêmeros no Redis
+1. **Leases de Posse de Documento (Single-Writer):** Chave `editor:document:<projectId>:owner` com TTL de 15 segundos renovada a cada 2 segundos via heartbeat do Pod dono (ADR-007.1).
+2. **Presença em Tempo Real:** Chave `workspace:active:<mode>:<projectId>:<userId>:<taskId>` com TTL de 180 segundos renovada a cada 20 segundos via Web Worker isolado no frontend (ADR-004).
 
 ---
 
-## ☸️ 3. Requisitos de Infraestrutura & Workspaces K8s
+## ✍️ 4. Requisitos do Motor de Edição Colaborativa e Persistência Confiável (ADR-007 / ADR-007.1 / ADR-008 / ADR-010)
 
-### 3.1 Ciclo de Vida dos Pods de Edição (On-Demand)
-1. **Warm Pool (Pods Pré-aquecidos):** O backend mantém uma piscina permanente de Pods em estado `Idle` (`sci-workspace-warm-*`) para garantir que o tempo de inicialização percebido pelo Autor ou Revisor ao clicar em uma tarefa seja **inferior a 1.5 segundos**.
-2. **Alocação Dinâmica por Tarefa:** Ao solicitar acesso à workspace (`GET /editor-proxy/:projectId?taskId=:taskId&stageId=:stageId`), o serviço `K8sPodManagerService`:
-   * Verifica se já existe um Pod ativo vinculado à tupla `(projectId, taskId, userId)`.
-   * Caso não exista, reivindica um Pod da Warm Pool, reconfigura seus metadados (`labels`, `subPath` do volume) e o associa à workspace no PostgreSQL (`WorkspaceStatus.READY`).
-3. **Validação Estrita de `subPath`:** O backend valida continuamente o `volumeMounts[0].subPath` do container. Se a tarefa pertencer a uma etapa específica (`stages/:stageId/tasks/:taskId`) e o Pod estiver montando um caminho divergente, o Pod antigo é automaticamente destruído e recriado com o caminho canônico.
-4. **Descomissionamento e Limpeza (Garbage Collection):**
-   * **No Merge:** Ao concluir o merge da branch da tarefa na branch `dev`, o Pod é liberado (`releasePodForProject`), o diretório temporário é limpo e a workspace transiciona para `TERMINATED`.
-   * **Por Ociosidade (Inactivity Sweeper):** Pods sem heartbeat ativo no Redis por mais de 10 minutos são liberados da memória, preservando os arquivos no volume compartilhado.
+### 4.1 Arquitetura Single-Writer com `@codemirror/collab`
+1. **Zero Keystrokes no Banco e no Redis:** A digitação em alta frequência transita exclusivamente entre o navegador do usuário e a memória RAM do Pod Fastify responsável pela sala (`activeDocs`). Nenhuma tecla gera operações síncronas de I/O em disco ou rede no Redis.
+2. **Autoridade Central de Ordenação (OT):** O Pod dono sequencia as operações, atribui numeração monotônica de versões e realiza `rebaseUpdates` para reconciliar edições simultâneas de coautores.
+3. **Desacoplamento do Git (ADR-008):** Todo o histórico é mantido através de deltas em memória e snapshots relacionais no PostgreSQL, sem criação de branches Git individuais, commits manuais ou dependência do GitHub SDK.
 
-### 3.2 Configuração Zen Mode & Sandbox do VS Code
-Para manter foco acadêmico estrito e prevenir consumo excessivo de recursos:
-* **Desativação de Telemetria:** Telemetria da Microsoft, crash reporters e buscas de atualizações automáticas são desativadas via `settings.json`.
-* **Extensões Homologadas:** O container contém exclusivamente a extensão **LaTeX Workshop** e o pacote **TeX Live Full/Medium**. Não é permitido aos usuários instalar extensões arbitrárias no editor embutido.
-* **Auto-compilação TeX:** A extensão é pré-configurada para compilar o documento principal (`main.tex`) imediatamente após cada salvamento (`"latex-workshop.latex.autoBuild.run": "onSave"`), gravando o artefato `main.pdf` diretamente na raiz da workspace.
+### 4.2 Fencing Monotônico de Posse (`ownerGeneration`)
+Para prevenir corrupção por Pods zumbis durante pausas prolongadas de Garbage Collection ou partições de rede:
+1. **Etapa 1 (Handshake no Banco):** Ao adquirir o lease no Redis (`generation: N`), o Pod dono executa imediatamente:
+   ```sql
+   UPDATE "Project" SET "ownerGeneration" = :newGen WHERE id = :projectId AND "ownerGeneration" < :newGen;
+   ```
+2. **Etapa 2 (Checkpoint Protegido com Dupla Barreira):**
+   ```sql
+   UPDATE "Project"
+   SET "currentVersion" = :newVersion, "ownerGeneration" = :myGen, "updatedAt" = NOW()
+   WHERE id = :projectId AND "ownerGeneration" = :myGen AND "currentVersion" = :expectedVersion;
+   ```
+3. **Reconciliação Local do Cliente:** Se um Pod antigo for rejeitado (`rows_affected == 0`), ele encerra o WebSocket com erro `4409 Fencing Conflict`. O cliente CodeMirror 6 retém suas operações pendentes em buffer local (`sendableUpdates`) e as rebaseia automaticamente ao reconectar com o novo Pod dono.
 
-```mermaid
-stateDiagram-v2
-    [*] --> WarmStandby: K8sPodManager inicia Pod em standby
-    WarmStandby --> Provisioning: Autor abre a tarefa no frontend
-    Provisioning --> Ready: subPath ajustado e workspace vinculada
-    Ready --> Dirty: Autor efetua modificações no editor
-    Dirty --> Ready: Salvamento de progresso efetuado (git commit)
-    Ready --> IdleExpiring: Usuário fecha navegador (sem heartbeat)
-    IdleExpiring --> Terminated: Sweeper libera o Pod após 10min de TTL
-    Ready --> Terminated: Merge efetuado com sucesso na branch dev
-    Terminated --> [*]
-```
-
----
-
-## 🐙 4. Requisitos de Versionamento Git & Integração GitHub-Native
-
-### 4.1 Gestão de Credenciais e Repositórios Remotos
-1. **Token de Serviço Único (`GITHUB_TOKEN`):** Toda interação com a API remota do GitHub é executada pela aplicação backend utilizando uma Conta de Serviço institucional. 
-2. **Fallback para Ambiente de Desenvolvimento:** Caso o ambiente local utilize token dummy ou indefinido, o método `GitService.getEffectiveToken()` executa o fallback transparente via CLI nativa do GitHub (`gh auth token`).
-3. **Provisionamento Automático de Repositórios:** Ao criar um novo artigo científico (`Project`), o sistema cria obrigatoriamente um repositório privado no GitHub com o padrão:
-   $$	ext{sci-paper-} + 	ext{slug(título)} + 	ext{"-"} + 	ext{UUID.slice(0, 8)}$$
-4. **Templates Institucionais (.cls / .sty):** Durante a inicialização do repositório, o arquivo de classe selecionado (IEEEtran, ACM, SBC ou Springer LNCS) e a estrutura base (`main.tex`, `references.bib`, diretórios `sections/` e `figures/`) são provisionados e commitados diretamente na branch `dev` e `main`.
-
-### 4.2 Modelo de Branches & Fluxo de Commits
-* **Branch `main`:** Representa a versão canônica e versões publicadas (`Releases`, `ReleaseCandidates` submetidas). Protegida contra escrita direta.
-* **Branch `dev`:** Branch de integração contínua do artigo. Recebe os merges das tarefas concluídas.
-* **Branch de Tarefa (`task/<slug>-<shortHash>`):** Branch isolada criada a partir de `dev` para cada sub-tarefa de escrita.
-
-```mermaid
-gitGraph
-    commit id: "Init Template (main.tex)"
-    branch dev
-    checkout dev
-    commit id: "Configuração do Artigo"
-    branch task/introducao
-    checkout task/introducao
-    commit id: "Escrita Seção 1 (Draft PR)"
-    commit id: "Correção do Revisor (Round 2)"
-    checkout dev
-    merge task/introducao id: "Merge pelo Autor (Aprovado)"
-    branch task/metodologia
-    checkout task/metodologia
-    commit id: "Escrita Metodologia"
-    checkout dev
-    merge task/metodologia id: "Merge pelo Autor (Aprovado)"
-    checkout main
-    merge dev id: "Release Candidate (NIT Aprovado)"
-```
-
-### 4.3 Mecanismo Factual de Commits & Abstração Acadêmica
-* **Inspeção via Git CLI Nativo:** O serviço `GitService` executa `git diff HEAD` na árvore de trabalho da tarefa e identifica com precisão arquivos novos, alterados e excluídos.
-* **Classificação Acadêmica de Domínio (`ClassificationService`):** O sistema categoriza alterações técnicas para uma linguagem natural amigável ao pesquisador:
-  * `sections/*.tex` $
-ightarrow$ Categoria `section` ("Seção [Nome]")
-  * `main.tex` $
-ightarrow$ Categoria `main_structure` ("Estrutura Principal do Artigo")
-  * `*.bib` $
-ightarrow$ Categoria `references` ("Referências Bibliográficas")
-  * `figures/*`, `images/*` $
-ightarrow$ Categoria `figures` ("Figuras e Gráficos")
-  * `tables/*`, `*.csv` $
-ightarrow$ Categoria `tables` ("Tabelas e Dados Numéricos")
-* **Autoria e Assinatura Transparente:** O commit silencioso grava a identidade real do usuário logado através do argumento `--author="Nome <email>"`, garantindo auditoria completa no GitHub sem necessidade de chaves de usuário.
-* **Geração Automática de Descrição:** Caso o pesquisador não forneça mensagem manual ao salvar o progresso, o backend gera uma síntese factual padronizada (ex: `"Atualizações na Seção Introdução e Referências Bibliográficas"`).
-
----
+### 4.3 Persistência Híbrida com Debounce e Apontamentos Duráveis
+1. **Gatilhos de Checkpoint:**
+   * *Idle Timer:* 3 segundos de inatividade;
+   * *MaxWait Ceiling:* 15 segundos ininterruptos sob digitação contínua;
+   * *Volume Threshold:* 50 operações atômicas acumuladas;
+   * *Fechamento de Sala:* Saída do último usuário conectado.
+2. **Entidades Persistidas no Checkpoint (`prisma.$transaction`):**
+   * `Project`: Atualização de `currentVersion` e `ownerGeneration`;
+   * `ProjectFile`: Conteúdo textual atualizado de `main.tex` e arquivos secundários;
+   * `DocumentSnapshot`: Criação de ponto de restauração histórico do artigo;
+   * `ReviewComment`: Persistência durável de anotações inline, seleções de texto, status e threads de respostas (ADR-010).
+3. **Armazenamento de Binários Pesados no MinIO (S3):** PDFs compilados, imagens 300 DPI e templates são enviados ao MinIO, armazenando apenas o `storageKey` ou URL no PostgreSQL.
 
 ## 🤖 5. Requisitos da Camada de Inteligência Artificial (`ai-service`)
 
@@ -239,13 +194,12 @@ O backend é estruturado como um monólito modular com injeção de dependência
 ### 6.3 Motor de Notificações em Tempo Real (SSE)
 * **Stream Unidirecional Leve:** Implementado via endpoint nativo Fastify (`GET /api/v1/events`), dispensando conexões bidirecionais complexas (WebSockets de aplicação).
 * **Topologia de Eventos Emitidos:**
-  * `PR_OPENED`: Disparado para todos os membros do projeto quando uma tarefa é submetida para revisão.
-  * `PR_REVIEWER_ASSIGNED`: Disparado quando um revisor é atribuído à tarefa.
-  * `PR_APPROVED` / `PR_CHANGES_REQUESTED`: Atualiza o painel do autor e libera o botão de merge.
+  * `TASK_REVIEW_REQUESTED`: Disparado para coautores e revisores quando uma tarefa é submetida para revisão.
+  * `TASK_CHANGES_REQUESTED`: Notifica o autor sobre apontamentos de revisão pendentes.
+  * `TASK_COMPLETED`: Atualiza o painel e cronograma Gantt com a conclusão da tarefa.
+  * `STAGE_UPDATED`: Atualiza o status da etapa (1 a 6) e destrava etapas subsequentes no Gantt.
   * `NIT_STATUS_CHANGED`: Notifica a equipe sobre o parecer institucional do NIT.
-  * `TASK_UPDATED`: Atualiza o quadro de progresso e prazos dos coordenadores.
-  * `HEARTBEAT`: Ping periódico a cada 15s para manter túneis HTTP e proxies reversos abertos.
-
+  * `HEARTBEAT`: Ping periódico a cada 20s para manter conexões SSE ativas.
 ---
 
 ## 🗄️ 7. Requisitos de Modelagem de Dados & Persistência (PostgreSQL)
@@ -254,31 +208,26 @@ O backend é estruturado como um monólito modular com injeção de dependência
 
 ```mermaid
 erDiagram
-    User ||--o{ TeamMember : "possui"
-    User ||--o{ ProjectMember : "participa"
-    User ||--o{ PullRequest : "abre / revisa"
-    User ||--o{ Session : "autentica"
-    User ||--o{ AuditLog : "registra"
+    AcademicPeriod ||--o{ Project : "agrupa artigos"
+    AcademicPeriod }o--o| User : "gerenciado por"
 
-    Team ||--o{ TeamMember : "contém"
-    Team ||--o{ Project : "desenvolve"
-    AcademicPeriod ||--o{ Project : "engloba"
+    User ||--o{ ProjectMember : "atua em"
+    User ||--o{ Session : "autenticado via"
+    User ||--o{ AuditLog : "dispara ações"
+    User ||--o{ Task : "atribuído a"
+    User ||--o{ ReleaseCandidate : "revisa"
 
-    Project ||--o{ ProjectStage : "divide-se em"
-    Project ||--o{ Task : "compõe-se de"
-    Project ||--o{ PullRequest : "submete"
-    Project ||--o{ Workspace : "executa"
-    Project ||--o{ ReleaseCandidate : "gera"
-    Project ||--o{ Release : "publica"
-    Project ||--o{ NitProcess : "tramita"
-    Project ||--o{ GithubIntegration : "integra"
+    Project ||--o{ ProjectMember : "possui integrantes"
+    Project ||--o{ ProjectStage : "dividido em 6 etapas fixas"
+    Project ||--o{ Task : "contém tarefas"
+    Project ||--o{ ReleaseCandidate : "gera versões candidatas"
+    Project ||--o{ Release : "publica releases"
+    Project ||--o{ NitProcess : "submete à governança"
+    Project ||--o{ ProjectFile : "armazena arquivos TeX"
+    Project ||--o{ DocumentSnapshot : "persiste versões"
+    Project ||--o{ ReviewComment : "recebe apontamentos duráveis"
 
-    ProjectStage ||--o{ Task : "agrupa"
-    Task ||--o{ PullRequest : "associa"
-    Task ||--o{ Workspace : "aloca"
-
-    PullRequest ||--o{ ReviewRound : "possui"
-    PullRequest ||--o{ ReviewComment : "recebe"
+    ProjectStage ||--o{ Task : "agrupa tarefas da etapa"
 ```
 
 ### 7.2 Enumerações Canônicas do Sistema
@@ -290,15 +239,6 @@ enum Role {
   COORDINATOR
   MANAGER
   ADMIN
-}
-
-enum PRStatus {
-  DRAFT
-  UNDER_REVIEW
-  CHANGES_REQUESTED
-  APPROVED
-  MERGED
-  CANCELLED
 }
 
 enum NITStatus {
@@ -320,6 +260,18 @@ enum SubmissionStatus {
   COMPLETED_PUBLISHED
 }
 
+enum DeadlineStatus {
+  ON_TIME
+  WARNING_SOON
+  OVERDUE
+}
+
+enum PeriodStatus {
+  ACTIVE
+  ARCHIVED
+  COMPLETED
+}
+
 enum StageStatus {
   NOT_STARTED
   IN_PROGRESS
@@ -330,21 +282,10 @@ enum StageStatus {
 enum TaskStatus {
   NOT_STARTED
   IN_PROGRESS
-  UNDER_REVIEW
+  REVIEW_REQUESTED
+  IN_REVIEW
   CHANGES_REQUESTED
-  APPROVED
-  MERGED
-}
-
-enum WorkspaceStatus {
-  PROVISIONING
-  READY
-  DIRTY
-  SYNCING
-  BEHIND
-  CONFLICTED
-  ERROR
-  TERMINATED
+  COMPLETED
 }
 
 enum RCStatus {
@@ -358,13 +299,13 @@ enum RCStatus {
 ### 7.3 Entidades Principais e Índices de Performance
 
 1. **`User` & `Session`:** Controle de acesso com senhas em Argon2/bcrypt e rotação de Refresh Tokens criptográficos com expiração absoluta.
-2. **`Project` & `ProjectStage`:** Cronograma de escrita paralela com ordenação estrita (`@@unique([projectId, order])`).
-3. **`Task`:** Tarefas atômicas de redação atreladas a uma branch Git dedicada (`branchName`).
-4. **`PullRequest`, `ReviewRound` & `ReviewComment`:** Gestão de revisões viva com rastreamento do commit submetido (`submittedCommitHash`) e ancoragem de comentários por linha do arquivo TeX.
-5. **`Workspace`:** Associação dinâmica de Pods K8s indexada por unicidade `@@unique([projectId, userId, stageId, taskId])`.
-6. **`AuditLog`:** Trilha imutável em JSONB registrando `userId`, `action`, `entityType`, `entityId` e `details` de todas as operações sensíveis.
-7. **Projeções do GitHub:** `GithubIssueProjection` e `GithubProjectItemProjection` sincronizadas via webhooks para viabilizar consultas instantâneas na Dashboard sem sobrecarregar a API do GitHub.
-
+2. **`Project`:** Entidade mestra com controle de concorrência e posse (`currentVersion`, `ownerGeneration`), vinculada a `coordinatorId` e `managerId`.
+3. **`ProjectStage`:** Cronograma de 6 etapas fixas com ordenação estrita (`@@unique([projectId, order])`).
+4. **`Task`:** Tarefas atômicas de escrita científica com ciclo iterativo de revisão entre autor e orientador (`TaskStatus`).
+5. **`ProjectFile`:** Conteúdo textual durável (.tex e .bib) e referências a binários (`storageKey`), indexado por `@@unique([projectId, path])`.
+6. **`ReviewComment`:** Apontamentos inline duráveis ancorados por offset de caracteres (`from`, `to`), com suporte a threads de respostas e resolução (`open` / `resolved`).
+7. **`DocumentSnapshot`:** Pontos de restauração históricos completos do artigo gerados por checkpoints debounced.
+8. **`AuditLog`:** Trilha imutável em JSONB registrando `userId`, `action`, `entityType`, `entityId` e `details` de todas as operações sensíveis, com relação polimórfica desvinculada.
 ---
 
 ## 🔒 8. Requisitos de Segurança, Autenticação & Governança
@@ -377,18 +318,18 @@ enum RCStatus {
 
 | Funcionalidade / Recurso | Autor (`AUTHOR`) | Revisor (`REVIEWER`) | Coordenador (`COORDINATOR`) | Gerente (`MANAGER`) | Administrador (`ADMIN`) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Escrever no VS Code da Tarefa** | ✅ (Atribuída) | ❌ | ❌ | ❌ | ✅ |
-| **Salvar Progresso (Commit Silencioso)** | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **Submeter p/ Revisão Acadêmica** | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **Acessar Visão Diff & PDF Revisor** | 👁️ (Somente Leitura) | ✅ | ✅ | 👁️ | ✅ |
-| **Emitir Parecer (Aprovar / Ajustes)** | ❌ | ✅ | ✅ | ❌ | ✅ |
-| **Executar Merge da Tarefa** | ✅ (Se Aprovada) | ❌ | ✅ | ❌ | ✅ |
-| **Solicitar Avaliação do NIT** | ✅ (100% Escrito) | ❌ | ✅ | ❌ | ✅ |
+| **Editar no CodeMirror 6** | ✅ (Atribuída) | ❌ (Read-Only) | ❌ | ❌ | ✅ |
+| **Inserir Apontamento Inline** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Solicitar Revisão de Tarefa** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Acessar Visão Geral & Parecer** | 👁️ (Somente Leitura) | ✅ | ✅ | 👁️ | ✅ |
+| **Emitir Parecer (Aprovar / Ajustes)**| ❌ | ✅ | ✅ | ❌ | ✅ |
+| **Concluir Tarefa na Etapa 3** | ✅ (Se Aprovada) | ❌ | ✅ | ❌ | ✅ |
+| **Aprovar Revisão Geral (Etapa 4)** | ❌ | ✅ | ✅ | ❌ | ✅ |
+| **Solicitar Avaliação do NIT** | ✅ (Etapa 4 Aprovada)| ❌ | ✅ | ❌ | ✅ |
 | **Registrar Parecer Institucional NIT**| ❌ | ✅ | ✅ | ✅ | ✅ |
 | **Submeter ao Congresso Alvo** | ✅ (NIT Aprovado)| ❌ | ✅ | ❌ | ✅ |
-| **Alocar Membros e Prazos do Time**| ❌ | ❌ | ✅ | ✅ | ✅ |
+| **Alocar Membros e Prazos do Projeto**| ❌ | ❌ | ✅ | ✅ | ✅ |
 | **Definir Metas por Ciclo Acadêmico** | ❌ | ❌ | ❌ | ✅ | ✅ |
-
 ### 8.3 Implementação dos Dois Gatekeepers Rígidos
 
 ```mermaid

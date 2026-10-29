@@ -37,12 +37,11 @@ O sistema de persistência do SCIA adota um modelo híbrido com foco em integrid
 │                        DATA PERSISTENCE ARCHITECTURE                   │
 ├───────────────────────────────────┬────────────────────────────────────┤
 │  PostgreSQL 16 (sci_latex_postgres)│  Redis 7 (sci_latex_redis)         │
-│  - 17 Tabelas Relacionais         │  - Chaves de Presença com TTL      │
+│  - 14 Tabelas Relacionais         │  - Chaves de Presença com TTL      │
 │  - Chaves Estrangeiras & Cascades │  - Heartbeat de Pods K8s (180s)    │
 │  - JSONB para Logs de Auditoria   │  - Zero Lock no SGBD Principal     │
 │  - Prisma ORM 7 + Driver Adapter  │  - Pub/Sub e Stream SSE Real-Time  │
 └───────────────────────────────────┴────────────────────────────────────┘
-```
 
 ### Tecnologias e Configurações
 
@@ -265,64 +264,20 @@ Representa ciclos acadêmicos e períodos de avaliação de metas de publicaçã
 | `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de criação |
 | `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de atualização |
 | `deletedAt` | `TIMESTAMP(3)` | Sim | `NULL` | Soft delete do ciclo |
-
-#### Tabela `"Team"`
-Equipe de pesquisa associada a um Coordenador técnico e um Gerente.
-
-| Coluna | Tipo | Nulo | Restrições / Default | Descrição |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da equipe |
-| `name` | `TEXT` | Não | — | Nome da equipe de pesquisa |
-| `description` | `TEXT` | Sim | — | Escopo e objetivos da equipe |
-| `managerId` | `TEXT` | Sim | `FK -> User.id` | Gerente supervisor |
-| `coordinatorId`| `TEXT` | Não | `FK -> User.id` | **Coordenador técnico exclusivo** |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de criação |
-| `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de atualização |
-| `deletedAt` | `TIMESTAMP(3)` | Sim | `NULL` | Soft delete |
-
-#### Tabela `"TeamMember"`
-Tabela associativa entre Usuários e Equipes com papéis atribuídos.
-
-| Coluna | Tipo | Nulo | Restrições / Default | Descrição |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do registro associativo |
-| `teamId` | `TEXT` | Não | `FK -> Team.id ON DELETE CASCADE` | ID da equipe |
-| `userId` | `TEXT` | Não | `FK -> User.id ON DELETE CASCADE` | ID do membro |
-| `role` | `"Role"` | Não | `DEFAULT 'AUTHOR'` | Papel do membro na equipe |
-
-* **Restrição Única Composta:** `@@unique([teamId, userId])` (Impede duplicidade de vínculo).
-
-#### Tabela `"TeamAcademicGoal"`
-Metas individuais de publicação atribuídas a uma equipe em um ciclo específico.
-
-| Coluna | Tipo | Nulo | Restrições / Default | Descrição |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da meta |
-| `academicPeriodId`| `TEXT`| Não | `FK -> AcademicPeriod.id ON DELETE CASCADE` | Ciclo acadêmico vinculado |
-| `teamId` | `TEXT` | Não | `FK -> Team.id ON DELETE CASCADE` | Equipe vinculada |
-| `targetArticles` | `INTEGER`| Não | `DEFAULT 0` | Quantidade de artigos contratada |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de definição da meta |
-| `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de atualização |
-
-* **Restrição Única Composta:** `@@unique([academicPeriodId, teamId])`.
-
----
-
-### 4.3. Domínio Editorial (Projetos/Artigos, Membros & Etapas)
-
 #### Tabela `"Project"`
-Entidade mestra que encapsula o Artigo Científico, repositório Git e conferências associadas.
+Entidade mestra que encapsula o Artigo Científico e conferências associadas (desacoplada de repositórios Git conforme ADR-008).
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID do artigo/projeto |
 | `name` | `TEXT` | Não | — | Título do artigo científico |
 | `description` | `TEXT` | Sim | — | Resumo executivo / Abstract do paper |
-| `gitRepoPath` | `TEXT` | Não | — | Subcaminho no storage ou slug do GitHub |
-| `teamId` | `TEXT` | Não | `FK -> Team.id ON DELETE CASCADE` | Equipe dona do artigo |
+| `coordinatorId` | `TEXT` | Não | `FK -> User.id` | Coordenador técnico responsável |
+| `managerId` | `TEXT` | Não | `FK -> User.id` | Gestor acadêmico responsável |
 | `academicPeriodId`| `TEXT`| Sim | `FK -> AcademicPeriod.id` | Ciclo acadêmico vinculado |
 | `submissionStatus`| `"SubmissionStatus"` | Não | `DEFAULT 'IN_PROGRESS'` | Estado atual na esteira de publicação |
-| `currentVersion` | `INTEGER` | Não | `DEFAULT 1` | Versão editorial atual (v1, v2 pós-rejeição) |
+| `currentVersion` | `INTEGER` | Não | `DEFAULT 1` | Versão editorial atual |
+| `ownerGeneration`| `INTEGER` | Não | `DEFAULT 0` | Token monotônico de posse de edição (fencing) |
 | `targetConferenceName`| `TEXT`| Sim | — | Nome do congresso/periódico prioritário |
 | `targetConferenceDate`| `TIMESTAMP(3)`| Sim | — | Data final de submissão no alvo |
 | `backupConferenceName`| `TEXT`| Sim | — | Nome do congresso backup em caso de rejeição |
@@ -335,7 +290,6 @@ Entidade mestra que encapsula o Artigo Científico, repositório Git e conferên
 | `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de cadastro |
 | `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de alteração |
 | `deletedAt` | `TIMESTAMP(3)` | Sim | `NULL` | Soft delete |
-
 #### Tabela `"ProjectMember"`
 Associação de co-autores e do revisor técnico ao artigo.
 
@@ -419,18 +373,20 @@ Armazena a árvore de arquivos de código LaTeX, bibliografia BibTeX, figuras e 
 * **Restrição Única Composta:** `@@unique([projectId, path])`.
 
 #### Tabela `"DocumentOperation"`
-Histórico de deltas de Transformação Operacional (OT) sequenciados pelo pod dono do documento.
+Histórico de deltas de Transformação Operacional (OT) sequenciados pelo pod dono do documento. *(Nota: no modelo CodeMirror Collab da ADR-007, a digitação opera em memória e o fluxo principal consolida snapshots periódicos; esta tabela permanece no schema para compatibilidade e auditoria histórica).*
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
 | `id` | `TEXT` | Não | `PK`, `default(uuid())` | UUID da operação |
 | `projectId` | `TEXT` | Não | `FK -> Project.id ON DELETE CASCADE`| Artigo vinculado |
-| `userId` | `TEXT` | Não | `FK -> User.id` | Autor originário da digitação |
-| `file` | `TEXT` | Não | — | Arquivo alvo do delta |
-| `operation`| `JSONB` | Não | — | Payload serializado da operação OT (insert/delete) |
-| `version` | `INTEGER` | Não | — | Versão sequencial do documento após aplicação |
-| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Timestamp de recepção |
-
+| `userId` | `TEXT` | Não | — | ID do autor originário da digitação |
+| `userName` | `TEXT` | Não | — | Nome do autor |
+| `type` | `TEXT` | Não | — | Tipo de alteração ("insert" ou "delete") |
+| `position` | `INTEGER` | Não | — | Posição no documento onde ocorreu o delta |
+| `text` | `TEXT` | Sim | — | Texto inserido (se aplicável) |
+| `length` | `INTEGER` | Sim | — | Comprimento do trecho removido |
+| `timestamp` | `BIGINT` | Não | — | Timestamp UNIX de geração |
+| `createdAt` | `TIMESTAMP(3)` | Não | `DEFAULT now()` | Data de persistência |
 #### Tabela `"DocumentSnapshot"`
 Pontos de restauração e versões completas do documento geradas automaticamente ou sob demanda.
 
@@ -525,13 +481,9 @@ User (Preservação de Histórico)
 | :--- | :--- | :--- |
 | `"User"` | `(email)` | Unicidade estrita de e-mails de login |
 | `"Session"` | `(refreshToken)` | Rotação segura e invalidação atômica de sessões |
-| `"TeamMember"` | `(teamId, userId)` | Impede duplicidade de membro na mesma equipe |
-| `"TeamAcademicGoal"` | `(academicPeriodId, teamId)` | Uma meta por equipe em cada período acadêmico |
 | `"ProjectMember"` | `(userId, projectId)` | Impede vincular o mesmo usuário mais de uma vez ao paper |
 | `"ProjectStage"` | `(projectId, order)` | Unicidade sequencial de etapas na linha do tempo |
-| `"Workspace"` | `(projectId, userId, stageId, taskId)` | Evita provisionamento de múltiplos Pods concorrentes |
-| `"GithubWebhookEvent"`| `(deliveryId)` | **Idempotência estrita**: Rejeita re-entregas duplicadas do GitHub |
-
+| `"ProjectFile"` | `(projectId, path)` | Impede arquivos duplicados no mesmo caminho do projeto |
 ---
 
 ## 6. Estrutura de Presença e Cache em Memória (Redis)
@@ -557,13 +509,13 @@ workspace:active:<projectId>:<userId>:<taskId>
 editor:document:<documentId>:owner
 ```
 
-* **Tipo:** String atômica (`SET key podId EX 10 NX`).
+* **Tipo:** String atômica (`SET key podId EX 15 NX`).
 * **Valor:** Identificador do Pod Fastify responsável pela sessão (`POD_ID`).
-* **TTL (Time to Live):** `10 segundos` (Renovado a cada 3 segundos via heartbeat enquanto houver autores conectados na sala WebSocket).
+* **TTL (Time to Live):** `15 segundos` (Renovado a cada 2 segundos via heartbeat enquanto houver autores conectados na sala WebSocket, com autodefesa aos 8 segundos conforme ADR-007.1).
 * **Propósito Técnico:**
   - Garante a autoridade única (*Single-Writer*) do motor `@codemirror/collab` para cada documento ativo.
   - Impede *split-brain* e corrupção concorrente quando o backend é orquestrado em múltiplos Pods no Kubernetes.
-  - Se o Pod morrer subitamente, o TTL de 10s expira automaticamente e outro Pod pode assumir a autoridade do documento a partir do checkpoint persistido no PostgreSQL.
+  - Se o Pod morrer subitamente, o TTL de 15s expira automaticamente e outro Pod pode assumir a autoridade do documento a partir do checkpoint persistido no PostgreSQL.
   - **Regra de ouro:** O Redis **não** armazena deltas de digitação; os deltas são operados na RAM do Pod dono e gravados diretamente no PostgreSQL via debounce híbrido.
 ---
 

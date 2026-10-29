@@ -298,10 +298,10 @@ O Redis 7 atua estritamente na coordenação distribuída e integridade de inst�
 1. **Document Ownership Lease (Posse do Documento / Single-Writer):**
    * Ao abrir uma sessão colaborativa, o Pod Fastify adquire posse exclusiva no Redis:
      ```typescript
-     await redisService.acquireDocumentLease(documentId, POD_ID, 10);
+     await redisService.acquireDocumentLease(documentId, POD_ID, 15);
      ```
-   * Enquanto houver usuários conectados na sala WebSocket, um heartbeat a cada 3 segundos renova a chave com TTL de 10s.
-   * Se o pod morrer, o lease expira em 10s e outro pod assume o documento a partir do PostgreSQL.
+   * Enquanto houver usuários conectados na sala WebSocket, um heartbeat a cada 2 segundos renova a chave com TTL de 15s (com autodefesa aos 8s, conforme ADR-007.1).
+   * Se o pod morrer, o lease expira em 15s e outro pod assume o documento a partir do PostgreSQL.
 2. **Zero Keystrokes no Redis:**
    * A digitação opera em memória RAM do processo Node.js dono (`doc: Text` e `updates: Update[]`). O Redis não sofre com `rpush` a cada tecla, eliminando I/O inútil e vazamentos de memória.
 3. **Descarte de Memória Inativa (*Eviction*):**
@@ -359,9 +359,8 @@ sequenceDiagram
     participant CM_B as CodeMirror 6 (B)
     participant PG as PostgreSQL 16 (Prisma)
 
-    Note over WS,Redis: Pod adquire/renova Lease (editor:doc:docId:owner, TTL 10s)
-    WS->>Redis: acquireDocumentLease(docId) / renewDocumentLease(docId)
-
+    Note over WS,Redis: Pod adquire/renova Lease (editor:doc:docId:owner, TTL 15s, hb 2s)
+    WS->>Redis: acquireDocumentLease(docId) / renewDocumentLease(docId, POD_ID, 15)
     AutorA->>CM_A: Digita caractere no texto
     CM_A->>CM_A: Aplica localmente (Latência ~0ms)
     CM_A->>WS: Envia PUSH_UPDATES (ver=12, updates=[delta])

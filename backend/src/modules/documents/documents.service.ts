@@ -99,6 +99,10 @@ export class DocumentsService {
     if (!doc) {
       throw new Error(`Documento ${id} não encontrado`);
     }
+    if (!this.commentsMap.has(id)) {
+      const persistedComments = await this.repository.listComments(id);
+      this.commentsMap.set(id, persistedComments);
+    }
 
     // Se já estiver em memória ativa, retorna o estado mais quente
     const active = this.activeDocs.get(id);
@@ -109,7 +113,6 @@ export class DocumentsService {
         version: active.updates.length,
       };
     }
-
     // Carrega na memória ativa com representação Text do CodeMirror
     const textDoc = Text.of(doc.content.split('\n'));
     this.activeDocs.set(id, {
@@ -441,7 +444,6 @@ export class DocumentsService {
       delta.userName,
       onSnapshotSaved
     );
-
     const op: DocumentOperation = {
       id: randomUUID(),
       documentId,
@@ -453,8 +455,9 @@ export class DocumentsService {
       length: delta.length,
       timestamp: delta.timestamp || Date.now(),
     };
-    await this.repository.appendOperation(op);
 
+    // Zero Keystrokes no banco: a operação é propagada em memória e persistida
+    // exclusivamente de forma consolidada no checkpoint (flushCheckpoint).
     return {
       operation: op,
       newContent: result.docContent,
@@ -530,7 +533,16 @@ export class DocumentsService {
 
     active.pendingOps = 0;
 
-
+    // Persiste comentários com posições ajustadas durante a sessão de edição
+    const comments = this.commentsMap.get(documentId);
+    if (comments && comments.length > 0) {
+      for (const comment of comments) {
+        this.repository.saveComment(comment).catch((err: unknown) => {
+          const error = err as Error;
+          console.warn(`[Comments Checkpoint Warning] Falha ao persistir comentário ${comment.id}:`, error.message);
+        });
+      }
+    }
     if (active.onSnapshotSaved) {
       active.onSnapshotSaved(snapshot);
     }
@@ -776,6 +788,10 @@ export class DocumentsService {
     const list = this.commentsMap.get(documentId) || [];
     list.unshift(comment);
     this.commentsMap.set(documentId, list);
+    this.repository.saveComment(comment).catch((err: unknown) => {
+      const error = err as Error;
+      console.warn(`[Comments Warning] Falha ao salvar comentário ${comment.id}:`, error.message);
+    });
     return comment;
   }
 
@@ -787,6 +803,10 @@ export class DocumentsService {
     const comm = list.find((c) => c.id === commentId);
     if (!comm) return null;
     comm.replies.push(reply);
+    this.repository.updateComment(comm).catch((err: unknown) => {
+      const error = err as Error;
+      console.warn(`[Comments Warning] Falha ao atualizar reply no comentário ${commentId}:`, error.message);
+    });
     return comm;
   }
 
@@ -802,6 +822,10 @@ export class DocumentsService {
     const comm = list.find((c) => c.id === commentId);
     if (!comm) return null;
     comm.status = status;
+    this.repository.updateComment(comm).catch((err: unknown) => {
+      const error = err as Error;
+      console.warn(`[Comments Warning] Falha ao resolver comentário ${commentId}:`, error.message);
+    });
     return comm;
   }
 
@@ -812,9 +836,12 @@ export class DocumentsService {
     const list = this.commentsMap.get(documentId) || [];
     const filtered = list.filter((c) => c.id !== commentId);
     this.commentsMap.set(documentId, filtered);
+    this.repository.deleteComment(commentId).catch((err: unknown) => {
+      const error = err as Error;
+      console.warn(`[Comments Warning] Falha ao excluir comentário ${commentId}:`, error.message);
+    });
     return filtered.length !== list.length;
   }
-
   /**
    * Ajusta os índices de início (from) e fim (to) dos comentários quando um delta é aplicado
    */

@@ -1,9 +1,12 @@
 import { prisma } from '../../db/prisma';
+import type { Prisma } from '@prisma/client';
 import {
+  CommentReplySchema,
   Document,
   DocumentOperation,
   DocumentSnapshot,
   ProjectFile,
+  ReviewComment,
 } from './documents.schema';
 export interface CheckpointFlushData {
   documentId: string;
@@ -30,6 +33,10 @@ export interface IDocumentsRepository {
   saveProjectFile(file: ProjectFile): Promise<ProjectFile>;
   updateProjectFileContent(fileId: string, content: string): Promise<ProjectFile>;
   deleteProjectFile(fileId: string): Promise<void>;
+  listComments(projectId: string): Promise<ReviewComment[]>;
+  saveComment(comment: ReviewComment): Promise<ReviewComment>;
+  updateComment(comment: ReviewComment): Promise<ReviewComment | null>;
+  deleteComment(commentId: string): Promise<boolean>;
 }
 export class PrismaDocumentsRepository implements IDocumentsRepository {
   async findById(id: string): Promise<Document | null> {
@@ -373,9 +380,118 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       createdAt: updated.createdAt.toISOString(),
     };
   }
-
   async deleteProjectFile(fileId: string): Promise<void> {
     await prisma.projectFile.delete({ where: { id: fileId } });
+  }
+
+  async listComments(projectId: string): Promise<ReviewComment[]> {
+    const records = await prisma.reviewComment.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return records.map((r) => ({
+      id: r.id,
+      documentId: r.projectId,
+      file: r.file,
+      from: r.from,
+      to: r.to,
+      selectedText: r.selectedText,
+      userId: r.userId,
+      userName: r.userName,
+      userColor: r.userColor,
+      content: r.content,
+      status: r.status as 'open' | 'resolved',
+      createdAt: r.createdAt.toISOString(),
+      replies: CommentReplySchema.array().catch([]).parse(r.replies),
+    }));
+  }
+
+  async saveComment(comment: ReviewComment): Promise<ReviewComment> {
+    const repliesJson = comment.replies as unknown as Prisma.InputJsonValue;
+    const created = await prisma.reviewComment.upsert({
+      where: { id: comment.id },
+      create: {
+        id: comment.id,
+        projectId: comment.documentId,
+        file: comment.file || 'main.tex',
+        from: comment.from,
+        to: comment.to,
+        selectedText: comment.selectedText,
+        userId: comment.userId,
+        userName: comment.userName,
+        userColor: comment.userColor,
+        content: comment.content,
+        status: comment.status || 'open',
+        replies: repliesJson,
+      },
+      update: {
+        from: comment.from,
+        to: comment.to,
+        content: comment.content,
+        status: comment.status,
+        replies: repliesJson,
+      },
+    });
+
+    return {
+      id: created.id,
+      documentId: created.projectId,
+      file: created.file,
+      from: created.from,
+      to: created.to,
+      selectedText: created.selectedText,
+      userId: created.userId,
+      userName: created.userName,
+      userColor: created.userColor,
+      content: created.content,
+      status: created.status as 'open' | 'resolved',
+      createdAt: created.createdAt.toISOString(),
+      replies: CommentReplySchema.array().catch([]).parse(created.replies),
+    };
+  }
+
+  async updateComment(comment: ReviewComment): Promise<ReviewComment | null> {
+    try {
+      const repliesJson = comment.replies as unknown as Prisma.InputJsonValue;
+      const updated = await prisma.reviewComment.update({
+        where: { id: comment.id },
+        data: {
+          from: comment.from,
+          to: comment.to,
+          content: comment.content,
+          status: comment.status,
+          replies: repliesJson,
+        },
+      });
+
+      return {
+        id: updated.id,
+        documentId: updated.projectId,
+        file: updated.file,
+        from: updated.from,
+        to: updated.to,
+        selectedText: updated.selectedText,
+        userId: updated.userId,
+        userName: updated.userName,
+        userColor: updated.userColor,
+        content: updated.content,
+        status: updated.status as 'open' | 'resolved',
+        createdAt: updated.createdAt.toISOString(),
+        replies: CommentReplySchema.array().catch([]).parse(updated.replies),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteComment(commentId: string): Promise<boolean> {
+    try {
+      await prisma.reviewComment.delete({ where: { id: commentId } });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
