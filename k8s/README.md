@@ -16,7 +16,8 @@ Este documento é o guia prático passo a passo de toda a infraestrutura Kuberne
 8. [Passo 6: Acessar a Interface Gráfica (Web UI) do ArgoCD](#8-passo-6-acessar-a-interface-gráfica-web-ui-do-argocd)
 9. [Passo 7: Comandos Essenciais de Verificação e Diagnóstico](#9-passo-7-comandos-essenciais-de-verificação-e-diagnóstico)
 10. [Como Funciona o Ciclo GitOps no Dia a Dia](#10-como-funciona-o-ciclo-gitops-no-dia-a-dia)
-
+11. [Como Rodar o Seed do Banco de Dados](#11-como-rodar-o-seed-do-banco-de-dados)
+12. [Dimensionamento de Recursos e Benchmark de Estresse](#12-dimensionamento-de-recursos-requestslimits-e-benchmark-de-estresse)
 ---
 
 ## 1. Visão Geral da Arquitetura
@@ -397,3 +398,48 @@ npm run db:seed
 * **Carlos Lima (Membro / Revisor):** `carlos.revisor@example.com`
 * **System Admin (ADMIN):** `admin@google.com`
 * **Pesquisador Padrão (AUTOR):** `user@google.com`
+
+---
+
+## 12. Dimensionamento de Recursos (Requests/Limits) e Benchmark de Estresse
+
+Para evitar superdimensionamento (*overprovisioning*) ou travamento de réplicas pelo HPA, realizamos testes empíricos de estresse contra o cluster KinD.
+
+### 12.1 Como Executar a Simulação de Estresse
+O script `backend/scripts/benchmark-kind-500-users.ts` simula **100 artigos simultâneos**, **500 autores concorrentes via WebSocket** (2.500 operações colaborativas de edição simultânea) e **15 compilações LaTeX intensivas**:
+
+```bash
+# Executa o benchmark diretamente contra o NodePort do cluster KinD
+cd backend
+TARGET_PORT=30080 npx tsx scripts/benchmark-kind-500-users.ts
+```
+
+### 12.2 Métricas Coletadas Durante o Teste
+
+| Componente | CPU (Repouso) | CPU (Pico 500 users) | Memória (Repouso) | Memória (Pico) | Ação Observada no HPA |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Backend** (`sci-latex-backend`) | `2m` | **`134m`** | `93Mi – 95Mi` | **`135Mi – 150Mi`** | Escalou de 4 para **6 réplicas** por pico de CPU. |
+| **Compiler** (`sci-latex-compiler`) | `1m` | **`304m`** | `40Mi` | **`553Mi`** | Escalou de 1 para **3 réplicas** por carga do `pdflatex`. |
+| **Frontend** (`sci-latex-frontend`) | `1m` | `2m` | `7Mi` | **`7Mi`** | Estático, consumo desprezível. |
+
+### 12.3 Racional de Engenharia para os Valores Definidos
+
+#### 1. Backend Fastify (`k8s/manifests/backend-cluster.yaml` e `hpa.yaml`):
+* **O Problema Anterior:** O request de memória estava em apenas `150Mi`. Como o Node.js/Prisma consome naturalmente ~`95Mi` em repouso (baseline), o uso ficava em $66\%$. Com a meta do HPA em $75\%$, se o cluster tentasse baixar para 3 ou 2 pods, o uso médio por pod subiria para $88\%$ e $132\%$, impedindo o scale-down e travando o cluster em 4 pods para sempre.
+* **A Solução Calibrada:**
+  * `requests`: `cpu: 100m`, `memory: 200Mi`. Com 200Mi, o repouso de 95Mi representa apenas **$47.5\%$**.
+  * `limits`: `cpu: 500m`, `memory: 512Mi`. Amplo espaço para absorver rajadas de WebSocket e serialização de documentos.
+  * `hpa.yaml`: Meta de CPU em **`70%`** e Memória em **`80%`**. Permite que o cluster reduza tranquilamente para o mínimo de **2 réplicas** em repouso e só escale sob tráfego real.
+
+#### 2. Compilador TeX Live (`k8s/manifests/compiler.yaml` e `hpa.yaml`):
+* **O Racional:** Compilação com `pdflatex` é um processo temporário e *CPU-bound*.
+* **A Solução Calibrada:**
+  * `requests`: `cpu: 200m`, `memory: 256Mi`.
+  * `limits`: `cpu: 1000m` (1 núcleo inteiro liberado para compilar rápido), `memory: 1Gi` (o pico de 15 PDFs simultâneos consumiu 553Mi; 1Gi garante que nunca sofrerá *OOMKilled*).
+  * `hpa.yaml`: `minReplicas: 1`, `maxReplicas: 4`, target de CPU em **`80%`**.
+
+#### 3. Frontend Nginx (`k8s/manifests/frontend.yaml`):
+* **A Solução Calibrada:**
+  * `requests`: `cpu: 10m`, `memory: 16Mi`.
+  * `limits`: `cpu: 100m`, `memory: 32Mi`.
+  * `replicas`: **2 réplicas fixas** para Alta Disponibilidade (HA) sem desperdício de memória no nó.
