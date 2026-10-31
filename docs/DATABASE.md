@@ -16,12 +16,12 @@
 3. [Tipos Enumerados (Enums)](#3-tipos-enumerados-enums)
 4. [Dicionário de Dados Completo](#4-dicionário-de-dados-completo)
    - 4.1. [Domínio de Usuários, Sessões & Auditoria](#41-domínio-de-usuários-sessões--auditoria)
-   - 4.2. [Domínio Organizacional (Períodos, Equipes & Metas)](#42-domínio-organizacional-períodos-equipes--metas)
-   - 4.3. [Domínio Editorial (Projetos/Artigos, Membros & Etapas)](#43-domínio-editorial-projetosartigos-membros--etapas)
-   - 4.4. [Domínio de Tarefas & Workspaces da IDE](#44-domínio-de-tarefas--workspaces-da-ide)
-   - 4.5. [Domínio de Revisão por Pares & Diffs TeX](#45-domínio-de-revisão-por-pares--diffs-tex)
+   - 4.2. [Domínio Organizacional (Ciclos Acadêmicos)](#42-domínio-organizacional-períodos-equipes--metas)
+   - 4.3. [Domínio Editorial (Artigos, Membros & 6 Etapas Fixas)](#43-domínio-editorial-projetosartigos-membros--etapas)
+   - 4.4. [Domínio de Tarefas de Escrita & Bate e Volta](#44-domínio-de-tarefas-de-escrita--bate-e-volta)
+   - 4.5. [Domínio de Edição Colaborativa TeX & Versionamento](#45-domínio-de-edição-colaborativa-tex--versionamento-adr-007)
    - 4.6. [Domínio de Publicação & Release Candidates](#46-domínio-de-publicação--release-candidates)
-   - 4.7. [Domínio de Governança NIT & Integração GitHub](#47-domínio-de-governança-nit--integração-github)
+   - 4.7. [Domínio de Governança NIT](#47-domínio-de-governança-nit)
 5. [Regras de Integridade, Índices & Cascading](#5-regras-de-integridade-índices--cascading)
 6. [Estratégia de Presença e Cache em Memória (Redis)](#6-estratégia-de-presença-e-cache-em-memória-redis)
 7. [Rotinas Operacionais (Migrações, Seeds & Consultas)](#7-rotinas-operacionais-migrações-seeds--consultas)
@@ -165,42 +165,17 @@ CREATE TYPE "StageStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'L
 
 * `NOT_STARTED`: Etapa planejada sem nenhuma atividade registrada.
 * `IN_PROGRESS`: Ao menos uma sub-tarefa está sob escrita ativa.
-* `COMPLETED`: Todas as sub-tarefas vinculadas alcançaram status `MERGED`.
+* `COMPLETED`: Todas as sub-tarefas vinculadas foram concluídas e aprovadas.
 * `LOCKED`: Etapa retida por dependência de gatekeeper ou trava sequencial.
 
 ---
 
-### 3.6. `TaskStatus` (Estado das Sub-tarefas e Issues)
-
-```sql
-CREATE TYPE "TaskStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'MERGED');
-```
-
----
-
-### 3.7. `WorkspaceStatus` (Ciclo de Vida do Pod VS Code K8s)
-
-```sql
-CREATE TYPE "WorkspaceStatus" AS ENUM (
-  'PROVISIONING',
-  'READY',
-  'DIRTY',
-  'SYNCING',
-  'BEHIND',
-  'CONFLICTED',
-  'ERROR',
-  'TERMINATED'
-);
-```
-
----
-
-### 3.8. Outros Enums de Apoio
+### 3.6. Outros Enums de Apoio
 
 * **`DeadlineStatus`**: `'ON_TIME'`, `'WARNING_SOON'`, `'OVERDUE'` (Cálculo de semáforo de prazos).
 * **`PeriodStatus`**: `'ACTIVE'`, `'ARCHIVED'`, `'COMPLETED'` (Ciclos de pesquisa).
 * **`RCStatus`**: `'SUBMITTED'`, `'UNDER_REVIEW'`, `'CHANGES_REQUESTED'`, `'APPROVED'` (Release Candidates).
-
+* **`Role`**: `'AUTHOR'`, `'REVIEWER'`, `'COORDINATOR'`, `'MANAGER'`, `'ADMIN'` (RBAC).
 ---
 
 ## 4. Dicionário de Dados Completo
@@ -265,7 +240,7 @@ Representa ciclos acadêmicos e períodos de avaliação de metas de publicaçã
 | `updatedAt` | `TIMESTAMP(3)` | Não | `@updatedAt` | Data de atualização |
 | `deletedAt` | `TIMESTAMP(3)` | Sim | `NULL` | Soft delete do ciclo |
 #### Tabela `"Project"`
-Entidade mestra que encapsula o Artigo Científico e conferências associadas (desacoplada de repositórios Git conforme ADR-008).
+Entidade mestra que encapsula o Artigo Científico e conferências associadas.
 
 | Coluna | Tipo | Nulo | Restrições / Default | Descrição |
 | :--- | :--- | :---: | :--- | :--- |
@@ -490,19 +465,15 @@ User (Preservação de Histórico)
 
 O banco de dados PostgreSQL é blindado contra requisições contínuas de alta frequência (polling de digitação e batimento cardíaco da IDE). Essa responsabilidade é delegada ao **Redis 7** (`sci_latex_redis`):
 
-### 6.1. Estrutura de Chave de Presença do Workspace
+### 6.1. Barramento de Eventos em Tempo Real (Redis Pub/Sub)
 
 ```
-workspace:active:<projectId>:<userId>:<taskId>
+scia:events:domain
 ```
 
-* **Tipo:** String / Hash de presença.
-* **Valor:** JSON com timestamp do último batimento e identificador do Pod.
-* **TTL (Time to Live):** `180 segundos` (Renovado a cada 20 segundos pelo Web Worker do frontend via `POST /api/v1/events/heartbeat`).
-* **Regra de Sweeper / Garbage Collector:**
-  - Se o usuário fecha a aba ou o navegador, o TTL expira.
-  - O daemon do backend Fastify (`k8s-pod-manager.service.ts` / `reconcileOrphanPods`) roda a cada 60s, detecta a ausência da chave no Redis e solicita à API do Kubernetes a destruição física do Pod correspondente, economizando memória RAM e CPU do nó.
-
+* **Tipo:** Pub/Sub Channel (`redisPubClient` / `redisSubClient`).
+* **Propósito Técnico:** Propagar eventos de domínio (`TASK_REVIEW_REQUESTED`, `STAGE_UPDATED`, `NIT_STATUS_CHANGED`, `HEARTBEAT`) entre réplicas do backend Fastify para despacho nos streams SSE (`EventsManagerService`).
+* **Zero Overhead de Pods:** Não há orquestração de pods K8s individuais nem sweepers de disco no Redis; toda presença e sincronização opera via WebSockets e SSE.
 ### 6.2. Coordenação de Posse do Editor Colaborativo (Document Ownership Lease)
 
 ```
@@ -544,52 +515,55 @@ npm run db:studio
 > **Nota:** Como o Prisma utiliza identificadores em PascalCase e camelCase, as consultas em SQL nativo no PostgreSQL **devem** utilizar aspas duplas nas tabelas e colunas:
 
 #### 1. Listar Artigos com seus Respectivos Coordenadores e Equipes
+#### 1. Listar Artigos com seus Respectivos Coordenadores, Gerentes e Período
 ```sql
 SELECT 
     p.id AS project_id,
     p.name AS article_title,
     p."submissionStatus",
-    t.name AS team_name,
-    u.name AS coordinator_name,
-    u.email AS coordinator_email
+    coord.name AS coordinator_name,
+    coord.email AS coordinator_email,
+    mgr.name AS manager_name,
+    ap.name AS academic_period_name
 FROM "Project" p
-JOIN "Team" t ON p."teamId" = t.id
-JOIN "User" u ON t."coordinatorId" = u.id
+JOIN "User" coord ON p."coordinatorId" = coord.id
+JOIN "User" mgr ON p."managerId" = mgr.id
+LEFT JOIN "AcademicPeriod" ap ON p."academicPeriodId" = ap.id
 WHERE p."deletedAt" IS NULL;
 ```
 
-#### 2. Relatório de Desempenho de Metas por Equipe no Período Ativo
+#### 2. Relatório de Desempenho de Metas por Ciclo Acadêmico Ativo
 ```sql
 SELECT 
+    ap.id AS period_id,
     ap.name AS academic_cycle,
-    t.name AS team_name,
-    tag."targetArticles" AS target_quota,
+    ap."targetArticlesCount" AS target_quota,
     COUNT(p.id) AS produced_articles,
+    COUNT(CASE WHEN p."submissionStatus" = 'COMPLETED_PUBLISHED' THEN 1 END) AS published_articles,
     CASE 
-        WHEN COUNT(p.id) >= tag."targetArticles" THEN 'MET_OR_EXCEEDED'
+        WHEN COUNT(p.id) >= ap."targetArticlesCount" THEN 'MET_OR_EXCEEDED'
         ELSE 'IN_PROGRESS'
     END AS status
-FROM "TeamAcademicGoal" tag
-JOIN "AcademicPeriod" ap ON tag."academicPeriodId" = ap.id
-JOIN "Team" t ON tag."teamId" = t.id
-LEFT JOIN "Project" p ON p."teamId" = t.id AND p."academicPeriodId" = ap.id
+FROM "AcademicPeriod" ap
+LEFT JOIN "Project" p ON p."academicPeriodId" = ap.id AND p."deletedAt" IS NULL
 WHERE ap.status = 'ACTIVE'
-GROUP BY ap.name, t.name, tag."targetArticles";
+GROUP BY ap.id, ap.name, ap."targetArticlesCount";
 ```
 
-#### 3. Auditoria de Apontamentos de Revisão por Artigo
+#### 3. Auditoria de Apontamentos de Revisão por Artigo (ADR-010)
 ```sql
 SELECT 
     p.name AS article_title,
-    pr.title AS pr_title,
-    rc."lineNumer" AS line_number,
-    rc.comment,
-    u.name AS reviewer_name,
+    rc.file,
+    rc."from" AS char_from,
+    rc."to" AS char_to,
+    rc."selectedText",
+    rc.content AS comment_text,
+    rc.status AS comment_status,
+    rc."userName" AS reviewer_name,
     rc."createdAt" AS commented_at
 FROM "ReviewComment" rc
-JOIN "PullRequest" pr ON rc."pullRequestId" = pr.id
-JOIN "Project" p ON pr."projectId" = p.id
-JOIN "User" u ON rc."userId" = u.id
+JOIN "Project" p ON rc."projectId" = p.id
 ORDER BY rc."createdAt" DESC;
 ```
 

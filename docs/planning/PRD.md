@@ -17,7 +17,7 @@ Pesquisadores e grupos de acadêmicos enfrentam desafios ao redigir artigos cien
 
 ### A Solução
 O **SCIA (Scientific Collaboration + AI)** é uma plataforma web **100% Self-Hosted** voltada para a gestão e redação científica colaborativa, baseada no editor **CodeMirror 6** com sincronização em tempo real (OT) e persistência transacional em **PostgreSQL**, com:
-* **Edição Web-Nativa sem Git:** Zero atrito de chaves SSH, branches Git ou conflitos de merge; sincronização contínua e snapshots de versão.
+* **Edição Web-Nativa:** Sincronização contínua em tempo real via Transformação Operacional e snapshots de versão duráveis no PostgreSQL.
 * **Compilação TeX Nativa:** Visualização instantânea de PDF lado a lado com compilação direta via container LaTeX.
 * **Workflow em 6 Etapas Fixas & Revisão em Dois Níveis:** Bate e volta granular por tarefas (nível micro) e Revisão Geral consolidada (nível macro na Etapa 4) antes do Gatekeeper do NIT.
 * **Governança por Prazos:** Dashboard com matrizes de prazos, notificações em tempo real (SSE) e visão por Período Acadêmico.
@@ -82,8 +82,9 @@ graph TD
 
 * ⚙️ **Documento de Requisitos Técnicos (TRD):** [`docs/planning/TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md)
 * 🔄 **Documento de Fluxos da Aplicação (App Flows):** [`docs/planning/APP_FLOWS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/APP_FLOWS.md)
-* 📘 **Especificações Técnicas Completas:** [`docs/planning/specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md)
-* 📐 **Arquitetura Geral & Infra:** [`docs/planning/specs/architecture-plan.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/architecture-plan.md)
-* ⚙️ **Especificações Backend:** [`docs/planning/specs/backend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/backend-specs.md)
-* 🎨 **Especificações Frontend:** [`docs/planning/specs/frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md)
-* 🛠️ **Workflow de Trabalho & Git:** [`docs/planning/WORKFLOW.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/WORKFLOW.md)
+* 🔍 **Especificação da Visão do Revisor:** [`docs/planning/specs/reviewer-view-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/reviewer-view-spec.md)
+* 🤖 **Contratos de Integração SciAI:** [`docs/planning/specs/sciai-contracts-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/sciai-contracts-spec.md)
+* 💬 **Chat Copilot & Onboarding Multi-Agente:** [`docs/planning/specs/sciai-chat-copilot-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/sciai-chat-copilot-spec.md)
+* 🗄️ **Banco de Dados & Persistência:** [`docs/DATABASE.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/DATABASE.md)
+* 🎨 **Design System:** [`docs/DESIGN_SYSTEM.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/DESIGN_SYSTEM.md)
+* 📋 **Plano Mestre de Implementação:** [`docs/IMPLEMENTATION_PLAN.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/IMPLEMENTATION_PLAN.md)

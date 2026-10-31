@@ -10,15 +10,14 @@
 
 ## 1. Contexto & Desafio
 
-A plataforma **SCIA (`sci-latex-vscode`)** foi estabelecida como o ambiente corporativo de escrita científica, governança em 7 fases, controle de versões no GitHub e edição isolada em pods Kubernetes (KinD) com VS Code.
+A plataforma **SCIA** é o ambiente corporativo de escrita científica, governança em 6 etapas fixas, editor web-nativo CodeMirror 6 com Transformação Operacional e persistência transacional em PostgreSQL.
 
 Paralelamente, o projeto **`sci-project` (SciAgent OS)** desenvolveu o motor de pesquisa acadêmica multi-agente utilizando **LangGraph, LangChain, OpenAlex, Semantic Scholar, Tavily e Ollama**.
 
 Surgiu a necessidade de definir como integrar a inteligência científica à plataforma SCIA sem comprometer:
-1. **A governança institucional estrita:** O fluxo de 7 fases e a trava do **NIT (Núcleo de Inovação Tecnológica)**.
-2. **A performance e estabilidade:** O backend Fastify (I/O intensivo de baixa latência e proxy reverso para o editor) não pode ser bloqueado por tarefas de IA que levam de 30 a 90 segundos.
+1. **A governança institucional estrita:** O fluxo de 6 etapas fixas e a trava do **NIT (Núcleo de Inovação Tecnológica)**.
+2. **A performance e estabilidade:** O backend Fastify (I/O intensivo de baixa latência e sincronização de edição em tempo real) não pode ser bloqueado por tarefas de IA que levam de 30 a 90 segundos.
 3. **A integridade dos dados:** Evitar que agentes de IA tenham acesso irrestrito às tabelas do banco de dados ou alterem o estado de tarefas por conta própria.
-
 ---
 
 ## 2. Decisão Arquitetural Adotada
@@ -88,9 +87,8 @@ graph TD
 É vedado o compartilhamento indiscriminado de tabelas ou acesso cruzado direto de ORMs entre Fastify (Prisma) e SciAI (SQLModel/SQLAlchemy):
 * **Domínio Fastify/Prisma:** Usuários, permissões, projetos, tarefas, etapas acadêmicas, revisões e aprovações NIT.
 * **Domínio SciAI/LangGraph:** Checkpoints transacionais dos grafos, memória interna de nós e histórico de buscas.
-* **Domínio do Workspace Ativo (PVC do Pod K8s):** Fonte da verdade do **estado de trabalho em edição (uncommitted/dirty state)** durante a sessão no VS Code.
-* **Domínio Git/GitHub:** Fonte da verdade do **histórico versionado, commits publicados e Pull Requests**.
-
+* **Domínio do Editor em Tempo Real (Memória RAM do Pod Dono):** Estado quente de digitação sob Transformação Operacional centralizada.
+* **Domínio Relacional (PostgreSQL):** Fonte da verdade persistente de arquivos (`ProjectFile`), snapshots (`DocumentSnapshot`), anotações (`ReviewComment`) e propostas estruturadas (`ai_proposals`).
 ---
 
 ### Decisão 4: Máquina de Estados Operacional e Fila Durável (`run_id`)
@@ -121,9 +119,9 @@ stateDiagram-v2
 
 ---
 
-### Decisão 5: Princípio de Propostas Estruturadas com Detecção de Conflito (`baseCommitSha` + `baseFileHash`)
+### Decisão 5: Princípio de Propostas Estruturadas com Detecção de Conflito (`baseVersion` + `baseFileHash`)
 A inteligência artificial **recomenda e produz minutas**, mas **nunca altera o estado de governança**:
-* A saída da IA é sempre uma **Proposta Estruturada** contendo o `baseCommitSha` e o `baseFileHash` (SHA-256 do arquivo no disco) do momento em que a pesquisa começou:
+* A saída da IA é sempre uma **Proposta Estruturada** contendo a `baseVersion` e o `baseFileHash` (SHA-256 do arquivo) do momento em que a geração iniciou:
   ```typescript
   type AiProposal = {
     id: string;
@@ -140,16 +138,15 @@ A inteligência artificial **recomenda e produz minutas**, mas **nunca altera o 
     }>;
     changes: Array<{
       path: string;
-      baseCommitSha: string;
+      baseVersion: number;
       baseFileHash: string; // SHA-256 do arquivo original
       diff: string;
     }>;
   };
   ```
-* **Proteção contra Sobrescrita Cega de Arquivos Não Commitados:** Se o autor editar o arquivo no VS Code enquanto a IA estiver pesquisando (mesmo sem gerar um novo commit Git), o Fastify detecta que o `baseFileHash` atual do workspace mudou e bloqueia a aplicação automática, exigindo revisão visual manual do conflito.
+* **Proteção contra Sobrescrita Cega de Arquivos em Edição:** Se o autor editar o arquivo no CodeMirror enquanto a IA estiver pesquisando, o Fastify detecta que o `baseFileHash` atual mudou e bloqueia a aplicação automática, exigindo revisão visual manual do conflito.
 * **Atomicidade:** A aplicação de patches pelo Fastify é transacional (com rollback automático em caso de falha de I/O).
-* A aceitação de uma proposta pelo autor aplica o diff no workspace, mas **não equivale** à aprovação de Gatekeeper do NIT nem ao merge do PR no GitHub.
-
+* A aceitação de uma proposta pelo autor aplica o texto no documento ativo, mas **não equivale** à aprovação de Gatekeeper do NIT nem à conclusão de etapa.
 ---
 
 ## 3. Alternativas Rejeitadas & Análise de Trade-offs
@@ -167,8 +164,7 @@ A inteligência artificial **recomenda e produz minutas**, mas **nunca altera o 
 1. ❌ **Não introduzir orquestradores pesados de workflow (Temporal, Celery):** A fila nativa em Redis com semântica explícita de entrega já supre a demanda do MVP.
 2. ❌ **Não fragmentar cada agente em um microserviço diferente:** O serviço SciAI é uma unidade coesa que contém o supervisor e seus nós especialistas.
 3. ❌ **Não expor o serviço Python diretamente para o navegador:** Todo tráfego passa pela autenticação e auditoria do Fastify.
-4. ❌ **Não assumir o Git remoto como único estado dos arquivos:** Reconhecer formalmente que o workspace local no Pod contém o estado de rascunho ativo ainda não commitado.
-
+4. ❌ **Não permitir escritas não coordenadas:** Qualquer alteração no texto LaTeX transita pelo motor colaborativo oficial.
 ---
 
 ## 5. Roteiro Incremental de Implementação
@@ -184,8 +180,8 @@ A inteligência artificial **recomenda e produz minutas**, mas **nunca altera o 
 - **Positivas:**
   - Preserva todo o esforço de engenharia já investido no motor de IA do `sci-project`.
   - Garante resiliência e estabilidade absoluta da plataforma principal SCIA.
-  - Elimina riscos de concorrência com o `baseCommitSha` nas propostas de IA.
-  - Mantém a governança das 7 fases e a trava do NIT 100% invioláveis.
+  - Elimina riscos de concorrência com o `baseFileHash` nas propostas de IA.
+  - Mantém a governança das 6 etapas fixas e a trava do NIT 100% invioláveis.
 - **Negativas / Desafios:**
   - Manutenção de duas stacks (Node.js e Python) no repositório de infraestrutura.
   - Necessidade de gerenciar a máquina de estados e expiração de propostas pendentes no Fastify.

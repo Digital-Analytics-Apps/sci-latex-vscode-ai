@@ -1,116 +1,109 @@
-# 🗺️ Master Roadmap & Checklist de Tarefas Pendentes
+# 🗺️ Master Roadmap & Checklist de Entregas SCIA
 
-**Projeto:** Plataforma Web de Escrita Científica Self-Hosted (`sci-latex-vscode`)  
-**Data de Consolidação:** 15 de Setembro de 2026  
-**Objetivo:** Guia completo e estruturado de todas as pendências (Backend, K8s, Frontend, UX e Arquitetura). Cada tarefa pode ser executada e marcada como concluída `[x]` individualmente.
-
----
-
-## 🟢 Bloco 1: Estabilização do Backend, Infraestrutura K8s & Customização Zen Mode
-
-- [x] **1.1 Atualização de Status `TERMINATED`/`DELETED` na Tabela `Workspace`**
-  - *Descrição*: No `events.manager.ts` e no `k8s-pod-manager.service.ts`, garantido que ao encerrar ou destruir um Pod por timeout/deleção, o repositório `IWorkspacesRepository` atualiza o status no banco de dados para `TERMINATED` e limpa o `podName`.
-- [x] **1.2 Redirecionamento Sincronizado e Refatoração do Módulo `editor-proxy`**
-  - *Descrição*: Refatorado o controlador `/api/v1/editor-proxy` para desacoplar a regra de negócio em `EditorProxyService`, criando a especificação `specs.md` no módulo. Removida a tela HTML de auto-reload interna do iframe; o frontend agora exibe feedback de carregamento no próprio card da tarefa (`"⚡ Provisionando..."`) enquanto o backend aguarda o status `READY`.
-- [x] **1.3 Fonte de Configurações do VS Code por Perfil (`author.settings.json` vs `reviewer.settings.json`)**
-  - *Descrição*: Perfis de modelo em `docker/code-server/` (`author.settings.json` para escrita e `reviewer.settings.json` para leitura Read-Only estrita) injetados dinamicamente em `~/.local/share/code-server/User/settings.json` e `.vscode/settings.json` pelo `EditorProxyService`.
-- [x] **1.4 Limpeza e `.gitignore` Estrito de Arquivos Temporários TeX**
-  - *Descrição*: Cópia automática de um `.gitignore` padrão na inicialização do repositório TeX ignorando `*.aux`, `*.log`, `*.out`, `*.toc`, `*.fls`, `*.fdb_latexmk`, evitando commits de arquivos gerados temporariamente no GitHub.
-- [x] **1.5 Ambiente de Edição Zen Mode Distraction-Free**
-  - *Descrição*: Remoção das extensões de IA/Copilot no Dockerfile do `code-server`, remoção de atalhos de terminal no `keybindings.json` e ocultação de barras/menus (`workbench.activityBar.location: "hidden"`, `statusBar`, `menuBar`, `panel`) e ocultação de arquivos auxiliares TeX no `files.exclude`.
+> **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
+> **Versão:** 3.0.0 (Consolidada com ADRs 007, 007.1, 008 e 010)  
+> **Última Atualização:** Outubro de 2026  
+> **Objetivo:** Guia completo de status das frentes de engenharia (Concluídas vs. Em Andamento vs. Planejadas).
 
 ---
 
-## 🔵 Bloco 2: Regras de Negócio de Tarefas & Fluxo de Revisão (ADR-003)
+## 🟢 Fase 1: Fundação Relacional, Auth JWT & Governança por Ciclo Acadêmico
 
-- [x] **2.1 Habilitação de Botões Guiada por Estado de Domínio (Substituição de Dirty Checks)**
-  - *Descrição*: Substituída a sondagem de dirty state no sistema de arquivos por habilitação reativa baseada exclusivamente nos status de negócio do Pull Request (`DRAFT`, `UNDER_REVIEW`, `APPROVED`, `MERGED`). Remoção de código morto do endpoint `/git-status`.
-- [x] **2.2 Suporte Nativo ao Git no Workspace do Pod**
-  - *Descrição*: Preservação da pasta `.git` na workspace do usuário (`users/:userId`), permitindo calhas de diff e comparador side-by-side nativos do VS Code. Adicionadas configurações `git config core.fileMode false` e `safe.directory "*"` no container para eliminar alertas de permissão.
-- [x] **2.3 Validação Estrita do Fluxo "Enviar para Revisão"**
-  - *Descrição*: Transição controlada para `UNDER_REVIEW` no `PullRequestsService`, bloqueando envios em estados inválidos e emitindo notificação SSE (`PR_OPENED`).
-- [x] **2.4 Pod, Workspace Isolados & Trava Read-Only do Revisor (`mode=review`)**
-  - *Descrição*: Garantido que o Revisor receba Pod e diretório isolados (`users/${reviewerId}`). Injeção de `reviewer.settings.json` com `files.readOnlyInclude`, `chmod 444` (arquivos) / `555` (pastas), Sticky Scroll (`editor.stickyScroll.enabled`), Breadcrumbs (`breadcrumbs.enabled`), visualização dual side-by-side (`openSideBySideDirection: "right"`) e barra de status roxa (`#4A154B`).
-- [x] **2.5 Bloqueio Visual e Badge "Em Revisão"**
-  - *Descrição*: A transição de status para `UNDER_REVIEW` é exposta em tempo real e bloqueia rascunhos até a conclusão do parecer.
-- [x] **2.6 Destruição de Pod K8s e Limpeza do PVC após o Merge de Sucesso**
-  - *Descrição*: Após a conclusão do merge no `PullRequestsService` (`mergePR`), o backend aciona `releasePodForProject` e `cleanProjectPVC` no `K8sPodManagerService`, encerrando o Pod isolado do usuário, removendo o PVC temporário e definindo o status da tabela `Workspace` no banco como `TERMINATED`.
+- [x] **1.1 Modelagem Relacional no PostgreSQL via Prisma 7 (`@prisma/adapter-pg`)**
+  - Mapeamento das 14 entidades canônicas do sistema (`User`, `Session`, `AuditLog`, `AcademicPeriod`, `Project`, `ProjectMember`, `ProjectStage`, `Task`, `ReleaseCandidate`, `Release`, `NitProcess`, `ProjectFile`, `DocumentSnapshot`, `ReviewComment`).
+- [x] **1.2 Autenticação Segura OWASP & Sessões**
+  - Implementação de cookies HTTP-Only (`accessToken` e `refreshToken`), rotação segura de refresh tokens na tabela `Session` e controle RBAC em rotas Fastify.
+- [x] **1.3 Gestão de Ciclos Acadêmicos e Metas Globais (`/api/v1/academic-periods`)**
+  - Cadastro de períodos acadêmicos (`AcademicPeriod`) com meta global de artigos (`targetArticlesCount`), acompanhamento de progresso e filtragem executiva para a Gerência (`Role.MANAGER`).
+- [x] **1.4 Setup do Frontend React 19 + Vite & SCIA Design System**
+  - Aplicação SPA com TypeScript estrito, Material UI com tema customizado Soft UI (Light/Dark sem pretos absolutos), fontes auto-hospedadas (`@fontsource`), TanStack Query e Redux Toolkit.
 
 ---
 
-## 🟣 Bloco 3: Desenvolvimento do Frontend ReactJS (Sprints 1 a 4)
+## 🟢 Fase 2: Editor Colaborativo Web-Nativo CodeMirror 6 & OT (ADR-007)
 
-### 🎨 3.1 Setup Base, Design System & Auth (Sprint 1 Frontend)
-- [x] Criar projeto ReactJS + TypeScript + Vite com Redux Toolkit e TanStack Query.
-- [x] Implementar Design System Base (`index.css`) com suporte a Dark Mode, botões, modais, cards e badges.
-- [x] Implementar página de Login com autenticação JWT e hook `useSSEEventSource` para escutar notificações SSE.
-
-### ✍️ 3.2 Dashboard do Autor, Onboarding "Spinning Up" & Iframe (Sprint 2 Frontend)
-- [x] Criar Dashboard do Autor ("Minhas Tarefas") listando os cards de trabalho por projeto.
-- [x] Criar tela de transição *Spinning Up Stepper* (exibindo passo-a-passo a prontidão do Pod no K8s antes de abrir o editor).
-- [x] Criar componente `<CodeServerIframe />` integrado ao proxy Fastify `/api/v1/editor-proxy/app`.
-- [x] Implementar Topbar do Workspace com botões *Salvar Progresso*, *Enviar p/ Revisão* e contador do prazo da tarefa.
-
-### 🔍 3.3 Dashboard do Revisor, Diff Side-by-Side & Registro NIT (Sprint 3 Frontend)
-- [x] Criar Dashboard do Revisor listando tarefas e PRs pendentes de avaliação.
-- [x] Criar visualizador de Comparação Side-by-Side (Diff LaTeX + PDF Viewer embutido).
-- [x] Criar Drawer de Comentários por linha e painel de **Registro do Parecer / NIT** (`APPROVED`, `CHANGES_REQUESTED`).
-- [x] **3.3.4 Visão de Revisão entre Pares para Autores (`PEER_REVIEW`)**
-  - *Descrição*: Habilitar a tela de revisão (`/reviews`) para co-autores com papel `AUTHOR` avaliarem Pull Requests de seus pares atribuídos no modal com tipo `PEER_REVIEW`, reutilizando a interface side-by-side e o painel de apontamentos.
-
-### 📊 3.4 Dashboards do Coordenador, Gerente & Pós-Submissão (Sprint 4 Frontend)
-- [x] Criar Dashboard do Coordenador (Matriz de prazos das seções da equipe com badges coloridos 🟢/🟡/🔴).
-- [x] Criar Dashboard do Gerente com filtro por Período Acadêmico e métricas globais da organização.
-- [x] Criar modais pós-submissão para cadastro de DOI, links camera-ready e seleção de submissão backup / v2.
-
-### 🏗️ 3.5 Camada Centralizada de Serviços e Padronização de Tipos & Constantes
-- [x] **Centralização dos Serviços HTTP em `src/services/`**:
-  - Encapsulamento completo de chamadas REST (`projectsService`, `managementService`, `tasksService`, `releasesService`, `articlesService`) separando requisições HTTP dos hooks do React Query (`useProjectQueries`, `useManagementQueries`, `useReviewQueries`).
-- [x] **Padronização de Constantes de Status & Roles em `src/constants/`**:
-  - `status.ts`: Definição centralizada de `TaskStatus`, `DeadlineStatus`, `PRStatus`, `NITStatus`, `ReleaseStatus`.
-  - `roles.ts`: Definição de `Role`, `ROLE_LABELS` e `SYSTEM_ROLES` garantindo conformidade com a biblioteca e eliminação de strings hardcoded.
-- [x] **Qualidade e Estilo de Código**:
-  - Ausência total de `React.FC` e arquivos de re-exportação barril (`index.ts`).
-  - Utilização de `as const` compatível com `erasableSyntaxOnly` (sem `enum`s do TypeScript).
-  - 0 avisos no ESLint e 0 erros no TypeScript (`npx tsc --noEmit`).
+- [x] **2.1 Motor de Transformação Operacional Single-Leader (`@codemirror/collab`)**
+  - Implementação de OT centralizado no backend Fastify com `rebaseUpdates`, versionamento monotônico de inteiros e canal WebSocket `/ws/documents/:projectId`.
+- [x] **2.2 Otimização do Hot Path na Memória RAM**
+  - Remoção de I/O desnecessário de deltas de digitação no Redis. Edições operam na memória do processo com latência local <16ms e <2ms no servidor.
+- [x] **2.3 Mecanismo de Debounce Híbrido Multi-Critério**
+  - Persistência no PostgreSQL acionada por inatividade (3s), teto contínuo sob digitação ininterrupta (15s), volume acumulado (50 ops) ou encerramento da sala WebSocket.
+- [x] **2.4 Graceful Shutdown & Transações Atômicas de Checkpoint**
+  - Persistência de todos os documentos ativos de `activeDocs` em `SIGTERM`/`SIGINT`. Transação atômica única no Prisma unificando `Project.currentVersion`, `ProjectFile.content` e `DocumentSnapshot`.
 
 ---
 
-## 🟠 Bloco 4: Painel Admin em Tempo Real (Live Dashboard via SSE)
+## 🟢 Fase 3: Fencing Monotônico de Posse & Resiliência Multi-Pod (ADR-007.1)
 
-- [ ] **4.1 Canal SSE de Administração (`/api/v1/admin/events`)**
-  - *Descrição*: Criar endpoint SSE exclusivo para administradores transmitindo status de conexões ativas, Pods K8s e rascunhos em tempo real.
-- [ ] **4.2 Tela de Administração de Sessões Ativas**
-  - *Descrição*: Criar tela no frontend exibindo tabela de usuários online, Pods em uso (warm vs active), tempo de sessão e botões para recarregar ou derrubar sessões inativas.
-
----
-
-## 🟡 Bloco 5: Evolução Futura de Infraestrutura (Parecer Técnico)
-
-- [ ] **5.1 Hibernação de Pods com Retenção de PVC**
-  - *Descrição*: Implementar rotina de hibernação que destrói o Pod em caso de inatividade longa mantendo o volume (PVC) pronto para reativação.
-- [ ] **5.2 Suporte a Conexão Remota via VS Code Desktop (SSH)**
-  - *Descrição*: Expor porta SSH segura para pesquisadores avançados se conectarem via VS Code Desktop nativo.
+- [x] **3.1 Leases de Dono Único no Redis (Single-Writer)**
+  - Chave atômica `editor:document:<documentId>:owner` com TTL de 15s renovado a cada 2s via heartbeat enquanto houver conexões ativas na sala.
+- [x] **3.2 Fencing Token Monotônico (`ownerGeneration`) no PostgreSQL**
+  - Proteção com dupla barreira no banco impedindo que Pods zumbis ou pausados por Garbage Collection sobrescrevam checkpoints de novos Pods donos.
+- [x] **3.3 Reconciliação Automática no Cliente CodeMirror 6**
+  - Reconexão transparente do cliente retendo operações pendentes em `sendableUpdates` e rebaseando contra a nova autoridade sem duplicação de texto.
 
 ---
 
-## 🔴 Bloco 6: Governança de Domínio, Ciclos Acadêmicos, Etapas Paralelas & Gatekeepers (NIT e Congresso)
+## 🟢 Fase 4: Workflow em 6 Etapas Fixas & Modelo de Revisão em Dois Níveis (ADR-008)
 
-- [x] **6.1 Atualização de Modelos Prisma (`schema.prisma`)**
-  - *Descrição*: Adicionar modelo `TeamAcademicGoal` (cotas por time), modelo `ProjectStage` (etapas flexíveis e gatekeepers) e relacionamento `Task -> stageId`. Executar migração do Prisma.
-- [x] **6.2 Endpoints REST de Gestão do Ciclo Acadêmico e Cotas (`/api/v1/academic-periods`)**
-  - *Descrição*: Criar endpoints para cadastro de Ciclo Acadêmico com Meta Global, atribuição de cotas aos times (`TeamAcademicGoal`) e consulta de progresso com over-achievement.
-- [x] **6.3 Endpoints REST de Etapas do Artigo & Timeline (`/api/v1/projects/:id/stages`)**
-  - *Descrição*: Criar endpoints para listagem, criação, edição e ordenação de etapas flexíveis (`ProjectStage`) com vinculação de tarefas (`Task`).
-- [x] **6.4 Validação de Trava nos Gatekeepers (NIT e Congresso) no Backend**
-  - *Descrição*: Aplicar regra de trava em `ProjectsService`: rejeitar solicitações de NIT se houver etapas de escrita pendentes (< 100%), e rejeitar submissão ao congresso se o NIT não estiver aprovado (`APPROVED_NIT`).
-- [x] **6.5 Interface Frontend da Régua de Timeline Paralela e Badges de Trava (`🔒 LOCKED`)**
-  - *Descrição*: Desenvolver componentes `<ArticleTimelineHeader />`, `<GatekeeperLockBadge />` e seletor de etapa no `<CreateTaskModal />`, integrando ao `AuthorDashboard.tsx` e `ManagementDashboard.tsx`.
-- [x] **6.6 Painel de Analítico de Gargalos e Desempenho de Metas**
-  - *Descrição*: Desenvolver no `ManagementDashboard.tsx` os relatórios visuais de gargalos por etapa e avanço de metas em relação ao Ciclo Acadêmico ativo.
-- [x] **6.7 Etapas Dinâmicas de Escrita, Branches 4-Level & Governança de Tasks (Assinar/Desassinar)**
-  - *Descrição*: Gestão dinâmica de etapas pelo autor (cada etapa é uma Feature Branch `feature/<stage-slug>`). Estrutura de branches de 4 níveis (`main` <- `dev` <- `feature` <- `task`). Bloqueio de PRs para sub-tarefas (exclusivo para Features). Atribuição opcional de tarefas com botões **Assinar** (Claim) e **Desassinar** (Unclaim). Isolamento de workspace e K8s volume em 4 níveis (`projects/P/users/U/stages/S/tasks/T`).
-- [x] **6.8 Dual View na Régua de Timeline (Modos [Fluxo] vs [Timeline]) & Cronograma Temporal de ProjectStage**
-  - *Descrição*: Adicionado seletor de modo `[Fluxo]` / `[Timeline]` no `<ArticleTimelineHeader />`. No modo Timeline, renderiza o cronograma temporal (Gantt) baseado nos campos `plannedStartAt`, `plannedEndAt`, `startedAt` e `completedAt` de cada `ProjectStage`, preservando as travas de gatekeeper (NIT/Congresso).
+- [x] **4.1 Versionamento Relacional Nativo**
+  - Histórico de versões mantido por snapshots e deltas no banco relacional, garantindo integridade e restauração pontual.
+- [x] **4.2 Régua Institucional das 6 Etapas Fixas**
+  - Todo artigo nasce com as etapas obrigatórias:
+    1. *Planejamento e Pesquisa*
+    2. *Desenvolvimento e Experimentos*
+    3. *Escrita do Artigo (Tarefas Paralelas)*
+    4. *Revisão Técnica e Científica (Geral)*
+    5. *Parecer do NIT (Gatekeeper 1 🔒)*
+    6. *Submissão Final ao Congresso (Gatekeeper 2 🔒)*
+  - Deleção e reordenação bloqueadas na API (`DELETE /stages/:id -> 400 Bad Request`); desinstalação integral de `@dnd-kit`.
+- [x] **4.3 Modelo de Revisão em Dois Níveis**
+  - *Nível Micro (Etapa 3):* Bate e volta por tarefas de escrita entre coautores e orientador (`REVIEW_REQUESTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `COMPLETED`).
+  - *Nível Macro (Etapa 4):* Revisão Geral do manuscrito compilado antes do NIT, operando em rodadas iterativas sem reabrir a Etapa 3.
+- [x] **4.4 Persona do Revisor Acadêmico**
+  - CodeMirror configurado em `EditorState.readOnly.of(true)` prevenindo corrupção do LaTeX, com capacidade total de comentários e emissão de pareceres via `ReviewSidebar`.
+- [x] **4.5 Travas Rígidas de Gatekeepers**
+  - Trava do NIT liberada estritamente após a conclusão da Etapa 4; trava de submissão externa liberada apenas com parecer `APPROVED_NIT`.
 
+---
 
+## 🟢 Fase 5: Persistência Durável de Apontamentos (`ReviewComment`) & Saneamento do Schema (ADR-010)
+
+- [x] **5.1 Tabela Relacional `ReviewComment` no Prisma**
+  - Persistência ACID de anotações com ancoragem por caracteres (`from`, `to`), texto selecionado, autor, status (`open` / `resolved`) e threads de respostas em JSONB.
+- [x] **5.2 Saneamento de Entidades Fantasmas**
+  - Remoção definitiva de tabelas legadas (`Team`, `TeamAcademicGoal`, `Workspace`, `GithubWebhookEvent`), unificando a governança em `coordinatorId` e `managerId` diretamente em `Project`.
+- [x] **5.3 Blindagem Zero-Keystrokes**
+  - Remoção de escritas síncronas a cada tecla no caminho quente de digitação.
+
+---
+
+## 🟡 Fase 6: Camada de Inteligência Científica (`ai-service` / SciAI)
+
+- [x] **6.1 Microserviço FastAPI e Núcleo de Agentes LangGraph (`ai-service/`)**
+  - Grafo multi-agente tipado com `Supervisor`, `IdeaRefiner`, `SearchSpecialist` (com `interrupt` Human-in-the-Loop), `CurationAgent` e `WriterAgent`.
+- [x] **6.2 Ferramentas de Pesquisa Científica com Connection Pooling**
+  - Conectores OpenAlex e Semantic Scholar com semáforo de concorrência, retries com exponential backoff e Tavily search.
+- [x] **6.3 Endpoints M2M e Streaming SSE**
+  - Rotas `/api/v1/chat/stream`, `/api/v1/runs` autenticadas por `X-Internal-Service-Key` e formatador SSE enxuto.
+- [x] **6.4 Harness CLI de Testes e ADR-009**
+  - Scripts de smoke test (`scripts/test_chat_cli.py`, `scripts/smoke_llm.py`) e especificação de experimentação headless via API.
+- [ ] **6.5 Integração da Gaveta SciAI Chat no Frontend (`<AIChatSidebar />`)**
+  - Transpor os componentes de referência (`frontend/references-ai-chat/`) para o layout oficial do editor no frontend, consumindo `/api/v1/ai/chat/stream`.
+- [ ] **6.6 Onboarding Wizard Guiado para Criação de Artigos**
+  - Diálogo guiado com o `IdeaRefiner` instanciando novos projetos com as 6 etapas fixas no PostgreSQL.
+
+---
+
+## ⚪ Fase 7: Painel Admin em Tempo Real & Métricas de Governança Institucional
+
+- [ ] **7.1 Endpoint SSE de Administração (`/api/v1/admin/events`)**
+  - Transmissão em tempo real de contagem de conexões WebSocket ativas, taxa de checkpoints/minuto e saúde do cluster.
+- [ ] **7.2 Página Administrativa no Frontend (`/admin`)**
+  - Tabela de usuários online, tempo de sessão ativa e ações de desconexão preventiva.
+- [ ] **7.3 Dashboard Analítico de Desempenho de Metas por Ciclo**
+  - Painéis consolidados de tempo médio de revisão por etapa e taxas de aceitação nos congressos alvo vs. backup.
+
+---
+
+*Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*

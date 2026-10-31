@@ -13,7 +13,7 @@ Esta especificação define os contratos formais de comunicação entre a autori
 1. **Máquina de estados determinística** com retorno inicial estrito em `PENDING`.
 2. **Persistência durável no PostgreSQL do SCIA** aliada a transporte de mensagens no Redis.
 3. **Ciclo completo de APIs internas M2M** (disparo, interrupção/retomada, cancelamento e callbacks).
-4. **Proteção de concorrência com o workspace ativo** via `baseCommitSha` e `baseFileHash` (SHA-256 de conteúdo não commitado).
+4. **Proteção de concorrência com o documento ativo** via `baseVersion` (versão canônica OT) e `baseFileHash` (SHA-256 do arquivo TeX).
 5. **Protocolo SSE com envelope estruturado** e recuperação pós-reconexão (`Last-Event-ID` e consulta REST).
 
 ---
@@ -169,7 +169,7 @@ Content-Type: application/json
   "input": {
     "topic": "Sincronização de relógios em sistemas distribuídos Tolerantes a Falhas Bizantinas",
     "sectionPath": "sections/02-related-work.tex",
-    "baseCommitSha": "7f8b9a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a",
+    "baseVersion": 42,
     "baseFileHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "existingTextSnippet": "\\section{Trabalhos Relacionados}\nNesta seção abordamos...",
     "maxReferences": 5
@@ -223,7 +223,7 @@ Content-Type: application/json
     "changes": [
       {
         "path": "sections/02-related-work.tex",
-        "baseCommitSha": "7f8b9a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a",
+        "baseVersion": 42,
         "baseFileHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "diff": "--- a/sections/02-related-work.tex\n+++ b/sections/02-related-work.tex\n@@ -1,3 +1,8 @@\n \\section{Trabalhos Relacionados}\n-Nesta seção abordamos...\n+O protocolo PBFT introduzido por \\cite{castro1999practical} estabeleceu as bases..."
       }
@@ -247,69 +247,43 @@ Content-Type: application/json
 ---
 
 ## 5. 🛡️ Proteção do Workspace contra Concorrência e Sobrescrita Cega
-
-### 5.1. O Risco de Mudanças Não Commitadas (Dirty State)
-Se verificássemos apenas o `baseCommitSha`, um autor que estivesse digitando no VS Code sem fazer commit teria suas alterações sobrescritas pela IA (pois o HEAD do Git não muda a cada digitação).
+### 5.1. O Risco de Concorrência com Digitação Ativa
+Caso um autor continue digitando no CodeMirror enquanto a IA estiver pesquisando, as alterações locais do autor poderiam ser sobrescritas pela proposta da IA se não houvesse dupla checagem de versão canônica e integridade de conteúdo.
 
 ### 5.2. Algoritmo de Validação Pré-Aplicação (Atômico)
 
 ```typescript
 import crypto from "crypto";
-import path from "path";
-import fs from "fs/promises";
+import { documentsService } from "../documents/documents.service";
 
 export async function applyProposalAtomically(
-  workspaceRoot: string,
   projectId: string,
   proposal: AiProposal
 ): Promise<void> {
-  const currentHeadCommit = await gitService.getCurrentCommitSha(projectId);
+  const currentDocVersion = await documentsService.getCurrentVersion(projectId);
 
   // 1. Fase de Validação e Detecção de Conflitos (Staging Check)
   for (const change of proposal.changes) {
-    // A. Proteção contra Path Traversal
-    const resolvedPath = path.resolve(workspaceRoot, change.path);
-    if (!resolvedPath.startsWith(workspaceRoot)) {
-      throw new SecurityError(`Tentativa de Path Traversal detectada: ${change.path}`);
-    }
-
-    // B. Verificação de Commit Base
-    if (change.baseCommitSha !== currentHeadCommit) {
+    // A. Verificação de Versão Base Canônica
+    if (change.baseVersion !== currentDocVersion) {
       throw new VersionConflictError(
-        `O repositório avançou (novo commit detectado). Commit base esperado: ${change.baseCommitSha}, atual: ${currentHeadCommit}`
+        `O documento avançou (versão canônica alterada). Versão base esperada: ${change.baseVersion}, atual: ${currentDocVersion}`
       );
     }
 
-    // C. Verificação de Conteúdo Local Não Commitado (Dirty State Check)
-    const currentContent = await fs.readFile(resolvedPath, "utf-8");
+    // B. Verificação de Conteúdo Atual (Hash Check)
+    const currentContent = await documentsService.getFileContent(projectId, change.path);
     const currentHash = crypto.createHash("sha256").update(currentContent).digest("hex");
 
     if (currentHash !== change.baseFileHash) {
       throw new VersionConflictError(
-        `O arquivo ${change.path} possui edições não commitadas no VS Code. O hash atual difere da versão base usada pela IA.`
+        `O arquivo ${change.path} possui edições concorrentes no editor. O hash atual difere da versão base usada pela IA.`
       );
     }
   }
 
-  // 2. Fase de Aplicação Atômica
-  const backups = new Map<string, string>();
-  try {
-    for (const change of proposal.changes) {
-      const resolvedPath = path.resolve(workspaceRoot, change.path);
-      const original = await fs.readFile(resolvedPath, "utf-8");
-      backups.set(resolvedPath, original);
-
-      // Aplica o patch
-      const patchedContent = applyDiffPatch(original, change.diff);
-      await fs.writeFile(resolvedPath, patchedContent, "utf-8");
-    }
-  } catch (err) {
-    // Rollback atômico em caso de qualquer falha
-    for (const [filePath, originalContent] of backups.entries()) {
-      await fs.writeFile(filePath, originalContent, "utf-8");
-    }
-    throw new ApplyFailedError(`Falha durante a escrita dos patches. Rollback executado: ${err.message}`);
-  }
+  // 2. Aplicação Atômica via Operação Colaborativa (OT)
+  await documentsService.applyAiProposalUpdates(projectId, proposal);
 }
 ```
 
@@ -354,7 +328,7 @@ export const CreateAiRunInputSchema = z.object({
     (p) => !p.includes("..") && !path.isAbsolute(p),
     "Path Traversal não permitido"
   ),
-  baseCommitSha: z.string().regex(/^[a-f0-9]{40}$/, "SHA de commit inválido"),
+  baseVersion: z.number().int().min(0, "Versão base canônica inválida"),
   baseFileHash: z.string().regex(/^[a-f0-9]{64}$/, "SHA-256 de arquivo inválido"),
   existingTextSnippet: z.string().max(20000).optional(),
   maxReferences: z.number().int().min(1).max(20).default(5),
@@ -379,7 +353,7 @@ export const AiProposalSchema = z.object({
   changes: z.array(
     z.object({
       path: z.string(),
-      baseCommitSha: z.string(),
+      baseVersion: z.number().int().min(0),
       baseFileHash: z.string(),
       diff: z.string(),
     })

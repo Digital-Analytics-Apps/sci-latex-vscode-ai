@@ -28,7 +28,7 @@
    - 5.5. [Barra de Filtros & Controles (`TableFilters`)](#55-barra-de-filtros--controles)
    - 5.6. [Avatares & Identidade (`UserAvatar`, `UserAvatarStack`, `SciLatexAnimatedLogo`)](#56-avatares--identidade)
    - 5.7. [Governança Editorial & Linha do Tempo (`ArticleTimelineHeader`, `GatekeeperLockBadge`)](#57-governança-editorial--linha-do-tempo)
-   - 5.8. [Ambiente de Escrita & Iframe Zen Mode (`CodeServerIframe`, `SaveProgressModal`)](#58-ambiente-de-escrita--iframe-zen-mode)
+   - 5.8. [Ambiente de Escrita Web-Nativo & Revisão Ancorada (`CodeMirrorEditor`, `ReviewSidebar`, `PdfPreview`)](#58-ambiente-de-escrita-web-nativo--revisão-ancorada)
 6. [Padrões de Interação, UX & Estado](#6-padrões-de-interação-ux--estado)
    - 6.1. [URL-First Filter Pattern](#61-url-first-filter-pattern)
    - 6.2. [Zero-Flicker UX com TanStack Query](#62-zero-flicker-ux-com-tanstack-query)
@@ -404,29 +404,34 @@ Logotipo vetorial interativo da plataforma com animação de traço em curvas B�
 ### 5.7. Governança Editorial & Linha do Tempo
 
 #### `<ArticleTimelineHeader />`
-Componente em formato **Stepper Ribbon (Fita Horizontal)** que substitui antigas pilhas de cards:
-- **Nós de Conexão:** Exibe cada etapa de escrita sequencial com seu progresso percentual real.
-- **Drag & Drop:** Reordenação dinâmica de etapas de conteúdo via alça de arrasto (`@dnd-kit`).
-- **Travas Fixas de Gatekeeper:** As etapas de **NIT** e **Congresso Alvo** permanecem obrigatoriamente travadas ao final da fita e não podem ser movidas para trás de etapas de escrita.
+Componente em formato **Régua Institucional das 6 Etapas Fixas (ADR-008)**:
+- **Nós de Conexão Sequencial:** Exibe as 6 etapas imutáveis da pesquisa com seus respectivos status, datas planejadas (`plannedCompletionDate`) e percentual de avanço.
+- **Imutabilidade Estrutural:** Sem exclusão ou reordenação arbitrária (remoção integral de `@dnd-kit`).
+- **Travas Fixas de Gatekeeper:** A Etapa 5 (**NIT 🔒**) e a Etapa 6 (**Congresso Alvo 🔒**) possuem bloqueio sequencial rígido.
 
 #### `<GatekeeperLockBadge />`
 Badge de governança que protege a integridade do ciclo acadêmico:
-- **Trava 1 (NIT):** Bloqueia o envio ao NIT enquanto houver etapas de escrita pendentes de conclusão.
-- **Trava 2 (Congresso Alvo):** Bloqueia a submissão final ao congresso até a emissão do Parecer Aprovado (`APPROVED_NIT`).
+- **Trava 1 (NIT):** Bloqueia a solicitação ao NIT até que a Etapa 4 (Revisão Geral) atinja status `COMPLETED`.
+- **Trava 2 (Congresso Alvo):** Bloqueia a submissão final ao congresso até a homologação de parecer favorável (`APPROVED_NIT`).
 
 ---
 
-### 5.8. Ambiente de Escrita & Iframe Zen Mode
+### 5.8. Ambiente de Escrita Web-Nativo & Revisão Ancorada
 
-#### `<CodeServerIframe />`
-- Envolve a sessão do VS Code (`code-server`) em um contêiner limpo sem extensões de distração (Zen Mode).
-- Autenticação e proxy via Fastify com validação de token JWT no handshake.
+#### `<CodeMirrorEditor />`
+- Editor de alta performance baseado em **CodeMirror 6**, com Transformação Operacional em tempo real (`@codemirror/collab`), latência local zero (<16ms) e digitação fluida.
+- Suporte nativo a extensões de LaTeX (syntax highlighting, autocompletion `\cite`/`\ref`, folding e linter).
+- Proteção de integridade para a persona do Revisor via injeção dinâmica de `EditorState.readOnly.of(true)`.
 
-#### `<SaveProgressModal />`
-- Ao salvar checkpoints de escrita, traduz diffs brutos de Git em **categorias acadêmicas legíveis** ("Seção Introdução", "Referências Bibliográficas", "Figuras e Ilustrações").
-- Fornece linha do tempo contextual do último salvamento e campo opcional de evolução.
+#### `<ReviewSidebar />`
+- Gaveta lateral retrátil de anotações inline ancoradas por offsets de caracteres (`from`, `to`), com algoritmo de cascata anti-sobreposição de cards.
+- Permite inserção de apontamentos, respostas em thread (`replies`) e marcação de status (`open` / `resolved`).
 
----
+#### `<PdfPreview />`
+- Visualizador de PDF compilado sincronizado lado a lado com o editor TeX, acionado automaticamente ou sob demanda com feedback de compilação.
+
+#### `<EditorDiffViewer />`
+- Visualizador de diferenças de texto entre snapshots e versões consolidadas do artigo científico.
 
 ## 6. Padrões de Interação, UX & Estado
 
@@ -436,8 +441,8 @@ Badge de governança que protege a integridade do ciclo acadêmico:
 ├────────────────────────────────────────────────────────────────────────┤
 │  1. URL-First: Query string como fonte da verdade dos filtros          │
 │  2. Zero-Flicker: placeholderData: keepPreviousData no TanStack Query   │
-│  3. Domain-Driven Buttons: Ações ativadas por estado de PR, não FS      │
-│  4. Presence Locks: Trava visual de concorrência em pods de escrita    │
+│  3. Domain-Driven Actions: Transições governadas pelo ciclo de tarefas e etapas  │
+│  4. Collaborative Presence: Cursores remotos e barra de coautores em tempo real │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -459,18 +464,16 @@ const { data, isLoading, isFetching } = useTasksQuery(projectId, {
 ```
 
 ### 6.3. Governança por Estado de Domínio
-Os botões de fluxo na Workspace do Autor não realizam polling no sistema de arquivos local (`/git-status`). Suas ações são governadas estritamente pelo ciclo de vida do Pull Request:
-- **Salvar Progresso:** Habilitado em `DRAFT` ou `CHANGES_REQUESTED`.
-- **Enviar para Revisão:** Habilitado após salvamento de rascunho com transição para `UNDER_REVIEW`.
-- **Realizar Merge:** Habilitado exclusivamente quando aprovado (`APPROVED`).
+As ações do usuário na plataforma são governadas estritamente pela máquina de estados acadêmica da ADR-008:
+- **Solicitar Revisão de Tarefa:** Habilitado para autores quando a tarefa na Etapa 3 estiver `IN_PROGRESS`.
+- **Emitir Parecer / Solicitar Ajustes:** Habilitado para o Revisor Técnico Oficial com tarefa em `IN_REVIEW` ou na Etapa 4.
+- **Revisão Geral (Etapa 4):** Iterações em rodadas de apontamentos macro sem desarmar a conclusão da Etapa 3.
 
-### 6.4. Presença & Concorrência Visual
-Para evitar conflitos na mesma branch Git:
-- Tarefas com pod ativo exibem badge informativa `🔒 Ocupada por [Nome]`.
-- O botão de abertura da IDE é bloqueado para outros usuários com o rótulo `🔒 Em uso por [Nome]`.
-- O autor só pode abrir workspaces de sub-tarefas que estejam assinadas por ele próprio (`assignedToId === currentUserId`).
-
----
+### 6.4. Presença & Colaboração em Tempo Real
+O editor implementa coordenação multi-usuário transparente:
+- **Barra de Colaboradores (`CollaboratorsBar`):** Exibe avatares com presença ativa na sala WebSocket.
+- **Cursores Remotos (`remoteCursorsExtension`):** Identificação visual dos coautores com cores determinísticas (DJB2) e tags com seus respectivos nomes.
+- **Modo Revisor Estrito:** Revisor opera em modo somente-leitura com capacidade total de comentários ancorados (`ReviewSidebar`), sem risco de corrupção acidental do LaTeX.
 
 ## 7. Diretrizes de Acessibilidade & Ergonomia
 

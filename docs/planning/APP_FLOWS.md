@@ -7,7 +7,7 @@
 * 📄 [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) — Documento de Requisitos de Produto (Visão, Personas & 6 Etapas Fixas)  
 * ⚙️ [`TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md) — Documento de Requisitos Técnicos (Arquitetura, K8s & APIs)  
 * 🏛️ [`ADR-007`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-007-collaborative-editor-architecture-scaling.md) — Arquitetura do Editor Colaborativo CodeMirror 6  
-* 🏛️ [`ADR-008`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) — Workflow em 6 Etapas Fixas, Modelo de Revisão em 2 Níveis e Desacoplamento Git  
+* 🏛️ [`ADR-008`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) — Workflow em 6 Etapas Fixas e Modelo de Revisão em 2 Níveis  
 * 🔍 [`specs/reviewer-view-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/reviewer-view-spec.md) — Especificação da Visão e Persona do Revisor  
 
 ---
@@ -25,8 +25,8 @@ O **Documento de Fluxos da Aplicação (App Flows)** mapeia detalhadamente todas
 │ 1. Escrita Web Colab     │  2. Revisão em Dois Níveis  │  3. Régua de 6 Etapas Fixas   │
 │ CodeMirror 6 nativo com  │ - Micro: Bate e volta por   │ Ordem 1 a 6 padronizada,      │
 │ OT em tempo real, auto-  │   tarefas na Etapa 3.       │ imutável, sem exclusão ou     │
-│ compilação PDF e zero    │ - Macro: Revisão Geral na   │ drag-and-drop. Consistência   │
-│ acoplamento ao Git.      │   Etapa 4 (antes do NIT).   │ institucional absoluta.       │
+│ compilação de PDF e     │ - Macro: Revisão Geral na   │ drag-and-drop. Consistência   │
+│ persistência no Postgres.│   Etapa 4 (antes do NIT).   │ institucional absoluta.       │
 ├──────────────────────────┴─────────────────────────────┴───────────────────────────────┤
 │ 4. Governança Rígida e Gatekeepers: Etapa 5 (NIT 🔒) e Etapa 6 (Congresso Alvo 🔒)    │
 │ com travas sequenciais automáticas e painéis preditivos de prazos para a Gerência.     │
@@ -188,7 +188,7 @@ sequenceDiagram
 
 ## ✍️ 6. Fluxo 3: Escrita Colaborativa no Editor CodeMirror 6
 
-Conforme estabelecido na **ADR-007**, a edição é colaborativa em tempo real, sem dependência de terminais ou comandos Git:
+Conforme estabelecido na **ADR-007**, a edição é colaborativa em tempo real com Transformação Operacional:
 
 ```mermaid
 sequenceDiagram

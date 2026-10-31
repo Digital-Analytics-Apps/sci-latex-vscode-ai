@@ -11,7 +11,7 @@
 
 > [!IMPORTANT]
 > **Modelo Mental Acadêmico:**  
-> O revisor está revisando um **Artigo Científico**, e não simplesmente arquivos de código LaTeX ou repositórios Git.  
+> O revisor atua sobre o **Artigo Científico** com foco em seções, tarefas acadêmicas e apontamentos de qualidade.  
 > Ele atua como **Orientador** ou **Revisor Técnico Oficial** designado para o projeto acadêmico. A sua tela de acompanhamento é **a mesma tela do Autor** (`AuthorArticlesPage`, `ArticleDetailPage` e Gantt), diferenciada por contexto de atuação, indicadores visuais e travas de proteção de conteúdo no editor.
 
 ```mermaid

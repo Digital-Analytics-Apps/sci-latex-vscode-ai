@@ -1,11 +1,10 @@
 # ⚙️ Documento de Requisitos Técnicos (TRD - Technical Requirements Document)
 
 **Produto:** SCIA — Scientific Collaboration and Intelligent Assistance (Plataforma Web Self-Hosted)  
-**Versão:** 2.0 (Consolidada com ADRs 001 a 006 e specs v2.0)  
+**Versão:** 3.0 (Consolidada com ADRs 007, 007.1, 008 e 010)  
 **Status:** Aprovado / Em Desenvolvimento Ativo  
 **Documento de Origem (Produto):** [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md)  
-**Especificação Técnica Detalhada:** [`specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md)  
-
+**Especificações Complementares:** [`specs/reviewer-view-spec.md`](specs/reviewer-view-spec.md) | [`specs/sciai-contracts-spec.md`](specs/sciai-contracts-spec.md)  
 ---
 
 ## 📑 1. Identificação, Propósito & Rastreabilidade
@@ -16,7 +15,7 @@ O **Technical Requirements Document (TRD)** formaliza a arquitetura de engenhari
 ### 1.2 Princípios de Engenharia
 1. **Padrão de Código Estrito em Inglês:** Todos os identificadores de código (modelos, tabelas, colunas, enums, interfaces, variáveis, métodos, rotas de API, propriedades e classes) devem ser estritamente em **Inglês**. A documentação de arquitetura e comentários de negócio podem ser em **Português**.
 2. **Arquitetura 100% Self-Hosted & Infraestrutura Leve:** Eliminação de intermediários pesados em favor do editor web-nativo CodeMirror 6, microserviço de compilação TeX Live (`sci-latex-compiler`) e orquestração direta em Kubernetes local (**KinD**).
-3. **PostgreSQL como Única Fonte de Verdade Persistente (ADR-007 / ADR-008):** Custódia centralizada e durável de metadados, arquivos e snapshots TeX via transações ACID no PostgreSQL com Prisma v7 (`@prisma/adapter-pg`), sem dependência de branches Git, chaves SSH ou repositórios remotos para a escrita cotidiana.
+3. **PostgreSQL como Única Fonte de Verdade Persistente (ADR-007 / ADR-008):** Custódia centralizada e durável de metadados, arquivos e snapshots TeX via transações ACID no PostgreSQL com Prisma v7 (`@prisma/adapter-pg`).
 4. **Edição Colaborativa Single-Writer com Fencing Monotônico (ADR-007.1):** Coordenação distribuída entre Pods via leases no Redis (TTL 15s / Heartbeat 2s / Failsafe 8s) e validação estrita de posse no PostgreSQL (`ownerGeneration`).
 5. **Governança por Máquinas de Estado & Gatekeepers Rígidos:** Imposição técnica das travas institucionais do **NIT (Núcleo de Inovação Tecnológica)** e da **Submissão ao Congresso Alvo**, garantindo integridade de propriedade intelectual e prazos.
 ---
@@ -101,7 +100,7 @@ graph TB
 ### 4.1 Arquitetura Single-Writer com `@codemirror/collab`
 1. **Zero Keystrokes no Banco e no Redis:** A digitação em alta frequência transita exclusivamente entre o navegador do usuário e a memória RAM do Pod Fastify responsável pela sala (`activeDocs`). Nenhuma tecla gera operações síncronas de I/O em disco ou rede no Redis.
 2. **Autoridade Central de Ordenação (OT):** O Pod dono sequencia as operações, atribui numeração monotônica de versões e realiza `rebaseUpdates` para reconciliar edições simultâneas de coautores.
-3. **Desacoplamento do Git (ADR-008):** Todo o histórico é mantido através de deltas em memória e snapshots relacionais no PostgreSQL, sem criação de branches Git individuais, commits manuais ou dependência do GitHub SDK.
+3. **Versionamento Relacional Nativo (ADR-008):** Todo o histórico é mantido através de deltas em memória e snapshots relacionais no PostgreSQL, com auditoria estrita e restauração pontual.
 
 ### 4.2 Fencing Monotônico de Posse (`ownerGeneration`)
 Para prevenir corrupção por Pods zumbis durante pausas prolongadas de Garbage Collection ou partições de rede:
@@ -184,13 +183,12 @@ Para impedir que sugestões de IA sobrescrevam alterações recentes do autor no
 O backend é estruturado como um monólito modular com injeção de dependências limpa:
 * **Routes (`*Routes.ts`):** Definição de rotas, middlewares de segurança e validação de contratos Zod.
 * **Controllers (`*Controller.ts`):** Extração de parâmetros HTTP, mapeamento para DTOs e envio de respostas formatadas.
-* **Services (`*Service.ts`):** Regras de negócio, transações ACID, orquestração de Git, pods e emissão de eventos.
-* **Repositories / Infra:** Interação isolada com Prisma Client, Octokit, K8s SDK e Redis.
+* **Services (`*Service.ts`):** Regras de negócio, transações ACID, controle de concorrência/posse e emissão de eventos.
+* **Repositories / Infra:** Interação isolada com Prisma Client, MinIO S3 SDK e Redis.
 
-### 6.2 Reverse Proxy para o Editor (`EditorProxyService`)
-* **Bypass de Autenticação Segura:** O endpoint base `/editor-proxy/:projectId` exige cookie JWT válido. As requisições de sub-recursos (`/app/*`, scripts JS, fontes, CSS do code-server) e os WebSockets de sincronização (`Upgrade: websocket`) são roteados diretamente para o Pod do usuário sem reprocessamento pesado de sessão.
-* **Resiliência a Erros Externos:** Erros de comunicação com o GitHub são mapeados para `502 Bad Gateway`, prevenindo logout inadvertido no frontend por falsos `401 Unauthorized`.
-
+### 6.2 Hub WebSocket de Colaboração (`DocumentCollabWebSocket`)
+* **Gerenciamento de Salas e Sincronização:** O endpoint `/ws/documents/:projectId` autentica a conexão via cookie JWT e registra o cliente no canal do documento ativo (`documents.websocket.ts`).
+* **Engine de Transformação Operacional (OT):** Integração direta com `documents.service.ts` e `@codemirror/collab` para handshake de versões (`SYNC_INIT`), submissão de deltas (`PUSH_UPDATES`), difusão de atualizações para coautores (`PULL_UPDATES_RESPONSE`) e propagação em tempo real de cursores remotos.
 ### 6.3 Motor de Notificações em Tempo Real (SSE)
 * **Stream Unidirecional Leve:** Implementado via endpoint nativo Fastify (`GET /api/v1/events`), dispensando conexões bidirecionais complexas (WebSockets de aplicação).
 * **Topologia de Eventos Emitidos:**
@@ -364,28 +362,23 @@ flowchart TD
 * **Encapsulamento de Mutações com TanStack Query:** Componentes de interface (como modais e formulários) não invocam `api.post` ou `api.patch` diretamente. Todas as operações de mutação e invalidação de cache são isoladas em hooks especializados (`useTaskQueries`, `useProjectQueries`, `useManagementQueries`).
 * **Resolução de Avisos e Performance:** Proibição de chamadas assíncronas soltas (`@typescript-eslint/no-floating-promises`); callbacks de mutação (`onSuccess`, `onError`) são encapsulados em funções assíncronas com tratamento correto de promessas.
 
-### 9.2 Interface do Revisor: Comparador Side-by-Side
-* **Diff Visual LaTeX Nativo:** Integração do visualizador de diferenças destacando adições, exclusões e modificações relativas à versão anterior ou à branch `dev`.
-* **Visualizador de PDF Compilado:** Renderização lado a lado do PDF oficial gerado na rodada de revisão (`output.pdf`), permitindo validação visual imediata de diagramas, fórmulas matemáticas e referências bibliográficas.
-* **Gaveta Retrátil de Feedback (Drawer):** Painel expansível contendo a listagem cronológica de apontamentos anteriores com indicador da linha (`lineNumer`) e formulário para emissão do veredito com uma das ações:
-  * *Apenas Comentar*
-  * *Solicitar Alterações (`CHANGES_REQUESTED`)*
-  * *Aprovar Tarefa (`APPROVED`)*
-
+### 9.2 Interface do Revisor: CodeMirror Read-Only & Anotações Ancoradas
+* **Modo Estrito de Leitura:** CodeMirror 6 recebe dinamicamente a extensão `EditorState.readOnly.of(true)`, prevenindo edições acidentais no código LaTeX enquanto mantém total interatividade.
+* **Visualizador de PDF Compilado:** Renderização lado a lado do PDF oficial gerado pelo compilador (`PdfPreview`), permitindo validação visual imediata de diagramas, fórmulas matemáticas e referências bibliográficas.
+* **Gaveta Lateral de Feedback (`ReviewSidebar`):** Painel retrátil contendo listagem cronológica de apontamentos ancorados por offsets de caracteres (`from`, `to`), com formulário de resposta em thread e resolução de pendências (ADR-010).
 ---
 
 ## 📊 10. Requisitos Não-Funcionais & SLOs/SLAs de Desempenho
 
 | Critério | Métrica / SLO | Mecanismo de Garantia Técnica |
 | :--- | :--- | :--- |
-| **Inicialização de Workspace** | $< 1.5	ext{ segundos}$ | Warm Standby Pool mantendo Pods K8s pré-aquecidos |
-| **Compilação TeX no Salvamento** | $< 2.0	ext{ segundos}$ | Compilação nativa no container via LaTeX Workshop (sem filas) |
-| **Latência de Notificação SSE** | $< 150	ext{ ms}$ | Conexões HTTP `keep-alive` persistentes e canal Fastify direto |
-| **Tempo de Resposta REST API (P95)**| $< 100	ext{ ms}$ | Projeções locais no PostgreSQL e eliminação de chamadas síncronas ao GitHub |
-| **Pegada de Memória do Servidor** | $< 500	ext{ MB RAM}$ (Backend + BD + Redis) | Remoção do cluster RabbitMQ/Erlang (~300MB economizados) |
-| **Preservação de Dados** | Zero Perda ($RPO = 0$) | Repositório privado no GitHub como *Single Source of Truth* |
+| **Inicialização do Editor** | $< 800\text{ ms}$ | Carregamento web-nativo do CodeMirror 6 a partir de snapshots em PostgreSQL |
+| **Compilação TeX no Salvamento** | $< 2.0\text{ segundos}$ | Microserviço síncrono dedicado `sci-latex-compiler` TeX Live (latexmk) |
+| **Latência de Notificação SSE** | $< 150\text{ ms}$ | Conexões HTTP `keep-alive` persistentes e canal Fastify direto |
+| **Tempo de Resposta REST API (P95)**| $< 100\text{ ms}$ | Consultas otimizadas com Prisma v7 e índices compostos no PostgreSQL |
+| **Pegada de Memória do Servidor** | $< 500\text{ MB RAM}$ (Backend + BD + Redis) | Monólito modular Fastify sem dependência de containers pesados por usuário |
+| **Preservação de Dados** | Zero Perda ($RPO = 0$) | Transações ACID no PostgreSQL com debounce híbrido e Fencing Monotônico |
 | **Disponibilidade Operacional** | $99.5\%$ | Auto-recuperação de Pods via K8s Controller e healthchecks Docker |
-
 ---
 
 ## 🧪 11. Estratégia de Testes, Validação de Qualidade & CI/CD
@@ -401,42 +394,40 @@ flowchart TD
 ### 11.2 Pipeline de Integração e Deploy Contínuo (CI/CD)
 ```mermaid
 flowchart LR
-    DevPush[Git Push / PR] --> LintCheck[1. ESLint & Prettier Check]
-    LintCheck --> TypeCheck[2. TypeScript Strict Compile]
-    TypeCheck --> UnitTests[3. Vitest Unit & Integration Suites]
-    UnitTests --> DockerBuild[4. Docker Container Build]
-    DockerBuild --> KinDDeploy[5. KinD Validation & Warm Pool Readiness]
+    DevPush[1. Pipeline Trigger] --> LintCheck[2. ESLint & Prettier Check]
+    LintCheck --> TypeCheck[3. TypeScript Strict Compile]
+    TypeCheck --> UnitTests[4. Vitest Unit & Integration Suites]
+    UnitTests --> DockerBuild[5. Docker Container Build]
+    DockerBuild --> KinDDeploy[6. Cluster Deployment]
 ```
 
 ---
 
 ## 🗺️ 12. Matriz de Rastreabilidade (PRD $\longleftrightarrow$ TRD)
-
 | Seção do PRD | Requisito do Produto | Implementação Técnica (TRD) | Componentes & Módulos |
 | :--- | :--- | :--- | :--- |
-| **PRD §1: Visão & Problema** | Compilação TeX sem configuração local | Edição e compilação nativa em Pods `code-server` com TeX Live | `K8sPodManagerService`, `code-server-template.yaml` |
-| **PRD §1: Visão & Problema** | Versionamento e custódia institucional | Provisionamento remoto no GitHub via Token de Serviço | `GitService`, Octokit SDK, `GithubIntegration` |
+| **PRD §1: Visão & Problema** | Compilação TeX sem configuração local | Compilação isolada no microserviço dedicado TeX Live | `sci-latex-compiler`, `useLatexCompiler` |
+| **PRD §1: Visão & Problema** | Versionamento e custódia durável | Snapshots e deltas de Transformação Operacional no PostgreSQL | `ProjectFile`, `DocumentSnapshot`, Prisma ORM |
 | **PRD §2: Personas** | Atribuições de Autor, Revisor, Coordenador e Gerente | Matriz RBAC, guards Fastify e filtros na SPA por permissão | `RoleGuard`, `User.role`, `useAuth`, `RoleLayoutResolver` |
-| **PRD §2: Personas** | Suporte a Múltiplos Gerentes por departamento | Modelo `Team.managerId` e visões por Período Acadêmico | `AcademicPeriod`, `TeamAcademicGoal`, `managerRoutes` |
-| **PRD §3: Fase 1** | Timeline de etapas paralelas e prazos | Estrutura de etapas com datas planejadas e ordenação estrita | `ProjectStage`, `tasksService`, `GanttTimelineView` |
-| **PRD §3: Fase 2** | Escrita paralela & commits silenciosos | Branches `task/*`, `git diff HEAD`, classificação e `--author` | `ClassificationService`, `GitService`, `SaveProgressModal` |
-| **PRD §3: Fase 3** | Revisão acadêmica contínua | Draft PRs, promoção para review, comparador side-by-side e rounds | `PullRequest`, `ReviewRound`, `ReviewDetailPage`, SSE Hub |
-| **PRD §3: Fase 4** | Gatekeeper 1: Análise do NIT | Trava sequencial `LOCKED`, validação atômica de 100% das etapas | `NitProcess`, `POST /nit/request`, `AuditLog` |
-| **PRD §3: Fase 5** | Merge pelo Autor na dev/main | Validação de aprovação do revisor, merge via Git e limpeza de Pod/PVC | `mergePullRequest`, `releasePodForProject`, `cleanProjectPVC` |
-| **PRD §3: Fase 6** | Gatekeeper 2: Submissão ao Congresso | Trava de submissão externa condicionada a `APPROVED_NIT` | `POST /submit-target`, `Project.submissionStatus` |
-| **PRD §3: Fase 7** | Pós-submissão & Decisão (Aceito/v2/Backup)| Modais de metadados finais (DOI), reabertura v2 e congresso backup | `PostSubmissionModal`, `ReleaseCandidate`, `Release` |
-| **PRD §4: Arquitetura** | Editor Zen Mode em Iframe | Configuração restrita `settings.json`, sem telemetria, proxy reverso | `EditorProxyService`, `@fastify/http-proxy`, Iframe |
-| **PRD §4: Arquitetura** | Sincronização em tempo real sem reload | Stream HTTP Server-Sent Events e invalidação com TanStack Query | `eventsRoutes`, `useSSEEventSource`, `QueryClient` |
-
+| **PRD §2: Personas** | Suporte a Múltiplos Gerentes por departamento | Relação direta `Project.managerId` e visões por Período Acadêmico | `AcademicPeriod`, `managerRoutes`, `ManagerDashboardPage` |
+| **PRD §3: Etapa 1 a 3** | Linha do tempo das 6 etapas fixas | Cronograma imutável com datas planejadas e tarefas paralelas | `ProjectStage`, `Task`, `GanttTimelineView`, `tasksService` |
+| **PRD §3: Etapa 3** | Escrita colaborativa em tempo real | CodeMirror 6 com `@codemirror/collab` e debounce híbrido | `documents.service.ts`, `documents.websocket.ts`, `CodeMirrorEditor` |
+| **PRD §3: Etapa 4** | Revisão Técnica e Científica (Geral) | CodeMirror Read-Only para revisor e comentários ancorados | `ReviewSidebar`, `ReviewComment`, `commentsExtension` |
+| **PRD §3: Etapa 5** | Gatekeeper 1: Análise Institucional do NIT | Trava sequencial `LOCKED`, validação atômica da Etapa 4 | `NitProcess`, `POST /nit/request`, `AuditLog` |
+| **PRD §3: Etapa 6** | Gatekeeper 2: Submissão ao Congresso | Trava de submissão externa condicionada a `APPROVED_NIT` | `POST /submit-target`, `Project.submissionStatus` |
+| **PRD §3: Pós-Submissão** | Decisão Pós-Submissão (Aceito/v2/Backup) | Modais de metadados finais (DOI), reabertura v2 e congresso backup | `ReleaseCandidatesModal`, `ReleaseCandidate`, `Release` |
+| **PRD §4: Arquitetura** | Editor Colaborativo Web-Nativo | CodeMirror 6, OT em RAM e Single-Writer Lease no Redis | `RedisService`, `documents.repository.ts`, `CollabEditorContext` |
+| **PRD §4: Arquitetura** | Sincronização em tempo real sem reload | Stream HTTP Server-Sent Events e invalidação com TanStack Query | `events.manager.ts`, `useSSEEventSource`, `QueryClient` |
 ---
 
 ## 📚 13. Referências e Documentos Complementares
 
 * 📄 **Documento de Requisitos do Produto:** [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md)
 * 🔄 **Documento de Fluxos da Aplicação (App Flows):** [`APP_FLOWS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/APP_FLOWS.md)
-* 📘 **Especificação Técnica Geral:** [`specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md)
-* 📐 **Planejamento de Arquitetura & Infra K8s:** [`specs/architecture-plan.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/architecture-plan.md)
-* ⚙️ **Especificações Backend:** [`specs/backend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/backend-specs.md)
-* 🎨 **Especificações Frontend:** [`specs/frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md)
+* 🔍 **Especificação da Visão do Revisor:** [`specs/reviewer-view-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/reviewer-view-spec.md)
 * 🤖 **Contratos de Integração SciAI:** [`specs/sciai-contracts-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/sciai-contracts-spec.md)
+* 💬 **Chat Copilot & Onboarding Multi-Agente:** [`specs/sciai-chat-copilot-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/sciai-chat-copilot-spec.md)
+* 🗄️ **Documentação Técnica do Banco de Dados:** [`DATABASE.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/DATABASE.md)
+* 🎨 **SCIA Design System:** [`DESIGN_SYSTEM.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/DESIGN_SYSTEM.md)
+* 📋 **Plano Mestre de Implementação:** [`IMPLEMENTATION_PLAN.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/IMPLEMENTATION_PLAN.md)
 * 📌 **Status Atual e Guia de Retomada:** [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md)

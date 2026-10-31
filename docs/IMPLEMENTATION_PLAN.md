@@ -1,7 +1,7 @@
 # 📋 Plano Mestre de Implementação Técnica (Master Implementation Plan)
 
 > **Plataforma:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-> **Versão do Documento:** 2.0.0  
+> **Versão do Documento:** 3.0.0 (Consolidada com ADRs 007, 007.1, 008 e 010)  
 > **Status:** Ativo / Em Execução  
 > **Última Atualização:** Outubro de 2026  
 > **Repositório Monorepo:** Backend Fastify + Frontend React 19 + AI-Service FastAPI + Infra Kubernetes  
@@ -13,22 +13,22 @@
 1. [Visão Estratégica & Objetivos de Engenharia](#1-visão-estratégica--objetivos-de-engenharia)
 2. [Arquitetura de Fases & Status de Entrega](#2-arquitetura-de-fases--status-de-entrega)
 3. [Plano Detalhado por Frente de Trabalho (Workstreams)](#3-plano-detalhado-por-frente-de-trabalho-workstreams)
-   - 3.1. [Frente 1: Infraestrutura K8s, Warm Pool & Ambientes de Edição](#31-frente-1-infraestrutura-k8s-warm-pool--ambientes-de-edição)
-   - 3.2. [Frente 2: Backend Fastify & Engenharia de Dados](#32-frente-2-backend-fastify--engenharia-de-dados)
-   - 3.3. [Frente 3: Frontend Web, Design System & UX Científica](#33-frente-3-frontend-web-design-system--ux-científica)
-   - 3.4. [Frente 4: Camada de Inteligência Científica (`ai-service` / SciAI)](#34-frente-4-camada-de-inteligência-científica-ai-service--sciai)
-   - 3.5. [Frente 5: Painel de Administração & Observabilidade Live SSE](#35-frente-5-painel-de-administração--observabilidade-live-sse)
-   - 3.6. [Frente 6: Evolução Futura de Infraestrutura & Desktop Híbrido](#36-frente-6-evolução-futura-de-infraestrutura--desktop-híbrido)
+   - 3.1. [Frente 1: Motor de Edição Colaborativa Web-Nativa (CodeMirror 6 + OT)](#31-frente-1-motor-de-edição-colaborativa-web-nativa-codemirror-6--ot)
+   - 3.2. [Frente 2: Workflow Oficial em 6 Etapas Fixas & Revisão em Dois Níveis](#32-frente-2-workflow-oficial-em-6-etapas-fixas--revisão-em-dois-níveis)
+   - 3.3. [Frente 3: Backend Fastify, Persistência ACID & Compilador TeX](#33-frente-3-backend-fastify-persistência-acid--compilador-tex)
+   - 3.4. [Frente 4: Frontend React 19, Gantt Interativo & SCIA Design System](#34-frente-4-frontend-react-19-gantt-interativo--scia-design-system)
+   - 3.5. [Frente 5: Camada de Inteligência Científica (`ai-service` / SciAI)](#35-frente-5-camada-de-inteligência-científica-ai-service--sciai)
+   - 3.6. [Frente 6: Observabilidade, Painel Admin & Métricas Institucionais](#36-frente-6-observabilidade-painel-admin--métricas-institucionais)
 4. [Matriz de Dependências Técnicas & Milestones](#4-matriz-de-dependências-técnicas--milestones)
 5. [Critérios de Aceite Globais (Definition of Done - DoD)](#5-critérios-de-aceite-globais-definition-of-done---dod)
 6. [Matriz de Riscos Técnicos & Planos de Mitigação](#6-matriz-de-riscos-técnicos--planos-de-mitigação)
-7. [Plano de Ação Imediato (Next Actions Checklist)](#7-plano-de-ação-imediato-next-actions-checklist)
+7. [Plano de Ação Imediato](#7-plano-de-ação-imediato)
 
 ---
 
 ## 1. Visão Estratégica & Objetivos de Engenharia
 
-O **SCIA (Scientific Collaboration + AI)** é uma plataforma integrada, 100% self-hosted, concebida para modernizar a produção científica de grupos de pesquisa. Ela orquestra todo o ciclo de vida do manuscrito acadêmico: desde a exploração inicial de temas com agentes inteligentes de busca bibliográfica até a escrita colaborativa em LaTeX no VS Code embutido, revisão por pares com visualização comparativa side-by-side, auditoria formal de propriedade intelectual (NIT) e submissão a conferências com controle de versões (v1, v2 e Camera-Ready).
+O **SCIA (Scientific Collaboration + AI)** é uma plataforma integrada, 100% self-hosted, concebida para modernizar a produção científica de grupos de pesquisa e universidades. Ela orquestra todo o ciclo de vida do manuscrito acadêmico: desde a exploração inicial de temas e curadoria bibliográfica com agentes de IA (LangGraph) até a escrita colaborativa em tempo real com **CodeMirror 6**, compilação síncrona TeX Live, revisão por pares com apontamentos ancorados duráveis (`ReviewComment`), governança formal de propriedade intelectual (**NIT**) e submissão a conferências com controle de versões (Target, Backup, v2 e Camera-Ready).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -36,170 +36,128 @@ O **SCIA (Scientific Collaboration + AI)** é uma plataforma integrada, 100% sel
 ├─────────────────────┬──────────────────────┬────────────────────────────────────┤
 │ 1. Frontend Web     │ 2. Backend API       │ 3. AI Service (SciAI)              │
 │    (React 19, Vite, │    (Fastify, Prisma, │    (Python 3.12, FastAPI,          │
-│     MUI, TanStack)  │     PostgreSQL, K8s) │     LangGraph, OpenAlex, S2)       │
+│     CodeMirror 6,   │     PostgreSQL,      │     LangGraph, OpenAlex, S2,       │
+│     MUI, TanStack)  │     Redis Leases)    │     Tavily, Streaming SSE)         │
 ├─────────────────────┴──────────────────────┴────────────────────────────────────┤
-│ 4. Execution & Orchestration Layer                                              │
-│    (KinD/Kubernetes, Warm Standby Pods, TeX Live Containers, Redis 7 In-Memory)│
+│ 4. Compilation & Storage Layer                                                  │
+│    (sci-latex-compiler TeX Live / latexmk, MinIO S3 Object Storage)             │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Princípios Técnicos Inegociáveis
 
-1. **Zero Distração & Máxima Ergonomia:** Editor configurado em *Zen Mode* sem extensões ruidosas de terminal ou telemetria; interface web guiada pela regra cromática 85/15 (Soft UI sem pretos absolutos).
-2. **Abstração Transparente do Git:** Pesquisadores utilizam a interface ou o editor sem manipular chaves SSH ou tokens. Todo o versionamento é assinado via Conta de Serviço com commits em nome do autor real e auditado no banco de dados.
-3. **Resiliência Multi-Tenant em K8s:** Cada tarefa ou revisão executa em container isolado com montagem em subcaminhos de 4 níveis (`projects/P/users/U/stages/S/tasks/T`), mantendo 1 Pod de reserva aquecido (*Warm Pool*) para inicialização instantânea.
-4. **Governança Institucional Estrita:** Nenhum paper é submetido à conferência alvo sem a emissão de Parecer Favorável do NIT (`APPROVED_NIT`) e sem a conclusão integral de todas as etapas de conteúdo.
+1. **Zero Keystrokes no Banco:** A digitação colaborativa de alta frequência opera na memória RAM do Pod Fastify responsável pela sala WebSocket, com latência local <16ms e sincronização OT centralizada. O banco relacional é blindado por debounce híbrido multi-critério (ADR-007).
+2. **Versionamento Relacional Nativo:** Autores e revisores trabalham em um ambiente web transparente. Todo o versionamento reside em snapshots relacionais e deltas operacionais gerenciados no banco de dados (ADR-008).
+3. **Régua Institucional de 6 Etapas Fixas:** Todo artigo obedece à sequência imutável de 1 a 6, eliminando reordenação arbitrária e preservando a integridade das métricas gerenciais e travas de Gatekeeper (ADR-008).
+4. **Proteção da Persona do Revisor:** O revisor acessa o editor em modo estritamente `readOnly`, prevenindo edições acidentais no LaTeX, com capacidade total de inserção de anotações e threads duráveis (`ReviewSidebar` / ADR-010).
+5. **Governança por Gatekeepers Invioláveis:** Nenhum artigo é submetido à conferência alvo sem a emissão de Parecer Aprovado do NIT (`APPROVED_NIT`) após conclusão integral da Revisão Geral (Etapa 4).
 
 ---
 
 ## 2. Arquitetura de Fases & Status de Entrega
 
-O plano de desenvolvimento do SCIA foi organizado em 7 fases sequenciais. A tabela abaixo sintetiza o estado consolidado da plataforma:
-
 | Fase | Escopo Técnico | Status | Referência Principal |
 | :--- | :--- | :---: | :--- |
-| **Fase I** | Fundação de Dados, Infraestrutura K8s & Editor Zen Mode | 🟢 Concluído | [`ROADMAP.md#bloco-1`](planning/ROADMAP.md) |
-| **Fase II** | Regras de Negócio de PRs, Revisão Side-by-Side & Isolamento | 🟢 Concluído | [`ROADMAP.md#bloco-2`](planning/ROADMAP.md) |
-| **Fase III** | Frontend ReactJS, Stepper Ribbon & Gantt Unificado | 🟢 Concluído | [`ROADMAP.md#bloco-3`](planning/ROADMAP.md) |
-| **Fase IV** | Integração GitHub-Native, Projeções de Issues & SSE | 🟢 Concluído | [`reports/relatorio-fase-4.md`](planning/reports/relatorio-fase-4.md) |
-| **Fase V** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | Branch: `feature/sciai-integration-layer` |
-| **Fase VI** | Painel Admin em Tempo Real (Live SSE Dashboard) | ⚪ **Prioridade Próxima** | [`ROADMAP.md#bloco-4`](planning/ROADMAP.md) |
-| **Fase VII**| Resiliência de Infraestrutura, Hibernação & SSH Desktop | ⚪ Backlog Estratégico | [`ROADMAP.md#bloco-5`](planning/ROADMAP.md) |
+| **Fase I** | Modelagem Relacional Prisma 7, Autenticação JWT e RBAC | 🟢 Concluído | [`docs/DATABASE.md`](DATABASE.md) |
+| **Fase II** | Editor Colaborativo CodeMirror 6, OT e Debounce Híbrido | 🟢 Concluído | [`ADR-007`](planning/adrs/adr-007-collaborative-editor-architecture-scaling.md) |
+| **Fase III** | Fencing Monotônico de Posse e Resiliência Multi-Pod | 🟢 Concluído | [`ADR-007.1`](planning/adrs/adr-007.1-document-ownership-fencing-and-routing.md) |
+| **Fase IV** | Workflow em 6 Etapas Fixas, Modelo de Revisão e Versionamento Relacional | 🟢 Concluído | [`ADR-008`](planning/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) |
+| **Fase V** | Persistência Relacional de Apontamentos (`ReviewComment`) | 🟢 Concluído | [`ADR-010`](planning/adrs/adr-010-review-comment-persistence-and-db-alignment.md) |
+| **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](planning/adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
+| **Fase VII**| Painel Admin em Tempo Real & Métricas Executivas de Ciclo | ⚪ **Prioridade Próxima** | [`ROADMAP.md`](planning/ROADMAP.md) |
 
 ---
 
 ## 3. Plano Detalhado por Frente de Trabalho (Workstreams)
 
-### 3.1. Frente 1: Infraestrutura K8s, Warm Pool & Ambientes de Edição
+### 3.1. Frente 1: Motor de Edição Colaborativa Web-Nativa (CodeMirror 6 + OT)
 
-**Objetivo:** Prover containers de escrita e compilação TeX Live isolados, de inicialização instantânea e ciclo de vida controlado via API nativa do Kubernetes (`@kubernetes/client-node`).
-
-```mermaid
-graph TD
-    UserReq[Usuário Clica em Abrir Workspace] --> BackendCheck{Tarefa Assinada & Livre?}
-    BackendCheck -- Não --> ErrMsg[HTTP 400/409 Bloqueio de Concorrência]
-    BackendCheck -- Sim --> WarmCheck{Warm Pod Disponível?}
-    WarmCheck -- Sim --> ClaimWarm[Reivindica Pod do Warm Pool]
-    WarmCheck -- Não --> SpawnPod[Cria Pod On-Demand: user-workspace]
-    ClaimWarm --> MountSubpath[Monta Subpath: projects/P/users/U/stages/S/tasks/T]
-    SpawnPod --> MountSubpath
-    MountSubpath --> SyncBranch[Git Clone Direto da Branch remota]
-    SyncBranch --> StartProxy[Fastify Reverse Proxy conecta ao Code-Server]
-    StartProxy --> EditorReady[Autor edita no VS Code Zen Mode]
-    EditorReady --> IdleCheck{Inatividade > 180s?}
-    IdleCheck -- Sim --> K8sSweeper[Sweeper destrói Pod órfão]
-```
+**Objetivo:** Prover editor LaTeX colaborativo web-nativo de alto rendimento com suporte a múltiplos autores, cursores remotos em tempo real e sincronização determinística.
 
 #### Entregas Concluídas
-- [x] **Warm Standby Pool (`ensureWarmPool`):** Manutenção contínua de exatamente 1 Pod aquecido com imagem TeX Live pronta, reduzindo a latência de abertura do editor de ~15s para < 800ms.
-- [x] **Isolamento de 4 Níveis:** Montagem de volume em subcaminho exclusivo `projects/${projectId}/users/${userId}/stages/${stageSegment}/tasks/${taskId}`.
-- [x] **Detecção e Correção de `subPath` Desalinhado:** Validação em tempo de execução de `volumeMounts[0].subPath` do Pod ativo. Se o Pod estiver apontando para um subcaminho desatualizado (ex: `stages/general/` em vez de `stages/:stageId/`), o Pod é destruído e recriado automaticamente.
-- [x] **Perfil Dinâmico do VS Code:** Injeção de `author.settings.json` (auto-save e compilação contínua) ou `reviewer.settings.json` (modo Read-Only estrito com `chmod 444/555` e barra roxa `#4A154B`).
-- [x] **Sweeper de Pods Órfãos:** Rotina agendada no Fastify que executa a cada 60s, compara os Pods no cluster K8s com os heartbeats ativos no Redis (`workspace:active:*`) e destrói pods abandonados.
-- [x] **Limpeza Pós-Merge:** Após o merge de uma Feature Branch na branch `dev`, os Pods do autor são liberados e os PVCs temporários são limpos (`cleanProjectPVC`).
+- [x] **Single-Leader OT com `@codemirror/collab`:** Servidor Fastify atua como sequenciador central de versões com `rebaseUpdates` e difusão por WebSocket (`documents.websocket.ts`).
+- [x] **Limpeza do Hot Path no Redis:** Removido buffer de digitação no Redis. A digitação opera em memória RAM do Pod dono com latência < 2ms (ADR-007).
+- [x] **Debounce Híbrido Multi-Critério:** Checkpoints no PostgreSQL acionados por timer de inatividade (3s), teto máximo temporal (15s), volume de operações (50 ops) ou fechamento de sala.
+- [x] **Fencing Monotônico de Posse (`ownerGeneration`):** Leases atômicos no Redis (TTL 15s / Heartbeat 2s) coordenados com token monotônico no PostgreSQL para blindagem contra *split-brain* e Pods zumbis (ADR-007.1).
+- [x] **Graceful Shutdown:** Interceptação de `SIGTERM`/`SIGINT` persistindo atomicamente todos os documentos ativos no PostgreSQL antes do encerramento do processo.
 
 ---
 
-### 3.2. Frente 2: Backend Fastify & Engenharia de Dados
+### 3.2. Frente 2: Workflow Oficial em 6 Etapas Fixas & Revisão em Dois Níveis
 
-**Objetivo:** Arquitetura Modular Monolith de alto rendimento com Node.js + Fastify + TypeScript, garantindo integridade ACID via Prisma 7 e auditoria total.
+**Objetivo:** Padronizar a esteira editorial acadêmica em seis etapas fixas e estruturar o versionamento nativo via banco de dados.
 
 #### Entregas Concluídas
-- [x] **Prisma ORM 7 + Driver Adapter (`@prisma/adapter-pg`):** 17 modelos relacionais mapeados cobrindo Usuários, Ciclos Acadêmicos, Equipes, Artigos, Etapas, Tarefas, PRs, Rodadas de Revisão, RCs e Projeções do GitHub ([`docs/DATABASE.md`](DATABASE.md)).
+- [x] **Régua Institucional das 6 Etapas:** Criação automática e obrigatória das etapas 1 a 6 no cadastro do artigo. Deleção e reordenação bloqueadas na API (`DELETE /stages/:id -> 400 Bad Request`).
+- [x] **Versionamento Relacional Nativo:** Versionamento integral gerenciado por `ProjectFile`, `DocumentSnapshot` e transações atômicas no PostgreSQL.
+- [x] **Modelo de Revisão em Dois Níveis:**
+  - *Nível 1 (Micro):* Bate e volta por tarefas de escrita na Etapa 3 (`IN_PROGRESS` ➡️ `REVIEW_REQUESTED` ➡️ `CHANGES_REQUESTED` ➡️ `COMPLETED`).
+  - *Nível 2 (Macro):* Revisão Geral na Etapa 4 com rodadas iterativas (v1, v2) sem desarmar a conclusão histórica da Etapa 3.
+- [x] **Persona do Revisor Acadêmico:** CodeMirror em modo `readOnly: true`, com total capacidade de anotação ancorada via `ReviewSidebar` (ADR-008).
+- [x] **Persistência Durável de Apontamentos (`ReviewComment`):** Gravação relacional de seleções (`from`, `to`), conteúdo, status (`open`/`resolved`) e respostas em threads no PostgreSQL (ADR-010).
+
+---
+
+### 3.3. Frente 3: Backend Fastify, Persistência ACID & Compilador TeX
+
+**Objetivo:** Arquitetura Modular Monolith de alto rendimento com Node.js + Fastify + TypeScript, integridade transacional via Prisma 7 e compilação síncrona desacoplada.
+
+#### Entregas Concluídas
+- [x] **Prisma ORM 7 + Driver Adapter (`@prisma/adapter-pg`):** 14 modelos canônicos mapeados e saneados ([`docs/DATABASE.md`](DATABASE.md)).
 - [x] **Autenticação Segura OWASP:** Cookies HTTP-Only com JWT assinado, rotação segura de refresh tokens na tabela `Session` e proteção RBAC em nível de rota.
-- [x] **Abstração Git via SDK Octokit:** Todas as chamadas para a API REST do GitHub utilizam `@octokit/rest`. Comandos de Git CLI utilizam autenticação efêmera via `-c http.extraHeader="Authorization: Basic <base64>"`, sem exposição de tokens em arquivos `.git/config` ou logs.
-- [x] **Tradução Acadêmica de Diffs (`GET /tasks/:taskId/diff-summary`):** Converte diffs brutos do Git em categorias amigáveis ("Seção Introdução", "Referências", "Figuras") com detecção não-bloqueante de alterações fora de escopo (`hasChangesInOtherFiles`).
-- [x] **Hub Unidirecional de Eventos em Tempo Real (SSE):** Endpoint `/api/v1/events/stream` com heartbeat via Web Worker em thread isolada (Blob) e sinal periódico `: ping\n\n` a cada 30s.
+- [x] **Transações Atômicas de Checkpoint (`documents.repository.ts`):** `saveCheckpoint` unifica a versão do projeto, conteúdo de `main.tex`, arquivos secundários e `DocumentSnapshot` em uma única chamada `prisma.$transaction`.
+- [x] **Microserviço TeX Live (`sci-latex-compiler`):** Compilação isolada com `latexmk -pdf -interaction=nonstopmode -synctex=1` em diretório efêmero, com timeout de 60s e captura estruturada de erros de compilação.
+- [x] **Barramento SSE com Redis Pub/Sub:** Endpoint `/api/v1/events` emitindo eventos de domínio (`TASK_REVIEW_REQUESTED`, `STAGE_UPDATED`, `NIT_STATUS_CHANGED`) sincronizados entre instâncias.
 
 ---
 
-### 3.3. Frente 3: Frontend Web, Design System & UX Científica
+### 3.4. Frente 4: Frontend React 19, Gantt Interativo & SCIA Design System
 
-**Objetivo:** Interface moderna em React 19 + TypeScript + Vite baseada no **SCIA Design System** ([`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)), proporcionando acompanhamento de cronogramas sem fadiga visual.
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                     STEPPER RIBBON (ArticleTimelineHeader)             │
-├────────────────────────────────────────────────────────────────────────┤
-│ [1. Intro ✓] ── [2. Metodologia ●] ── [3. Resultados ○] ── [🔒 NIT] ──┤
-│                                                                        │
-│ Progresso da Etapa Selecionada: [██████████░░░░░░░░] 58%               │
-└────────────────────────────────────────────────────────────────────────┘
-```
+**Objetivo:** Interface moderna em React 19 + TypeScript + Vite baseada no **SCIA Design System** ([`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)), proporcionando acompanhamento de cronogramas e edição fluida.
 
 #### Entregas Concluídas
-- [x] **SCIA Soft UI Design System:** Paleta sem pretos absolutos (Slate 50 no light, Slate 900 no dark), botões de 10px, cards de 16px, chips pastel e tipografia 100% self-hosted via pacotes `@fontsource` (Inter, JetBrains Mono, Plus Jakarta Sans).
-- [x] **Stepper Ribbon Horizontal (`ArticleTimelineHeader`):** Régua visual de etapas paralelas com reordenação Drag & Drop (`@dnd-kit`) e travas de gatekeeper fixadas ao final da fita.
-- [x] **Visão Unificada em Linha do Tempo (Gantt Interativo):** Visualização hierárquica por etapa com árvore lateral de lançamento rápido de workspace, badges de bloqueio sequencial e gaveta de detalhes da tarefa (`GanttTaskDetailDrawer`).
-- [x] **Padrão URL-First com Zero-Flicker UX:** Todas as tabelas de dados (`GenericDataGrid`) sincronizam filtros de busca e paginação com a query string via `useUrlFilters`, empregando `placeholderData: keepPreviousData` do TanStack Query para eliminar piscadas na tela.
-- [x] **Modais Padronizados (`StandardModal`):** Unificação de todos os diálogos nos presets de dimensão fixa (`sm: 560x560`, `md: 740x640`, `lg: 920x720`, `xl: 1140x780`).
+- [x] **SCIA Soft UI Design System:** Paleta sem pretos absolutos (Slate 50 / Slate 900), botões de 10px, cards de 16px, chips pastel e tipografia self-hosted (`@fontsource/inter`, JetBrains Mono, Plus Jakarta Sans).
+- [x] **Visão Gantt Interativa das 6 Etapas:** Visualização temporal hierárquica por etapa com datas planejadas (`plannedCompletionDate`), cálculo dinâmico de semáforos de prazos (`DeadlineStatus`) e gaveta de detalhes da tarefa.
+- [x] **Editor Workspace Completo:** Abas de arquivos (`EditorTabBar`), árvore lateral (`FileTreeSidebar`), barra de colaboradores ativos (`CollaboratorsBar`), preview de PDF sincronizado (`PdfPreview`) e comparador de diffs de snapshots (`EditorDiffViewer`).
+- [x] **Padrão URL-First & Zero-Flicker:** Filtros sincronizados com query strings via `useUrlFilters` e `placeholderData: keepPreviousData` do TanStack Query.
+- [x] **Exclusividade de Named Exports:** 100% dos componentes em `export const ComponentName = ...` sem exports default.
 
 ---
 
-### 3.4. Frente 4: Camada de Inteligência Científica (`ai-service` / SciAI)
+### 3.5. Frente 5: Camada de Inteligência Científica (`ai-service` / SciAI)
 
-**Objetivo:** Microserviço autônomo em Python 3.12 + FastAPI + LangGraph para conduzir onboarding científico, exploração bibliográfica, curadoria e auxílio de redação em LaTeX, sem acoplamento a código legado.
+**Objetivo:** Microserviço autônomo em Python 3.12 + FastAPI + LangGraph para conduzir ideação científica, exploração bibliográfica, curadoria e auxílio de redação em LaTeX.
 
-```mermaid
-graph LR
-    Supervisor[Supervisor LangGraph] --> IdeaRefiner[Idea Refiner: Hipóteses & Tema]
-    IdeaRefiner --> SearchSpec[Search Specialist: Busca OpenAlex/S2]
-    SearchSpec -->|Interrupt: Human-in-the-Loop| UserFeedback[Validação pelo Pesquisador]
-    UserFeedback --> CurationAgent[Curation Agent: Roadmap & Filtros]
-    CurationAgent --> WriterAgent[Writer Agent: Rascunho LaTeX]
-    WriterAgent --> Supervisor
-```
-
-#### Estado Atual da Frente (`feature/sciai-integration-layer`)
-- [x] **Triagem Limpa & Descarte de Código Legado:** Eliminados compiladores síncronos redundantes, WebSockets YRoom e modelos duplicados do projeto legado `sci-project`.
+#### Entregas Concluídas
 - [x] **Núcleo de Agentes LangGraph com Estado Tipado (`ai-service/app/agents/`):**
-  - `state.py`: Estado compartilhado `OnboardingState` contemplando histórico, artigos curados e tarefas preliminares.
-  - `supervisor.py`: Orquestrador mestre dos 4 estágios com transições determinísticas.
+  - `state.py`: Estado compartilhado `OnboardingState` com artigos e tarefas.
+  - `supervisor.py`: Orquestrador mestre dos 4 estágios.
   - `idea_refiner.py`: Agente de refinamento conceitual de pesquisa.
-  - `search_specialist.py`: Agente de busca com Human-in-the-Loop interrupt.
-  - `curation.py`: Agente de curadoria de literatura acadêmica.
+  - `search_specialist.py`: Agente de busca bibliográfica com `interrupt` Human-in-the-Loop.
+  - `curation.py`: Agente de curadoria acadêmica.
   - `writer.py`: Agente redator com sintetizador de blocos TeX.
 - [x] **Ferramentas de Pesquisa Científica com Connection Pooling:**
-  - `openalex.py`: Conector com semáforo de concorrência e cliente `httpx.AsyncClient` reutilizável.
+  - `openalex.py`: Conector com semáforo de concorrência e reaproveitamento de conexões TCP.
   - `semantic_scholar.py`: Conector S2 com exponential backoff para tratamento de rate limits.
-  - `academic_search.py`: Fachada unificada com fallback transparente (S2 $\rightarrow$ OpenAlex $\rightarrow$ Tavily).
+  - `academic_search.py`: Fachada unificada com fallback transparente (S2 ➡️ OpenAlex ➡️ Tavily).
 - [x] **Endpoints de Streaming SSE e M2M:**
   - `POST /api/v1/chat/stream`: Stream interativo SSE com `stream_processor.py`.
   - `POST /api/v1/runs`: Endpoints para execução assíncrona M2M autenticada via `X-Internal-Service-Key`.
-- [x] **Arquitetura de Referência do Frontend (`frontend/references-ai-chat/`):**
-  - Mapeados os componentes `OnboardingChat.reference.tsx`, `AIChatSidebar.reference.tsx` e `onboardingApi.reference.ts` prontos para transposição visual ao Design System oficial.
 
-#### Pendências para Conclusão da Fase V
-- [ ] **Integração do Chat Copilot na Interface do Workspace:** Implementar o componente de gaveta lateral `<AIChatSidebar />` no frontend oficial conectando ao proxy Fastify `/api/v1/ai/chat/stream`.
-- [ ] **Fluxo Guiado de Criação de Artigo com IA (Onboarding Wizard):** Permitir que autores iniciem novos projetos científicos através do diálogo com o `IdeaRefiner` e gerem automaticamente as etapas e tarefas iniciais no banco PostgreSQL.
-- [ ] **Persistência de Sessões de Chat do SciAI:** Mapear tabela relacional para armazenamento de mensagens e estados dos runs de IA vinculados ao `Project`.
+#### Atividades em Andamento / Próximas
+- [ ] **Integração do Chat Copilot na Interface:** Desenvolver gaveta lateral `<AIChatSidebar />` no frontend oficial conectando ao proxy Fastify `/api/v1/ai/chat/stream`.
+- [ ] **Onboarding Wizard Guiado com IA:** Diálogo interativo para criação de novos projetos gerando automaticamente etapas e tarefas iniciais no PostgreSQL.
 
 ---
 
-### 3.5. Frente 5: Painel de Administração & Observabilidade Live SSE
+### 3.6. Frente 6: Observabilidade, Painel Admin & Métricas Institucionais
 
-**Objetivo:** Fornecer aos administradores e gerentes visibilidade em tempo real sobre a saúde da infraestrutura, sessões ativas e Pods alocados no cluster.
+**Objetivo:** Fornecer aos administradores e gerentes visibilidade em tempo real sobre conexões ativas, taxa de checkpoints e métricas de cumprimento de metas por período acadêmico.
 
-#### Atividades Planejadas (Bloco 4)
-- [ ] **5.1 Canal SSE de Administração no Backend (`/api/v1/admin/events`):**
-  - Emitir métricas instantâneas sobre: Pods em execução (`warm-standby` vs `user-workspace`), conexões SSE ativas, taxa de rascunhos salvos por minuto e consumo de memória.
-- [ ] **5.2 Tela de Administração de Sessões e Pods no Frontend:**
-  - Desenvolver página `/admin` protegida por `Role.ADMIN` com:
-    - Tabela DataGrid de usuários online e duração da sessão ativa.
-    - Monitor de Pods físicos do Kubernetes com botão para encerramento forçado (*Kill Session*).
-    - Status do Warm Pool com gatilho manual de reabastecimento.
-
----
-
-### 3.6. Frente 6: Evolução Futura de Infraestrutura & Desktop Híbrido
-
-**Objetivo:** Otimização de custos de computação em grande escala e suporte a fluxos de trabalho avançados para pesquisadores seniores.
-
-#### Atividades Mapeadas (Bloco 5 - Backlog)
-- [ ] **6.1 Hibernação Inteligente de Pods com Retenção de PVC:**
-  - Após 30 minutos de inatividade, o Pod é destruído, mas o PVC permanece montado e pronto para reinicialização em < 3 segundos na próxima interação.
-- [ ] **6.2 Conexão Remota via VS Code Desktop (SSH Gateway):**
-  - Provisionamento de um container SSH intermediário seguro permitindo que autores utilizem sua instalação nativa do VS Code Desktop conectada ao repositório do Pod.
+#### Atividades Planejadas
+- [ ] **Canal SSE de Administração (`/api/v1/admin/events`):** Métricas instantâneas sobre conexões WebSocket ativas, taxa de checkpoints/minuto e latência do cluster.
+- [ ] **Painel Administrativo no Frontend (`/admin`):** Visualização de usuários online, tempo de sessão e ações de desconexão preventiva.
+- [ ] **Dashboard Executivo de Metas do Ciclo Acadêmico:** Consolidação de taxas de aceitação em congressos alvo vs. backup e tempo médio de ciclo de revisão.
 
 ---
 
@@ -207,80 +165,50 @@ graph LR
 
 ```mermaid
 gantt
-    title Cronograma de Entrega dos Milestones (M1 a M6)
+    title Cronograma Consolidado de Milestones SCIA
     dateFormat  YYYY-MM-DD
     section Entregas Concluídas
-    M1 - Infra K8s & Zen Mode        :done, m1, 2026-08-01, 2026-08-25
-    M2 - PRs, RBAC & Split Review    :done, m2, 2026-08-26, 2026-09-15
-    M3 - Frontend Gantt & Timeline   :done, m3, 2026-09-16, 2026-10-05
-    M4 - GitHub-Native & Projeções   :done, m4, 2026-10-06, 2026-10-12
+    M1 - Fundação Relacional & Auth         :done, m1, 2026-08-01, 2026-08-25
+    M2 - Motor CodeMirror 6 OT (ADR-007)   :done, m2, 2026-08-26, 2026-09-20
+    M3 - Fencing Monotônico (ADR-007.1)    :done, m3, 2026-09-21, 2026-10-10
+    M4 - 6 Etapas & Modelo de Revisão      :done, m4, 2026-10-11, 2026-10-25
+    M5 - Persistência ReviewComment        :done, m5, 2026-10-26, 2026-10-28
     section Frentes Ativas
-    M5 - SciAI LangGraph Layer       :active, m5, 2026-10-13, 2026-10-25
-    M6 - Painel Admin Live SSE       :m6, 2026-10-26, 2026-11-05
+    M6 - SciAI LangGraph Layer             :active, m6, 2026-10-29, 2026-11-10
+    M7 - Observabilidade & Admin Dashboard :m7, 2026-11-11, 2026-11-25
 ```
-
-### Detalhamento dos Milestones
-
-| Milestone | Entregáveis Principais | Critério de Desbloqueio |
-| :--- | :--- | :--- |
-| **M1: Core Engine & K8s** | Pod Manager, Warm Pool, Zen Mode, Fastify API base. | Pods abrem em < 800ms sem terminais ou extensões externas. |
-| **M2: Editorial Workflow** | RBAC, Review Split (TeX Diff + PDF), Registro NIT, Merge de PRs. | Revisor avalia sem permissão de escrita (`chmod 444`). |
-| **M3: Unified UX** | Gantt Timeline unificado, Stepper Ribbon, URL-Filter DataGrids. | Zero flicker em buscas e 100% de adesão ao Design System. |
-| **M4: GitHub Integration** | Webhook Inbox idempotente, sincronização bidirecional de Issues. | Projeções locais atualizadas via eventos SSE em tempo real. |
-| **M5: SciAI Intelligence** | Microserviço `ai-service`, LangGraph Multi-Agente, Chat Copilot. | Onboarding interativo gerando hipóteses e literatura curada. |
-| **M6: Real-Time Admin** | Canal `/admin/events`, monitor de Pods e gerenciador de sessões. | Administrador encerra sessões órfãs diretamente na UI. |
 
 ---
 
 ## 5. Critérios de Aceite Globais (Definition of Done - DoD)
 
-Toda e qualquer nova funcionalidade incorporada ao monorepo **deve** atender rigorosamente aos seguintes critérios antes de ser considerada concluída:
-
-1. **Qualidade de Código & Tipagem Estrita:**
-   - **Zero Warnings no ESLint:** Execução limpa de `npm run lint` no backend e frontend.
-   - **Zero Erros de Tipagem:** `npx tsc --noEmit` aprovado em 100% dos pacotes.
-   - **Formatador Oficial:** `npm run format:check` passando com adesão estrita ao Prettier.
-   - **Nomenclatura em Inglês:** Nomes de variáveis, modelos, endpoints e funções estritamente em inglês.
-2. **Cobertura de Testes Automatizados:**
-   - Módulos com regras de negócio devem incluir suítes unitárias/integração (`*.test.ts` / `*.spec.ts`).
-   - A suíte global de testes do backend (`npm test`) deve manter 100% de aprovação (atualmente 18 suítes / 63 testes).
-3. **Padrões de Arquitetura & Frontend:**
-   - Componentes React funcionais com **Named Exports exclusivos** (`export const ComponentName = ...`), sem `export default`.
-   - Ausência completa de `React.FC` e arquivos de re-exportação barril (`index.ts`).
-   - Mutações e consultas assíncronas centralizadas em custom hooks do TanStack Query (`src/hooks/`).
-4. **Governança de Documentação:**
-   - Atualização mandatória do checkpoint de retomada em [`docs/planning/STATUS.md`](planning/STATUS.md).
-   - Marcação de conclusão `[x]` no item correspondente em [`docs/planning/ROADMAP.md`](planning/ROADMAP.md).
-   - Se houver alteração de modelo de banco de dados ou endpoints, atualização imediata em [`docs/DATABASE.md`](DATABASE.md) e [`docs/planning/specs/`](planning/specs/).
+1. **Qualidade de Código & Linter:** 0 erros e 0 warnings no ESLint e Oxlint do frontend e backend (`npm run lint`).
+2. **Formatação Estrita:** 100% dos arquivos em conformidade com o Prettier (`npm run format:check`).
+3. **Checagem de Tipos Estrita:** Compilação TypeScript do backend e frontend com zero erros (`npx tsc --noEmit`).
+4. **Cobertura de Testes:** Suíte de testes unitários e de integração aprovada no Vitest (`npm test`).
+5. **Foco Acadêmico Fluido:** Nenhuma operação de escrita, revisão ou submissão depende de configurações locais ou complexidade técnica.
+6. **Integridade de Documentação:** Alterações arquiteturais devem atualizar o [`STATUS.md`](planning/STATUS.md) e as ADRs correspondentes.
 
 ---
 
 ## 6. Matriz de Riscos Técnicos & Planos de Mitigação
 
-| Risco Técnico | Probabilidade | Impacto | Estratégia de Mitigação Implementada |
+| Risco Técnico | Probabilidade | Impacto | Estratégia de Mitigação Adotada |
 | :--- | :---: | :---: | :--- |
-| **1. Esgotamento de Memória por Pods K8s Órfãos** | Média | Alto | **Sweeper Automatizado:** Chaves de presença no Redis expiram em 180s. Daemon Fastify roda a cada 60s e destrói pods órfãos via API K8s. |
-| **2. Conflitos de Escrita Concorrente em Branches Git** | Média | Alto | **Isolamento de 4 Níveis & Claim Lock:** Subcaminhos dedicados no filesystem. Tarefas exigem assinatura prévia (`claim`) e bloqueiam segundo acesso (`TASK_WORKSPACE_OCCUPIED`). |
-| **3. Suspensão de Heartbeat SSE por Abas em Segundo Plano** | Alta | Médio | **Blob Web Worker em Thread Isolada:** Timers rodando fora da thread principal do navegador, com reativação imediata ao detectar `visibilitychange`. |
-| **4. Rate Limit em Buscas Científicas (S2 / OpenAlex)** | Alta | Médio | **Fachada com Fallback & Connection Pooling:** Semáforo de concorrência local, exponential backoff e fallback automático em cadeia (S2 $\rightarrow$ OpenAlex $\rightarrow$ Tavily). |
-| **5. Vazamento de Credenciais Git nos Containers** | Baixa | Crítico | **Token Efêmero via Header HTTP:** Comandos Git CLI injetam token via `-c http.extraHeader`, impedindo gravação no arquivo `.git/config` no disco. |
+| **Sobrecarga de I/O por digitação contínua** | Baixa | Alto | Debounce híbrido multi-critério (3s idle, 15s maxWait, 50 ops) com hot path em RAM. |
+| **Split-brain entre Pods concorrentes** | Média | Crítico | Leases de dono único no Redis combinados com Fencing Monotônico (`ownerGeneration`) no PostgreSQL. |
+| **Corrupção de LaTeX por edição do Revisor** | Baixa | Alto | Injeção obrigatória de `EditorState.readOnly.of(true)` no CodeMirror da persona Revisor. |
+| **Perda de apontamentos de revisão em crash** | Baixa | Médio | Gravação transacional síncrona de `ReviewComment` no PostgreSQL (ADR-010). |
+| **Rate Limit em APIs acadêmicas (S2/OpenAlex)** | Média | Médio | Semáforo assíncrono de concorrência e chaveamento de contingência na Fachada de Busca do SciAI. |
 
 ---
 
-## 7. Plano de Ação Imediato (Next Actions Checklist)
+## 7. Plano de Ação Imediato
 
-### 🎯 Passo 1: Finalização da Camada SciAI (`feature/sciai-integration-layer`)
-- [ ] Conectar os endpoints `/api/v1/chat/stream` e `/runs` ao proxy central do Fastify (`backend/src/modules/ai/`).
-- [ ] Adaptar o componente de chat de referência (`frontend/references-ai-chat/AIChatSidebar.reference.tsx`) para o Design System oficial do SCIA, embutindo-o na Workspace do Autor.
-- [ ] Validar a experiência de Human-in-the-Loop no refinamento de tema de pesquisa através de testes manuais e automatizados.
-
-### 🎯 Passo 2: Abertura do Bloco 4 (Painel de Administração Live SSE)
-- [ ] Criar a branch de feature: `feature/SLV-admin-live-sse-dashboard`.
-- [ ] Implementar o canal SSE `/api/v1/admin/events` no backend Fastify transmitindo contadores de Pods K8s e sessões ativas.
-- [ ] Desenvolver a página administrativa no frontend (`/admin`) com a visão em tempo real de infraestrutura.
-- [ ] Registrar a entrega no Jira, rodar suíte de testes e abrir Pull Request via GitHub MCP.
+1. **Atividade 1 (SciAI Chat Frontend):** Transpor os componentes de referência (`frontend/references-ai-chat/`) para o layout oficial do editor no frontend, integrando a gaveta lateral de chat com o proxy Fastify `/api/v1/ai/chat/stream`.
+2. **Atividade 2 (Onboarding Wizard):** Conectar o fluxo guiado de criação de artigo com o `IdeaRefiner` para instanciar automaticamente projetos com as 6 etapas fixas no PostgreSQL.
+3. **Atividade 3 (Admin Live Dashboard):** Implementar canal SSE administrativo `/api/v1/admin/events` e tela de métricas em tempo real.
 
 ---
 
-*Documento mestre mantido sob controle de versão pela equipe de Engenharia do SCIA.*  
 *Consulte [`docs/planning/STATUS.md`](planning/STATUS.md) para verificar o estado operacional em tempo real.*

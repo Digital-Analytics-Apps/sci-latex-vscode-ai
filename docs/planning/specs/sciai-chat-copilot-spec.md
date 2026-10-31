@@ -58,7 +58,7 @@ graph TD
     
     HumanReview -- Ajustar --> CalcTimeline
     HumanReview -- Aprovado --> ToolCreate[4. Tool: create_scia_project]
-    ToolCreate --> Ready([Projeto Criado: Repositório GitHub + Workspace K8s])
+    ToolCreate --> Ready([Projeto Criado: 6 Etapas Fixas + Arquivos TeX no PostgreSQL])
 ```
 
 ### 2.1. Detalhamento dos Estágios do Grafo:
@@ -91,11 +91,11 @@ graph TD
 #### Estágio 4: Criação do Projeto via Tool (`create_scia_project_tool`)
 * Quando o autor clica em **"Confirmar e Criar Projeto"**, o agente invoca a tool interna.
 * A tool despacha uma chamada autenticada ao backend Fastify do SCIA, que:
-  1. Cria o registro `Project` e suas `ProjectStage`s no PostgreSQL.
-  2. Provisiona o repositório privado no GitHub via Conta de Serviço institucional.
-  3. Descompacta o template LaTeX (`.cls`, `.tex`, `references.bib`) selecionado no MinIO dentro do repositório.
-  4. Insere as 3 referências escolhidas no arquivo `references.bib`.
-  5. Retorna a URL do novo workspace para o frontend redirecionar o autor diretamente para o editor VS Code.
+  1. Cria o registro `Project` e as 6 `ProjectStage`s fixas no PostgreSQL.
+  2. Instancia os arquivos `ProjectFile` (`main.tex`, `references.bib`) diretamente no banco relacional.
+  3. Associa o template LaTeX selecionado a partir do MinIO.
+  4. Insere as referências bibliográficas selecionadas no `references.bib`.
+  5. Retorna o identificador do projeto para o frontend carregar o editor CodeMirror 6.
 
 ---
 

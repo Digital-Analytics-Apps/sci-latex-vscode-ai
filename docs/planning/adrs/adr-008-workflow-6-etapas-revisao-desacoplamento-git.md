@@ -1,4 +1,4 @@
-# ADR 008: Workflow Oficial em 6 Etapas Fixas, Modelo de Revisão em Dois Níveis e Desacoplamento Definitivo do Git
+# ADR 008: Workflow Oficial em 6 Etapas Fixas, Modelo de Revisão em Dois Níveis e Versionamento Relacional Nativo
 
 - **Status:** APROVADO
 - **Data:** 25 de Outubro de 2026
@@ -28,10 +28,10 @@ Fica aprovada a padronização do fluxo editorial do SCIA estruturada em **seis 
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                           ARQUITETURA EDITORIAL SCIA (ADR 008)                          │
 ├────────────────────────────────┬───────────────────────────┬────────────────────────────┤
-│ 1. Desacoplamento Git          │ 2. 6 Etapas Fixas         │ 3. Persona do Revisor      │
-│ - Zero branches/PRs            │ - Ordem 1 a 6 imutável    │ - Mesma tela do Autor      │
-│ - Snapshots & deltas TeX       │ - Sem exclusão/reordenação│ - Filtros/badges contextuais│
-│ - Vocabulário 100% acadêmico   │ - Remoção de @dnd-kit     │ - CodeMirror Read-Only     │
+│ 1. Versionamento Nativo        │ 2. 6 Etapas Fixas         │ 3. Persona do Revisor      │
+│ - Snapshots & deltas TeX       │ - Ordem 1 a 6 imutável    │ - Mesma tela do Autor      │
+│ - Vocabulário 100% acadêmico   │ - Sem exclusão/reordenação│ - Filtros/badges contextuais│
+│ - PostgreSQL ACID transacional │ - Remoção de @dnd-kit     │ - CodeMirror Read-Only     │
 ├────────────────────────────────┼───────────────────────────┼────────────────────────────┤
 │ 4. Bate e Volta de Tarefa      │ 5. Revisão Geral (Etapa 4)│ 6. Governança Gatekeepers  │
 │ - Nível micro na Etapa 3       │ - Nível macro consolidado │ - Etapa 5: Parecer NIT     │
@@ -42,7 +42,7 @@ Fica aprovada a padronização do fluxo editorial do SCIA estruturada em **seis 
 
 ---
 
-### Pilar 1: Desacoplamento Definitivo do Git, PRs e Merges
+### Pilar 1: Versionamento Relacional Nativo (Snapshots & Deltas no PostgreSQL)
 
 1. **Eliminação do Acoplamento:** Todo o versionamento e histórico do manuscrito são gerenciados por operações colaborativas e snapshots centralizados no banco de dados (`ProjectFile`, `DocumentOperation` e `DocumentSnapshot`).
 2. **Remoção de Remanescentes:** Ficam formalmente removidos e deprecados:

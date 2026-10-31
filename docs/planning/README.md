@@ -11,11 +11,10 @@ Se você está procurando entender o projeto ou retomar uma tarefa, utilize os a
 | Pergunta / Necessidade | Documento Principal | Descrição |
 | :--- | :--- | :--- |
 | **"Onde parei e como retomar o trabalho?"** | 📌 [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md) | **Ponto de Retomada.** Exibe o estado atual da aplicação, última task feita e próximos passos imediatos. |
-| **"Qual é o nosso PRD e visão de produto?"** | 📄 [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) | Visão geral do produto, personas, as 7 fases do ciclo de vida do artigo e decisões de alto nível. |
-| **"Quais os requisitos técnicos e de engenharia?"** | ⚙️ [`TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md) | **Documento de Requisitos Técnicos.** Arquitetura K8s, Git, SciAI, APIs, modelos e SLOs. |
+| **"Qual é o nosso PRD e visão de produto?"** | 📄 [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) | Visão geral do produto, personas, a régua das 6 etapas fixas e decisões de alto nível. |
+| **"Quais os requisitos técnicos e de engenharia?"** | ⚙️ [`TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md) | **Documento de Requisitos Técnicos.** CodeMirror 6, OT, PostgreSQL, MinIO, SciAI, APIs e SLOs. |
 | **"Quais são todos os fluxos e jornadas do app?"** | 🔄 [`APP_FLOWS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/APP_FLOWS.md) | **Documento de Fluxos da Aplicação.** Jornadas, telas, estados, modais e gatekeepers. |
-| **"O que já foi feito e quais as próximas tarefas?"** | 🗺️ [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) | Checklist mestre de pendências e funcionalidades concluídas (Blocos 1 ao 5). |
-| **"Quais as regras de Git, Jira e Código?"** | 🛠️ [`WORKFLOW.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/WORKFLOW.md) | Regras de nomeação de branches, padrões de commit, ciclo no Jira (Fazendo -> Feito) e suíte de testes. |
+| **"O que já foi feito e quais as próximas tarefas?"** | 🗺️ [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) | Checklist mestre de entregas consolidadas e frentes ativas. |
 | **"Qual é a especificação do nosso Banco de Dados?"** | 🗄️ [`DATABASE.md`](../DATABASE.md) | **Especificação Técnica do Banco de Dados.** ERD, Dicionário de Dados, enums, cascading, Prisma e Redis. |
 | **"Quais são os padrões do nosso Design System?"** | 🎨 [`DESIGN_SYSTEM.md`](../DESIGN_SYSTEM.md) | **SCIA Design System.** Tokens, cores (Light/Dark), tipografia, componentes e regras de UX. |
 | **"Qual é o nosso Plano de Implementação Técnico?"** | 📋 [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) | **Plano Mestre de Implementação.** Frentes de trabalho, marcos (M1 a M6), riscos, dependências e DoD. |
@@ -31,54 +30,30 @@ docs/planning/
 ├── PRD.md                      <-- Documento de Requisitos de Produto
 ├── TRD.md                      <-- Documento de Requisitos Técnicos
 ├── APP_FLOWS.md                <-- Documento de Fluxos da Aplicação & Jornadas
-├── ROADMAP.md                  <-- Roadmap Mestre & Checklist Concluído vs Pendente
-├── WORKFLOW.md                 <-- Guia de Contribuição, Git, Jira & Testes
+├── ROADMAP.md                  <-- Roadmap Mestre Consolidado
 │
 ├── specs/                      <-- 📐 Especificações Técnicas e de Arquitetura
-│   ├── system-specs.md         (Especificações do Sistema, DB, Auth, Workflow & APIs)
-│   ├── architecture-plan.md    (Planejamento de Arquitetura & Infra K8s)
-│   ├── backend-specs.md        (Especificação de Módulos & Controllers Backend)
-│   ├── frontend-specs.md       (Especificação de Componentes & Services Frontend)
-│   ├── git-service-spec.md     (Integração com Token de Serviço Git)
-│   ├── github-projects-architecture.md (Integração Native GitHub Projects & Webhooks)
 │   ├── reviewer-view-spec.md   (Especificação Técnica da Interface do Revisor)
 │   ├── sciai-contracts-spec.md (Contratos de API, Máquina de Estados e Eventos SciAI)
 │   └── sciai-chat-copilot-spec.md (Chat Copilot & Onboarding Multi-Agente)
 │
 ├── adrs/                       <-- 🧠 Architecture Decision Records (ADRs)
-│   ├── adr-001-github-user-access.md
-│   ├── adr-002-kubernetes-on-demand-pods.md
-│   ├── adr-003-user-git-workspace-flow.md
-│   ├── adr-004-redis-pod-lifecycle-heartbeat.md
-│   ├── adr-005-production-storage-strategy.md
-│   ├── adr-006-sciai-integration-architecture.md (Integração da IA SciAI e Governança)
 │   ├── adr-007-collaborative-editor-architecture-scaling.md (Arquitetura, Persistência e Escalabilidade do Editor)
 │   ├── adr-007.1-document-ownership-fencing-and-routing.md (Roteamento de Posse e Fencing Tokens contra Split-Brain)
 │   ├── adr-008-workflow-6-etapas-revisao-desacoplamento-git.md (Workflow Oficial em 6 Etapas Fixas e Desacoplamento Git)
 │   ├── adr-009-sciai-api-first-experimentation-and-service-enablement.md (Experimentação Headless via API e Habilitação do SciAI)
-│   └── parecer-tecnico-code-server-coder.md
-│
-├── reports/                    <-- 📈 Relatórios de Execução (Fases & Sprints)
-│   ├── relatorio-fase-1.md     (Módulo GitHub Integration & Webhook Inbox)
-│   ├── relatorio-fase-2.md     (Front-end Setup & Local Projections)
-│   ├── relatorio-fase-3.md     (Work Item Branches & Fluxo NIT)
-│   ├── relatorio-fase-4.md     (Integração Tasks + Projeções & SSE em Tempo Real)
-│   ├── analise-comparativa-sci-project.md (Análise Comparativa de Arquitetura com sci-project)
-│   ├── relatorio-benchmark-kind-500-users-scaling.md (Benchmark KinD 500 Autores & Auto-Scaling HPA)
-│   └── backend-sprint-*.md     (Histórico de Sprints 1 a 4 do Backend)
+│   ├── adr-010-review-comment-persistence-and-db-alignment.md (Persistência Durável de ReviewComment e Alinhamento do Schema)
+
 │
 └── backlog/                    <-- 💡 Análises Pendentes e Ideias Futuras
-    ├── analisar.md             (Dívidas de UX, Tela pós-merge e Kanban dinâmico)
-    └── ideas/                  (Ideias para evolução de Workspace e Frontend)
+    └── ideas/                  (Ideias para evolução de Frontend e UX)
 ```
 
 ---
 
-## ⚙️ Como Atualizar esta Documentação
+## ⚙️ Diretrizes de Manutenção da Documentação
 
-1. **Ao Iniciar uma Tarefa:**
-   * Altere a issue no Jira para **`Fazendo`** (`ID 21`) e crie a branch Git (`feature/SLV-X-...`).
-   * Consulte o [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md) para confirmar o contexto.
-2. **Ao Finalizar/Pausar a Sessão:**
-   * Atualize a seção *Onde Parei* em [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md).
-   * Se a funcionalidade foi concluída, marque `[x]` no [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md), faça a transição no Jira para **`Feito`** (`ID 31`) e abra o PR via GitHub MCP.
+1. **Ao Concluir ou Alterar Funcionalidades:**
+   * Atualize a seção *Onde Parei & Como Retomar* em [`STATUS.md`](STATUS.md).
+   * Atualize os requisitos correspondentes em [`TRD.md`](TRD.md), [`DATABASE.md`](../DATABASE.md) e specs ativas.
+   * Marque a entrega como concluída `[x]` no [`ROADMAP.md`](ROADMAP.md).
