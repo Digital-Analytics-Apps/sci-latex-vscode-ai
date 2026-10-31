@@ -20,6 +20,9 @@ spec:
         - name: frontend
           image: sci-latex-frontend:latest
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: sci-latex-secret
           ports:
             - containerPort: 80
               name: http

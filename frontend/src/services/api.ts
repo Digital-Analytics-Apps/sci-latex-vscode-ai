@@ -1,9 +1,10 @@
 import axios from "axios";
 import { store } from "../store";
 import { logout } from "../store/slices/authSlice";
+import { getRuntimeEnv } from "../constants/api.constants";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1",
+  baseURL: getRuntimeEnv("VITE_API_URL"),
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

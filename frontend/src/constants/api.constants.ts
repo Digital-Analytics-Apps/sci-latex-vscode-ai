@@ -1,13 +1,33 @@
+interface RuntimeEnv {
+  VITE_API_URL?: string;
+  VITE_WS_URL?: string;
+}
+
+declare global {
+  interface Window {
+    __ENV__?: RuntimeEnv;
+  }
+}
+
+export const getRuntimeEnv = (key: keyof RuntimeEnv): string | undefined => {
+  if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__[key]) {
+    return window.__ENV__[key];
+  }
+  return import.meta.env[key];
+};
+
 export const API_BASE =
-  import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? '' : 'http://localhost:3333');
+  getRuntimeEnv('VITE_API_URL') ?? (typeof window !== 'undefined');
 
 const resolveWsBase = (): string => {
-  if (import.meta.env.VITE_WS_URL) {
-    return import.meta.env.VITE_WS_URL;
+  const wsEnv = getRuntimeEnv('VITE_WS_URL');
+  if (wsEnv) {
+    return wsEnv;
   }
-  if (import.meta.env.VITE_API_URL) {
+  const apiEnv = getRuntimeEnv('VITE_API_URL');
+  if (apiEnv) {
     try {
-      const parsed = new URL(import.meta.env.VITE_API_URL);
+      const parsed = new URL(apiEnv);
       const proto = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
       return `${proto}//${parsed.host}`;
     } catch {

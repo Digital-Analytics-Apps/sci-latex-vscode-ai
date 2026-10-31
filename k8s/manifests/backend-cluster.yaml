@@ -21,7 +21,7 @@ spec:
           imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
-                name: sci-latex-backend-secret
+                name: sci-latex-secret
           env:
             - name: PORT
               value: "3333"

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RootState } from "../store";
 import { showNotification } from "../store/slices/notificationSlice";
-
+import { getRuntimeEnv } from "../constants/api.constants";
 export function useSSEEventSource(projectId?: string, taskId?: string) {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
@@ -15,7 +15,7 @@ export function useSSEEventSource(projectId?: string, taskId?: string) {
 
     const controller = new AbortController();
     const baseUrl =
-      import.meta.env.VITE_API_URL || "http://localhost:3333/api/v1";
+      getRuntimeEnv("VITE_API_URL") || "http://localhost:3333/api/v1";
 
     const params = new URLSearchParams();
     if (projectId) params.append("projectId", projectId);
