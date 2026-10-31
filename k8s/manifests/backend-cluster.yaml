@@ -19,6 +19,9 @@ spec:
         - name: backend
           image: sci-latex-backend:latest
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: sci-latex-backend-secret
           env:
             - name: PORT
               value: "3333"
@@ -26,18 +29,10 @@ spec:
               value: "0.0.0.0"
             - name: NODE_ENV
               value: "production"
-            - name: DATABASE_URL
-              value: "postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=public"
             - name: REDIS_URL
               value: "redis://redis:6379"
-            - name: JWT_SECRET
-              value: "super-secret-jwt-key-change-in-production"
             - name: MINIO_ENDPOINT
               value: "http://minio:9000"
-            - name: MINIO_ACCESS_KEY
-              value: "minioadmin"
-            - name: MINIO_SECRET_KEY
-              value: "minioadmin123"
             - name: MINIO_BUCKET
               value: "collab-assets"
             - name: COMPILER_URL

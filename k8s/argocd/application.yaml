@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sci-latex-vscode
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: sci-latex-vscode
+    app.kubernetes.io/part-of: sci-latex-stack
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Digital-Analytics-Apps/sci-latex-vscode-ai.git'
+    targetRevision: dev
+    path: k8s/manifests
+    directory:
+      include: '{backend-cluster.yaml,backend-secret.yaml,compiler.yaml,frontend.yaml,hpa.yaml}'
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: sci-latex-backend
+      jsonPointers:
+        - /spec/replicas
+    - group: apps
+      kind: Deployment
+      name: sci-latex-compiler
+      jsonPointers:
+        - /spec/replicas
