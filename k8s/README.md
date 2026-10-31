@@ -245,40 +245,39 @@ kubectl get application -n argocd sci-latex-vscode
 
 ---
 
-## 8. Passo 6: Acessar a Interface Gráfica (Web UI) do ArgoCD
+## 8. Passo 6: Acessar ArgoCD, Frontend e Swagger (Port-Forward Unificado)
 
-### 8.1 Método Rápido (Script Automático)
-Criamos um script que já busca a senha de admin e inicia o túnel seguro:
+### 8.1 Método Rápido (Script Unificado)
+O script `scripts/argocd-ui.sh` abre simultaneamente os túneis de port-forward para todos os serviços essenciais e exibe as credenciais do ArgoCD:
 
 ```bash
-# Executa o script auxiliar
+# Inicia os túneis para ArgoCD (:8443), Frontend (:5173) e Swagger (:3333)
 ./scripts/argocd-ui.sh
 ```
 
-### 8.2 Método Manual
+**URLs disponíveis após rodar o script:**
+* 🌐 **ArgoCD Web UI:** `https://localhost:8443` (Usuário: `admin`)
+* 🌐 **Frontend (App):** `http://localhost:5173`
+* 🌐 **Swagger API Docs:** `http://localhost:3333/docs` (ou `http://localhost:30080/docs`)
 
-#### 1. Obter a senha inicial do usuário `admin`:
-O ArgoCD armazena a senha inicial do administrador em um Secret interno:
+*(Pressione `Ctrl+C` no terminal para encerrar todos os túneis de uma só vez).*
+
+### 8.2 Método Manual Individual
+Se preferir rodar os comandos separadamente em abas distintas do terminal:
 
 ```bash
-# Busca e decodifica a senha do admin
+# 1. Senha do admin do ArgoCD
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
-```
 
-#### 2. Iniciar o Port-Forward para a porta 8443:
-```bash
-# Cria um túnel da sua máquina para o serviço Web do ArgoCD
+# 2. ArgoCD Web UI
 kubectl port-forward svc/argocd-server -n argocd 8443:443
+
+# 3. Frontend Nginx
+kubectl port-forward svc/sci-latex-frontend-service -n default 5173:80
+
+# 4. Backend Fastify & Swagger Docs
+kubectl port-forward svc/sci-latex-backend-service -n default 3333:3333
 ```
-
-#### 3. Fazer login no navegador:
-1. Abra no navegador: **`https://localhost:8443`**
-2. Como o certificado TLS é autoassinado no cluster local, clique em **Avançado $\to$ Continuar para localhost (inseguro)**.
-3. Insira as credenciais:
-   * **Username:** `admin`
-   * **Password:** *(a senha obtida no comando anterior)*
-4. Você verá a aplicação `sci-latex-vscode` com todos os pods, services e HPAs em formato de árvore visual em tempo real.
-
 ---
 
 ## 9. Passo 7: Comandos Essenciais de Verificação e Diagnóstico
@@ -364,3 +363,37 @@ Se alguém rodar um comando manual tentando alterar o cluster:
 kubectl scale deployment sci-latex-frontend --replicas=10
 ```
 O ArgoCD detectará que o Git define apenas 2 réplicas. Graças ao `selfHeal: true`, o ArgoCD reverterá o deployment de volta para 2 réplicas em poucos segundos, garantindo que o cluster nunca sofra desvios não autorizados (*Configuration Drift*).
+
+---
+
+## 11. Como Rodar o Seed do Banco de Dados
+
+O seed cria os usuários iniciais com perfis RBAC, ciclo acadêmico, artigo científico de demonstração, arquivos TeX iniciais e as 6 etapas do workflow científico.
+
+### 11.1 Subir o Banco de Dados (PostgreSQL)
+Certifique-se de que o container do PostgreSQL está em execução:
+```bash
+# Sobe PostgreSQL, Redis e MinIO via Docker Compose
+docker compose up -d postgres redis minio
+```
+
+### 11.2 Sincronizar o Schema e Executar o Seed
+No diretório `backend`:
+```bash
+cd backend
+
+# 1. Aplica o schema do Prisma no PostgreSQL
+npx prisma db push
+
+# 2. Executa o script de seed
+npm run db:seed
+```
+
+### 11.3 Credenciais Criadas pelo Seed (Senha padrão: `123456`)
+* **Gilson Russo (ADMIN / Gestor):** `gilson.russo@example.com`
+* **Roce Russo (COORDENADOR):** `roce.russo@example.com`
+* **Bianca Russo (AUTOR):** `bianca.russo@example.com`
+* **Elisa Russo (AUTOR):** `elisa.russo@example.com`
+* **Carlos Lima (Membro / Revisor):** `carlos.revisor@example.com`
+* **System Admin (ADMIN):** `admin@google.com`
+* **Pesquisador Padrão (AUTOR):** `user@google.com`
