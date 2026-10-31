@@ -446,16 +446,16 @@ TARGET_PORT=30080 npx tsx scripts/benchmark-kind-500-users.ts
 
 ### 12.4 Script de Teste Progressivo de Escalonamento (2 pods $\to$ +1 $\to$ 6 pods)
 
-Para demonstrar visualmente cada fase de escalonamento do HPA de forma controlada, utilize o script auxiliar:
+O script utiliza o modelo de **5 autores por documento** com artigos de tamanho médio completos:
 
 ```bash
-# Executa a Fase 1: Carga Leve (valida estabilidade no limite de 2 pods)
+# Executa a Fase 1: Carga Leve (6 artigos x 5 autores = 30 conexões; valida limite de 2 pods)
 ./scripts/test-scaling.sh 1
 
-# Executa a Fase 2: Carga Moderada (ultrapassa a meta de 70% e sobe +1 a 2 pods)
+# Executa a Fase 2: Carga Moderada (35 artigos x 5 autores = 175 conexões + 15 compilações; sobe +1 a 2 pods)
 ./scripts/test-scaling.sh 2
 
-# Executa a Fase 3: Carga Máxima (força saturação até o teto de 6 pods)
+# Executa a Fase 3: Carga Máxima (120 artigos x 5 autores = 600 conexões + 40 compilações; atinge 6 pods)
 ./scripts/test-scaling.sh 3
 
 # Executa todas as 3 fases sequencialmente

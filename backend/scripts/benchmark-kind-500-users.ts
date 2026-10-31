@@ -24,10 +24,9 @@ export function generateRealisticPaper(index: number): string {
 \\usepackage{microtype}
 
 \\title{High-Throughput Distributed LaTeX Compilation and Collaborative Operational Transformation in Kubernetes Cluster: Study ${index}}
-\\author{Principal Investigator$^{1}$, Lead Co-Author$^{2}$ \\\\
-\\small $^{1}$Department of Computer Science, University of Technology \\\\
-\\small $^{2}$Artificial Intelligence and Scientific Cloud Laboratory \\\\
-\\small Email: \\{investigator, coauthor\\}@scia.university.edu}
+\\author{First Author$^{1}$, Second Author$^{1}$, Third Author$^{2}$, Fourth Author$^{2}$, Fifth Author$^{3}$ \\\\
+\\small $^{1}$Department of Computer Science \\quad $^{2}$Artificial Intelligence Laboratory \\quad $^{3}$Scientific Cloud Center \\\\
+\\small Email: \\{author1, author2, author3, author4, author5\\}@scia.university.edu}
 \\date{\\today}
 
 \\begin{document}
