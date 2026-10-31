@@ -21,7 +21,8 @@
     "benchmarks:latency": "tsx scripts/test-1-collab-latency.ts",
     "benchmarks:chaos": "tsx scripts/test-2-chaos-crash.ts",
     "benchmarks:fencing": "tsx scripts/test-3-fencing-splitbrain.ts",
-    "benchmarks:kind-500": "tsx scripts/benchmark-kind-500-users.ts"
+    "benchmarks:kind-500": "tsx scripts/benchmark-kind-500-users.ts",
+    "benchmarks:progressive": "tsx scripts/test-progressive-scaling.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
