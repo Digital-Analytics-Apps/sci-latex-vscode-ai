@@ -268,9 +268,10 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
       const projectId = projectIds[pIdx];
       const clientId = `${projectId}-a${aIdx}`;
 
-      const text = ` [A${aIdx}:${op}]`;
+      const text = ` % [A${aIdx}:${op}]\n`;
       const len = clientDocLengths[clientId] || 100;
-      const change = ChangeSet.of([{ from: 0, insert: text }], len);
+      const insertPos = Math.max(0, len - 20);
+      const change = ChangeSet.of([{ from: insertPos, insert: text }], len);
 
       clientQueues[clientId].push(performance.now());
       const ver = clientVersions[clientId] || 0;

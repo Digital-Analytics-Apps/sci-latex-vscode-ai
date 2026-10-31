@@ -87,16 +87,16 @@ async function main() {
   // FASE 3: Testando o Limite Máximo de 6 Pods (Carga Intensa Contínua)
   // =========================================================================
   if (!requestedPhase || requestedPhase === '3') {
-    console.log('\n🔴 FASE 3: Testando o Teto Máximo de Réplicas (6 Pods)');
-    console.log('   Configuração: 120 artigos médios, 5 autores por artigo (600 autores concorrentes + 40 compilações)');
-    console.log('   Expectativa : Saturação forçada até atingir maxReplicas: 6.');
+    console.log('\n🔴 FASE 3: Testando a Capacidade Máxima Extrema (Teto de 6 Pods)');
+    console.log('   Configuração: 250 artigos médios, 5 autores por artigo (1.250 conexões WebSocket + 50 compilações concorrentes)');
+    console.log('   Expectativa : Carga máxima com 25.000 operações colaborativas; HPA sustentado no teto.');
 
     await runKind500UsersBenchmark({
-      numProjects: 120,
+      numProjects: 250,
       authorsPerProject: 5,
       opsPerAuthor: 20,
       delayMs: 5,
-      numCompilations: 40,
+      numCompilations: 50,
       targetPort,
     });
 
