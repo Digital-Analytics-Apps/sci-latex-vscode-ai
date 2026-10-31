@@ -92,8 +92,8 @@ async function main() {
     await runKind500UsersBenchmark({
       numProjects: 100,
       authorsPerProject: 6,
-      opsPerAuthor: 10,
-      delayMs: 10,
+      opsPerAuthor: 20,
+      delayMs: 5,
       targetPort,
     });
 
