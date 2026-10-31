@@ -27,12 +27,14 @@ Certifique-se de ter os seguintes componentes instalados no seu ambiente:
    ```env
    NODE_ENV=development
    PORT=3333
-   DATABASE_URL="postgresql://scilatex:scilatex123@localhost:5432/scilatex_db?schema=public"
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sci_latex_db?schema=public"
    JWT_SECRET="sci-latex-super-secret-jwt-key"
-   STORAGE_PATH="/home/user/development/professional/sci-latex-vscode/storage"
-   GITHUB_TOKEN="ghp_seu_token_aqui"
-   GITHUB_ORG="Digital-Analytics-Apps"
-   GITHUB_REPO_PREFIX="sci-latex-"
+   REDIS_URL="redis://localhost:6379"
+   MINIO_ENDPOINT="http://127.0.0.1:9000"
+   MINIO_ACCESS_KEY="minioadmin"
+   MINIO_SECRET_KEY="minioadmin123"
+   MINIO_BUCKET="collab-assets"
+   COMPILER_URL="http://127.0.0.1:4000"
    ```
 
 ---

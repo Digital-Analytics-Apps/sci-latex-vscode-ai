@@ -1,9 +1,7 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { Role } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { env } from '../../config/env';
+import { defaultDocumentsService } from '../documents/documents.service';
 import { ProjectsService } from './projects.service';
 
 export const createProjectSchema = z.object({
@@ -154,11 +152,8 @@ export class ProjectsController {
 
     const { id } = paramsSchema.parse(request.params);
 
-    const projectDir = path.resolve(env.STORAGE_PATH, 'projects', id);
-    const pdfPath = path.join(projectDir, 'main.pdf');
-
     try {
-      const pdfBuffer = await fs.readFile(pdfPath);
+      const pdfBuffer = await defaultDocumentsService.compileDocument(id);
       return reply.type('application/pdf').send(pdfBuffer);
     } catch {
       const mockPdfContent = `%PDF-1.4

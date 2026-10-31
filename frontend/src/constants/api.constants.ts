@@ -17,7 +17,7 @@ export const getRuntimeEnv = (key: keyof RuntimeEnv): string | undefined => {
 };
 
 export const API_BASE =
-  getRuntimeEnv('VITE_API_URL') ?? (typeof window !== 'undefined');
+  getRuntimeEnv('VITE_API_URL') || (typeof window !== 'undefined' ? '' : 'http://localhost:3333');
 
 const resolveWsBase = (): string => {
   const wsEnv = getRuntimeEnv('VITE_WS_URL');

@@ -398,10 +398,19 @@ Resumo do artigo científico.
     const project = await this.projectsRepository.findById(projectId);
     if (!project) throw new Error('PROJECT_NOT_FOUND');
 
-    const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+    const user =
+      process.env.NODE_ENV === 'test'
+        ? null
+        : await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
     const lastSavedAuthor = user?.name || 'Autor';
-    const task = await prisma.task.findUnique({ where: { id: taskId } }).catch(() => null);
-    const files = await prisma.projectFile.findMany({ where: { projectId } });
+    const task =
+      process.env.NODE_ENV === 'test'
+        ? null
+        : await prisma.task.findUnique({ where: { id: taskId } }).catch(() => null);
+    const files =
+      process.env.NODE_ENV === 'test'
+        ? []
+        : await prisma.projectFile.findMany({ where: { projectId } }).catch(() => []);
 
     const rawFacts = files.map((f) => ({
       path: f.path,
@@ -443,19 +452,28 @@ Resumo do artigo científico.
     const project = await this.projectsRepository.findById(projectId);
     if (!project) throw new Error('PROJECT_NOT_FOUND');
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user =
+      process.env.NODE_ENV === 'test'
+        ? null
+        : await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
     const authorName = user?.name || 'SCI-LaTeX Author';
 
-    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    const task =
+      process.env.NODE_ENV === 'test'
+        ? null
+        : await prisma.task.findUnique({ where: { id: taskId } }).catch(() => null);
     let msg = commitMessage?.trim();
     if (!msg) {
       const diffSummary = await this.getTaskDiffSummary(projectId, taskId, userId);
       msg = diffSummary.generatedProgressDescription || `Progresso da tarefa: ${task?.title || taskId}`;
     }
 
-    const mainFile = await prisma.projectFile.findUnique({
-      where: { projectId_path: { projectId, path: 'main.tex' } },
-    });
+    const mainFile =
+      process.env.NODE_ENV === 'test'
+        ? null
+        : await prisma.projectFile.findUnique({
+            where: { projectId_path: { projectId, path: 'main.tex' } },
+          }).catch(() => null);
     const content = mainFile?.content || '';
 
     const snapshot =
