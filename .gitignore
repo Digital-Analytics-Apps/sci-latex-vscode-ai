@@ -13,6 +13,7 @@ out/
 .env.local
 .env.production
 .env.staging
+k8s/manifests/secret.yaml
 
 # System & IDE
 .DS_Store

@@ -15,7 +15,7 @@ spec:
     targetRevision: dev
     path: k8s/manifests
     directory:
-      include: '{backend-cluster.yaml,compiler.yaml,frontend.yaml,hpa.yaml,secret.yaml}'
+      include: '{backend-cluster.yaml,compiler.yaml,frontend.yaml,hpa.yaml}'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: default
@@ -37,9 +37,3 @@ spec:
       name: sci-latex-compiler
       jsonPointers:
         - /spec/replicas
-    - group: ""
-      kind: Secret
-      name: sci-latex-secret
-      jsonPointers:
-        - /data
-        - /stringData
