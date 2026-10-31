@@ -45,14 +45,15 @@ async function main() {
   // =========================================================================
   if (!requestedPhase || requestedPhase === '1') {
     console.log('\n🔵 FASE 1: Testando Carga Leve (Limite de 2 Pods)');
-    console.log('   Configuração: 10 artigos, 2 autores por artigo (20 conexões leves)');
+    console.log('   Configuração: 15 artigos médios, 2 autores por artigo (30 conexões)');
     console.log('   Expectativa : CPU e Memória permanecem baixas; o cluster mantém 2 réplicas.');
 
     await runKind500UsersBenchmark({
-      numProjects: 10,
+      numProjects: 15,
       authorsPerProject: 2,
       opsPerAuthor: 5,
-      delayMs: 60,
+      delayMs: 50,
+      numCompilations: 3,
       targetPort,
     });
 
@@ -65,14 +66,15 @@ async function main() {
   // =========================================================================
   if (!requestedPhase || requestedPhase === '2') {
     console.log('\n🟡 FASE 2: Injetando Carga Moderada (Disparo do Scale-Up para 3-4 Pods)');
-    console.log('   Configuração: 40 artigos, 5 autores por artigo (200 conexões ativas)');
+    console.log('   Configuração: 80 artigos médios, 2 autores por artigo (160 conexões concorrentes + 15 compilações)');
     console.log('   Expectativa : CPU ultrapassa a meta de 70%; HPA adiciona novos pods.');
 
     await runKind500UsersBenchmark({
-      numProjects: 40,
-      authorsPerProject: 5,
-      opsPerAuthor: 8,
+      numProjects: 80,
+      authorsPerProject: 2,
+      opsPerAuthor: 10,
       delayMs: 20,
+      numCompilations: 15,
       targetPort,
     });
 
@@ -86,14 +88,15 @@ async function main() {
   // =========================================================================
   if (!requestedPhase || requestedPhase === '3') {
     console.log('\n🔴 FASE 3: Testando o Teto Máximo de Réplicas (6 Pods)');
-    console.log('   Configuração: 100 artigos, 6 autores por artigo (600 conexões com rajada de compilação)');
+    console.log('   Configuração: 250 artigos médios, 2 autores por artigo (500 autores distribuídos em 250 documentos + 40 compilações)');
     console.log('   Expectativa : Saturação forçada até atingir maxReplicas: 6.');
 
     await runKind500UsersBenchmark({
-      numProjects: 100,
-      authorsPerProject: 6,
+      numProjects: 250,
+      authorsPerProject: 2,
       opsPerAuthor: 20,
       delayMs: 5,
+      numCompilations: 40,
       targetPort,
     });
 

@@ -10,6 +10,97 @@ interface BenchmarkConfig {
   opsPerAuthor: number;
   delayMs: number;
   targetPort: number;
+  numCompilations?: number;
+}
+
+export function generateRealisticPaper(index: number): string {
+  return `\\documentclass[10pt,twocolumn]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{amsmath,amssymb}
+\\usepackage{booktabs}
+\\usepackage{cite}
+\\usepackage{url}
+\\usepackage{microtype}
+
+\\title{High-Throughput Distributed LaTeX Compilation and Collaborative Operational Transformation in Kubernetes Cluster: Study ${index}}
+\\author{Principal Investigator$^{1}$, Lead Co-Author$^{2}$ \\\\
+\\small $^{1}$Department of Computer Science, University of Technology \\\\
+\\small $^{2}$Artificial Intelligence and Scientific Cloud Laboratory \\\\
+\\small Email: \\{investigator, coauthor\\}@scia.university.edu}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\begin{abstract}
+Collaborative scientific writing in cloud-native platforms requires real-time consistency guarantees, low-latency delta transformations, and decoupled document processing. In this paper, we evaluate a multi-tenant microservice architecture combining Operational Transformation (OT) in volatile memory with a distributed lease mechanism backed by Redis and persistent durable storage on PostgreSQL. We examine the effects of concurrent multi-author editing workflows on horizontally scaled Kubernetes pods, analyzing RTT latencies, reconciliation convergence, and compilation throughput under realistic concurrent load profiles. Experimental evaluation reveals that single-writer leasing with fencing tokens completely mitigates split-brain anomalies while sustaining sub-second document convergence under intensive burst conditions.
+\\end{abstract}
+
+\\section{Introduction}
+Modern scientific writing environments have shifted from monolithic desktop software toward distributed, real-time web applications. While traditional approaches rely on frequent filesystem flushes and heavy client-side synchronization, cloud-native collaborative editors employ Operational Transformation (OT) or Conflict-free Replicated Data Types (CRDTs). 
+
+The primary contributions of this experimental study include:
+\\begin{itemize}
+    \\item A decentralized single-writer lease routing model operating across scaled Kubernetes cluster pods.
+    \\item Mathematical fencing tokens ($T_{\\text{fence}}$) designed to prevent stale state propagation under network partitions.
+    \\item Real-world empirical measurements of \\texttt{pdflatex} compiling pipelines across high concurrency thresholds.
+\\end{itemize}
+
+\\section{System Architecture and Operational Model}
+The architecture separates interactive state from durable persistence. Each active project document $D_i$ is mapped to an owner pod $P_k$ using a distributed Redis lease:
+\\begin{equation}
+    \\text{Lease}(D_i) = \\langle P_k, T_{\\text{exp}}, G_v \\rangle
+\\end{equation}
+where $T_{\\text{exp}}$ denotes the absolute lease deadline and $G_v$ represents the monotonic ownership generation token.
+
+\\subsection{Consistency and Transformation Protocol}
+When concurrent operations $O_a$ and $O_b$ are received at server version $V$, the server calculates the transformed operation pair:
+\\begin{equation}
+    (O_a', O_b') = \\mathcal{T}(O_a, O_b)
+\\end{equation}
+ensuring the state convergence criterion:
+\\begin{equation}
+    S \\circ O_a \\circ O_b' = S \\circ O_b \\circ O_a'
+\\end{equation}
+
+\\section{Performance Evaluation}
+Table~\\ref{tab:benchmarks} summarizes the experimental latency and memory utilization parameters measured during full cluster workload simulations.
+
+\\begin{table}[htbp]
+\\centering
+\\caption{System Performance Metrics across Workload Scales}
+\\label{tab:benchmarks}
+\\begin{tabular}{@{}lrrrr@{}}
+\\toprule
+Metric & Baseline & Moderate & Heavy Burst \\\\
+\\midrule
+Concurrent Authors & 20 & 160 & 500 \\\\
+Active Projects & 10 & 80 & 250 \\\\
+RTT Latency P50 (ms) & 12.4 & 48.2 & 145.8 \\\\
+RTT Latency P95 (ms) & 28.1 & 94.6 & 312.0 \\\\
+Throughput (ops/sec) & 45.0 & 180.2 & 620.5 \\\\
+Compiler Memory (MB) & 42.0 & 240.0 & 580.0 \\\\
+\\bottomrule
+\\end{tabular}
+\\end{table}
+
+\\subsection{LaTeX Compilation Dynamics}
+Unlike pure REST APIs, TeX typesetting involves multi-pass font substitution, bibliography resolution, and float layout. The total compilation duration $T_{\\text{comp}}$ is governed by:
+\\begin{equation}
+    T_{\\text{comp}} = t_{\\text{parse}} + \\sum_{p=1}^{N_{\\text{pages}}} t_{\\text{shipout}}(p) + t_{\\text{aux}}
+\\end{equation}
+
+\\section{Conclusion}
+We demonstrated that decoupled TeX compilation microservices paired with fast OT memory coordination provide robust horizontal scalability in Kubernetes without risking state divergence.
+
+\\begin{thebibliography}{9}
+\\bibitem{lamport} L. Lamport, \\emph{\\LaTeX: A Document Preparation System}, Addison-Wesley, 1994.
+\\bibitem{ellis} C. A. Ellis and S. J. Gibbs, "Concurrency control in groupware systems," in \\emph{ACM SIGMOD}, 1989.
+\\bibitem{nichols} D. A. Nichols et al., "High-latency, low-bandwidth windowing in the Jupiter system," in \\emph{UIST}, 1995.
+\\end{thebibliography}
+
+\\end{document}`;
 }
 
 interface LatencySample {
@@ -58,7 +149,7 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
     const id = `bench-artigo-${String(i).padStart(3, '0')}`;
     projectIds.push(id);
 
-    const initialContent = `\\documentclass{article}\n\\title{Artigo de Teste ${i}}\n\\begin{document}\n\\maketitle\nSeção inicial do artigo ${i}.\n\\end{document}`;
+    const initialContent = generateRealisticPaper(i);
 
     await prisma.project.upsert({
       where: { id },
@@ -80,6 +171,22 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
         },
       },
       update: {},
+    });
+
+    await prisma.projectFile.upsert({
+      where: { projectId_path: { projectId: id, path: 'main.tex' } },
+      create: {
+        projectId: id,
+        path: 'main.tex',
+        fileType: 'text',
+        mimeType: 'text/x-tex',
+        sizeBytes: BigInt(Buffer.byteLength(initialContent, 'utf-8')),
+        content: initialContent,
+      },
+      update: {
+        sizeBytes: BigInt(Buffer.byteLength(initialContent, 'utf-8')),
+        content: initialContent,
+      },
     });
   }
 
@@ -197,9 +304,10 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
   }
 
   // 6. Teste de Rajada no Compilador TeX Live (Compilações Concorrentes)
-  console.log('\n🖨️  Disparando rajada de 15 compilações LaTeX concorrentes no compilador...');
+  const numCompilations = config.numCompilations ?? Math.min(numProjects, 15);
+  console.log(`\\n🖨️  Disparando rajada de ${numCompilations} compilações LaTeX de artigos de tamanho médio no compilador...`);
   const compileStart = performance.now();
-  const compilePromises = projectIds.slice(0, 15).map(async (pId) => {
+  const compilePromises = projectIds.slice(0, numCompilations).map(async (pId) => {
     const res = await fetch(`http://localhost:${targetPort}/api/v1/documents/${pId}/compile`, {
       method: 'POST',
     });
@@ -210,7 +318,7 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
   const compileResults = await Promise.allSettled(compilePromises);
   const compileDuration = (performance.now() - compileStart) / 1000;
   const compileSuccess = compileResults.filter((r) => r.status === 'fulfilled').length;
-  console.log(`✅ ${compileSuccess}/15 PDFs LaTeX compilados em ${compileDuration.toFixed(1)}s.`);
+  console.log(`✅ ${compileSuccess}/${numCompilations} PDFs LaTeX compilados em ${compileDuration.toFixed(1)}s.`);
   const rejectedReasons = compileResults
     .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
     .map((r) => r.reason?.message || String(r.reason));
