@@ -1,6 +1,7 @@
 interface RuntimeEnv {
   VITE_API_URL?: string;
   VITE_WS_URL?: string;
+  VITE_MINIO_URL?: string;
 }
 
 declare global {
@@ -18,6 +19,9 @@ export const getRuntimeEnv = (key: keyof RuntimeEnv): string | undefined => {
 
 export const API_BASE =
   getRuntimeEnv('VITE_API_URL') || (typeof window !== 'undefined' ? '' : 'http://localhost:3333');
+
+export const MINIO_BASE =
+  getRuntimeEnv('VITE_MINIO_URL') || (typeof window !== 'undefined' ? 'http://localhost:9000' : 'http://localhost:9000');
 
 const resolveWsBase = (): string => {
   const wsEnv = getRuntimeEnv('VITE_WS_URL');

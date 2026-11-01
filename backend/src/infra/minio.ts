@@ -20,6 +20,26 @@ export const minioClient = new Minio.Client({
   secretKey: MINIO_SECRET_KEY,
 });
 
+const publicEndpoint = env.MINIO_PUBLIC_URL || 'http://localhost:9000';
+const publicUrl = new URL(publicEndpoint);
+const PUBLIC_MINIO_HOST = publicUrl.hostname;
+const PUBLIC_MINIO_PORT =
+  parseInt(publicUrl.port, 10) || (publicUrl.protocol === 'https:' ? 443 : 80);
+const PUBLIC_MINIO_USE_SSL = publicUrl.protocol === 'https:';
+
+/**
+ * Cliente MinIO dedicado à assinatura de URLs pré-assinadas.
+ * O host configurado aqui é injetado diretamente no cabeçalho 'X-Amz-SignedHeaders=host'
+ * da assinatura HMAC-SHA256, garantindo que o navegador não receba erro 403 SignatureDoesNotMatch.
+ */
+export const minioPresignClient = new Minio.Client({
+  endPoint: PUBLIC_MINIO_HOST,
+  port: PUBLIC_MINIO_PORT,
+  useSSL: PUBLIC_MINIO_USE_SSL,
+  accessKey: MINIO_ACCESS_KEY,
+  secretKey: MINIO_SECRET_KEY,
+});
+
 /**
  * Inicializa a conexão com o MinIO e garante que o bucket de assets existe com leitura liberada
  */
@@ -118,27 +138,8 @@ export function getInternalMinioUrl(key: string): string {
   return `${rawEndpoint}/${MINIO_BUCKET}/${key}`;
 }
 /**
- * Reescreve a URL pré-assinada se MINIO_PUBLIC_URL estiver configurada.
- * Essencial para cenários Docker/K8s onde o backend fala via rede interna
- * (ex: minio:9000), mas o navegador do cliente precisa acessar via host público (ex: localhost:9000).
- */
-function formatPublicUrl(presignedUrl: string): string {
-  if (!env.MINIO_PUBLIC_URL) return presignedUrl;
-  try {
-    const generated = new URL(presignedUrl);
-    const target = new URL(env.MINIO_PUBLIC_URL);
-    generated.protocol = target.protocol;
-    generated.hostname = target.hostname;
-    generated.port = target.port;
-    return generated.toString();
-  } catch {
-    return presignedUrl;
-  }
-}
-
-/**
  * Gera uma URL pré-assinada para upload direto via HTTP PUT do navegador para o MinIO.
- * O cliente pode enviar o arquivo diretamente para o storage sem onerar a memória do backend.
+ * Assinada utilizando o endpoint público acessível pelo cliente (MINIO_PUBLIC_URL).
  * @param key Caminho do objeto no bucket (ex: projects/:projId/tasks/:taskId/evidences/:file)
  * @param expirySeconds Tempo de expiração da assinatura em segundos (padrão: 900s = 15 minutos)
  */
@@ -146,13 +147,12 @@ export async function generatePresignedPutUrl(
   key: string,
   expirySeconds: number = 900
 ): Promise<string> {
-  const rawUrl = await minioClient.presignedPutObject(MINIO_BUCKET, key, expirySeconds);
-  return formatPublicUrl(rawUrl);
+  return minioPresignClient.presignedPutObject(MINIO_BUCKET, key, expirySeconds);
 }
 
 /**
  * Gera uma URL pré-assinada para leitura/download temporário seguro via HTTP GET.
- * Permite que arquivos privados de pesquisas sejam renderizados ou baixados pelo navegador com tempo de vida limitado.
+ * Assinada utilizando o endpoint público acessível pelo cliente (MINIO_PUBLIC_URL).
  * @param key Caminho do objeto no bucket
  * @param expirySeconds Tempo de validade do link (padrão: 3600s = 1 hora)
  */
@@ -160,6 +160,5 @@ export async function generatePresignedGetUrl(
   key: string,
   expirySeconds: number = 3600
 ): Promise<string> {
-  const rawUrl = await minioClient.presignedGetObject(MINIO_BUCKET, key, expirySeconds);
-  return formatPublicUrl(rawUrl);
+  return minioPresignClient.presignedGetObject(MINIO_BUCKET, key, expirySeconds);
 }

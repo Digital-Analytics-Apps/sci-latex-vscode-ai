@@ -36,6 +36,8 @@ spec:
               value: "http://minio:9000"
             - name: MINIO_BUCKET
               value: "collab-assets"
+            - name: MINIO_PUBLIC_URL
+              value: "http://localhost:9000"
             - name: COMPILER_URL
               value: "http://compiler:4000"
             - name: POD_NAME

@@ -8,6 +8,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import ImageIcon from "@mui/icons-material/Image";
+import SaveIcon from "@mui/icons-material/Save";
 import LinkIcon from "@mui/icons-material/Link";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -80,12 +81,18 @@ export const GanttTaskDetailDrawer = ({
 }: GanttTaskDetailDrawerProps) => {
   // Referência para o input de arquivo oculto
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Fila de itens selecionados aguardando confirmação explícita de salvamento
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [stagedLinks, setStagedLinks] = useState<
+    Array<{ id: string; title: string; url: string }>
+  >([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savingStatusText, setSavingStatusText] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
-
   /**
    * Identifica a etapa pai da tarefa para validar se pertence às Etapas 1 ou 2
    */
@@ -154,44 +161,102 @@ export const GanttTaskDetailDrawer = ({
     (!isAssignedToMe || isMerged);
 
   /**
-   * Dispara o upload do arquivo binário diretamente para a URL pré-assinada do MinIO
+   * Adiciona arquivos selecionados à fila de envio (sem disparar upload imediato)
    */
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setEvidenceError(null);
-    setUploadProgress(0);
-    try {
-      await uploadEvidenceMutation.mutateAsync({
-        file,
-        onProgress: (p) => setUploadProgress(p),
-      });
-      setUploadProgress(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (err: unknown) {
-      setUploadProgress(null);
-      const error = err as Error;
-      setEvidenceError(error.message || "Falha no upload da evidência.");
-    }
+    setStagedFiles((prev) => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /**
-   * Salva um link externo (Colab, GitHub, Zenodo) como evidência da tarefa
+   * Adiciona link à fila de envio (sem salvar no backend imediatamente)
    */
-  const handleAddLink = async () => {
+  const handleAddLinkToStage = () => {
     if (!linkTitle.trim() || !linkUrl.trim()) return;
     setEvidenceError(null);
     try {
-      await addLinkMutation.mutateAsync({
+      const parsed = new URL(linkUrl.trim());
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error();
+      }
+    } catch {
+      setEvidenceError("O link deve ser uma URL válida (http:// ou https://).");
+      return;
+    }
+    setStagedLinks((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         title: linkTitle.trim(),
         url: linkUrl.trim(),
-      });
-      setLinkTitle("");
-      setLinkUrl("");
-      setIsAddLinkOpen(false);
+      },
+    ]);
+    setLinkTitle("");
+    setLinkUrl("");
+    setIsAddLinkOpen(false);
+  };
+
+  /**
+   * Remove um arquivo da fila de envio antes de salvar
+   */
+  const handleRemoveStagedFile = (index: number) => {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  /**
+   * Remove um link da fila de envio antes de salvar
+   */
+  const handleRemoveStagedLink = (id: string) => {
+    setStagedLinks((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  /**
+   * Salva todas as evidências preparadas na fila (envia binários ao MinIO e persiste links)
+   */
+  const handleSaveAllEvidences = async () => {
+    if (stagedFiles.length === 0 && stagedLinks.length === 0) return;
+    setIsSaving(true);
+    setEvidenceError(null);
+
+    try {
+      // 1. Upload sequencial dos arquivos binários diretamente para a URL pré-assinada do MinIO
+      for (let i = 0; i < stagedFiles.length; i++) {
+        const file = stagedFiles[i];
+        setSavingStatusText(
+          `Enviando arquivo ${i + 1} de ${stagedFiles.length}: ${file.name}`,
+        );
+        setUploadProgress(0);
+        await uploadEvidenceMutation.mutateAsync({
+          file,
+          onProgress: (percent) => setUploadProgress(percent),
+        });
+      }
+
+      // 2. Registro dos links externos no banco relacional
+      for (let j = 0; j < stagedLinks.length; j++) {
+        const link = stagedLinks[j];
+        setSavingStatusText(
+          `Registrando link ${j + 1} de ${stagedLinks.length}: ${link.title}`,
+        );
+        await addLinkMutation.mutateAsync({
+          title: link.title,
+          url: link.url,
+        });
+      }
+
+      // 3. Limpa a fila após conclusão com sucesso
+      setStagedFiles([]);
+      setStagedLinks([]);
     } catch (err: unknown) {
       const error = err as Error;
-      setEvidenceError(error.message || "Falha ao adicionar link.");
+      setEvidenceError(error.message || "Falha ao salvar evidências.");
+    } finally {
+      setIsSaving(false);
+      setSavingStatusText(null);
+      setUploadProgress(null);
     }
   };
   return (
@@ -499,9 +564,10 @@ export const GanttTaskDetailDrawer = ({
                   <input
                     type="file"
                     ref={fileInputRef}
+                    multiple
                     style={{ display: "none" }}
                     accept="image/*,application/pdf"
-                    onChange={handleFileSelect}
+                    onChange={handleFilesSelected}
                   />
                   <Button
                     size="small"
@@ -593,17 +659,189 @@ export const GanttTaskDetailDrawer = ({
                     <Button
                       size="small"
                       variant="contained"
-                      onClick={handleAddLink}
+                      onClick={handleAddLinkToStage}
                       disabled={
                         addLinkMutation.isPending ||
                         !linkTitle.trim() ||
                         !linkUrl.trim()
                       }
                     >
-                      Salvar
+                      Adicionar à Fila
                     </Button>
                   </Box>
                 </Stack>
+              </Paper>
+            )}
+
+            {/* FILA DE ITENS PRONTOS PARA SALVAR */}
+            {(stagedFiles.length > 0 || stagedLinks.length > 0) && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  mb: 1.5,
+                  borderRadius: 2,
+                  bgcolor: "action.hover",
+                  border: "1px dashed",
+                  borderColor: "primary.main",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 1,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 800, color: "primary.main" }}
+                  >
+                    ITENS PRONTOS PARA SALVAR ({stagedFiles.length + stagedLinks.length})
+                  </Typography>
+                </Box>
+
+                <Stack spacing={0.8} sx={{ mb: 1.5 }}>
+                  {stagedFiles.map((file, idx) => (
+                    <Box
+                      key={`${file.name}-${idx}`}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        p: 0.8,
+                        borderRadius: 1,
+                        bgcolor: "background.paper",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        {file.type === "application/pdf" ? (
+                          <PictureAsPdfIcon fontSize="small" color="error" />
+                        ) : (
+                          <ImageIcon fontSize="small" color="primary" />
+                        )}
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                            noWrap
+                          >
+                            {file.name}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontSize: "0.65rem" }}
+                          >
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveStagedFile(idx)}
+                        disabled={isSaving}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+
+                  {stagedLinks.map((link) => (
+                    <Box
+                      key={link.id}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        p: 0.8,
+                        borderRadius: 1,
+                        bgcolor: "background.paper",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        <LinkIcon fontSize="small" color="info" />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                            noWrap
+                          >
+                            {link.title}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontSize: "0.65rem" }}
+                            noWrap
+                          >
+                            {link.url}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveStagedLink(link.id)}
+                        disabled={isSaving}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+
+                {isSaving && (
+                  <Box sx={{ mb: 1 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 700 }}
+                    >
+                      {savingStatusText} {uploadProgress !== null ? `(${uploadProgress}%)` : ""}
+                    </Typography>
+                    <LinearProgress
+                      variant={uploadProgress !== null ? "determinate" : "indeterminate"}
+                      value={uploadProgress ?? 0}
+                      sx={{ height: 6, borderRadius: 3, mt: 0.5 }}
+                    />
+                  </Box>
+                )}
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  size="small"
+                  startIcon={
+                    isSaving ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <SaveIcon />
+                    )
+                  }
+                  onClick={handleSaveAllEvidences}
+                  disabled={isSaving}
+                  sx={{ fontWeight: 800, textTransform: "none", py: 0.8 }}
+                >
+                  {isSaving
+                    ? "Salvando Evidências..."
+                    : `Salvar Evidências (${stagedFiles.length + stagedLinks.length})`}
+                </Button>
               </Paper>
             )}
 

@@ -24,6 +24,9 @@ spec:
           envFrom:
             - secretRef:
                 name: sci-latex-secret
+          env:
+            - name: VITE_MINIO_URL
+              value: "http://localhost:9000"
           ports:
             - containerPort: 80
               name: http

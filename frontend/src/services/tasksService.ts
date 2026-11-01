@@ -7,7 +7,28 @@ import type {
   TaskEvidenceItem,
   TaskItem,
 } from "../types/task.types";
+import { MINIO_BASE } from "../constants/api.constants";
 import { api } from "./api";
+
+/**
+ * Normaliza o host do MinIO para apontar para a variável de ambiente pública do frontend (VITE_MINIO_URL)
+ */
+export function normalizeStorageUrl(rawUrl?: string | null): string | undefined {
+  if (!rawUrl) return undefined;
+  try {
+    const target = new URL(MINIO_BASE);
+    const parsed = new URL(rawUrl);
+    if (parsed.hostname === "minio") {
+      parsed.protocol = target.protocol;
+      parsed.hostname = target.hostname;
+      parsed.port = target.port;
+      return parsed.toString();
+    }
+  } catch {
+    return rawUrl;
+  }
+  return rawUrl;
+}
 export const tasksService = {
   // Buscar tarefas de um projeto diretamente da API REST real (/projects/:projectId/tasks)
   async getTasksByProject(
@@ -97,9 +118,12 @@ export const tasksService = {
     const response = await api.get(
       `/projects/${projectId}/tasks/${taskId}/evidences`,
     );
-    return response.data.evidences || [];
+    const list: TaskEvidenceItem[] = response.data.evidences || [];
+    return list.map((ev) => ({
+      ...ev,
+      downloadUrl: normalizeStorageUrl(ev.downloadUrl),
+    }));
   },
-
   /**
    * Solicita ao backend uma URL pré-assinada de upload para imagem ou PDF
    */
@@ -124,7 +148,8 @@ export const tasksService = {
     file: File,
     onProgress?: (percent: number) => void,
   ): Promise<void> {
-    await axios.put(uploadUrl, file, {
+    const targetUrl = normalizeStorageUrl(uploadUrl) || uploadUrl;
+    await axios.put(targetUrl, file, {
       headers: {
         "Content-Type": file.type || "application/octet-stream",
       },
