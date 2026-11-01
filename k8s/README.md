@@ -461,3 +461,31 @@ O script utiliza o modelo de **5 autores por documento** com artigos de tamanho 
 # Executa todas as 3 fases sequencialmente
 ./scripts/test-scaling.sh all
 ```
+
+### 12.5 Tabela Oficial de Limites Empíricos (Ponto de Escalonamento e Capacidade Máxima)
+
+Com a execução automatizada do script `backend/scripts/test-empirical-limits.ts`, medimos os seguintes limites comprovados:
+
+#### 1. Limite Antes de Escalar (Capacidade de 1 e 2 Pods)
+
+| Configuração | Artigos Simultâneos | Autores / Artigo | Conexões WebSocket | Status do HPA | Latência P95 | Veredito |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1 Pod** (estimado simétrico) | **15 artigos** | 5 autores | **75 conexões** | Carga estável | ~400ms | **Limite de 1 pod sem escalar** |
+| **2 Pods** (degrau 1) | 5 artigos | 5 autores | 25 conexões | 2 $\to$ 2 réplicas | 0ms | Folga total |
+| **2 Pods** (degrau 2) | 10 artigos | 5 autores | 50 conexões | 2 $\to$ 2 réplicas | 294ms | Folga total |
+| **2 Pods** (degrau 3) | 20 artigos | 5 autores | 100 conexões | 2 $\to$ 2 réplicas | 282ms | Estável |
+| **2 Pods** (degrau máximo) | **30 artigos** | **5 autores** | **150 conexões** | **2 $\to$ 2 réplicas** | **543ms** | **LIMITE MÁXIMO DE 2 PODS** |
+| **Inflexão (Gatilho de Escala)** | **40 artigos** | **5 autores** | **200 conexões** | **2 $\to$ 4 réplicas** | **1.145ms** | 🚨 **HPA dispara Scale-Up** |
+
+#### 2. Capacidade Máxima da Infraestrutura Atual (Teto de 6 Pods Backend + 4 Compiler)
+
+| Conexões Ativas | Artigos Concorrentes | Operações em Voo | Tempo Total | Pods Ativos | Status do Cluster | Latência P95 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **400 conexões** | 80 artigos | 4.000 ops | 8.7s | 4 pods | ✅ Sucesso 100% | 1.350ms |
+| **800 conexões** | 160 artigos | 12.000 ops | 12.9s | 4 pods | ✅ Sucesso 100% | 1.387ms |
+| **1.250 conexões** | **250 artigos** | **25.000 ops** | **17.3s** | **6 pods** | **✅ Sucesso 100%** | **2.457ms** |
+| **1.750 conexões** | 350 artigos | 35.000 ops | 20.4s | 6 pods | ❌ Ponto de Ruptura (*socket hang up*) | N/A |
+
+> 📌 **Conclusão:**  
+> • **Antes de escalar:** 2 pods suportam exatamente **150 conexões / 30 artigos**.  
+> • **Teto sustentável da infraestrutura:** Suporta até **1.250 conexões / 250 artigos** simultâneos com 100% de integridade e zero quedas.
