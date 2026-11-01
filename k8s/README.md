@@ -18,6 +18,7 @@ Este documento é o guia prático passo a passo de toda a infraestrutura Kuberne
 10. [Como Funciona o Ciclo GitOps no Dia a Dia](#10-como-funciona-o-ciclo-gitops-no-dia-a-dia)
 11. [Como Rodar o Seed do Banco de Dados](#11-como-rodar-o-seed-do-banco-de-dados)
 12. [Dimensionamento de Recursos e Benchmark de Estresse](#12-dimensionamento-de-recursos-requestslimits-e-benchmark-de-estresse)
+13. [Guia de Implantação On-Premises](#13-guia-de-implantação-on-premises)
 ---
 
 ## 1. Visão Geral da Arquitetura
@@ -489,3 +490,11 @@ Com a execução automatizada do script `backend/scripts/test-empirical-limits.t
 > 📌 **Conclusão:**  
 > • **Antes de escalar:** 2 pods suportam exatamente **150 conexões / 30 artigos**.  
 > • **Teto sustentável da infraestrutura:** Suporta até **1.250 conexões / 250 artigos** simultâneos com 100% de integridade e zero quedas.
+
+---
+
+## 13. Guia de Implantação On-Premises
+
+Para orientações completas de alinhamento com a equipe de infraestrutura local, consulte:
+* 📖 **Documento de Referência:** [`docs/GUIA_INFRAESTRUTURA_ON_PREMISES.md`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/GUIA_INFRAESTRUTURA_ON_PREMISES.md)
+* Inclui o questionário técnico de hardware/CSI/Ingress, matriz de riscos e template pronto de mensagem para o time de SRE local.
