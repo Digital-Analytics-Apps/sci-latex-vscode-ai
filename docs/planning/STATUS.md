@@ -82,9 +82,10 @@
 | **Fase II** | Editor Colaborativo CodeMirror 6, OT e Debounce Híbrido | 🟢 Concluído | [`ADR-007`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-007-collaborative-editor-architecture-scaling.md) |
 | **Fase III** | Fencing Monotônico de Posse e Resiliência Multi-Pod | 🟢 Concluído | [`ADR-007.1`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-007.1-document-ownership-fencing-and-routing.md) |
 | **Fase IV** | Workflow em 6 Etapas Fixas e Modelo de Revisão em 2 Níveis | 🟢 Concluído | [`ADR-008`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) |
-| **Fase V** | Persistência Relacional de Apontamentos (`ReviewComment`) | 🟢 Concluído | [`ADR-010`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-010-review-comment-persistence-and-db-alignment.md) |
-| **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
-| **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | ⚪ **Prioridade Próxima** | [`IMPLEMENTATION_PLAN.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/IMPLEMENTATION_PLAN.md) |
+| **Fase V** | Persistência Relacional de Apontamentos (`ReviewComment`) | 🟢 Concluído | [`ADR-010`](adrs/adr-010-review-comment-persistence-and-db-alignment.md) |
+| **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
+| **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | ⚪ **Prioridade Próxima** | [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) |
+| **Fase VIII**| Arquitetura de Evidências de Tarefas & Upload Direto MinIO | 🟢 Concluído | [`ADR-011`](adrs/adr-011-task-evidences-storage-architecture.md) |
 ---
 
 ## 🔄 3. Protocolo de Pausa e Atualização de Status
