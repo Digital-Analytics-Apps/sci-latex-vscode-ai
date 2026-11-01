@@ -161,6 +161,9 @@ docker build -t sci-latex-backend:latest ./backend
 
 # 2. Injeta a imagem para dentro dos nós do KinD
 kind load docker-image sci-latex-backend:latest --name sci-latex-kind
+
+# 3. Forcar o reinicio do pod para carregar a nova versao
+kubectl rollout restart deployment sci-latex-backend
 ```
 
 ### 5.2 Compilador LaTeX (TeX Live + Microserviço)
@@ -170,6 +173,9 @@ docker build -t sci-latex-vscode-compiler:latest ./compiler
 
 # 2. Carrega a imagem no cluster KinD
 kind load docker-image sci-latex-vscode-compiler:latest --name sci-latex-kind
+
+# 3. Forcar o reinicio do pod para carregar a nova versao
+kubectl rollout restart deployment sci-latex-compiler
 ```
 
 ### 5.3 Frontend de Produção (React + Vite + Nginx)
@@ -181,6 +187,9 @@ docker build -f frontend/Dockerfile.prod -t sci-latex-frontend:latest ./frontend
 
 # 2. Carrega a imagem no cluster KinD
 kind load docker-image sci-latex-frontend:latest --name sci-latex-kind
+
+# 3. Forcar o reinicio do pod para carregar a nova versao
+kubectl rollout restart deployment sci-latex-frontend
 ```
 
 ---
