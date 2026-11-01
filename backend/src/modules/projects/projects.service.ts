@@ -55,7 +55,6 @@ export interface PostSubmissionDTO {
   decisionReason?: string;
 }
 
-
 export class ProjectsService {
   constructor(
     private readonly projectsRepository: IProjectsRepository,
@@ -97,14 +96,14 @@ export class ProjectsService {
     // 1a. Semear arquivos TeX iniciais do artigo no banco de dados (ProjectFile)
     if (process.env.NODE_ENV !== 'test') {
       await prisma.projectFile.createMany({
-      data: [
-        {
-          projectId,
-          path: 'main.tex',
-          fileType: 'text',
-          mimeType: 'text/x-tex',
-          sizeBytes: BigInt(850),
-          content: `\\documentclass{article}
+        data: [
+          {
+            projectId,
+            path: 'main.tex',
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(850),
+            content: `\\documentclass{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage{amsmath}
 \\usepackage{graphicx}
@@ -127,59 +126,91 @@ Resumo do artigo científico.
 \\bibliographystyle{IEEEtran}
 \\bibliography{references}
 \\end{document}`,
-        },
-        {
-          projectId,
-          path: 'sections/01-introduction.tex',
-          fileType: 'text',
-          mimeType: 'text/x-tex',
-          sizeBytes: BigInt(200),
-          content: `\\section{Introdução}\nEscreva a introdução e motivação do trabalho aqui.\n`,
-        },
-        {
-          projectId,
-          path: 'sections/02-methodology.tex',
-          fileType: 'text',
-          mimeType: 'text/x-tex',
-          sizeBytes: BigInt(180),
-          content: `\\section{Metodologia}\nDescreva o modelo, hipóteses e procedimentos experimentais.\n`,
-        },
-        {
-          projectId,
-          path: 'sections/03-results.tex',
-          fileType: 'text',
-          mimeType: 'text/x-tex',
-          sizeBytes: BigInt(190),
-          content: `\\section{Resultados}\nApresente os dados obtidos e análise comparativa.\n`,
-        },
-        {
-          projectId,
-          path: 'sections/04-conclusion.tex',
-          fileType: 'text',
-          mimeType: 'text/x-tex',
-          sizeBytes: BigInt(150),
-          content: `\\section{Conclusão}\nSíntese das contribuições e direcionamentos futuros.\n`,
-        },
-        {
-          projectId,
-          path: 'references.bib',
-          fileType: 'text',
-          mimeType: 'text/x-bibtex',
-          sizeBytes: BigInt(120),
-          content: `@article{ref1,\n  author = {Silva, A.},\n  title = {Exemplo de Referência},\n  year = {2026}\n}\n`,
-        },
-      ],
+          },
+          {
+            projectId,
+            path: 'sections/01-introduction.tex',
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(200),
+            content: `\\section{Introdução}\nEscreva a introdução e motivação do trabalho aqui.\n`,
+          },
+          {
+            projectId,
+            path: 'sections/02-methodology.tex',
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(180),
+            content: `\\section{Metodologia}\nDescreva o modelo, hipóteses e procedimentos experimentais.\n`,
+          },
+          {
+            projectId,
+            path: 'sections/03-results.tex',
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(190),
+            content: `\\section{Resultados}\nApresente os dados obtidos e análise comparativa.\n`,
+          },
+          {
+            projectId,
+            path: 'sections/04-conclusion.tex',
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(150),
+            content: `\\section{Conclusão}\nSíntese das contribuições e direcionamentos futuros.\n`,
+          },
+          {
+            projectId,
+            path: 'references.bib',
+            fileType: 'text',
+            mimeType: 'text/x-bibtex',
+            sizeBytes: BigInt(120),
+            content: `@article{ref1,\n  author = {Silva, A.},\n  title = {Exemplo de Referência},\n  year = {2026}\n}\n`,
+          },
+        ],
       });
     }
 
     // 2b. Instanciar as 6 Etapas Fixas Obrigatórias (ADR-008)
     const defaultSixStages = [
-      { order: 1, title: 'Planejamento e Pesquisa TeX', description: 'Levantamento bibliográfico e estruturação TeX', isGatekeeper: false },
-      { order: 2, title: 'Desenvolvimento e Experimentos', description: 'Coleta de dados e benchmarks', isGatekeeper: false },
-      { order: 3, title: 'Escrita do Artigo', description: 'Redação das seções em tarefas paralelas', isGatekeeper: false },
-      { order: 4, title: 'Revisão Técnica e Científica', description: 'Revisão geral do manuscrito consolidado', isGatekeeper: false },
-      { order: 5, title: 'Parecer do NIT (Gatekeeper 1)', description: 'Validação de propriedade intelectual', isGatekeeper: true, gatekeeperType: 'NIT' },
-      { order: 6, title: 'Submissão ao Congresso Alvo (Gatekeeper 2)', description: 'Submissão externa do artigo compilado', isGatekeeper: true, gatekeeperType: 'TARGET_CONFERENCE' },
+      {
+        order: 1,
+        title: 'Planejamento e Pesquisa TeX',
+        description: 'Levantamento bibliográfico e estruturação TeX',
+        isGatekeeper: false,
+      },
+      {
+        order: 2,
+        title: 'Desenvolvimento e Experimentos',
+        description: 'Coleta de dados e benchmarks',
+        isGatekeeper: false,
+      },
+      {
+        order: 3,
+        title: 'Escrita do Artigo',
+        description: 'Redação das seções em tarefas paralelas',
+        isGatekeeper: false,
+      },
+      {
+        order: 4,
+        title: 'Revisão Técnica e Científica',
+        description: 'Revisão geral do manuscrito consolidado',
+        isGatekeeper: false,
+      },
+      {
+        order: 5,
+        title: 'Parecer do NIT (Gatekeeper 1)',
+        description: 'Validação de propriedade intelectual',
+        isGatekeeper: true,
+        gatekeeperType: 'NIT',
+      },
+      {
+        order: 6,
+        title: 'Submissão ao Congresso Alvo (Gatekeeper 2)',
+        description: 'Submissão externa do artigo compilado',
+        isGatekeeper: true,
+        gatekeeperType: 'TARGET_CONFERENCE',
+      },
     ];
 
     await Promise.all(
@@ -465,15 +496,18 @@ Resumo do artigo científico.
     let msg = commitMessage?.trim();
     if (!msg) {
       const diffSummary = await this.getTaskDiffSummary(projectId, taskId, userId);
-      msg = diffSummary.generatedProgressDescription || `Progresso da tarefa: ${task?.title || taskId}`;
+      msg =
+        diffSummary.generatedProgressDescription || `Progresso da tarefa: ${task?.title || taskId}`;
     }
 
     const mainFile =
       process.env.NODE_ENV === 'test'
         ? null
-        : await prisma.projectFile.findUnique({
-            where: { projectId_path: { projectId, path: 'main.tex' } },
-          }).catch(() => null);
+        : await prisma.projectFile
+            .findUnique({
+              where: { projectId_path: { projectId, path: 'main.tex' } },
+            })
+            .catch(() => null);
     const content = mainFile?.content || '';
 
     const snapshot =

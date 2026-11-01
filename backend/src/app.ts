@@ -30,7 +30,6 @@ export async function buildApp() {
     logger: true,
   }).withTypeProvider<ZodTypeProvider>();
 
-
   // Configura os compiladores de validação e serialização do Zod
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);

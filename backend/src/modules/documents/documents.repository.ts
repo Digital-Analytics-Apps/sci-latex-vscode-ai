@@ -132,7 +132,14 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
   }
 
   async saveCheckpoint(data: CheckpointFlushData): Promise<void> {
-    const { documentId, version, expectedOldVersion, mainContent, secondaryFiles = [], snapshot } = data;
+    const {
+      documentId,
+      version,
+      expectedOldVersion,
+      mainContent,
+      secondaryFiles = [],
+      snapshot,
+    } = data;
 
     await prisma.$transaction(async (tx) => {
       // Concorrência Otimista & Fencing Token (ownerGeneration)
@@ -166,7 +173,9 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
         where: { id: documentId },
         data: {
           currentVersion: version,
-          ...(typeof data.ownerGeneration === 'number' ? { ownerGeneration: data.ownerGeneration } : {}),
+          ...(typeof data.ownerGeneration === 'number'
+            ? { ownerGeneration: data.ownerGeneration }
+            : {}),
         },
       });
       // 2. Atualiza arquivo principal (main.tex)

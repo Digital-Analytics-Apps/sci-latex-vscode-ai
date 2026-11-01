@@ -71,7 +71,6 @@ export class ProjectStagesService {
     // 3. Aplica reordenação atômica sem colisões de índice único
     await this.stagesRepository.reorderStages(projectId, finalStageOrders);
 
-
     const updated = await this.stagesRepository.findById(newStage.id);
     return updated || newStage;
   }

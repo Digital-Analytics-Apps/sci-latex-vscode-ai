@@ -19,7 +19,6 @@ export const academicPeriodParamsSchema = z.object({
   id: z.string(),
 });
 
-
 export class AcademicPeriodsController {
   constructor(private readonly service: AcademicPeriodsService = new AcademicPeriodsService()) {}
 
@@ -56,5 +55,4 @@ export class AcademicPeriodsController {
     }
     return reply.send({ academicPeriod: period });
   }
-
 }

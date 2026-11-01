@@ -34,7 +34,6 @@ export const reviewDecisionBodySchema = z.object({
   feedback: z.string().optional(),
 });
 
-
 export class TasksController {
   constructor(private readonly service: TasksService = new TasksService()) {}
 
@@ -118,15 +117,19 @@ export class TasksController {
       const { projectId, taskId } = taskWorkspaceParamsSchema.parse(request.params);
       const { decision, feedback } = reviewDecisionBodySchema.parse(request.body || {});
       const userId = request.user.sub;
-      const task = await this.service.reviewTaskDecision(projectId, taskId, userId, decision, feedback);
+      const task = await this.service.reviewTaskDecision(
+        projectId,
+        taskId,
+        userId,
+        decision,
+        feedback
+      );
       return reply.send(task);
     } catch (err: unknown) {
       const error = err as Error;
       return reply.status(400).send({ error: 'REVIEW_DECISION_FAILED', message: error.message });
     }
   }
-
-
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {

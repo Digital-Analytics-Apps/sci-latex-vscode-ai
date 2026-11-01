@@ -10,7 +10,6 @@ export interface CreateAcademicPeriodData {
   managerId?: string;
 }
 
-
 export interface IAcademicPeriodsRepository {
   create(data: CreateAcademicPeriodData): Promise<AcademicPeriod>;
   findAll(managerId?: string): Promise<AcademicPeriod[]>;
@@ -49,5 +48,4 @@ export class PrismaAcademicPeriodsRepository implements IAcademicPeriodsReposito
       },
     });
   }
-
 }

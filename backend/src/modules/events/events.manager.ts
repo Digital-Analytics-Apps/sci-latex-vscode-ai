@@ -63,12 +63,7 @@ export class EventsManagerService {
     }
   }
 
-  addClient(
-    userId: string,
-    reply: FastifyReply,
-    projectId?: string,
-    taskId?: string
-  ) {
+  addClient(userId: string, reply: FastifyReply, projectId?: string, taskId?: string) {
     this.clients.push({ userId, projectId, taskId, reply });
   }
 

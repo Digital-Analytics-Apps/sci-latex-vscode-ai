@@ -34,7 +34,9 @@ export class DocumentsController {
   async createFromZip(request: FastifyRequest, reply: FastifyReply) {
     const data = await request.file();
     if (!data) {
-      return reply.status(400).send({ error: 'Nenhum arquivo ZIP enviado no formulário multipart' });
+      return reply
+        .status(400)
+        .send({ error: 'Nenhum arquivo ZIP enviado no formulário multipart' });
     }
 
     const isZip =

@@ -1,7 +1,10 @@
 import Redis from 'ioredis';
 import { env } from '../../config/env';
 
-export const POD_ID = process.env.POD_NAME || process.env.HOSTNAME || `pod-${Math.random().toString(36).substring(2, 9)}`;
+export const POD_ID =
+  process.env.POD_NAME ||
+  process.env.HOSTNAME ||
+  `pod-${Math.random().toString(36).substring(2, 9)}`;
 
 export interface DocumentLeaseResult {
   acquired: boolean;
@@ -89,7 +92,11 @@ export class RedisService {
   /**
    * Renova o lease de um documento mantido por este Pod
    */
-  async renewDocumentLease(documentId: string, podId: string = POD_ID, ttlSeconds = 15): Promise<boolean> {
+  async renewDocumentLease(
+    documentId: string,
+    podId: string = POD_ID,
+    ttlSeconds = 15
+  ): Promise<boolean> {
     if (!this.client || !this.isConnected) return true;
     try {
       const key = `editor:document:${documentId}:owner`;
@@ -129,7 +136,9 @@ export class RedisService {
   /**
    * Consulta o dono atual e a geração de um documento
    */
-  async getDocumentLease(documentId: string): Promise<{ owner: string | null; generation: number }> {
+  async getDocumentLease(
+    documentId: string
+  ): Promise<{ owner: string | null; generation: number }> {
     if (!this.client || !this.isConnected) return { owner: null, generation: 0 };
     try {
       const owner = await this.client.get(`editor:document:${documentId}:owner`);

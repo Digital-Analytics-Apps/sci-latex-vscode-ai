@@ -7,7 +7,6 @@ import { PrismaProjectsRepository } from '../../repositories/projects.repository
 import { createProjectSchema, ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
-
 import { PrismaProjectStagesRepository } from '../../repositories/project-stages.repository';
 import { ProjectStagesService } from './project-stages.service';
 import { ProjectStagesController } from './project-stages.controller';
@@ -16,7 +15,6 @@ export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
   const projectsService = new ProjectsService(projectsRepository);
   const controller = new ProjectsController(projectsService);
-
 
   const stagesRepository = new PrismaProjectStagesRepository();
   const stagesService = new ProjectStagesService(stagesRepository);

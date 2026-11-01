@@ -22,7 +22,6 @@ vi.mock('../../../db/prisma', () => ({
   },
 }));
 
-
 describe('TasksService (Unit Tests)', () => {
   let mockTasksRepository: ITasksRepository;
   let service: TasksService;
@@ -166,7 +165,13 @@ describe('TasksService (Unit Tests)', () => {
       Promise.resolve({ ...existingTask, ...data })
     );
 
-    const result = await service.reviewTaskDecision('proj-1', 'task-1', 'rev-1', 'APPROVED', 'Excelente');
+    const result = await service.reviewTaskDecision(
+      'proj-1',
+      'task-1',
+      'rev-1',
+      'APPROVED',
+      'Excelente'
+    );
     expect(mockTasksRepository.update).toHaveBeenCalledWith('task-1', {
       status: TaskStatus.COMPLETED,
     });
@@ -192,7 +197,13 @@ describe('TasksService (Unit Tests)', () => {
       Promise.resolve({ ...existingTask, ...data })
     );
 
-    const result = await service.reviewTaskDecision('proj-1', 'task-1', 'rev-1', 'CHANGES_REQUESTED', 'Faltam referências');
+    const result = await service.reviewTaskDecision(
+      'proj-1',
+      'task-1',
+      'rev-1',
+      'CHANGES_REQUESTED',
+      'Faltam referências'
+    );
     expect(mockTasksRepository.update).toHaveBeenCalledWith('task-1', {
       status: TaskStatus.CHANGES_REQUESTED,
     });

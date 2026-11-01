@@ -97,8 +97,6 @@ class InMemoryProjectsRepository implements IProjectsRepository {
   }
 }
 
-
-
 class InMemoryProjectStagesRepository implements IProjectStagesRepository {
   public stages: any[] = [];
 
@@ -166,10 +164,7 @@ describe('ProjectsService', () => {
   beforeEach(() => {
     repository = new InMemoryProjectsRepository();
     stagesRepository = new InMemoryProjectStagesRepository();
-    projectsService = new ProjectsService(
-      repository,
-      stagesRepository
-    );
+    projectsService = new ProjectsService(repository, stagesRepository);
   });
 
   it('should create a project successfully in the database', async () => {

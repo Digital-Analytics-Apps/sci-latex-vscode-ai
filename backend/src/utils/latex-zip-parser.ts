@@ -60,7 +60,9 @@ function resolveFileType(filePath: string): 'tex' | 'style' | 'bib' | 'image' | 
 
 function extractLatexTitle(content: string): string | undefined {
   // Encontra a diretiva \title{...} ou \title[short]{full}
-  const match = content.match(/\\title(?:\s*\[[^\]]*\])?\s*\{([\s\S]*?)\}(?:\n|\r|\s*\\author|\s*\\begin)/m);
+  const match = content.match(
+    /\\title(?:\s*\[[^\]]*\])?\s*\{([\s\S]*?)\}(?:\n|\r|\s*\\author|\s*\\begin)/m
+  );
   if (!match || !match[1]) return undefined;
 
   const title = match[1]

@@ -19,9 +19,7 @@ export interface CreateTaskDTO {
 }
 
 export class TasksService {
-  constructor(
-    private readonly tasksRepository: ITasksRepository = new PrismaTasksRepository()
-  ) {}
+  constructor(private readonly tasksRepository: ITasksRepository = new PrismaTasksRepository()) {}
 
   async claimTask(projectId: string, taskId: string, userId: string) {
     const task = await this.tasksRepository.findById(taskId);
@@ -127,8 +125,6 @@ export class TasksService {
     return updated;
   }
 
-
-
   // 1. Criar nova Task associada ao autor
   async createTask(dto: CreateTaskDTO) {
     if (!dto.stageId) {
@@ -178,7 +174,6 @@ export class TasksService {
       search: filters?.search,
       stageId: filters?.stageId,
     });
-
 
     const allProjectTasks = await this.tasksRepository.findMany({ projectId });
     const stageTasksMap = new Map<string, typeof allProjectTasks>();
@@ -264,7 +259,6 @@ export class TasksService {
         }
       }
     }
-
 
     // Se o status da task ainda era NOT_STARTED, avança para IN_PROGRESS e salva a data de início real no banco
     const now = new Date();

@@ -24,9 +24,7 @@ export async function initRedis(): Promise<boolean> {
     return true;
   } catch (err: unknown) {
     const error = err as Error;
-    console.warn(
-      `[Redis] ⚠️ Falha na conexão Pub/Sub (${error.message}). Continuando localmente.`
-    );
+    console.warn(`[Redis] ⚠️ Falha na conexão Pub/Sub (${error.message}). Continuando localmente.`);
     return false;
   }
 }

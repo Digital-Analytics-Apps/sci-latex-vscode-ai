@@ -38,7 +38,6 @@ class InMemoryAcademicPeriodsRepository implements IAcademicPeriodsRepository {
       return true;
     });
   }
-
 }
 
 describe('AcademicPeriodsService', () => {

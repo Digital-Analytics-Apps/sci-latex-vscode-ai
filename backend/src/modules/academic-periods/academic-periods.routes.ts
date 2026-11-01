@@ -64,5 +64,4 @@ export const academicPeriodsRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     controller.getById.bind(controller)
   );
-
 };
