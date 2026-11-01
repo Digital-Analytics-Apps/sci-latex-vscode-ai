@@ -1,4 +1,15 @@
-import { describe, beforeEach, it as test, assert } from 'vitest';
+import { assert, beforeEach, describe, it as test, vi } from 'vitest';
+import type * as MinioInfra from '../../infra/minio';
+
+vi.mock('../../infra/minio', async (importOriginal) => {
+  const actual = await importOriginal<typeof MinioInfra>();
+  return {
+    ...actual,
+    uploadToMinio: vi.fn().mockResolvedValue(undefined),
+    getFromMinio: vi.fn().mockResolvedValue({ buffer: Buffer.from(''), contentType: 'image/png' }),
+    deleteFromMinio: vi.fn().mockResolvedValue(undefined),
+  };
+});
 import { ChangeSet } from '@codemirror/state';
 import { DocumentsService } from './documents.service';
 import { IDocumentsRepository, CheckpointFlushData } from './documents.repository';
@@ -46,7 +57,9 @@ class InMemoryDocumentsRepository implements IDocumentsRepository {
     this.snapshots.push(data.snapshot);
     if (data.secondaryFiles) {
       for (const sf of data.secondaryFiles) {
-        const existing = this.files.find((f) => f.documentId === data.documentId && f.path === sf.path);
+        const existing = this.files.find(
+          (f) => f.documentId === data.documentId && f.path === sf.path
+        );
         if (existing) {
           existing.content = sf.content;
         } else {
@@ -321,5 +334,19 @@ describe('DocumentsService - Motor Colaborativo com @codemirror/collab', () => {
     assert.equal(loadedFromDb[0].id, 'comm-persistent-1');
     assert.equal(loadedFromDb[0].status, 'resolved');
     assert.equal(loadedFromDb[0].replies.length, 1);
+  });
+
+  test('deve salvar imagem sob a pasta projects/:docId/files/ usando StoragePathBuilder', async () => {
+    const file = await service.uploadProjectFile(
+      'doc-test-1',
+      'images/grafico.png',
+      Buffer.from('fake-png-data'),
+      'image/png'
+    );
+
+    assert.equal(file.documentId, 'doc-test-1');
+    assert.equal(file.path, 'images/grafico.png');
+    assert.equal(file.fileType, 'image');
+    assert.match(file.storageKey!, /^projects\/doc-test-1\/files\/.+-grafico\.png$/);
   });
 });

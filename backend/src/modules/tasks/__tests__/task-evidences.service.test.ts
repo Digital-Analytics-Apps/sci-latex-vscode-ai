@@ -2,6 +2,7 @@ import { EvidenceStatus, EvidenceType, TaskEvidence } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ITaskEvidencesRepository } from '../../../repositories/task-evidences.repository';
 import { TaskEvidencesService } from '../task-evidences.service';
+import type * as MinioInfra from '../../../infra/minio';
 
 vi.mock('../../../db/prisma', () => ({
   prisma: {
@@ -11,15 +12,19 @@ vi.mock('../../../db/prisma', () => ({
   },
 }));
 
-vi.mock('../../../infra/minio', () => ({
-  generatePresignedPutUrl: vi.fn().mockResolvedValue('https://minio.test/upload-url'),
-  generatePresignedGetUrl: vi.fn().mockResolvedValue('https://minio.test/download-url'),
-  deleteFromMinio: vi.fn().mockResolvedValue(undefined),
-  minioClient: {
-    statObject: vi.fn(),
-  },
-  MINIO_BUCKET: 'collab-assets',
-}));
+vi.mock('../../../infra/minio', async (importOriginal) => {
+  const actual = await importOriginal<typeof MinioInfra>();
+  return {
+    ...actual,
+    generatePresignedPutUrl: vi.fn().mockResolvedValue('https://minio.test/upload-url'),
+    generatePresignedGetUrl: vi.fn().mockResolvedValue('https://minio.test/download-url'),
+    deleteFromMinio: vi.fn().mockResolvedValue(undefined),
+    minioClient: {
+      statObject: vi.fn(),
+    },
+    MINIO_BUCKET: 'collab-assets',
+  };
+});
 
 import { prisma } from '../../../db/prisma';
 import { minioClient } from '../../../infra/minio';

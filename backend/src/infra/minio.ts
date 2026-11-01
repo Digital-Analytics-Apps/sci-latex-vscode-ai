@@ -164,3 +164,29 @@ export async function generatePresignedGetUrl(
 ): Promise<string> {
   return minioPresignClient.presignedGetObject(MINIO_BUCKET, key, expirySeconds);
 }
+
+/**
+ * Utilitário centralizado para geração e padronização de chaves de armazenamento no MinIO (S3).
+ * Garante que todos os arquivos (tanto do editor LaTeX quanto de evidências de tarefas)
+ * sejam salvos rigorosamente sob a raiz do seu respectivo projeto ('projects/:projectId/'),
+ * eliminando duplicação de pastas dispersas na raiz do bucket (Princípio DRY).
+ */
+export const StoragePathBuilder = {
+  /**
+   * Caminho padronizado para arquivos TeX e imagens/PDFs anexados pelo editor LaTeX.
+   * Estrutura: projects/{projectId}/files/{fileId}-{sanitizedFileName}
+   */
+  projectFile(projectId: string, fileId: string, fileName: string): string {
+    const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return `projects/${projectId}/files/${fileId}-${cleanName}`;
+  },
+
+  /**
+   * Caminho padronizado para evidências de tarefas das Etapas 1 e 2.
+   * Estrutura: projects/{projectId}/tasks/{taskId}/evidences/{evidenceId}-{sanitizedFileName}
+   */
+  taskEvidence(projectId: string, taskId: string, evidenceId: string, fileName: string): string {
+    const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return `projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}-${cleanName}`;
+  },
+};

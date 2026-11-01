@@ -7,6 +7,7 @@ import {
   generatePresignedPutUrl,
   MINIO_BUCKET,
   minioClient,
+  StoragePathBuilder,
 } from '../../infra/minio';
 import {
   ITaskEvidencesRepository,
@@ -104,9 +105,7 @@ export class TaskEvidencesService {
     }
 
     const evidenceId = randomUUID();
-    const sanitizedName = dto.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storageKey = `projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}-${sanitizedName}`;
-
+    const storageKey = StoragePathBuilder.taskEvidence(projectId, taskId, evidenceId, dto.fileName);
     const uploadUrl = await generatePresignedPutUrl(storageKey, 900);
 
     await this.evidencesRepository.create({

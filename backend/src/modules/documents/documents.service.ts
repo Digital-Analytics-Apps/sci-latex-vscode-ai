@@ -10,10 +10,11 @@ import {
 } from './documents.schema';
 import { IDocumentsRepository, defaultDocumentsRepository } from './documents.repository';
 import {
-  uploadToMinio,
-  getFromMinio,
   deleteFromMinio,
+  getFromMinio,
   getInternalMinioUrl,
+  StoragePathBuilder,
+  uploadToMinio,
 } from '../../infra/minio';
 import { parseLatexZip } from '../../utils/latex-zip-parser';
 import { Text, ChangeSet } from '@codemirror/state';
@@ -192,8 +193,7 @@ export class DocumentsService {
     initialContent?: string
   ): Promise<Document> {
     const id = randomUUID();
-    let finalContent = initialContent ?? '';
-
+    const finalContent = initialContent ?? '';
 
     const doc: Document = {
       id,
@@ -327,7 +327,6 @@ export class DocumentsService {
         docContent: targetDoc.toString(),
       };
     }
-
 
     let received: Update[] = rawUpdates.map((u) => ({
       clientID: u.clientID,
@@ -523,7 +522,9 @@ export class DocumentsService {
     } catch (err: unknown) {
       const error = err as Error;
       if (error.message.includes('Conflict')) {
-        console.warn(`[Concorrência / Fencing] ${error.message}. Descarregando doc ${documentId} da memória...`);
+        console.warn(
+          `[Concorrência / Fencing] ${error.message}. Descarregando doc ${documentId} da memória...`
+        );
         this.activeDocs.delete(documentId);
         active.pendingOps = 0;
         return null;
@@ -539,7 +540,10 @@ export class DocumentsService {
       for (const comment of comments) {
         this.repository.saveComment(comment).catch((err: unknown) => {
           const error = err as Error;
-          console.warn(`[Comments Checkpoint Warning] Falha ao persistir comentário ${comment.id}:`, error.message);
+          console.warn(
+            `[Comments Checkpoint Warning] Falha ao persistir comentário ${comment.id}:`,
+            error.message
+          );
         });
       }
     }
@@ -605,8 +609,11 @@ export class DocumentsService {
     }
 
     const fileId = randomUUID();
-    const storageKey = `${documentId}/${fileId}-${cleanPath.split('/').pop()}`;
-
+    const storageKey = StoragePathBuilder.projectFile(
+      documentId,
+      fileId,
+      cleanPath.split('/').pop() || 'file'
+    );
     // 1. Salva o blob no bucket MinIO
     await uploadToMinio(storageKey, buffer, mimeType);
 
@@ -805,7 +812,10 @@ export class DocumentsService {
     comm.replies.push(reply);
     this.repository.updateComment(comm).catch((err: unknown) => {
       const error = err as Error;
-      console.warn(`[Comments Warning] Falha ao atualizar reply no comentário ${commentId}:`, error.message);
+      console.warn(
+        `[Comments Warning] Falha ao atualizar reply no comentário ${commentId}:`,
+        error.message
+      );
     });
     return comm;
   }
@@ -906,4 +916,3 @@ export class DocumentsService {
 }
 
 export const defaultDocumentsService = new DocumentsService();
-
