@@ -9,6 +9,13 @@ import {
   TasksController,
   taskWorkspaceParamsSchema,
 } from './tasks.controller';
+import {
+  addLinkEvidenceBodySchema,
+  evidenceItemParamsSchema,
+  evidenceParamsSchema,
+  presignUploadBodySchema,
+  TaskEvidencesController,
+} from './task-evidences.controller';
 
 export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
   const controller = new TasksController();
@@ -130,8 +137,6 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
     controller.reviewDecision.bind(controller)
   );
 
-
-
   // POST /api/v1/projects/:projectId/tasks/:taskId/workspace - Iniciar / Continuar Workspace para uma Task
   fastify.post(
     '/api/v1/projects/:projectId/tasks/:taskId/workspace',
@@ -144,5 +149,79 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
       },
     },
     controller.startWorkspace.bind(controller)
+  );
+
+  const evidencesController = new TaskEvidencesController();
+
+  // POST /api/v1/projects/:projectId/tasks/:taskId/evidences/presign
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/evidences/presign',
+    {
+      schema: {
+        tags: ['Tasks', 'Evidences'],
+        summary: 'Gerar URL pré-assinada para upload de imagem ou PDF de evidência',
+        security: [{ bearerAuth: [] }],
+        params: evidenceParamsSchema,
+        body: presignUploadBodySchema,
+      },
+    },
+    evidencesController.presign.bind(evidencesController)
+  );
+
+  // POST /api/v1/projects/:projectId/tasks/:taskId/evidences/:evidenceId/confirm
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/evidences/:evidenceId/confirm',
+    {
+      schema: {
+        tags: ['Tasks', 'Evidences'],
+        summary: 'Confirmar upload da evidência no MinIO',
+        security: [{ bearerAuth: [] }],
+        params: evidenceItemParamsSchema,
+      },
+    },
+    evidencesController.confirm.bind(evidencesController)
+  );
+
+  // POST /api/v1/projects/:projectId/tasks/:taskId/evidences/link
+  fastify.post(
+    '/api/v1/projects/:projectId/tasks/:taskId/evidences/link',
+    {
+      schema: {
+        tags: ['Tasks', 'Evidences'],
+        summary: 'Adicionar link externo como evidência da tarefa',
+        security: [{ bearerAuth: [] }],
+        params: evidenceParamsSchema,
+        body: addLinkEvidenceBodySchema,
+      },
+    },
+    evidencesController.addLink.bind(evidencesController)
+  );
+
+  // GET /api/v1/projects/:projectId/tasks/:taskId/evidences
+  fastify.get(
+    '/api/v1/projects/:projectId/tasks/:taskId/evidences',
+    {
+      schema: {
+        tags: ['Tasks', 'Evidences'],
+        summary: 'Listar evidências confirmadas da tarefa com URLs de download',
+        security: [{ bearerAuth: [] }],
+        params: evidenceParamsSchema,
+      },
+    },
+    evidencesController.list.bind(evidencesController)
+  );
+
+  // DELETE /api/v1/projects/:projectId/tasks/:taskId/evidences/:evidenceId
+  fastify.delete(
+    '/api/v1/projects/:projectId/tasks/:taskId/evidences/:evidenceId',
+    {
+      schema: {
+        tags: ['Tasks', 'Evidences'],
+        summary: 'Remover uma evidência da tarefa e seu binário no MinIO',
+        security: [{ bearerAuth: [] }],
+        params: evidenceItemParamsSchema,
+      },
+    },
+    evidencesController.delete.bind(evidencesController)
   );
 };

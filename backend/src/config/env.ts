@@ -9,6 +9,7 @@ const envSchema = z.object({
   MINIO_ENDPOINT: z.string().default('http://127.0.0.1:9000'),
   MINIO_ACCESS_KEY: z.string().default('minioadmin'),
   MINIO_SECRET_KEY: z.string().default('minioadmin123'),
+  MINIO_PUBLIC_URL: z.string().optional(),
   MINIO_BUCKET: z.string().default('collab-assets'),
   COMPILER_URL: z.string().default('http://127.0.0.1:4000'),
   REDIS_URL: z.string().default('redis://localhost:6379'),

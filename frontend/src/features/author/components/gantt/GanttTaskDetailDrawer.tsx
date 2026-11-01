@@ -4,6 +4,14 @@ import HowToRegIcon from "@mui/icons-material/HowToReg";
 import LockIcon from "@mui/icons-material/Lock";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
+import ImageIcon from "@mui/icons-material/Image";
+import LinkIcon from "@mui/icons-material/Link";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import { useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -15,11 +23,18 @@ import {
   IconButton,
   LinearProgress,
   MenuItem,
+  Paper,
   Select,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
+import {
+  useAddLinkEvidenceMutation,
+  useDeleteTaskEvidenceMutation,
+  useTaskEvidencesQuery,
+  useUploadTaskEvidenceMutation,
+} from "../../../../hooks/useTaskQueries";
 import { UserAvatar } from "../../../../components/common/UserAvatar";
 import { TaskStatus } from "../../../../constants/status";
 import type { ProjectStage } from "../../../../types/stage.types";
@@ -42,6 +57,7 @@ interface GanttTaskDetailDrawerProps {
   onApproveTask?: (taskId: string) => void;
   onRequestChanges?: (taskId: string) => void;
   isReviewer?: boolean;
+  stages?: ProjectStage[];
 }
 
 export const GanttTaskDetailDrawer = ({
@@ -60,7 +76,59 @@ export const GanttTaskDetailDrawer = ({
   onApproveTask,
   onRequestChanges,
   isReviewer = false,
+  stages,
 }: GanttTaskDetailDrawerProps) => {
+  // Referência para o input de arquivo oculto
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+
+  /**
+   * Identifica a etapa pai da tarefa para validar se pertence às Etapas 1 ou 2
+   */
+  const parentStage = useMemo(() => {
+    if (stage) return stage;
+    const stageId = task?.stageId || task?.stage?.id;
+    if (stageId && stages) {
+      const found = stages.find((s) => s.id === stageId);
+      if (found) return found;
+    }
+    return task?.stage;
+  }, [stage, task, stages]);
+
+  /**
+   * Regra de Governança: Somente tarefas vinculadas às Etapas 1 (Planejamento) e 2 (Desenvolvimento/Experimentos)
+   * possuem permissão para upload de evidências
+   */
+  const isEvidenceAllowed = useMemo(() => {
+    if (!task || Boolean(stage)) return false;
+    const order = parentStage?.order;
+    if (order === 1 || order === 2) return true;
+    const t = (parentStage?.title || "").toLowerCase();
+    return (
+      t.includes("planejamento") ||
+      t.includes("pesquisa") ||
+      t.includes("experimento") ||
+      t.includes("desenvolvimento")
+    );
+  }, [task, stage, parentStage]);
+
+  const taskId = task?.id || "";
+  const projectId = task?.projectId || "";
+
+  // Consulta de evidências ativas
+  const { data: evidences = [], isLoading: isLoadingEvidences } = useTaskEvidencesQuery(
+    projectId,
+    isEvidenceAllowed ? taskId : null,
+  );
+
+  const uploadEvidenceMutation = useUploadTaskEvidenceMutation(projectId, taskId);
+  const addLinkMutation = useAddLinkEvidenceMutation(projectId, taskId);
+  const deleteEvidenceMutation = useDeleteTaskEvidenceMutation(projectId, taskId);
+
   const details = getDrawerEntityDetails(stage, task);
   if (!details) return null;
 
@@ -85,6 +153,47 @@ export const GanttTaskDetailDrawer = ({
     Boolean(task) &&
     (!isAssignedToMe || isMerged);
 
+  /**
+   * Dispara o upload do arquivo binário diretamente para a URL pré-assinada do MinIO
+   */
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEvidenceError(null);
+    setUploadProgress(0);
+    try {
+      await uploadEvidenceMutation.mutateAsync({
+        file,
+        onProgress: (p) => setUploadProgress(p),
+      });
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: unknown) {
+      setUploadProgress(null);
+      const error = err as Error;
+      setEvidenceError(error.message || "Falha no upload da evidência.");
+    }
+  };
+
+  /**
+   * Salva um link externo (Colab, GitHub, Zenodo) como evidência da tarefa
+   */
+  const handleAddLink = async () => {
+    if (!linkTitle.trim() || !linkUrl.trim()) return;
+    setEvidenceError(null);
+    try {
+      await addLinkMutation.mutateAsync({
+        title: linkTitle.trim(),
+        url: linkUrl.trim(),
+      });
+      setLinkTitle("");
+      setLinkUrl("");
+      setIsAddLinkOpen(false);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setEvidenceError(error.message || "Falha ao adicionar link.");
+    }
+  };
   return (
     <Drawer
       anchor="right"
@@ -366,6 +475,243 @@ export const GanttTaskDetailDrawer = ({
             sx={{ height: 8, borderRadius: 4 }}
           />
         </Box>
+
+        {/* SEÇÃO DE EVIDÊNCIAS DE TAREFA (ETAPAS 1 E 2) */}
+        {isEvidenceAllowed && (
+          <Box sx={{ mt: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 1,
+              }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 700 }}
+              >
+                EVIDÊNCIAS DA TAREFA ({evidences.length})
+              </Typography>
+              {!isReadOnly && (
+                <Box sx={{ display: "flex", gap: 0.5 }}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    accept="image/*,application/pdf"
+                    onChange={handleFileSelect}
+                  />
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<CloudUploadIcon fontSize="small" />}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadEvidenceMutation.isPending}
+                    sx={{ fontSize: "0.75rem", fontWeight: 700, p: 0.5 }}
+                  >
+                    Anexar
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<LinkIcon fontSize="small" />}
+                    onClick={() => setIsAddLinkOpen(!isAddLinkOpen)}
+                    sx={{ fontSize: "0.75rem", fontWeight: 700, p: 0.5 }}
+                  >
+                    Link
+                  </Button>
+                </Box>
+              )}
+            </Box>
+
+            {uploadProgress !== null && (
+              <Box sx={{ mb: 1.5 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 700 }}
+                >
+                  Enviando arquivo para o MinIO... {uploadProgress}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={uploadProgress}
+                  sx={{ height: 6, borderRadius: 3, mt: 0.5 }}
+                />
+              </Box>
+            )}
+
+            {evidenceError && (
+              <Alert
+                severity="error"
+                sx={{ mb: 1, py: 0.5, fontSize: "0.75rem" }}
+                onClose={() => setEvidenceError(null)}
+              >
+                {evidenceError}
+              </Alert>
+            )}
+
+            {isAddLinkOpen && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  mb: 1.5,
+                  borderRadius: 2,
+                  bgcolor: "background.default",
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 800, mb: 1, display: "block" }}
+                >
+                  Adicionar Link Externo (Colab, GitHub, Dataset)
+                </Typography>
+                <Stack spacing={1}>
+                  <TextField
+                    size="small"
+                    placeholder="Título (ex: Notebook de Testes)"
+                    value={linkTitle}
+                    onChange={(e) => setLinkTitle(e.target.value)}
+                    fullWidth
+                    slotProps={{ htmlInput: { style: { fontSize: "0.8rem" } } }}
+                  />
+                  <TextField
+                    size="small"
+                    placeholder="URL (https://...)"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    fullWidth
+                    slotProps={{ htmlInput: { style: { fontSize: "0.8rem" } } }}
+                  />
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+                    <Button size="small" onClick={() => setIsAddLinkOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={handleAddLink}
+                      disabled={
+                        addLinkMutation.isPending ||
+                        !linkTitle.trim() ||
+                        !linkUrl.trim()
+                      }
+                    >
+                      Salvar
+                    </Button>
+                  </Box>
+                </Stack>
+              </Paper>
+            )}
+
+            {isLoadingEvidences ? (
+              <CircularProgress
+                size={20}
+                sx={{ my: 1, display: "block", mx: "auto" }}
+              />
+            ) : evidences.length === 0 ? (
+              <Typography
+                variant="caption"
+                color="text.disabled"
+                sx={{ fontStyle: "italic", display: "block" }}
+              >
+                Nenhuma evidência anexada a esta tarefa.
+              </Typography>
+            ) : (
+              <Stack spacing={1} sx={{ mt: 0.5 }}>
+                {evidences.map((ev) => (
+                  <Paper
+                    key={ev.id}
+                    variant="outlined"
+                    sx={{
+                      p: 1,
+                      borderRadius: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {ev.type === "IMAGE" ? (
+                        <ImageIcon fontSize="small" color="primary" />
+                      ) : ev.type === "PDF" ? (
+                         <PictureAsPdfIcon fontSize="small" color="error" />
+                      ) : (
+                        <LinkIcon fontSize="small" color="info" />
+                      )}
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 700, fontSize: "0.8rem" }}
+                          noWrap
+                        >
+                          {ev.title || ev.fileName}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ fontSize: "0.7rem" }}
+                          noWrap
+                        >
+                          {ev.type === "LINK" ? ev.url : ev.fileName}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                      {ev.downloadUrl && (
+                        <IconButton
+                          size="small"
+                          component="a"
+                          href={ev.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Baixar/Visualizar Arquivo"
+                        >
+                          <DownloadIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {ev.url && (
+                        <IconButton
+                          size="small"
+                          component="a"
+                          href={ev.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Abrir Link"
+                        >
+                          <OpenInNewIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {!isReadOnly && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => deleteEvidenceMutation.mutate(ev.id)}
+                          title="Remover Evidência"
+                          disabled={deleteEvidenceMutation.isPending}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Box>
+        )}
       </Stack>
 
       <Divider />

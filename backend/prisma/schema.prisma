@@ -67,6 +67,7 @@ model User {
   userTasks       Task[]             @relation("UserTasks")
   reviewerRCs     ReleaseCandidate[] @relation("ReviewerRCs")
   academicPeriods AcademicPeriod[]   @relation("ManagerAcademicPeriods")
+  evidences       TaskEvidence[]
 }
 
 model AcademicPeriod {
@@ -123,6 +124,7 @@ model Project {
   operations        DocumentOperation[]
   snapshots         DocumentSnapshot[]
   comments          ReviewComment[]
+  evidences         TaskEvidence[]
 }
 
 model ProjectMember {
@@ -202,6 +204,7 @@ model Task {
   project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stage    ProjectStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
   assignee User?         @relation("UserTasks", fields: [assignedToId], references: [id])
+  evidences TaskEvidence[]
 }
 
 enum TaskStatus {
@@ -321,4 +324,39 @@ model ReviewComment {
   updatedAt    DateTime @updatedAt
 
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+enum EvidenceType {
+  IMAGE
+  PDF
+  LINK
+}
+
+enum EvidenceStatus {
+  PENDING
+  CONFIRMED
+}
+
+model TaskEvidence {
+  id           String         @id @default(uuid())
+  taskId       String
+  projectId    String
+  uploadedById String
+  type         EvidenceType
+  status       EvidenceStatus @default(PENDING)
+  title        String
+  url          String?
+  storageKey   String?
+  fileName     String?
+  mimeType     String?
+  sizeBytes    BigInt?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([projectId])
 }

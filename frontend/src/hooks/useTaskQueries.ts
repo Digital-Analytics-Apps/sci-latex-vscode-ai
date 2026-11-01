@@ -104,3 +104,102 @@ export function useReviewDecisionMutation(projectId: string) {
     },
   });
 }
+
+/**
+ * Hook para consultar a lista de evidências ativas de uma tarefa
+ */
+export function useTaskEvidencesQuery(
+  projectId: string,
+  taskId?: string | null,
+) {
+  return useQuery({
+    queryKey: ["task-evidences", projectId, taskId],
+    queryFn: () => {
+      if (!projectId || !taskId) return [];
+      return tasksService.getEvidences(projectId, taskId);
+    },
+    enabled: Boolean(projectId && taskId && !taskId.startsWith("stage-")),
+  });
+}
+
+/**
+ * Hook para orquestrar o upload direto de imagem ou PDF para o MinIO e confirmação no backend
+ */
+export function useUploadTaskEvidenceMutation(
+  projectId: string,
+  taskId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      file,
+      title,
+      onProgress,
+    }: {
+      file: File;
+      title?: string;
+      onProgress?: (percent: number) => void;
+    }) => {
+      const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+      const evidenceType = isPdf ? "PDF" : "IMAGE";
+
+      // 1. Obter a URL pré-assinada de PUT
+      const presign = await tasksService.presignEvidenceUpload(projectId, taskId, {
+        fileName: file.name,
+        mimeType: file.type || (isPdf ? "application/pdf" : "image/png"),
+        sizeBytes: file.size,
+        type: evidenceType,
+        title: title || file.name,
+      });
+
+      // 2. Upload direto para o MinIO via PUT com monitoramento de progresso
+      await tasksService.uploadBinaryToMinio(presign.uploadUrl, file, onProgress);
+
+      // 3. Confirmar a recepção no backend para promover de PENDING a CONFIRMED
+      return tasksService.confirmEvidenceUpload(projectId, taskId, presign.evidenceId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["task-evidences", projectId, taskId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook para adicionar um link externo como evidência da tarefa
+ */
+export function useAddLinkEvidenceMutation(
+  projectId: string,
+  taskId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title: string; url: string }) =>
+      tasksService.addLinkEvidence(projectId, taskId, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["task-evidences", projectId, taskId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook para deletar uma evidência da tarefa
+ */
+export function useDeleteTaskEvidenceMutation(
+  projectId: string,
+  taskId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (evidenceId: string) =>
+      tasksService.deleteEvidence(projectId, taskId, evidenceId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["task-evidences", projectId, taskId],
+      });
+    },
+  });
+}

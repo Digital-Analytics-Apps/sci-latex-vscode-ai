@@ -203,6 +203,7 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
         onClose={() => setIsDrawerOpen(false)}
         stage={selectedStage}
         task={selectedTask}
+        stages={stages}
         currentUserId={currentUserId}
         provisioningTaskId={provisioningTaskId}
         onStartWorkspace={onStartWorkspace}
