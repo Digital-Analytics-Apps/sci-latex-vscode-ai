@@ -2,6 +2,7 @@ import { EvidenceStatus, EvidenceType, TaskEvidence } from '@prisma/client';
 import { prisma } from '../db/prisma';
 
 export interface CreateEvidenceData {
+  id?: string;
   taskId: string;
   projectId: string;
   uploadedById: string;
@@ -30,6 +31,7 @@ export class PrismaTaskEvidencesRepository implements ITaskEvidencesRepository {
   async create(data: CreateEvidenceData): Promise<TaskEvidence> {
     return prisma.taskEvidence.create({
       data: {
+        ...(data.id ? { id: data.id } : {}),
         taskId: data.taskId,
         projectId: data.projectId,
         uploadedById: data.uploadedById,

@@ -16,6 +16,7 @@ export const minioClient = new Minio.Client({
   endPoint: MINIO_HOST,
   port: MINIO_PORT,
   useSSL: MINIO_USE_SSL,
+  region: 'us-east-1',
   accessKey: MINIO_ACCESS_KEY,
   secretKey: MINIO_SECRET_KEY,
 });
@@ -36,6 +37,7 @@ export const minioPresignClient = new Minio.Client({
   endPoint: PUBLIC_MINIO_HOST,
   port: PUBLIC_MINIO_PORT,
   useSSL: PUBLIC_MINIO_USE_SSL,
+  region: 'us-east-1',
   accessKey: MINIO_ACCESS_KEY,
   secretKey: MINIO_SECRET_KEY,
 });

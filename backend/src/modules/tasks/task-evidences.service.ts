@@ -110,6 +110,7 @@ export class TaskEvidencesService {
     const uploadUrl = await generatePresignedPutUrl(storageKey, 900);
 
     await this.evidencesRepository.create({
+      id: evidenceId,
       taskId,
       projectId,
       uploadedById: userId,

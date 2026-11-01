@@ -54,6 +54,7 @@ export class TaskEvidencesController {
       return reply.status(200).send(result);
     } catch (err: unknown) {
       const error = err as Error;
+      console.error('❌ TaskEvidencesController.presign error:', error);
       return reply.status(400).send({ error: 'PRESIGN_FAILED', message: error.message });
     }
   }
@@ -70,6 +71,7 @@ export class TaskEvidencesController {
       return reply.status(200).send(serializeEvidence(confirmed));
     } catch (err: unknown) {
       const error = err as Error;
+      console.error('❌ TaskEvidencesController.confirm error:', error);
       return reply.status(400).send({ error: 'CONFIRM_FAILED', message: error.message });
     }
   }
@@ -88,6 +90,7 @@ export class TaskEvidencesController {
       return reply.status(201).send(serializeEvidence(evidence));
     } catch (err: unknown) {
       const error = err as Error;
+      console.error('❌ TaskEvidencesController.addLink error:', error);
       return reply.status(400).send({ error: 'ADD_LINK_FAILED', message: error.message });
     }
   }
