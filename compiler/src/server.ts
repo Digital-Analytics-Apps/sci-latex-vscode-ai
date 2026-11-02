@@ -150,7 +150,20 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
       // Ignora erro ao ler .aux
     }
 
-    if (requiresBibtex) {
+    const bcfPath = path.join(sandboxDir, `${entryBaseName}.bcf`);
+    let requiresBiber = false;
+    try {
+      await fs.access(bcfPath);
+      requiresBiber = true;
+    } catch {
+      // Ignora erro se .bcf não existir
+    }
+
+    if (requiresBiber) {
+      request.log.info({ jobId, entryBaseName }, 'Executando biber para resolver citações com biblatex');
+      await runProcess('biber', [entryBaseName], 20000);
+      await runProcess('pdflatex', pdflatexArgs);
+    } else if (requiresBibtex) {
       request.log.info({ jobId, entryBaseName }, 'Executando bibtex para resolver citações bibliográficas');
       await runProcess('bibtex', [entryBaseName], 15000);
       // Passe 2 pós-bibtex para incorporar as referências

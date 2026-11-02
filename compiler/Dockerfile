@@ -6,8 +6,13 @@ RUN apt-get update && \
     texlive-latex-base \
     texlive-latex-recommended \
     texlive-fonts-recommended \
+    texlive-fonts-extra \
     texlive-latex-extra \
     texlive-bibtex-extra \
+    texlive-plain-generic \
+    texlive-publishers \
+    texlive-science \
+    biber \
     cm-super && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
