@@ -12,7 +12,7 @@ class StreamProcessor:
     """
 
     AGENT_DISPLAY_NAMES = {
-        "supervisor_agent": "Supervisor",
+        "supervisor_agent": "Belisa",
         "idea_refiner_subagent": "Guia de Exploração",
         "search_specialist_subagent": "Especialista de Busca",
         "curation_manager": "Gerente de Curadoria",
@@ -43,19 +43,24 @@ class StreamProcessor:
             for node_name, state_update in chunk.items():
                 if node_name == "__interrupt__":
                     interrupts_data = []
+                    action_requests = []
                     items = state_update if isinstance(state_update, (list, tuple)) else [state_update]
                     for item in items:
-                        if hasattr(item, "value"):
-                            interrupts_data.append({"value": item.value, "id": getattr(item, "id", None)})
-                        elif isinstance(item, dict):
-                            interrupts_data.append(item)
+                        val = getattr(item, "value", item)
+                        item_id = getattr(item, "id", None)
+                        if isinstance(val, dict):
+                            interrupts_data.append({"value": val, "id": item_id})
+                            reqs = val.get("action_requests") or val.get("actionRequests")
+                            if isinstance(reqs, list):
+                                action_requests.extend(reqs)
                         else:
-                            interrupts_data.append(str(item))
+                            interrupts_data.append({"value": str(val), "id": item_id})
 
                     payload = {
                         "type": "interrupt",
                         "node": node_name,
                         "data": interrupts_data,
+                        "action_requests": action_requests,
                     }
                     yield f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
                     continue
@@ -81,7 +86,7 @@ class StreamProcessor:
                         agent_key = getattr(msg, "name", None) or node_name
                         if agent_key in ("model", "agent"):
                             agent_key = "supervisor_agent"
-                        display_name = self.AGENT_DISPLAY_NAMES.get(agent_key, "Supervisor")
+                        display_name = self.AGENT_DISPLAY_NAMES.get(agent_key, "Belisa")
                         payload = {
                             "type": "token",
                             "agent": display_name,

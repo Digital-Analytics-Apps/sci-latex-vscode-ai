@@ -1,4 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { Button, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
@@ -22,7 +23,7 @@ import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
 import type { ArticleItem } from "../../services/articlesService";
 import type { RootState } from "../../store";
 import { CreateProjectModal } from "./modals/CreateProjectModal";
-
+import { CreateArticleAiModal } from "./modals/CreateArticleAiModal";
 export const AuthorArticlesPage = () => {
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -31,7 +32,7 @@ export const AuthorArticlesPage = () => {
   const [searchArticleQuery, setSearchArticleQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const articlesWithRoles = useMemo(() => {
     return articles.map((art) => {
       const isReviewer = art.members?.some(
@@ -227,6 +228,17 @@ export const AuthorArticlesPage = () => {
             </ToggleButtonGroup>
 
             <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => setIsAiModalOpen(true)}
+              sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
+            >
+              Criar com Belisa
+            </Button>
+
+            <Button
               variant="contained"
               color="primary"
               size="small"
@@ -274,10 +286,17 @@ export const AuthorArticlesPage = () => {
         />
       </TableContainer>
 
-      {/* Modal de Criação de Novo Artigo */}
+      {/* Modal de Criação de Novo Artigo Manual */}
       <CreateProjectModal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onArticleCreated={(articleId) => navigate(`/articles/${articleId}`)}
+      />
+
+      {/* Modal de Criação de Artigo Assistida por IA */}
+      <CreateArticleAiModal
+        open={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
         onArticleCreated={(articleId) => navigate(`/articles/${articleId}`)}
       />
     </PageContainer>

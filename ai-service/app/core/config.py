@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     
     # Segurança Machine-to-Machine (M2M)
     INTERNAL_SERVICE_KEY: str = "scia-internal-secret-change-in-production"
-    
+    BACKEND_API_URL: str = "http://localhost:3333"
     # CORS
     BACKEND_CORS_ORIGINS: Union[List[str], str] = ["*"]
 

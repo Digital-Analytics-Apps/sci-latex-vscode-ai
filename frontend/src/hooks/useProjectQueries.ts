@@ -122,8 +122,8 @@ export function useCreateProjectMutation() {
       submissionDeadline?: string;
       template?: string;
       templateId?: string;
-      coordinatorId: string;
-      managerId: string;
+      coordinatorId?: string;
+      managerId?: string;
       additionalAuthorIds?: string[];
       reviewerId?: string;
       stages?: Array<{

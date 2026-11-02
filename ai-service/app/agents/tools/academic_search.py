@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any, Union
 from langchain_core.tools import tool
+from langgraph.types import interrupt
 from app.agents.tools.arxiv import search_academic_papers_arxiv
 from app.agents.tools.semantic_scholar import search_academic_papers_s2
 from app.agents.tools.openalex import search_academic_papers_openalex
@@ -58,3 +59,42 @@ async def execute_academic_search(query: str, limit: int = 5) -> Union[List[Dict
     except Exception as e:
         logger.error(f"[AcademicSearch] Falha no fallback OpenAlex: {str(e)}")
         return f"ERRO_TOTAL: Todas as bases de dados acadêmicas falharam (arXiv, S2, OpenAlex): {str(e)}"
+
+
+@tool
+async def search_academic_literature(query: str, limit: int = 5) -> str:
+    """
+    Busca artigos científicos no arXiv (com fallback automático para Semantic Scholar e OpenAlex)
+    e apresenta imediatamente o card interativo para que o autor faça a seleção obrigatória de referências no Estágio 2.
+    """
+    logger.info(f"[search_academic_literature] Iniciando busca e apresentação para: '{query}'")
+    results = await search_academic_papers_arxiv(query, limit)
+    if isinstance(results, str) or not results:
+        results = await search_academic_papers_s2(query, limit)
+    if isinstance(results, str) or not results:
+        results = await search_academic_papers_openalex(query, limit)
+
+    articles = results if isinstance(results, list) else []
+
+    if not articles:
+        return "Não foi possível localizar artigos para os termos buscados. Tente refinar a query."
+
+    selection_request = {
+        "action_requests": [
+            {
+                "name": "present_articles_to_user_for_selection",
+                "args": {"articles": articles},
+                "description": "Selecione os artigos que deseja utilizar como base referencial no seu projeto.",
+            }
+        ]
+    }
+    decision = interrupt(selection_request)
+    selected_count = 0
+    if isinstance(decision, dict) and "selected_articles" in decision:
+        selected_count = len(decision.get("selected_articles", []))
+    elif isinstance(decision, dict) and "decisions" in decision:
+        for d in decision.get("decisions", []):
+            if d.get("type") in ("approve", "selected"):
+                selected_count = len(d.get("args", {}).get("selected_articles", []))
+
+    return f"O autor selecionou {selected_count} artigos com sucesso como base referencial. Agora prossiga diretamente para o Estágio 3 perguntando sobre o congresso alvo, prazo e template LaTeX."

@@ -6,6 +6,7 @@ from langgraph.types import interrupt, Command
 from langgraph.prebuilt import InjectedState
 from app.core.llm import get_llm
 from app.agents.state import OnboardingState
+from app.agents.tools.calendar_tool import calculate_deadline_and_stages
 from deepagents import create_deep_agent
 
 logger = logging.getLogger(__name__)
@@ -87,8 +88,14 @@ Sua missão é consolidar os dados do Onboarding (tema refinado, artigos cientí
 def propose_article_structure_and_tasks(
     title: str,
     abstract: str,
-    template_id: Optional[str] = "sbc",
+    template_id: Optional[str] = "tpl-system-sbc",
     conference_name: Optional[str] = None,
+    coordinator_id: Optional[str] = None,
+    manager_id: Optional[str] = None,
+    coordinator_name: Optional[str] = None,
+    manager_name: Optional[str] = None,
+    reviewer_id: Optional[str] = None,
+    reviewer_name: Optional[str] = None,
     total_weeks: Optional[int] = 10,
     topic: Optional[str] = None,
     tasks: Optional[List[Dict[str, Any]]] = None,
@@ -126,7 +133,13 @@ def propose_article_structure_and_tasks(
         "abstract": abstract,
         "topic": topic or title,
         "conference": conf,
-        "template_id": template_id or "sbc",
+        "template_id": template_id or "tpl-system-sbc",
+        "coordinator_id": coordinator_id,
+        "manager_id": manager_id,
+        "coordinator_name": coordinator_name,
+        "manager_name": manager_name,
+        "reviewer_id": reviewer_id,
+        "reviewer_name": reviewer_name,
         "submission_deadline": deadline or f"Em {total_weeks or 10} semanas",
         "stages": calculated_stages,
         "tasks": [],
@@ -171,8 +184,11 @@ create_project_and_roadmap = propose_article_structure_and_tasks
 def get_curation_agent(checkpointer=None):
     return create_deep_agent(
         model=get_llm(),
-        tools=[propose_article_structure_and_tasks, create_project_and_roadmap],
-        system_prompt=CURATION_PROMPT,
+        tools=[
+            propose_article_structure_and_tasks,
+            create_project_and_roadmap,
+            calculate_deadline_and_stages,
+        ],
         checkpointer=checkpointer,
         context_schema=OnboardingState,
         name="curation_manager",

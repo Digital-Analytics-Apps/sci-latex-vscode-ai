@@ -75,6 +75,8 @@ services:
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: collab-assets
       COMPILER_URL: http://compiler:4000
+      AI_SERVICE_URL: http://host.docker.internal:8000
+      INTERNAL_SERVICE_KEY: scia-internal-secret-change-in-production
       PORT: 3333
       HOST: "::"
       NODE_ENV: development
@@ -91,6 +93,8 @@ services:
         condition: service_started
       compiler:
         condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: sh -c "npx prisma generate && exec npm run dev"
   frontend:
     build:

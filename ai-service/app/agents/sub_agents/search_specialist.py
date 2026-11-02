@@ -65,7 +65,8 @@ A busca padrão (`execute_academic_search`) consulta prioritariamente a base de 
 1. **UMA BUSCA POR VEZ**: Nunca acione ferramentas de busca mais de uma vez na mesma resposta.
 2. **QUALIDADE SOBRE QUANTIDADE**: Extraia os 5 artigos mais relevantes e pertinentes ao tema proposto.
 3. **QUERIES SUCINTAS (3 A 4 PALAVRAS-CHAVE)**: Nunca envie frases longas ou listas exaustivas de sinônimos. Extraia apenas os 3 ou 4 termos técnicos mais centrais do tema (ex: "bot detection social media" ou "time series anomaly detection").
-4. **EXIBIÇÃO OBRIGATÓRIA**: Sempre finalize chamando `present_articles_to_user_for_selection` com a lista de artigos encontrados para que o autor faça a seleção. NÃO faça novas buscas após obter artigos.
+4. **EXIBIÇÃO OBRIGATÓRIA**: Sempre finalize chamando `present_articles_to_user_for_selection` com a lista de artigos encontrados para que o autor faça a seleção no card interativo.
+5. **PROIBIDO ESCOLHER PELO AUTOR**: Você JAMAIS deve selecionar artigos por conta própria nem dizer em texto que selecionou as referências. A seleção pertence 100% ao autor humano. Nunca faça perguntas sobre conferência ou prazos (isso pertence ao Supervisor).
 """
 
 def get_search_specialist_agent(checkpointer=None):

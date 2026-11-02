@@ -169,19 +169,24 @@ export class DashboardService {
       else onTimeCount++;
 
       // 3. Agrupamento por Coordenador
+      // 3. Agrupamento por Coordenador (quando houver coordenador atribuído)
       const coordId = proj.coordinatorId;
-      if (!coordinatorSummaryMap.has(coordId)) {
-        coordinatorSummaryMap.set(coordId, {
-          coordinatorId: coordId,
-          coordinator: proj.coordinator,
-          totalProjects: 0,
-          publishedCount: 0,
-        });
-      }
-      const coordEntry = coordinatorSummaryMap.get(coordId);
-      coordEntry.totalProjects++;
-      if (proj.doi || proj.submissionStatus === 'COMPLETED_PUBLISHED') {
-        coordEntry.publishedCount++;
+      if (coordId && proj.coordinator) {
+        if (!coordinatorSummaryMap.has(coordId)) {
+          coordinatorSummaryMap.set(coordId, {
+            coordinatorId: coordId,
+            coordinator: proj.coordinator,
+            totalProjects: 0,
+            publishedCount: 0,
+          });
+        }
+        const coordEntry = coordinatorSummaryMap.get(coordId);
+        if (coordEntry) {
+          coordEntry.totalProjects++;
+          if (proj.doi || proj.submissionStatus === 'COMPLETED_PUBLISHED') {
+            coordEntry.publishedCount++;
+          }
+        }
       }
     }
 

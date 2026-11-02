@@ -6,8 +6,8 @@ export interface CreateProjectData {
   name: string;
   description?: string;
   academicPeriodId?: string;
-  coordinatorId: string;
-  managerId: string;
+  coordinatorId?: string | null;
+  managerId?: string | null;
   targetConferenceName?: string;
   targetConferenceDate?: Date;
   backupConferenceName?: string;
@@ -52,24 +52,35 @@ export interface IProjectsRepository {
 
 export class PrismaProjectsRepository implements IProjectsRepository {
   async create(data: CreateProjectData): Promise<Project> {
-    const memberCreates: Prisma.ProjectMemberCreateManyProjectInput[] = [
-      { userId: data.creatorId, role: Role.AUTHOR },
-      { userId: data.coordinatorId, role: Role.COORDINATOR },
-      { userId: data.managerId, role: Role.MANAGER },
-    ];
+    const memberRoles: Record<string, Role> = {};
+    // O criador do projeto é sempre associado com papel AUTHOR
+    memberRoles[data.creatorId] = Role.AUTHOR;
 
-    if (data.reviewerId) {
-      memberCreates.push({ userId: data.reviewerId, role: Role.REVIEWER });
+    // Coordenador (se for usuário distinto)
+    if (data.coordinatorId && !memberRoles[data.coordinatorId]) {
+      memberRoles[data.coordinatorId] = Role.COORDINATOR;
+    }
+
+    // Gerente (se for usuário distinto)
+    if (data.managerId && !memberRoles[data.managerId]) {
+      memberRoles[data.managerId] = Role.MANAGER;
+    }
+
+    if (data.reviewerId && !memberRoles[data.reviewerId]) {
+      memberRoles[data.reviewerId] = Role.REVIEWER;
     }
 
     if (data.additionalAuthorIds && data.additionalAuthorIds.length > 0) {
       for (const authorId of data.additionalAuthorIds) {
-        if (!memberCreates.some((m) => m.userId === authorId)) {
-          memberCreates.push({ userId: authorId, role: Role.AUTHOR });
+        if (!memberRoles[authorId]) {
+          memberRoles[authorId] = Role.AUTHOR;
         }
       }
     }
 
+    const memberCreates: Prisma.ProjectMemberCreateManyProjectInput[] = Object.entries(
+      memberRoles
+    ).map(([userId, role]) => ({ userId, role }));
     return prisma.project.create({
       data: {
         id: data.id,

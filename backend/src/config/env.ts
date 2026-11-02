@@ -12,6 +12,8 @@ const envSchema = z.object({
   MINIO_PUBLIC_URL: z.string().default('http://localhost:9000'),
   MINIO_BUCKET: z.string().default('collab-assets'),
   COMPILER_URL: z.string().default('http://127.0.0.1:4000'),
+  AI_SERVICE_URL: z.string().default('http://127.0.0.1:8000'),
+  INTERNAL_SERVICE_KEY: z.string().default('scia-internal-secret-change-in-production'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   PORT: z.coerce.number().default(3333),
   HOST: z.string().default('0.0.0.0'),

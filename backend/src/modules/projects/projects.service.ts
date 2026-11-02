@@ -17,8 +17,8 @@ export interface CreateProjectDTO {
   name: string;
   description?: string;
   academicPeriodId?: string;
-  coordinatorId: string;
-  managerId: string;
+  coordinatorId?: string;
+  managerId?: string;
   targetConferenceName?: string;
   targetConferenceDate?: Date;
   backupConferenceName?: string;
@@ -80,14 +80,16 @@ export class ProjectsService {
 
     const projectId = crypto.randomUUID();
 
+    const coordinatorId = data.coordinatorId || null;
+    const managerId = data.managerId || null;
     // 1. Criar a entidade Project no banco com membros diretos
     const project = await this.projectsRepository.create({
       id: projectId,
       name: data.name,
       description: data.description,
       academicPeriodId: data.academicPeriodId,
-      coordinatorId: data.coordinatorId,
-      managerId: data.managerId,
+      coordinatorId,
+      managerId,
       targetConferenceName: data.targetConferenceName,
       targetConferenceDate: data.targetConferenceDate,
       backupConferenceName: data.backupConferenceName,

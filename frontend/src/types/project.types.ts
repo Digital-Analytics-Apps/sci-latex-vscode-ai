@@ -45,8 +45,8 @@ export interface CreateProjectInput {
   description?: string;
   targetConferenceName?: string;
   targetConferenceDate?: string;
-  coordinatorId: string;
-  managerId: string;
+  coordinatorId?: string;
+  managerId?: string;
   additionalAuthorIds?: string[];
   authorIds?: string[];
   reviewerId?: string;

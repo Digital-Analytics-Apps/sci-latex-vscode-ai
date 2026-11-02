@@ -25,7 +25,7 @@ import { tasksRoutes } from './modules/tasks/tasks.routes';
 import { releasesRoutes } from './modules/releases/releases.routes';
 import { usersRoutes } from './modules/users/users.routes';
 import { templatesRoutes } from './modules/templates/templates.routes';
-
+import { aiRoutes } from './modules/ai/ai.routes';
 export async function buildApp() {
   const app = fastify({
     logger: true,
@@ -132,7 +132,7 @@ export async function buildApp() {
   await app.register(releasesRoutes);
   await app.register(usersRoutes, { prefix: '/api/v1/users' });
   await app.register(templatesRoutes, { prefix: '/api/v1/templates' });
-
+  await app.register(aiRoutes, { prefix: '/api/v1/ai' });
   // Fallback para LanguageTool
   app.post('/api/v1/languagetool/check', async () => ({ matches: [] }));
   app.post('/api/languagetool/check', async () => ({ matches: [] }));

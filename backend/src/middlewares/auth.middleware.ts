@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Role } from '@prisma/client';
-
+import { env } from '../config/env';
 export interface UserPayload {
   sub: string;
   email: string;
@@ -15,11 +15,23 @@ declare module '@fastify/jwt' {
   }
 }
 
-// Middleware de verificação de autenticação JWT (Enforces Authorization Bearer Header)
+// Middleware de verificação de autenticação JWT e chave de serviço M2M (ADR-006)
 export async function verifyJwt(request: FastifyRequest, reply: FastifyReply) {
   try {
+    // Suporte a autenticação M2M entre microsserviços via X-Internal-Service-Key (ADR-006)
+    const internalKey = request.headers['x-internal-service-key'];
+    if (internalKey && internalKey === env.INTERNAL_SERVICE_KEY) {
+      request.user = {
+        sub: 'internal-service',
+        email: 'internal@scia.system',
+        name: 'Internal SciAI Service',
+        role: Role.ADMIN,
+      };
+      return;
+    }
+
     if (!request.headers.authorization) {
-      const token = request.cookies?.accessToken || (request.query as any)?.token;
+      const token = request.cookies?.accessToken || (request.query as { token?: string })?.token;
       if (token) {
         request.headers.authorization = `Bearer ${token}`;
       }
