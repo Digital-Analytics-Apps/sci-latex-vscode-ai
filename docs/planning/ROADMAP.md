@@ -82,8 +82,9 @@
 
 - [x] **6.1 Microserviço FastAPI e Núcleo de Agentes LangGraph (`ai-service/`)**
   - Grafo multi-agente tipado com `Supervisor`, `IdeaRefiner`, `SearchSpecialist` (com `interrupt` Human-in-the-Loop), `CurationAgent` e `WriterAgent`.
-- [x] **6.2 Ferramentas de Pesquisa Científica com Connection Pooling**
-  - Conectores OpenAlex e Semantic Scholar com semáforo de concorrência, retries com exponential backoff e Tavily search.
+- [x] **6.2 Ferramentas de Pesquisa Científica com Connection Pooling & Rate-Limiting**
+  - Conector oficial do arXiv (primário) com semáforo unitário (`Semaphore(1)`), throttle mandatório de 3 segundos (ToU), timeout de 12s e fail-fast em 429.
+  - Conectores OpenAlex e Semantic Scholar como fallback em 3 níveis e Tavily search.
 - [x] **6.3 Endpoints M2M e Streaming SSE**
   - Rotas `/api/v1/chat/stream`, `/api/v1/runs` autenticadas por `X-Internal-Service-Key` e formatador SSE enxuto.
 - [x] **6.4 Harness CLI de Testes e ADR-009**

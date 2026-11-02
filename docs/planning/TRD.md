@@ -148,16 +148,16 @@ graph TD
     InterruptNode -->|Não / Novo Filtro| SearchAgent
 
     SearchAgent --> AcademicFacade[Academic Search Facade]
-    AcademicFacade --> OpenAlex[OpenAlex Tool<br/>Connection Pool]
+    AcademicFacade --> ArXiv[arXiv Tool (Default)<br/>Semaphore 1 & 3s Throttle]
     AcademicFacade --> SemanticScholar[Semantic Scholar Tool<br/>Exponential Backoff]
+    AcademicFacade --> OpenAlex[OpenAlex Tool<br/>Connection Pool]
     AcademicFacade --> Tavily[Tavily Web Search Tool]
 ```
 
 ### 5.2 Ferramentas de Pesquisa Científica & Resiliência
-1. **Academic Search Facade:** Provê ponto único de busca bibliográfica com chaveamento de contingência automático (Semantic Scholar $
-ightarrow$ Fallback para OpenAlex).
-2. **Pool de Conexões HTTP:** `httpx.AsyncClient` reutilizável com limites de concorrência (`asyncio.Semaphore`) para evitar bloqueios por rate limit das APIs acadêmicas.
-3. **Mecanismo de Backoff Exponencial:** Retentativas automáticas em erros HTTP `429 (Too Many Requests)` e `5xx`.
+1. **Academic Search Facade:** Provê ponto único de busca bibliográfica com chaveamento de contingência em 3 níveis (arXiv $\rightarrow$ Fallback Semantic Scholar $\rightarrow$ Fallback OpenAlex).
+2. **Pool de Conexões HTTP & Concorrência:** `httpx.AsyncClient` reutilizável com limites estritos de concorrência (`asyncio.Semaphore(1)` e throttle de 3s no arXiv conforme ToU; semáforos no S2 e OpenAlex).
+3. **Mecanismo de Backoff Exponencial & Fail-Fast:** Retentativas automáticas e chaveamento instantâneo em rate limits (`429`) para garantir resposta ágil ao autor.
 
 ### 5.3 Contrato de Concorrência & Proteção da Workspace
 Para impedir que sugestões de IA sobrescrevam alterações recentes do autor no editor:

@@ -20,11 +20,10 @@ Sua missão é atuar como um mentor ativo e acolhedor, conduzindo o autor pelos 
      * 3. **ACM (acmart)** — padrão para simpósios e conferências da ACM.
      * 4. **Springer LNCS** — padrão para publicações internacionais Springer.
      * 5. **Artigo Padrão (Genérico)**.
-4. **Estágio 4 (Estruturação de Tarefas e Proposta Final)**: Delegue para o Gerente de Curadoria (`curation_manager`) passando o tema, artigos selecionados, congresso, prazo e o template escolhido para estruturar as seções do artigo como tarefas na Etapa 3 (Escrita) e calcular as datas das 6 etapas fixas institucionais.
+4. **Estágio 4 (Estruturação de Tarefas e Proposta Final)**: Delegue para o Gerente de Curadoria (`curation_manager`) passando o tema, artigos selecionados, congresso, prazo e o template escolhido para calcular o cronograma de datas das 6 etapas fixas institucionais e propor a divisão inicial de tarefas de trabalho da equipe.
 
 ### REGRAS CRÍTICAS DE GOVERNANÇA:
-- **AS 6 ETAPAS INSTITUCIONAIS SÃO IMUTÁVEIS**: O SCIA opera sob 6 etapas fixas (1. Planejamento, 2. Experimentos, 3. Escrita, 4. Revisão Geral, 5. NIT, 6. Congresso). NUNCA invente etapas. O que a IA cria são as **Tarefas** de escrita (seções TeX) pertencentes à Etapa 3.
-- **COMUNICAÇÃO CLARA**: Nunca responda com silêncio ou mensagens em branco.
+- **AS 6 ETAPAS INSTITUCIONAIS SÃO IMUTÁVEIS**: O SCIA opera sob 6 etapas fixas (1. Planejamento, 2. Experimentos, 3. Escrita, 4. Revisão Geral, 5. NIT, 6. Congresso). NUNCA invente etapas. A IA calcula a divisão de datas das 6 etapas e sugere tarefas para a organização colaborativa da equipe.
 - **NOMES AMIGÁVEIS**: Apresente sempre os especialistas pelos seus nomes amigáveis:
   * "Guia de Exploração" (Refinamento de Ideia)
   * "Especialista de Busca" (Pesquisa de Artigos)
@@ -38,10 +37,9 @@ def get_onboarding_supervisor(checkpointer=None, **kwargs):
 
     curation_spec = {
         "name": "curation_manager",
-        "description": "Consolida os dados do Onboarding nas 6 etapas fixas do SCIA, estruturando as tarefas de escrita (seções TeX) na Etapa 3 e gerando a proposta de criação do projeto.",
+        "description": "Calcula a distribuição de datas nas 6 etapas fixas do SCIA, propõe a divisão inicial de tarefas entre os autores e gera a proposta estruturada do projeto.",
         "runnable": get_curation_agent(checkpointer=checkpointer),
     }
-
     idea_refiner_spec = {
         "name": "idea_refiner_subagent",
         "description": "Auxilia o autor a amadurecer a ideia inicial e delimitar o problema de pesquisa.",

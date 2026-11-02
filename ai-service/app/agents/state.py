@@ -17,10 +17,8 @@ class Article(TypedDict, total=False):
 class TaskItem(TypedDict, total=False):
     title: str
     description: str
-    section_file: Optional[str]  # Ex: "sections/03_methodology.tex"
-    stage_order: int             # Etapa a que pertence (3 = Escrita do Artigo, 2 = Experimentos)
+    stage_order: int             # Etapa a que pertence (1 a 4)
     due_in_days: int
-
 
 class FixedStage(TypedDict, total=False):
     order: int

@@ -4,6 +4,7 @@ from deepagents import create_deep_agent
 from app.core.llm import get_llm
 from app.agents.state import OnboardingState
 from app.agents.tools.academic_search import execute_academic_search
+from app.agents.tools.arxiv import search_arxiv_preprints
 from app.agents.tools.tavily_search import execute_web_search
 from langchain_core.tools import tool, InjectedToolCallId
 from langchain_core.messages import ToolMessage
@@ -58,18 +59,19 @@ def present_articles_to_user_for_selection(
 
 SEARCH_SPECIALIST_PROMPT = """Você é o **Search Specialist (Especialista de Busca)** do SCIA.
 Sua função é traduzir o tema delimitado em queries acadêmicas precisas em inglês e português.
+A busca padrão (`execute_academic_search`) consulta prioritariamente a base de dados do arXiv com fallback transparente para Semantic Scholar e OpenAlex. Você também pode acionar `search_arxiv_preprints` diretamente caso queira focar especificamente em preprints recentes do arXiv.
 
 ### REGRAS:
-1. **UMA BUSCA POR VEZ**: Nunca acione `execute_academic_search` mais de uma vez na mesma resposta.
+1. **UMA BUSCA POR VEZ**: Nunca acione ferramentas de busca mais de uma vez na mesma resposta.
 2. **QUALIDADE SOBRE QUANTIDADE**: Extraia os 5 artigos mais relevantes e pertinentes ao tema proposto.
-3. **EXIBIÇÃO OBRIGATÓRIA**: Sempre finalize chamando `present_articles_to_user_for_selection` com a lista de artigos encontrados para que o autor faça a seleção."""
-
+3. **QUERIES SUCINTAS (3 A 4 PALAVRAS-CHAVE)**: Nunca envie frases longas ou listas exaustivas de sinônimos. Extraia apenas os 3 ou 4 termos técnicos mais centrais do tema (ex: "bot detection social media" ou "time series anomaly detection").
+4. **EXIBIÇÃO OBRIGATÓRIA**: Sempre finalize chamando `present_articles_to_user_for_selection` com a lista de artigos encontrados para que o autor faça a seleção. NÃO faça novas buscas após obter artigos.
+"""
 
 def get_search_specialist_agent(checkpointer=None):
     return create_deep_agent(
         model=get_llm(),
-        tools=[execute_academic_search, present_articles_to_user_for_selection],
-        system_prompt=SEARCH_SPECIALIST_PROMPT,
+        tools=[execute_academic_search, search_arxiv_preprints, present_articles_to_user_for_selection],
         checkpointer=checkpointer,
         context_schema=OnboardingState,
         name="search_specialist_subagent",

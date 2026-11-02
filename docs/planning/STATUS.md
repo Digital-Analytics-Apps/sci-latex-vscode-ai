@@ -27,13 +27,14 @@
       * `ai-service/app/agents/state.py`: Estado compartilhado tipado (`OnboardingState`, `Article`, `TaskItem`).
       * `ai-service/app/agents/sub_agents/supervisor.py`: Orquestrador geral do fluxo guiado de 4 estágios.
       * `ai-service/app/agents/sub_agents/idea_refiner.py`: Guia de Exploração para refinamento de hipóteses e tema de pesquisa.
-      * `ai-service/app/agents/sub_agents/search_specialist.py`: Especialista de busca bibliográfica com `interrupt` Human-in-the-Loop.
-      * `ai-service/app/agents/sub_agents/curation.py`: Curadoria de artigos e roadmap preliminar (limpo de acoplamentos locais com banco).
+      * `ai-service/app/agents/sub_agents/search_specialist.py`: Especialista de busca bibliográfica prioritária no arXiv com fallback para Semantic Scholar e OpenAlex (`interrupt` Human-in-the-Loop).
+      * `ai-service/app/agents/sub_agents/curation.py`: Curadoria de artigos e cálculo proporcional de datas nas 6 etapas fixas institucionais (sem criação artificial de tarefas por IA e respeitando o template do MinIO).
       * `ai-service/app/agents/writer.py`: Redator acadêmico LaTeX.
-    * **Ferramentas de Pesquisa Científica com Connection Pooling**:
+    * **Ferramentas de Pesquisa Científica com Connection Pooling & Rate-Limiting**:
+      * `ai-service/app/agents/tools/arxiv.py`: Conector oficial do arXiv com semáforo unitário (`Semaphore(1)`), throttle mandatório de 3 segundos (ToU), timeout de 12s, fail-fast e parser nativo Atom 1.0 (XML).
       * `ai-service/app/agents/tools/openalex.py`: Conector com semáforo de concorrência e reaproveitamento de conexões TCP.
       * `ai-service/app/agents/tools/semantic_scholar.py`: Conector Semantic Scholar com retries e exponential backoff.
-      * `ai-service/app/agents/tools/academic_search.py`: Facade unificada com fallback resiliente (S2 ➡️ OpenAlex).
+      * `ai-service/app/agents/tools/academic_search.py`: Facade unificada com contingência em 3 níveis (arXiv ➡️ S2 ➡️ OpenAlex).
       * `ai-service/app/agents/tools/tavily_search.py`: Busca web com Tavily.
     * **APIs e Streaming SSE**:
       * `ai-service/app/api/v1/endpoints/chat.py`: Endpoints `/chat/stream` e `/chat/resume` para o chat interativo.

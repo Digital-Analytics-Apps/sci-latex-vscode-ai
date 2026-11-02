@@ -39,8 +39,8 @@ Fica estruturada a estratégia de experimentação e habilitação do microservi
 │ - CLI REPL e cURL scripts     │ - Suporte pleno a interrupt() │ - Suporte a tools      │
 ├───────────────────────────────┼───────────────────────────────┼────────────────────────┤
 │ 4. Resiliência de Buscas      │ 5. Exposição do Writer LaTeX  │ 6. Roteiro Progressivo │
-│ - Semantic Scholar + OpenAlex │ - Nova rota /writer/generate  │ - Fase 1: API pura     │
-│ - Rate-limit backoff ativo    │ - Teste de diff TeX via JSON  │ - Fase 2: Fastify M2M  │
+│ - arXiv (Default) + S2/OpenAlex│ - Nova rota /writer/assist    │ - Fase 1: API pura     │
+│ - Rate-limit backoff ativo    │ - Chat consultivo sem mutação │ - Fase 2: Fastify M2M  │
 │ - Retorno estruturado JSON    │ - Validação de macros e bib   │ - Fase 3: UI Chat      │
 └───────────────────────────────┴───────────────────────────────┴────────────────────────┘
 ```
@@ -94,12 +94,12 @@ Fica estruturada a estratégia de experimentação e habilitação do microservi
 
 ### Pilar 4: Resiliência das Ferramentas de Busca Acadêmica
 
-1. **Ordem de Precedência das Fontes:**
-   * A ferramenta `execute_academic_search` executa primeiramente a busca no **Semantic Scholar (S2)** com semáforo de concorrência (`S2_SEMAPHORE = 2`) e backoff exponencial para lidar com limites de requisição da API pública (429).
-   * Em caso de indisponibilidade, falha de rede ou esgotamento de retries no Semantic Scholar, o sistema chaveia automaticamente para o **OpenAlex**, processando o abstract em formato invertido (*inverted index*) e retornando metadados consolidados (título, autores, ano, venue, snippet, DOI, citações).
+1. **Ordem de Precedência das Fontes (3-Tier Fallback):**
+   * A ferramenta `execute_academic_search` executa prioritariamente a busca no **arXiv** com semáforo unitário (`ARXIV_SEMAPHORE = 1`), throttle temporal mandatório de 3 segundos (ToU oficial), timeout de 12s e fail-fast imediato em rate limits (429).
+   * Em caso de indisponibilidade ou rate limit no arXiv, chaveia automaticamente para o **Semantic Scholar (S2)** com semáforo de concorrência (`S2_SEMAPHORE = 2`) e backoff exponencial.
+   * Caso o Semantic Scholar também enfrente limites ou falhas, o sistema chaveia para o **OpenAlex**, processando o abstract em formato invertido (*inverted index*) e retornando metadados consolidados (título, autores, ano, venue, snippet, DOI, citações).
 2. **Isolamento de Validação:**
    * Fica estabelecido um teste unitário/smoke script para testar as buscas científicas independentemente de inferência de LLM, assegurando que o canal externo de pesquisa acadêmica permaneça confiável.
-
 ---
 
 ### Pilar 5: Chat Lateral de Redação Consultiva (Zero Escrita Direta em Arquivos)
@@ -176,14 +176,14 @@ Conforme estabelecido na [ADR 008](file:///home/gilson-russo/development/profess
 * **Papel:** Conduz o autor desde a ideação embrionária até a criação do artigo no banco de dados.
 * **Tools Obrigatórias:**
   1. `execute_academic_search(query: str, limit: int = 5, year_min?: int)`:
-     - Executa busca unificada no Semantic Scholar com fallback automático para OpenAlex.
+     - Executa busca unificada com arXiv como prioritário e fallback transparente para Semantic Scholar e OpenAlex.
      - Retorna: `List[Article]` com título, autores, ano, venue, snippet, DOI e citações.
   2. `present_articles_to_user_for_selection(articles: List[Article])`:
      - Emite interrupção LangGraph (`interrupt`) para seleção humana no frontend/API.
      - Retorna: `selected_articles` confirmados pelo autor.
-  3. `propose_article_structure_and_tasks(title, abstract, writing_tasks, conference_name, total_weeks)`:
-     - Conhece a régua fixa das 6 etapas do SCIA (ADR 008) e calcula a distribuição proporcional de dias de cada uma.
-     - Estrutura as tarefas de escrita (seções TeX) alocadas estritamente na **Etapa 3 (Escrita do Artigo)**.
+  3. `propose_article_structure_and_tasks(title, abstract, template_id, conference_name, total_weeks)`:
+     - Conhece a régua fixa das 6 etapas do SCIA (ADR 008) e calcula a distribuição proporcional de dias de cada uma a partir do prazo total em semanas ou data da conferência.
+     - Consolida título, abstract acadêmico e template do MinIO (a criação e divisão de tarefas é 100% responsabilidade dos autores humanos).
      - Emite interrupção LangGraph (`interrupt`) com o payload consolidado (`approve_article_proposal`).
   4. `create_scia_project(...)` **(A Tool de Criação do Artigo):**
      - **Execução:** Ao receber a aprovação final do autor, despacha requisição M2M para o backend Fastify (`POST /internal/v1/projects`).

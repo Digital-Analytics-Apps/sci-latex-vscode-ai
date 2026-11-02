@@ -44,10 +44,9 @@ graph TD
     Choice1 -- Não --> Node1
     Choice1 -- Sim --> Node2[2. Agente Especialista de Busca]
     
-    Node2 -->|Busca OpenAlex / Semantic Scholar| SkillSummary[Skill de Resumo Científico]
+    Node2 -->|Busca arXiv / Semantic Scholar / OpenAlex| SkillSummary[Skill de Resumo Científico]
     SkillSummary --> DisplayPapers[Apresenta 5 Artigos com Resumos Estruturados]
     DisplayPapers --> HumanSelect[⏸️ Autor seleciona 3 artigos]
-    
     HumanSelect --> StorePapers[(Salva Metadados no Postgres & PDFs no MinIO)]
     StorePapers --> Node3[3. Agente de Workflow & Congresso]
     
@@ -69,7 +68,7 @@ graph TD
 * **Saída Estruturada:** `research_topic`, `problem_statement`, `keywords`.
 
 #### Estágio 2: Busca Bibliográfica e Skill de Resumo (`search_specialist_agent`)
-* Com base nas keywords, o agente consulta APIs acadêmicas (**OpenAlex** e **Semantic Scholar**).
+* Com base nas keywords, o agente consulta prioritariamente a base do **arXiv** (com fallback resiliente em 3 níveis para **Semantic Scholar** e **OpenAlex**).
 * Executa a **Skill de Resumo:** processa o abstract e gera um card sintético:
   * *Objetivo principal*
   * *Metodologia utilizada*
@@ -80,22 +79,22 @@ graph TD
   * Metadados (DOI, autores, ano, BibTeX) são gravados no **PostgreSQL**.
   * Se o PDF de acesso aberto (*Open Access*) estiver disponível, o arquivo é baixado e enviado para o **MinIO** (`buckets/papers/{doi}.pdf`).
 
-#### Estágio 3: Planejamento do Workflow e Template (`workflow_planner_agent`)
-* O agente pergunta ao autor:
+#### Estágio 3: Planejamento do Cronograma e Template (`curation_manager`)
+* O agente coleta com o autor:
   1. *Qual é a conferência alvo?* (Ex: SBSEG, SBRC, IEEE S&P).
-  2. *Qual a data limite (deadline) de submissão?*
-  3. *Qual o template LaTeX desejado?* (O autor pode escolher templates pré-cadastrados no MinIO, como SBC, IEEE, ACM, ou subir um `.zip`).
-* **Cálculo de Datas:** O agente utiliza um serviço determinístico que aplica heurísticas proporcionais a partir da data de submissão (ex: 40% do tempo para escrita de metodologia, 30% para experimentos, 20% para revisão interna e 10% para o Gatekeeper do NIT).
-* **Interrupção:** O cronograma de etapas preliminares (`ProjectStage`) é exibido com datas estimadas para o autor aprovar ou recalibrar.
+  2. *Qual a data limite (deadline) de submissão ou prazo em semanas?*
+  3. *Qual o template LaTeX desejado?* (O autor pode escolher templates pré-cadastrados no MinIO, como SBC, IEEE, ACM, Springer, ou um template customizado).
+* **Cálculo de Datas nas 6 Etapas Fixas (ADR 008):** O agente calcula a distribuição proporcional dos dias nas 6 etapas fixas (10% Planejamento, 25% Experimentos, 40% Escrita, 15% Revisão Geral, 5% NIT e 5% Congresso Alvo).
+* **Zero Criação Artificial de Tarefas:** A IA não gera tarefas nem fatias modulares de arquivos; a criação e divisão de tarefas no Kanban/Gantt é 100% responsabilidade dos autores humanos.
+* **Interrupção:** O cronograma das 6 etapas preliminares (`ProjectStage`) com datas calculadas, título e abstract acadêmicos é exibido para o autor aprovar.
 
 #### Estágio 4: Criação do Projeto via Tool (`create_scia_project_tool`)
 * Quando o autor clica em **"Confirmar e Criar Projeto"**, o agente invoca a tool interna.
 * A tool despacha uma chamada autenticada ao backend Fastify do SCIA, que:
-  1. Cria o registro `Project` e as 6 `ProjectStage`s fixas no PostgreSQL.
-  2. Instancia os arquivos `ProjectFile` (`main.tex`, `references.bib`) diretamente no banco relacional.
-  3. Associa o template LaTeX selecionado a partir do MinIO.
-  4. Insere as referências bibliográficas selecionadas no `references.bib`.
-  5. Retorna o identificador do projeto para o frontend carregar o editor CodeMirror 6.
+  1. Cria o registro `Project` e as 6 `ProjectStage`s fixas no PostgreSQL com as datas calculadas.
+  2. Instancia os arquivos `ProjectFile` (`main.tex`, `references.bib`, classes) diretamente a partir do bundle `.zip` do template no MinIO, preservando a integridade original do template.
+  3. Insere as referências bibliográficas selecionadas do arXiv no `references.bib`.
+  4. Retorna o identificador do projeto para o frontend carregar o editor CodeMirror 6.
 
 ---
 

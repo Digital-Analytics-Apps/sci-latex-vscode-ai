@@ -2,8 +2,7 @@
 
 Microserviço independente de Inteligência Artificial Científica da plataforma **SCIA**, orquestrado com **FastAPI** e **LangGraph**.
 
-Responsável pela ideação acadêmica guiada, busca bibliográfica em repositórios científicos (OpenAlex, Semantic Scholar), curadoria de artigos, planejamento de cronograma e geração assistida de LaTeX.
-
+Responsável pela ideação acadêmica guiada, busca bibliográfica em repositórios científicos (arXiv como prioritário, Semantic Scholar e OpenAlex), curadoria de artigos, cálculo do cronograma nas 6 etapas fixas institucionais e geração assistida de LaTeX.
 ---
 
 ## 🎯 Triagem Arquitetural: O que foi Trazido vs. O que foi Descartado
@@ -16,13 +15,14 @@ A integração do núcleo de IA foi realizada a partir do projeto de referência
 * **Grafo Multi-Agente em LangGraph (`app/agents/`):**
   * **Supervisor Geral (`supervisor.py`):** Orquestrador principal com transições baseadas em estado e intenção do usuário.
   * **Guia de Exploração / Ideação (`idea_refiner.py`):** Conduz o autor do tema genérico à pergunta de pesquisa, hipótese, metodologia e palavras-chave.
-  * **Especialista de Busca (`search_specialist.py`):** Executa queries acadêmicas estruturadas e dispara interrupção (`interrupt`) para seleção humana.
-  * **Curadoria & Roadmap (`curation.py`):** Gera resumos executivos dos papers selecionados e estrutura o cronograma de etapas com base no congresso-alvo.
+  * **Especialista de Busca (`search_specialist.py`):** Executa queries acadêmicas estruturadas (arXiv / S2 / OpenAlex) e dispara interrupção (`interrupt`) para seleção humana.
+  * **Curadoria & Cronograma (`curation.py`):** Formula autonomamente título e abstract a partir do tema refinado, calcula a divisão de datas nas 6 etapas fixas institucionais e consolida a proposta de criação do projeto (sem criação artificial de tarefas por IA).
   * **Redator LaTeX (`writer.py`):** Especializado em formatação e geração de propostas de diff LaTeX.
 * **Ferramentas de Pesquisa Científica Resilientes (`app/agents/tools/`):**
+  * **arXiv (`arxiv.py`):** Conector padrão com semáforo unitário (`Semaphore(1)`), throttle mandatório de 3 segundos (conforme ToU oficial) e parser XML Atom 1.0 nativo.
+  * **Semantic Scholar (`semantic_scholar.py`):** Conector assíncrono com backoff exponencial e semáforo para rate-limits públicos.
   * **OpenAlex (`openalex.py`):** Integração com `httpx.AsyncClient` com connection pooling e semáforo para rate-limiting seguro.
-  * **Semantic Scholar (`semantic_scholar.py`):** Integração assíncrona com backoff exponencial resiliente.
-  * **Academic Search Facade (`academic_search.py`):** Orquestrador que consulta OpenAlex e faz fallback para Semantic Scholar e Tavily.
+  * **Academic Search Facade (`academic_search.py`):** Orquestrador prioritário que consulta arXiv por padrão e faz fallback transparente para Semantic Scholar e OpenAlex.
 * **Fábrica Multi-Provedor de LLM (`app/core/llm.py`):**
   * Suporte nativo e desacoplado a **Google Gemini** (`gemini-2.5-flash`), **OpenAI** (`gpt-4o`) e modelos locais via **Ollama**.
 * **Streaming de Eventos em Tempo Real (`app/streaming/stream_processor.py`):**
@@ -48,15 +48,14 @@ ai-service/
 │   │   ├── writer.py               # Redator especializado em LaTeX
 │   │   ├── sub_agents/
 │   │   │   ├── supervisor.py       # Supervisor geral do fluxo de criação
-│   │   │   ├── idea_refiner.py     # Guia de Exploração (ideação científica)
-│   │   │   ├── search_specialist.py# Especialista de Busca (OpenAlex/Scholar + interrupt)
-│   │   │   └── curation.py         # Curadoria de artigos e roadmap de tarefas
+│   │   │   ├── search_specialist.py# Especialista de Busca (arXiv/S2/OpenAlex + interrupt)
+│   │   │   └── curation.py         # Curadoria de artigos e cronograma das 6 etapas fixas
 │   │   └── tools/
-│   │       ├── academic_search.py  # Facade de busca com fallback resiliente
+│   │       ├── academic_search.py  # Facade de busca com fallback resiliente (arXiv -> S2 -> OpenAlex)
+│   │       ├── arxiv.py            # Conector arXiv oficial (Atom XML, semáforo 1, throttle 3s)
 │   │       ├── openalex.py         # Conector OpenAlex com semáforo e connection pooling
 │   │       ├── semantic_scholar.py # Conector Semantic Scholar com retry
 │   │       └── tavily_search.py    # Busca web Tavily
-│   ├── core/
 │   │   ├── config.py               # Configurações Pydantic com suporte a .env
 │   │   └── llm.py                  # Fábrica multi-provedor (Gemini, OpenAI, Ollama)
 │   ├── streaming/

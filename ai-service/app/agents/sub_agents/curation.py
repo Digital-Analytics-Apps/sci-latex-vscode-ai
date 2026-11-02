@@ -59,102 +59,53 @@ OFFICIAL_SCIA_STAGES = [
 ]
 
 CURATION_PROMPT = """Você é o **Gerente de Curadoria e Estruturação de Artigos** da plataforma SCIA.
-Sua missão é consolidar os dados do Onboarding (tema refinado, artigos científicos selecionados na busca, conferência alvo e prazo em semanas) na proposta estruturada do novo artigo.
+Sua missão é consolidar os dados do Onboarding (tema refinado, artigos científicos selecionados na busca, conferência alvo, prazo em semanas e template escolhido) na proposta estruturada do novo artigo.
 
 ### REGRAS CRÍTICAS DE GOVERNANÇA:
-1. **NUNCA INVENTE ETAPAS:** As 6 etapas da plataforma SCIA são fixas, institucionais e IMUTÁVEIS:
-   - Etapa 1: Planejamento e Pesquisa
-   - Etapa 2: Experimentos & Benchmarks
-   - Etapa 3: Escrita do Artigo (Tarefas Paralelas)
-   - Etapa 4: Revisão Geral do Manuscrito
-   - Etapa 5: Gatekeeper 1 - Submissão Interna NIT (100% administrativo/humano)
-   - Etapa 6: Gatekeeper 2 - Submissão ao Congresso Alvo
+1. **AS 6 ETAPAS SÃO FIXAS E IMUTÁVEIS (ADR 008):**
+   - Etapa 1: Planejamento e Pesquisa (10% do tempo)
+   - Etapa 2: Experimentos & Benchmarks (25% do tempo)
+   - Etapa 3: Escrita do Artigo (40% do tempo)
+   - Etapa 4: Revisão Geral do Manuscrito (15% do tempo)
+   - Etapa 5: Gatekeeper 1 - Submissão Interna NIT (5% do tempo)
+   - Etapa 6: Gatekeeper 2 - Submissão ao Congresso Alvo (5% do tempo)
 
-2. **SEU PAPEL É CRIAR AS TAREFAS (SEÇÕES DO ARTIGO):**
-   - As tarefas que você gera pertencem prioritariamente à **Etapa 3 (Escrita do Artigo)**.
-   - Cada tarefa deve representar uma seção acadêmica concreta do documento LaTeX:
-     * Tarefa 1: Introdução e Motivação (`sections/01_introduction.tex`)
-     * Tarefa 2: Trabalhos Relacionados e Estado da Arte (`sections/02_related_work.tex`) — **OBRIGATÓRIO:** vincule os artigos científicos que o autor selecionou nesta tarefa!
-     * Tarefa 3: Metodologia Proposta e Formulação Teórica (`sections/03_methodology.tex`)
-     * Tarefa 4: Avaliação Experimental e Resultados (`sections/04_results.tex`)
-     * Tarefa 5: Discussão e Conclusão (`sections/05_conclusion.tex`)
-   - Opcionalmente, pode criar 1 ou 2 tarefas técnicas para a **Etapa 2 (Experimentos)** (ex: "Coleta e Pré-processamento do Dataset", "Implementação dos Modelos de Benchmark").
+2. **CÁLCULO E SUGESTÃO DE DATAS DAS ETAPAS:**
+   - Calcule e proponha a distribuição dos dias e prazos em cada uma das 6 etapas a partir do total de semanas informado pelo autor (ou data do congresso).
+   - A IA NÃO deve criar nem sugerir tarefas/atividades (a criação e divisão de tarefas é 100% responsabilidade dos autores humanos).
 
 3. **GERAÇÃO AUTÔNOMA DE TÍTULO E ABSTRACT (NÃO PERGUNTE AO AUTOR):**
-   - É SUA responsabilidade formular o título e o abstract a partir do tema refinado e das escolhas do autor. NUNCA pergunte ao autor "qual é o título" ou "qual é o abstract"!
-   - Crie você mesmo um título acadêmico assertivo e formal (em inglês ou português conforme o congresso).
+   - Formule você mesmo um título acadêmico assertivo e formal (em inglês ou português conforme o congresso).
    - Redija você mesmo o Abstract/Resumo de alto nível (150-250 palavras) sintetizando Contexto, Problema, Método Proposto e Resultados Esperados.
 
-4. **RESPEITO AO TEMPLATE LATEX SELECIONADO:**
-   - Adote a convenção de seções e escopo do template escolhido pelo autor (SBC, IEEE, ACM, Springer LNCS ou Padrão).
-   - Para templates de conferências tradicionais como SBC: 5 seções bem delimitadas.
-   - Para IEEE/ACM: estruture seções aprofundadas com fundamentação teórica ou modelo de sistema.
-   - Sempre atribua `section_file` com caminhos modulares limpos (ex: `sections/01_introduction.tex`).
+4. **RESPEITO AO TEMPLATE DO MINIO:**
+   - Registre o `template_id` escolhido (SBC, IEEE, ACM, Springer LNCS ou Padrão) para que a plataforma copie os arquivos originais do pacote do MinIO sem alteração de estrutura.
 
 5. **EXECUÇÃO OBRIGATÓRIA DA FERRAMENTA:**
-   - Sempre finalize chamando imediatamente a ferramenta `propose_article_structure_and_tasks` com o título gerado, o resumo gerado, o template_id, as tarefas de escrita da Etapa 3 e o congresso. Nunca responda pedindo mais dados textuais se o tema já foi delimitado!
-"""
-
+   - Finalize chamando imediatamente a ferramenta `propose_article_structure_and_tasks` com o título gerado, o resumo gerado, o template_id, a conferência e o cálculo das datas das 6 etapas."""
 @tool
 def propose_article_structure_and_tasks(
     title: str,
     abstract: str,
-    tasks: Optional[List[Dict[str, Any]]] = None,
-    writing_tasks: Optional[List[Dict[str, Any]]] = None,
     template_id: Optional[str] = "sbc",
     conference_name: Optional[str] = None,
     total_weeks: Optional[int] = 10,
     topic: Optional[str] = None,
+    tasks: Optional[List[Dict[str, Any]]] = None,
     state: Annotated[dict, InjectedState] = None,
     tool_call_id: Annotated[str, InjectedToolCallId] = None,
 ) -> Command:
     """
     Consolida e submete a proposta de criação do artigo científico para aprovação do autor.
-    Aloca as seções de escrita como tarefas na Etapa 3 (Escrita) e calcula as datas das 6 etapas fixas.
+    Calcula a distribuição de datas nas 6 etapas fixas institucionais e formata os metadados do projeto.
     Esta ferramenta interrompe a execução (Human-in-the-Loop) para que o autor revise o plano.
     """
-    raw_tasks = writing_tasks or tasks or []
     selected_articles = state.get("selected_articles") if state else None
     deadline = state.get("submission_deadline") if state else None
     conf = conference_name or (state.get("conference_name") if state else None) or "Congresso Científico"
-
-    # 1. Normaliza as tarefas, garantindo que pertencem à Etapa 3 (Escrita) ou Etapa 2 (Experimentos)
-    normalized_tasks = []
     total_days = (total_weeks or 10) * 7
 
-    default_sections = [
-        ("Seção 1: Introdução e Delimitação do Problema", "sections/01_introduction.tex", "Contextualizar o problema, lacunas da literatura e contribuições principais do artigo.", 3, 14),
-        ("Seção 2: Trabalhos Relacionados e Estado da Arte", "sections/02_related_work.tex", "Análise comparativa da literatura com base nos artigos científicos selecionados na ideação.", 3, 24),
-        ("Seção 3: Metodologia Proposta e Formulação", "sections/03_methodology.tex", "Formalização matemática, arquitetura do método e algoritmos desenvolvidos.", 3, 38),
-        ("Seção 4: Avaliação Experimental e Resultados", "sections/04_results.tex", "Métricas de desempenho, gráficos comparativos e análise estatística.", 3, 52),
-        ("Seção 5: Conclusão e Trabalhos Futuros", "sections/05_conclusion.tex", "Síntese dos resultados alcançados, limitações e direcionamentos futuros.", 3, 60),
-    ]
-
-    if not raw_tasks:
-        for sec_title, sec_file, sec_desc, stage_ord, due in default_sections:
-            normalized_tasks.append({
-                "title": sec_title,
-                "description": sec_desc,
-                "section_file": sec_file,
-                "stage_order": stage_ord,
-                "due_in_days": due,
-            })
-    else:
-        for i, t in enumerate(raw_tasks):
-            t_title = t.get("title") or t.get("section_title") or f"Seção {i+1}: Escrita Acadêmica"
-            t_desc = t.get("description") or "Redação e formalização da seção correspondente."
-            t_file = t.get("section_file") or f"sections/{i+1:02d}_section.tex"
-            t_stage = t.get("stage_order") or 3  # Padrão: Etapa 3 (Escrita do Artigo)
-            t_due = t.get("due_in_days") or t.get("due_days_from_start") or int(total_days * (0.3 + (i + 1) * 0.1))
-            normalized_tasks.append({
-                "title": t_title,
-                "description": t_desc,
-                "section_file": t_file,
-                "stage_order": t_stage,
-                "due_in_days": min(t_due, total_days - 10),
-            })
-
-    # 2. Calcula a distribuição de calendário nas 6 Etapas Fixas do SCIA
+    # 1. Calcula a distribuição de calendário nas 6 Etapas Fixas do SCIA
     calculated_stages = []
     cumulative_days = 0
     for stg in OFFICIAL_SCIA_STAGES:
@@ -178,11 +129,11 @@ def propose_article_structure_and_tasks(
         "template_id": template_id or "sbc",
         "submission_deadline": deadline or f"Em {total_weeks or 10} semanas",
         "stages": calculated_stages,
-        "tasks": normalized_tasks,
+        "tasks": [],
         "articles": selected_articles or [],
     }
 
-    logger.info(f"[Curation] Proposta consolidada com 6 etapas fixas e {len(normalized_tasks)} tarefas de escrita.")
+    logger.info("[Curation] Proposta consolidada com 6 etapas fixas (sem tarefas de IA).")
 
     # Interrompe o grafo aguardando a aprovação do autor (Human-in-the-Loop)
     decision = interrupt({
@@ -190,19 +141,18 @@ def propose_article_structure_and_tasks(
             {
                 "name": "approve_article_proposal",
                 "args": proposal_payload,
-                "description": "Revise o título, resumo, as 6 etapas fixas e as tarefas de escrita propostas para a criação do artigo no SCIA."
+                "description": "Revise o título, resumo e a distribuição de datas nas 6 etapas fixas do projeto no SCIA.",
             }
         ]
     })
-
     return Command(
         update={
             "project_title": title,
             "abstract": abstract,
             "template_id": template_id or "sbc",
             "stages_timeline": calculated_stages,
-            "tasks": normalized_tasks,
-            "roadmap": normalized_tasks,  # Mantém compatibilidade
+            "tasks": [],
+            "roadmap": [],
             "current_step": "confirm",
             "messages": [
                 ToolMessage(
