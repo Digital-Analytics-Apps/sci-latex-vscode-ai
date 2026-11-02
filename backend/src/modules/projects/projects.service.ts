@@ -110,22 +110,37 @@ export class ProjectsService {
 
         const projectFilesData: Prisma.ProjectFileCreateManyInput[] = [];
 
-        for (const file of parsed.files) {
-          if (!file.isBinary && file.content !== undefined) {
-            let finalContent = file.content;
-            if (file.path === parsed.rootDoc.path && data.name) {
-              if (/\\title\{[^}]*\}/.test(finalContent)) {
-                finalContent = finalContent.replace(/\\title\{[^}]*\}/, `\\title{${data.name}}`);
-              }
-            }
+        // 1. Sempre adiciona o documento LaTeX principal (rootDoc) como main.tex
+        if (parsed.rootDoc) {
+          let rootContent = parsed.rootDoc.content;
+          if (data.name && /\\title\{[^}]*\}/.test(rootContent)) {
+            rootContent = rootContent.replace(/\\title\{[^}]*\}/, `\\title{${data.name}}`);
+          }
 
+          projectFilesData.push({
+            projectId,
+            path: 'main.tex',
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(Buffer.byteLength(rootContent, 'utf-8')),
+            content: rootContent,
+          });
+        }
+
+        // 2. Adiciona os demais arquivos do template (.cls, .sty, .bib, imagens, etc.)
+        for (const file of parsed.files) {
+          if (file.path === 'main.tex' || file.path === parsed.rootDoc?.path) {
+            continue;
+          }
+
+          if (!file.isBinary && file.content !== undefined) {
             projectFilesData.push({
               projectId,
               path: file.path,
               fileType: 'text',
               mimeType: file.mimeType,
-              sizeBytes: BigInt(Buffer.byteLength(finalContent, 'utf-8')),
-              content: finalContent,
+              sizeBytes: BigInt(Buffer.byteLength(file.content, 'utf-8')),
+              content: file.content,
             });
           } else if (file.buffer) {
             const fileId = crypto.randomUUID();
