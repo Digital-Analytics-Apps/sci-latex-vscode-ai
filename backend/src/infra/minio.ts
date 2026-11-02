@@ -189,4 +189,13 @@ export const StoragePathBuilder = {
     const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     return `projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}-${cleanName}`;
   },
+
+  /**
+   * Caminho padronizado para pacotes de templates LaTeX (.zip).
+   * Estrutura: templates/{templateId}/{fileName}
+   */
+  templateBundle(templateId: string, fileName: string = 'bundle.zip'): string {
+    const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return `templates/${templateId}/${cleanName}`;
+  },
 };

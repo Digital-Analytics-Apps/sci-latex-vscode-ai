@@ -12,7 +12,7 @@ vi.mock('../../infra/minio', async (importOriginal) => {
 });
 import { ChangeSet } from '@codemirror/state';
 import { DocumentsService } from './documents.service';
-import { IDocumentsRepository, CheckpointFlushData } from './documents.repository';
+import { CheckpointFlushData, IDocumentsRepository } from './documents.repository';
 import {
   Document,
   DocumentOperation,

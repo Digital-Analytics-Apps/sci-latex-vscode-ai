@@ -17,6 +17,7 @@ export const createProjectSchema = z.object({
   additionalAuthorIds: z.array(z.string().uuid()).default([]),
   authorIds: z.array(z.string().uuid()).optional(),
   reviewerId: z.string().uuid().optional(),
+  templateId: z.string().optional(),
   stages: z
     .array(
       z.object({

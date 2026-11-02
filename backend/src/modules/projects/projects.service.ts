@@ -1,4 +1,7 @@
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
+import { StoragePathBuilder, uploadToMinio } from '../../infra/minio';
+import { parseLatexZip } from '../../utils/latex-zip-parser';
+import { TemplatesService } from '../templates/templates.service';
 import crypto from 'node:crypto';
 import { prisma } from '../../db/prisma';
 import {
@@ -23,6 +26,7 @@ export interface CreateProjectDTO {
   additionalAuthorIds?: string[];
   authorIds?: string[];
   reviewerId?: string;
+  templateId?: string;
   stages?: Array<{
     title: string;
     description?: string;
@@ -91,19 +95,81 @@ export class ProjectsService {
       creatorId: userId,
       additionalAuthorIds,
       reviewerId: data.reviewerId,
+      templateId: data.templateId,
     });
 
     // 1a. Semear arquivos TeX iniciais do artigo no banco de dados (ProjectFile)
     if (process.env.NODE_ENV !== 'test') {
-      await prisma.projectFile.createMany({
-        data: [
-          {
-            projectId,
-            path: 'main.tex',
-            fileType: 'text',
-            mimeType: 'text/x-tex',
-            sizeBytes: BigInt(850),
-            content: `\\documentclass{article}
+      let seededFromTemplate = false;
+      const targetTemplateId = data.templateId || 'tpl-system-ieeetran';
+
+      try {
+        const templatesService = new TemplatesService();
+        const { buffer: zipBuffer } = await templatesService.getTemplateBundle(targetTemplateId);
+        const parsed = parseLatexZip(zipBuffer);
+
+        const projectFilesData: Prisma.ProjectFileCreateManyInput[] = [];
+
+        for (const file of parsed.files) {
+          if (!file.isBinary && file.content !== undefined) {
+            let finalContent = file.content;
+            if (file.path === parsed.rootDoc.path && data.name) {
+              if (/\\title\{[^}]*\}/.test(finalContent)) {
+                finalContent = finalContent.replace(/\\title\{[^}]*\}/, `\\title{${data.name}}`);
+              }
+            }
+
+            projectFilesData.push({
+              projectId,
+              path: file.path,
+              fileType: 'text',
+              mimeType: file.mimeType,
+              sizeBytes: BigInt(Buffer.byteLength(finalContent, 'utf-8')),
+              content: finalContent,
+            });
+          } else if (file.buffer) {
+            const fileId = crypto.randomUUID();
+            const storageKey = StoragePathBuilder.projectFile(
+              projectId,
+              fileId,
+              file.path.replace(/\//g, '_')
+            );
+            await uploadToMinio(storageKey, file.buffer, file.mimeType);
+
+            projectFilesData.push({
+              projectId,
+              path: file.path,
+              fileType: 'binary',
+              mimeType: file.mimeType,
+              sizeBytes: BigInt(file.sizeBytes),
+              storageKey,
+            });
+          }
+        }
+
+        if (projectFilesData.length > 0) {
+          await prisma.projectFile.createMany({
+            data: projectFilesData,
+          });
+          seededFromTemplate = true;
+        }
+      } catch (err) {
+        console.warn(
+          `[ProjectsService] Falha ao extrair template ${targetTemplateId} do MinIO, aplicando fallback padrão:`,
+          err
+        );
+      }
+
+      if (!seededFromTemplate) {
+        await prisma.projectFile.createMany({
+          data: [
+            {
+              projectId,
+              path: 'main.tex',
+              fileType: 'text',
+              mimeType: 'text/x-tex',
+              sizeBytes: BigInt(850),
+              content: `\\documentclass{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage{amsmath}
 \\usepackage{graphicx}
@@ -126,49 +192,50 @@ Resumo do artigo científico.
 \\bibliographystyle{IEEEtran}
 \\bibliography{references}
 \\end{document}`,
-          },
-          {
-            projectId,
-            path: 'sections/01-introduction.tex',
-            fileType: 'text',
-            mimeType: 'text/x-tex',
-            sizeBytes: BigInt(200),
-            content: `\\section{Introdução}\nEscreva a introdução e motivação do trabalho aqui.\n`,
-          },
-          {
-            projectId,
-            path: 'sections/02-methodology.tex',
-            fileType: 'text',
-            mimeType: 'text/x-tex',
-            sizeBytes: BigInt(180),
-            content: `\\section{Metodologia}\nDescreva o modelo, hipóteses e procedimentos experimentais.\n`,
-          },
-          {
-            projectId,
-            path: 'sections/03-results.tex',
-            fileType: 'text',
-            mimeType: 'text/x-tex',
-            sizeBytes: BigInt(190),
-            content: `\\section{Resultados}\nApresente os dados obtidos e análise comparativa.\n`,
-          },
-          {
-            projectId,
-            path: 'sections/04-conclusion.tex',
-            fileType: 'text',
-            mimeType: 'text/x-tex',
-            sizeBytes: BigInt(150),
-            content: `\\section{Conclusão}\nSíntese das contribuições e direcionamentos futuros.\n`,
-          },
-          {
-            projectId,
-            path: 'references.bib',
-            fileType: 'text',
-            mimeType: 'text/x-bibtex',
-            sizeBytes: BigInt(120),
-            content: `@article{ref1,\n  author = {Silva, A.},\n  title = {Exemplo de Referência},\n  year = {2026}\n}\n`,
-          },
-        ],
-      });
+            },
+            {
+              projectId,
+              path: 'sections/01-introduction.tex',
+              fileType: 'text',
+              mimeType: 'text/x-tex',
+              sizeBytes: BigInt(200),
+              content: `\\section{Introdução}\nEscreva a introdução e motivação do trabalho aqui.\n`,
+            },
+            {
+              projectId,
+              path: 'sections/02-methodology.tex',
+              fileType: 'text',
+              mimeType: 'text/x-tex',
+              sizeBytes: BigInt(180),
+              content: `\\section{Metodologia}\nDescreva o modelo, hipóteses e procedimentos experimentais.\n`,
+            },
+            {
+              projectId,
+              path: 'sections/03-results.tex',
+              fileType: 'text',
+              mimeType: 'text/x-tex',
+              sizeBytes: BigInt(190),
+              content: `\\section{Resultados}\nApresente os dados obtidos e análise comparativa.\n`,
+            },
+            {
+              projectId,
+              path: 'sections/04-conclusion.tex',
+              fileType: 'text',
+              mimeType: 'text/x-tex',
+              sizeBytes: BigInt(150),
+              content: `\\section{Conclusão}\nSíntese das contribuições e direcionamentos futuros.\n`,
+            },
+            {
+              projectId,
+              path: 'references.bib',
+              fileType: 'text',
+              mimeType: 'text/x-bibtex',
+              sizeBytes: BigInt(120),
+              content: `@article{ref1,\n  author = {Silva, A.},\n  title = {Exemplo de Referência},\n  year = {2026}\n}\n`,
+            },
+          ],
+        });
+      }
     }
 
     // 2b. Instanciar as 6 Etapas Fixas Obrigatórias (ADR-008)

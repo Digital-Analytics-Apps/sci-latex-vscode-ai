@@ -15,6 +15,7 @@ export interface CreateProjectData {
   creatorId: string;
   additionalAuthorIds?: string[];
   reviewerId?: string;
+  templateId?: string;
 }
 
 export interface UpdateProjectData {
@@ -81,6 +82,7 @@ export class PrismaProjectsRepository implements IProjectsRepository {
         targetConferenceDate: data.targetConferenceDate,
         backupConferenceName: data.backupConferenceName,
         backupConferenceDate: data.backupConferenceDate,
+        templateId: data.templateId,
         members: {
           createMany: {
             data: memberCreates,
@@ -91,6 +93,7 @@ export class PrismaProjectsRepository implements IProjectsRepository {
         coordinator: { select: { id: true, name: true, email: true, role: true } },
         manager: { select: { id: true, name: true, email: true, role: true } },
         academicPeriod: true,
+        template: true,
         stages: {
           orderBy: { order: 'asc' },
         },

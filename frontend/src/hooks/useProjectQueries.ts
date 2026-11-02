@@ -121,6 +121,7 @@ export function useCreateProjectMutation() {
       targetConference?: string;
       submissionDeadline?: string;
       template?: string;
+      templateId?: string;
       coordinatorId: string;
       managerId: string;
       additionalAuthorIds?: string[];
@@ -139,6 +140,7 @@ export function useCreateProjectMutation() {
         managerId: data.managerId,
         additionalAuthorIds: data.additionalAuthorIds || [],
         reviewerId: data.reviewerId,
+        templateId: data.templateId || data.template,
         stages: data.stages,
       }),
     onSuccess: async () => {

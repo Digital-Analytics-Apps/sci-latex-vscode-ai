@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import { FastifyPluginAsync } from 'fastify';
-import type { WebSocket, RawData } from 'ws';
-import { DocumentsService, defaultDocumentsService } from './documents.service';
+import type { RawData, WebSocket } from 'ws';
+import { defaultDocumentsService, DocumentsService } from './documents.service';
 import { DeltaOperation, DocumentSnapshot } from './documents.schema';
-import { redisService, POD_ID } from '../../infra/redis/redis.service';
+import { POD_ID, redisService } from '../../infra/redis/redis.service';
 interface ClientMeta {
   ws: WebSocket;
   userId: string;

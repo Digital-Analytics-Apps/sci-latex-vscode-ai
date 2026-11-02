@@ -68,6 +68,7 @@ model User {
   reviewerRCs     ReleaseCandidate[] @relation("ReviewerRCs")
   academicPeriods AcademicPeriod[]   @relation("ManagerAcademicPeriods")
   evidences       TaskEvidence[]
+  templates       LatexTemplate[]    @relation("UserUploadedTemplates")
 }
 
 model AcademicPeriod {
@@ -111,6 +112,8 @@ model Project {
   coordinator       User                @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
   manager           User                @relation("ProjectManager", fields: [managerId], references: [id])
   academicPeriod    AcademicPeriod?     @relation(fields: [academicPeriodId], references: [id])
+  templateId        String?
+  template          LatexTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   deletedAt         DateTime?
@@ -359,4 +362,23 @@ model TaskEvidence {
 
   @@index([taskId])
   @@index([projectId])
+}
+
+model LatexTemplate {
+  id               String    @id @default(uuid())
+  name             String
+  description      String?
+  targetConference String?
+  storageKey       String
+  mainEntryPath    String    @default("main.tex")
+  isSystem         Boolean   @default(false)
+  uploadedById     String?
+  uploadedBy       User?     @relation("UserUploadedTemplates", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  projects         Project[]
+
+  @@index([uploadedById])
+  @@index([isSystem])
 }

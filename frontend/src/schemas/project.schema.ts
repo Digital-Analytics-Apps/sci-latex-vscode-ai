@@ -10,9 +10,9 @@ export const createProjectSchema = z.object({
   submissionDeadline: z
     .string()
     .min(1, "Selecione a data limite para submissão"),
-  template: z.enum(["IEEEtran", "ACM_sigconf", "SBC", "Springer_LNCS"], {
-    message: "Selecione o modelo/template LaTeX desejado",
-  }),
+  templateId: z
+    .string()
+    .min(1, "Selecione o modelo/template LaTeX desejado"),
 });
 
 export type CreateProjectFormData = z.infer<typeof createProjectSchema>;

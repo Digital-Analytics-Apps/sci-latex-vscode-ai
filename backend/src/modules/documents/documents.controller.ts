@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { DocumentsService, defaultDocumentsService } from './documents.service';
+import { defaultDocumentsService, DocumentsService } from './documents.service';
 
 export class DocumentsController {
   constructor(private service: DocumentsService = defaultDocumentsService) {}

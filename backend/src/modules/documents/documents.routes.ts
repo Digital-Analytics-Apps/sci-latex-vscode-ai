@@ -3,14 +3,14 @@ import { z } from 'zod';
 import { DocumentsController } from './documents.controller';
 import {
   CreateDocumentBodySchema,
+  CreateFileBodySchema,
+  DocumentOperationSchema,
   DocumentSchema,
   DocumentSnapshotSchema,
-  DocumentOperationSchema,
+  FileParamsSchema,
   GetDocumentParamsSchema,
   ProjectFileSchema,
-  FileParamsSchema,
   UpdateFileContentBodySchema,
-  CreateFileBodySchema,
 } from './documents.schema';
 
 export const documentsRoutes: FastifyPluginAsyncZod = async (fastify) => {

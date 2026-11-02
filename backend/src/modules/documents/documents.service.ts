@@ -1,14 +1,14 @@
 import { randomUUID } from 'crypto';
 import {
-  Document,
+  CommentReply,
   DeltaOperation,
+  Document,
   DocumentOperation,
   DocumentSnapshot,
   ProjectFile,
   ReviewComment,
-  CommentReply,
 } from './documents.schema';
-import { IDocumentsRepository, defaultDocumentsRepository } from './documents.repository';
+import { defaultDocumentsRepository, IDocumentsRepository } from './documents.repository';
 import {
   deleteFromMinio,
   getFromMinio,
@@ -17,8 +17,8 @@ import {
   uploadToMinio,
 } from '../../infra/minio';
 import { parseLatexZip } from '../../utils/latex-zip-parser';
-import { Text, ChangeSet } from '@codemirror/state';
-import { Update, rebaseUpdates } from '@codemirror/collab';
+import { ChangeSet, Text } from '@codemirror/state';
+import { rebaseUpdates, Update } from '@codemirror/collab';
 
 export interface ActiveFileCollab {
   doc: Text;

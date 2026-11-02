@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../src/db/prisma';
 import { hashPassword } from '../src/utils/hash';
+import { TemplatesService } from '../src/modules/templates/templates.service';
 
 async function main() {
   console.log('🌱 Starting database seed...');
@@ -23,6 +24,7 @@ async function main() {
   await prisma.documentSnapshot.deleteMany();
   await prisma.projectMember.deleteMany();
   await prisma.project.deleteMany();
+  await prisma.latexTemplate.deleteMany();
   await prisma.session.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.academicPeriod.deleteMany();
@@ -338,6 +340,12 @@ A solução descentralizada aproxima a experiência dos autores da velocidade de
     },
   });
   console.log('   - Tarefas criadas (sem amarração a branches).');
+
+  // Semear templates oficiais no MinIO e PostgreSQL
+  console.log('📄 Semeando templates LaTeX oficiais no MinIO e PostgreSQL...');
+  const templatesService = new TemplatesService();
+  await templatesService.ensureSystemTemplates();
+  console.log('   - Templates oficiais garantidos no MinIO e banco.');
 
 
   console.log('\n=========================================');

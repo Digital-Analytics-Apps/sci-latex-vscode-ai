@@ -50,6 +50,7 @@ export interface CreateProjectInput {
   additionalAuthorIds?: string[];
   authorIds?: string[];
   reviewerId?: string;
+  templateId?: string;
   stages?: Array<{
     title: string;
     description?: string;

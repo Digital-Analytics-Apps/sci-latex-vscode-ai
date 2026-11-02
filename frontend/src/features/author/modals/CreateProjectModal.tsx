@@ -3,6 +3,7 @@ import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import TimelineIcon from "@mui/icons-material/Timeline";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import {
   Alert,
   Box,
@@ -30,6 +31,10 @@ import { useDispatch } from "react-redux";
 import { StandardModal } from "../../../components/common/StandardModal";
 import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
 import { useCreateProjectMutation } from "../../../hooks/useProjectQueries";
+import {
+  useTemplatesQuery,
+  useUploadTemplateMutation,
+} from "../../../hooks/useTemplateQueries";
 import {
   type CreateProjectFormData,
   createProjectSchema,
@@ -125,6 +130,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [reviewerSearchText, setReviewerSearchText] = useState("");
   const [selectedReviewer, setSelectedReviewer] =
     useState<UserMemberItem | null>(null);
+  const { data: templates = [], isLoading: isLoadingTemplates } =
+    useTemplatesQuery();
+  const uploadTemplateMutation = useUploadTemplateMutation();
+  const [showUploadCustom, setShowUploadCustom] = useState(false);
+  const [customFile, setCustomFile] = useState<File | null>(null);
+  const [customName, setCustomName] = useState("");
+  const [customConf, setCustomConf] = useState("");
+
   const {
     register,
     handleSubmit,
@@ -139,19 +152,30 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       name: "",
       targetConference: "IEEE International Symposium 2027",
       submissionDeadline: "2027-02-15",
-      template: "IEEEtran",
+      templateId: "tpl-system-ieeetran",
     },
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const selectedTemplate = watch("template");
+  const selectedTemplateId = watch("templateId");
+
+  React.useEffect(() => {
+    if (templates.length > 0 && !selectedTemplateId) {
+      setValue("templateId", templates[0].id);
+    }
+  }, [templates, selectedTemplateId, setValue]);
+
+  const selectedTemplateItem = templates.find(
+    (t) => t.id === selectedTemplateId,
+  );
+
 
   const handleNextStep0 = async () => {
     const isValidStep0 = await trigger([
       "name",
       "targetConference",
       "submissionDeadline",
-      "template",
+      "templateId",
     ]);
     if (isValidStep0) {
       setActiveStep(1);
@@ -195,6 +219,49 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
     );
   };
+  const handleUploadCustomTemplate = async () => {
+    if (!customFile) {
+      dispatch(
+        showNotification({
+          message:
+            "Por favor, selecione um arquivo .zip contendo os arquivos TeX.",
+          severity: "warning",
+        }),
+      );
+      return;
+    }
+
+    try {
+      const uploaded = await uploadTemplateMutation.mutateAsync({
+        file: customFile,
+        name: customName.trim() || undefined,
+        targetConference: customConf.trim() || undefined,
+      });
+
+      setValue("templateId", uploaded.id);
+      dispatch(
+        showNotification({
+          message: `Template "${uploaded.name}" enviado com sucesso para o MinIO!`,
+          severity: "success",
+        }),
+      );
+      setShowUploadCustom(false);
+      setCustomFile(null);
+      setCustomName("");
+      setCustomConf("");
+    } catch (err: any) {
+      dispatch(
+        showNotification({
+          message:
+            err?.response?.data?.message ||
+            err?.message ||
+            "Erro ao fazer upload do template. Certifique-se de que é um .zip válido.",
+          severity: "error",
+        }),
+      );
+    }
+  };
+
 
   const onSubmit = async (data: CreateProjectFormData) => {
     if (activeStep !== 2) {
@@ -226,7 +293,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         name: data.name,
         targetConference: data.targetConference,
         submissionDeadline: data.submissionDeadline,
-        template: data.template,
+        templateId: data.templateId,
         coordinatorId: selectedCoordinator.id,
         managerId: selectedManager.id,
         additionalAuthorIds: selectedAuthors.map((auth) => auth.id),
@@ -365,35 +432,170 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             helperText={errors.submissionDeadline?.message}
           />
 
-          <FormControl fullWidth size="small" error={Boolean(errors.template)}>
-            <InputLabel>Template LaTeX do Evento</InputLabel>
+          <FormControl
+            fullWidth
+            size="small"
+            error={Boolean(errors.templateId)}
+          >
+            <InputLabel id="template-select-label">
+              Template LaTeX do Evento
+            </InputLabel>
             <Select
-              value={selectedTemplate || "IEEEtran"}
+              labelId="template-select-label"
+              value={selectedTemplateId || ""}
               label="Template LaTeX do Evento"
-              onChange={(e) =>
-                setValue(
-                  "template",
-                  e.target.value as CreateProjectFormData["template"],
-                )
-              }
+              disabled={isLoadingTemplates}
+              onChange={(e) => {
+                setValue("templateId", e.target.value as string);
+              }}
             >
-              <MenuItem value="IEEEtran">
-                IEEEtran (IEEE Conference & Transactions)
-              </MenuItem>
-              <MenuItem value="ACM_sigconf">
-                ACM sigconf (ACM Conference Format)
-              </MenuItem>
-              <MenuItem value="SBC">
-                SBC (Sociedade Brasileira de Computação)
-              </MenuItem>
-              <MenuItem value="Springer_LNCS">
-                Springer LNCS (Lecture Notes in Computer Science)
-              </MenuItem>
+              {templates.map((tpl) => (
+                <MenuItem key={tpl.id} value={tpl.id}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      gap: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: tpl.isSystem ? 600 : 400 }}
+                    >
+                      {tpl.name}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={tpl.isSystem ? "Oficial" : "Customizado"}
+                      color={tpl.isSystem ? "primary" : "secondary"}
+                      variant="outlined"
+                      sx={{ height: 20, fontSize: "0.68rem" }}
+                    />
+                  </Box>
+                </MenuItem>
+              ))}
             </Select>
-            {errors.template && (
-              <FormHelperText>{errors.template.message}</FormHelperText>
+            {errors.templateId && (
+              <FormHelperText>{errors.templateId.message}</FormHelperText>
             )}
           </FormControl>
+
+          {/* Card explicativo do template selecionado */}
+          {selectedTemplateItem && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: "action.hover",
+                border: "1px dashed",
+                borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.5,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                Armazenado no MinIO: <code>{selectedTemplateItem.storageKey}</code>
+              </Typography>
+              {selectedTemplateItem.description && (
+                <Typography variant="caption" color="text.secondary">
+                  {selectedTemplateItem.description}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* Botão de Toggle para Subir Template Customizado */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              size="small"
+              variant="text"
+              startIcon={<CloudUploadIcon />}
+              onClick={() => setShowUploadCustom((prev) => !prev)}
+            >
+              {showUploadCustom
+                ? "Cancelar Envio de Template"
+                : "Ou subir meu próprio template (.zip)"}
+            </Button>
+          </Box>
+
+          {/* Painel de Upload de Template Customizado */}
+          {showUploadCustom && (
+            <Card
+              variant="outlined"
+              sx={{
+                p: 2,
+                bgcolor: "background.paper",
+                borderRadius: 1.5,
+                borderColor: "primary.light",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Upload de Template LaTeX (.zip para o MinIO)
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Envie um pacote comprimido contendo o arquivo principal (
+                <code>main.tex</code>), classes (<code>.cls</code>), estilos (
+                <code>.sty</code>) ou bibliografia (<code>.bib</code>).
+              </Typography>
+
+              <TextField
+                fullWidth
+                size="small"
+                label="Nome do Template (Opcional)"
+                placeholder="Ex: SBC WebMedia 2027 Template"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+              />
+
+              <TextField
+                fullWidth
+                size="small"
+                label="Conferência / Periódico Alvo (Opcional)"
+                placeholder="Ex: WebMedia"
+                value={customConf}
+                onChange={(e) => setCustomConf(e.target.value)}
+              />
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  size="small"
+                  startIcon={<CloudUploadIcon />}
+                >
+                  {customFile ? customFile.name : "Selecionar Arquivo .ZIP"}
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    hidden
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setCustomFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </Button>
+
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="primary"
+                  disabled={!customFile || uploadTemplateMutation.isPending}
+                  onClick={handleUploadCustomTemplate}
+                >
+                  {uploadTemplateMutation.isPending
+                    ? "Enviando..."
+                    : "Salvar no MinIO"}
+                </Button>
+              </Box>
+            </Card>
+          )}
         </Box>
       )}
 

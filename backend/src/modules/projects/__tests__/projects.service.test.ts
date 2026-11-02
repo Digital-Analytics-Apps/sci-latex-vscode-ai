@@ -27,6 +27,7 @@ class InMemoryProjectsRepository implements IProjectsRepository {
       targetConferenceDate: data.targetConferenceDate ?? null,
       backupConferenceName: data.backupConferenceName ?? null,
       backupConferenceDate: data.backupConferenceDate ?? null,
+      templateId: data.templateId ?? null,
       doi: null,
       publicationUrl: null,
       datasetUrl: null,
@@ -178,6 +179,20 @@ describe('ProjectsService', () => {
 
     expect(project).toBeDefined();
     expect(project.name).toBe('Paper sobre Sistemas Distribuídos');
+  });
+
+  it('should create a project with templateId associated', async () => {
+    const project = await projectsService.createProject('user-1', {
+      name: 'Paper com Template SBC',
+      coordinatorId: 'coord-1',
+      managerId: 'manager-1',
+      targetConferenceName: 'SBC WebMedia',
+      templateId: 'tpl-system-sbc',
+    });
+
+    expect(project).toBeDefined();
+    expect(project.name).toBe('Paper com Template SBC');
+    expect(project.templateId).toBe('tpl-system-sbc');
   });
 
   it('should create custom stages and provision feature branches correctly', async () => {
