@@ -3,7 +3,24 @@ import { setTimeout as sleep } from 'timers/promises';
 import { ChangeSet } from '@codemirror/state';
 import { prisma } from '../src/db/prisma';
 import { redisService } from '../src/infra/redis/redis.service';
+import { minioClient, StoragePathBuilder, uploadToMinio } from '../src/infra/minio';
+import { parseLatexZip, ParsedLatexProject } from '../src/utils/latex-zip-parser';
 
+let cachedNapOpenBundle: ParsedLatexProject | null = null;
+
+async function getNapOpenBundle(): Promise<ParsedLatexProject | null> {
+  if (cachedNapOpenBundle) return cachedNapOpenBundle;
+  try {
+    const stream = await minioClient.getObject('collab-assets', 'templates/7747a833-7842-43fa-b026-9a8b16dadfdf/bundle.zip');
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    cachedNapOpenBundle = parseLatexZip(Buffer.concat(chunks));
+    return cachedNapOpenBundle;
+  } catch (err) {
+    console.warn('[Benchmark] Aviso: Não foi possível carregar o template NAPOpen do MinIO, utilizando fallback inline:', err);
+    return null;
+  }
+}
 interface BenchmarkConfig {
   numProjects: number;
   authorsPerProject: number;
@@ -139,8 +156,9 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
     update: {},
   });
 
-  // 2. Preparar os 100 artigos no PostgreSQL
-  console.log(`📦 Preparando ${numProjects} artigos no PostgreSQL...`);
+  // 2. Preparar os artigos baseados no template NAPOpen do MinIO
+  console.log(`📦 Preparando ${numProjects} artigos no PostgreSQL com template NAPOpen do MinIO...`);
+  const napBundle = await getNapOpenBundle();
   const projectIds: string[] = [];
   const projectPrepStart = performance.now();
 
@@ -148,45 +166,78 @@ export async function runKind500UsersBenchmark(config: Partial<BenchmarkConfig> 
     const id = `bench-artigo-${String(i).padStart(3, '0')}`;
     projectIds.push(id);
 
-    const initialContent = generateRealisticPaper(i);
+    const initialContent = napBundle?.rootDoc?.content
+      ? napBundle.rootDoc.content.replace(/\\title\{[^}]*\}/, `\\title{High-Throughput LaTeX Compilation Study ${i} - NAPOpen}`)
+      : generateRealisticPaper(i);
 
     await prisma.project.upsert({
       where: { id },
       create: {
         id,
-        name: `Artigo Científico ${i} - Benchmark KinD`,
+        name: `Artigo Científico NAPOpen ${i} - Benchmark KinD`,
         coordinatorId: defaultUser.id,
         managerId: defaultUser.id,
         currentVersion: 1,
         ownerGeneration: 0,
-        files: {
-          create: {
-            path: 'main.tex',
-            fileType: 'text',
-            mimeType: 'text/x-tex',
-            sizeBytes: BigInt(Buffer.byteLength(initialContent, 'utf-8')),
-            content: initialContent,
-          },
-        },
+        templateId: '7747a833-7842-43fa-b026-9a8b16dadfdf',
       },
       update: {},
     });
 
-    await prisma.projectFile.upsert({
-      where: { projectId_path: { projectId: id, path: 'main.tex' } },
-      create: {
+    const projectFiles: Array<{
+      projectId: string;
+      path: string;
+      fileType: string;
+      mimeType: string;
+      content?: string;
+      storageKey?: string;
+      sizeBytes: bigint;
+    }> = [
+      {
         projectId: id,
         path: 'main.tex',
         fileType: 'text',
         mimeType: 'text/x-tex',
-        sizeBytes: BigInt(Buffer.byteLength(initialContent, 'utf-8')),
         content: initialContent,
-      },
-      update: {
         sizeBytes: BigInt(Buffer.byteLength(initialContent, 'utf-8')),
-        content: initialContent,
       },
-    });
+    ];
+
+    if (napBundle) {
+      for (const f of napBundle.files) {
+        if (f.path === 'main.tex') continue;
+        if (!f.isBinary && f.content) {
+          projectFiles.push({
+            projectId: id,
+            path: f.path,
+            fileType: 'text',
+            mimeType: f.mimeType,
+            content: f.content,
+            sizeBytes: BigInt(f.sizeBytes),
+          });
+        } else if (f.buffer) {
+          const fileId = 'img-' + f.path.replace(/[^a-zA-Z0-9]/g, '_');
+          const storageKey = StoragePathBuilder.projectFile(id, fileId, f.path.replace(/\//g, '_'));
+          await uploadToMinio(storageKey, f.buffer, f.mimeType);
+          projectFiles.push({
+            projectId: id,
+            path: f.path,
+            fileType: 'binary',
+            mimeType: f.mimeType,
+            storageKey,
+            sizeBytes: BigInt(f.sizeBytes),
+          });
+        }
+      }
+    }
+
+    for (const pf of projectFiles) {
+      await prisma.projectFile.upsert({
+        where: { projectId_path: { projectId: id, path: pf.path } },
+        create: pf,
+        update: pf,
+      });
+    }
   }
 
   const projectPrepDuration = performance.now() - projectPrepStart;
