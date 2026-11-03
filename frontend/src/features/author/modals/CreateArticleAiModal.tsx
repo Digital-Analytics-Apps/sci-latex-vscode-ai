@@ -93,14 +93,17 @@ export const CreateArticleAiModal: React.FC<CreateArticleAiModalProps> = ({
       return;
     }
 
+    const rawTpl = (proposal.template_id || '').toLowerCase().trim();
     const resolvedTemplate =
       templates.find(
         (t) =>
-          t.id === proposal.template_id ||
-          t.name.toLowerCase().includes(proposal.template_id || '')
+          t.id.toLowerCase() === rawTpl ||
+          (t.targetConference && t.targetConference.toLowerCase() === rawTpl) ||
+          t.name.toLowerCase().includes(rawTpl) ||
+          (t.targetConference && rawTpl.includes(t.targetConference.toLowerCase()))
       ) || templates[0];
 
-    const targetTemplateId = resolvedTemplate?.id || proposal.template_id || 'tpl-system-ieeetran';
+    const targetTemplateId = resolvedTemplate?.id || 'tpl-system-sbc';
 
     const now = new Date();
     const stagesPayload = proposal.stages.map((stg) => ({
@@ -114,6 +117,7 @@ export const CreateArticleAiModal: React.FC<CreateArticleAiModalProps> = ({
     try {
       const res = await createProjectMutation.mutateAsync({
         name: proposal.title,
+        description: proposal.abstract,
         targetConference: proposal.conference || 'Conferência Científica',
         submissionDeadline:
           proposal.submission_deadline && proposal.submission_deadline.includes('-')

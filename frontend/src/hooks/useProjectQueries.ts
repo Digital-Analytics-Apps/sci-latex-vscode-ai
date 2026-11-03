@@ -118,6 +118,7 @@ export function useCreateProjectMutation() {
   return useMutation({
     mutationFn: (data: {
       name: string;
+      description?: string;
       targetConference?: string;
       submissionDeadline?: string;
       template?: string;
@@ -134,6 +135,7 @@ export function useCreateProjectMutation() {
     }) =>
       projectsService.createProject({
         name: data.name,
+        description: data.description,
         targetConferenceName: data.targetConference,
         targetConferenceDate: data.submissionDeadline,
         coordinatorId: data.coordinatorId,

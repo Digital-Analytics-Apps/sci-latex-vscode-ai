@@ -119,6 +119,12 @@ export class ProjectsService {
             rootContent = rootContent.replace(/\\title\{[^}]*\}/, `\\title{${data.name}}`);
           }
 
+          if (data.description && /\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/.test(rootContent)) {
+            rootContent = rootContent.replace(
+              /\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/,
+              `\\begin{abstract}\n${data.description}\n\\end{abstract}`
+            );
+          }
           projectFilesData.push({
             projectId,
             path: 'main.tex',

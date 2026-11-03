@@ -27,8 +27,8 @@ export interface SystemTemplateDefinition {
   targetConference: string;
   mainTex: string;
   referencesBib: string;
+  extraFiles?: Record<string, string>;
 }
-
 export const SYSTEM_TEMPLATES: SystemTemplateDefinition[] = [
   {
     id: 'tpl-system-ieeetran',
@@ -80,14 +80,26 @@ Síntese das contribuições e direcionamentos futuros.
       'Template oficial para submissões em simpósios e congressos da SBC (CSBC, SBSEG, SBRC, WebMedia).',
     targetConference: 'SBC',
     mainTex: `\\documentclass[12pt]{article}
+
+\\usepackage{sbc-template}
+\\usepackage{graphicx,url}
 \\usepackage[utf8]{inputenc}
 \\usepackage{amsmath}
-\\usepackage{graphicx}
 
 \\title{Artigo no Padrão da SBC}
-\\author{Autores do Trabalho}
+
+\\author{Primeiro Autor\\inst{1}, Segundo Autor\\inst{2}}
+
+\\address{Departamento de Ciência da Computação -- Universidade Exemplo (UE)\\\\
+  Caixa Postal 15.064 -- 91.501-970 -- Porto Alegre -- RS -- Brasil
+  \\nextinstitute
+  Instituto de Informática -- Universidade Federal Exemplo (UFE)\\\\
+  Brasília -- DF -- Brasil
+  \\email{\\{autor1, autor2\\}@exemplo.edu.br}
+}
 
 \\begin{document}
+
 \\maketitle
 
 \\begin{abstract}
@@ -112,6 +124,7 @@ Considerações finais e trabalhos futuros.
 
 \\bibliographystyle{plain}
 \\bibliography{references}
+
 \\end{document}`,
     referencesBib: `@inproceedings{sbc_sample_2026,
   author = {Oliveira, C. and Souza, D.},
@@ -119,6 +132,50 @@ Considerações finais e trabalhos futuros.
   booktitle = {Anais do CSBC},
   year = {2026}
 }`,
+    extraFiles: {
+      'sbc-template.sty': `\\NeedsTeXFormat{LaTeX2e}
+\\ProvidesPackage{sbc-template}[2003/03/21]
+
+\\RequirePackage[a4paper,top=3.5cm,left=3cm,right=3cm,bottom=2.5cm]{geometry}
+\\RequirePackage{times}
+\\RequirePackage{indentfirst}
+
+\\def\\address#1{\\gdef\\@address{#1}}
+\\def\\email#1{\\gdef\\@email{#1}}
+\\def\\inst#1{\\unskip$^{#1}$}
+\\def\\nextinstitute{\\\\\and}
+
+\\renewcommand{\\maketitle}{%
+  \\begin{center}%
+    {\\Large\\bfseries \\@title \\par}%
+    \\vskip 1.5em%
+    {\\large \\@author \\par}%
+    \\vskip 0.5em%
+    {\\small \\@address \\par}%
+  \\end{center}%
+  \\par\\vskip 1.5em%
+}
+
+\\renewenvironment{abstract}{%
+  \\begin{center}%
+    {\\bfseries Abstract}\\vspace{-.5em}\\vspace{0pt}%
+  \\end{center}%
+  \\quotation\\small\\noindent\\ignorespaces%
+}{%
+  \\endquotation\\par\\vskip 1em%
+}
+
+\\newenvironment{resumo}{%
+  \\begin{center}%
+    {\\bfseries Resumo}\\vspace{-.5em}\\vspace{0pt}%
+  \\end{center}%
+  \\quotation\\small\\noindent\\ignorespaces%
+}{%
+  \\endquotation\\par\\vskip 1em%
+}
+
+\\endinput`,
+    },
   },
   {
     id: 'tpl-system-acm',
@@ -167,7 +224,7 @@ Summary of findings and future work.
     description:
       'Template oficial para livros e anais publicados pela editora Springer (LNCS/LNAI/CCIS).',
     targetConference: 'Springer',
-    mainTex: `\\documentclass{article}
+    mainTex: `\\documentclass[runningheads]{llncs}
 \\usepackage[utf8]{inputenc}
 \\usepackage{amsmath}
 \\usepackage{graphicx}
@@ -275,17 +332,21 @@ export class TemplatesService {
         existsInMinio = false;
       }
 
-      if (!existsInMinio) {
-        const zip = new AdmZip();
-        zip.addFile('main.tex', Buffer.from(sysTpl.mainTex, 'utf-8'));
-        zip.addFile('references.bib', Buffer.from(sysTpl.referencesBib, 'utf-8'));
-        const bundleBuffer = zip.toBuffer();
-
-        try {
-          await uploadToMinio(storageKey, bundleBuffer, 'application/zip');
-        } catch (err) {
-          console.warn(`[TemplatesService] Falha ao enviar bundle ${sysTpl.id} para o MinIO:`, err);
+      const zip = new AdmZip();
+      zip.addFile('main.tex', Buffer.from(sysTpl.mainTex, 'utf-8'));
+      zip.addFile('references.bib', Buffer.from(sysTpl.referencesBib, 'utf-8'));
+      if (sysTpl.extraFiles) {
+        for (const [filename, content] of Object.entries(sysTpl.extraFiles)) {
+          zip.addFile(filename, Buffer.from(content, 'utf-8'));
         }
+      }
+      const bundleBuffer = zip.toBuffer();
+
+      // Garante que o MinIO tenha o bundle atualizado contendo os arquivos de estilo (.sty, .cls)
+      try {
+        await uploadToMinio(storageKey, bundleBuffer, 'application/zip');
+      } catch (err) {
+        console.warn(`[TemplatesService] Falha ao enviar bundle ${sysTpl.id} para o MinIO:`, err);
       }
 
       if (!existing) {
