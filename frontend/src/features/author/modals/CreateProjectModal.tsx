@@ -41,7 +41,7 @@ import {
 } from "../../../schemas/project.schema";
 import { type UserMemberItem } from "../../../services/usersService";
 import { showNotification } from "../../../store/slices/notificationSlice";
-
+import { OFFICIAL_SCIA_STAGES } from "../../../constants/stages.constants";
 interface CreateProjectModalProps {
   open: boolean;
   onClose: () => void;
@@ -55,50 +55,12 @@ interface StageFormItem {
   plannedCompletionDate?: string;
 }
 
-const DEFAULT_INITIAL_STAGES: StageFormItem[] = [
-  {
-    id: "stage-default-1",
-    title: "Planejamento e Pesquisa TeX",
-    description:
-      "Mapeamento inicial de bibliografia, hipóteses e estruturação TeX",
-    plannedCompletionDate: "",
-  },
-  {
-    id: "stage-default-2",
-    title: "Desenvolvimento e Experimentos",
-    description:
-      "Execução dos experimentos, análise de dados e geração de benchmarks",
-    plannedCompletionDate: "",
-  },
-  {
-    id: "stage-default-3",
-    title: "Escrita do Artigo",
-    description:
-      "Redação paralela das seções em tarefas com bate e volta",
-    plannedCompletionDate: "",
-  },
-  {
-    id: "stage-default-4",
-    title: "Revisão Técnica e Científica",
-    description:
-      "Revisão geral do manuscrito consolidado pelo Revisor Oficial",
-    plannedCompletionDate: "",
-  },
-  {
-    id: "stage-default-5",
-    title: "Parecer do NIT (Gatekeeper 1)",
-    description:
-      "Auditoria formal de propriedade intelectual e patentes",
-    plannedCompletionDate: "",
-  },
-  {
-    id: "stage-default-6",
-    title: "Submissão Final ao Congresso Alvo (Gatekeeper 2)",
-    description:
-      "Envio oficial do manuscrito compilado para a conferência",
-    plannedCompletionDate: "",
-  },
-];
+const DEFAULT_INITIAL_STAGES: StageFormItem[] = OFFICIAL_SCIA_STAGES.map((s) => ({
+  id: `stage-default-${s.order}`,
+  title: s.title,
+  description: s.description,
+  plannedCompletionDate: "",
+}));
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   open,

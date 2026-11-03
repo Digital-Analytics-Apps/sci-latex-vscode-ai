@@ -45,12 +45,7 @@ async def list_available_templates() -> List[Dict[str, Any]]:
             return results
         except Exception as e:
             logger.error(f"[PlatformTools] Falha ao listar templates: {str(e)}")
-            return [
-                {"id": "tpl-system-sbc", "name": "SBC (Sociedade Brasileira de Computação)", "target_conference": "SBC"},
-                {"id": "tpl-system-ieeetran", "name": "IEEEtran (IEEE Conference)", "target_conference": "IEEE"},
-                {"id": "tpl-system-acm", "name": "ACM sigconf", "target_conference": "ACM"},
-                {"id": "tpl-system-springer", "name": "Springer LNCS", "target_conference": "Springer"},
-            ]
+            return []
 
 
 @tool

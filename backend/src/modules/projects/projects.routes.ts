@@ -10,7 +10,7 @@ import { ProjectsService } from './projects.service';
 import { PrismaProjectStagesRepository } from '../../repositories/project-stages.repository';
 import { ProjectStagesService } from './project-stages.service';
 import { ProjectStagesController } from './project-stages.controller';
-
+import { OFFICIAL_SCIA_STAGES } from '../../constants/stages.constants';
 export async function projectsRoutes(app: FastifyInstance) {
   const projectsRepository = new PrismaProjectsRepository();
   const projectsService = new ProjectsService(projectsRepository);
@@ -271,6 +271,21 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
     (req, reply) => controller.getTaskDiffSummary(req, reply)
   );
+  // GET /api/v1/projects/stage-definitions - Obter definições oficiais das 6 etapas do SCIA (ADR-008)
+  app.get(
+    '/stage-definitions',
+    {
+      schema: {
+        tags: ['Projects'],
+        summary: 'Obter definições oficiais das 6 etapas do SCIA (ADR-008)',
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (_req, reply) => {
+      return reply.send({ stages: OFFICIAL_SCIA_STAGES });
+    }
+  );
+
   // GET /api/v1/projects/:projectId/stages - Listar etapas do artigo
   app.get(
     '/:projectId/stages',

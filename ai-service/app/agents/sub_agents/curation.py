@@ -7,57 +7,10 @@ from langgraph.prebuilt import InjectedState
 from app.core.llm import get_llm
 from app.agents.state import OnboardingState
 from app.agents.tools.calendar_tool import calculate_deadline_and_stages
+from app.core.constants.stages import OFFICIAL_SCIA_STAGES
 from deepagents import create_deep_agent
 
 logger = logging.getLogger(__name__)
-
-# As 6 Etapas Institucionais da Plataforma SCIA (ADR 008 - Imutáveis)
-OFFICIAL_SCIA_STAGES = [
-    {
-        "order": 1,
-        "title": "Planejamento e Pesquisa",
-        "description": "Definição do tema, pergunta de pesquisa e revisão bibliográfica inicial.",
-        "weight": 0.10,
-        "is_gatekeeper": False,
-    },
-    {
-        "order": 2,
-        "title": "Experimentos & Benchmarks",
-        "description": "Execução de experimentos, coleta de dados e preparação de gráficos e tabelas.",
-        "weight": 0.25,
-        "is_gatekeeper": False,
-    },
-    {
-        "order": 3,
-        "title": "Escrita do Artigo (Tarefas Paralelas)",
-        "description": "Redação das seções acadêmicas do manuscrito LaTeX em tarefas paralelas.",
-        "weight": 0.40,
-        "is_gatekeeper": False,
-    },
-    {
-        "order": 4,
-        "title": "Revisão Geral do Manuscrito",
-        "description": "Leitura consolidada pelo orientador e co-autores antes de gatekeepers institucionais.",
-        "weight": 0.15,
-        "is_gatekeeper": False,
-    },
-    {
-        "order": 5,
-        "title": "Gatekeeper 1 - Submissão Interna NIT",
-        "description": "Acompanhamento administrativo e parecer institucional do Núcleo de Inovação.",
-        "weight": 0.05,
-        "is_gatekeeper": True,
-        "gatekeeper_type": "NIT",
-    },
-    {
-        "order": 6,
-        "title": "Gatekeeper 2 - Submissão ao Congresso Alvo",
-        "description": "Validação de versão final Camera-Ready e envio ao sistema do congresso.",
-        "weight": 0.05,
-        "is_gatekeeper": True,
-        "gatekeeper_type": "TARGET_CONFERENCE",
-    },
-]
 
 CURATION_PROMPT = """Você é o **Gerente de Curadoria e Estruturação de Artigos** da plataforma SCIA.
 Sua missão é consolidar os dados do Onboarding (tema refinado, artigos científicos selecionados na busca, conferência alvo, prazo em semanas e template escolhido) na proposta estruturada do novo artigo.
@@ -65,11 +18,11 @@ Sua missão é consolidar os dados do Onboarding (tema refinado, artigos cientí
 ### REGRAS CRÍTICAS DE GOVERNANÇA:
 1. **AS 6 ETAPAS SÃO FIXAS E IMUTÁVEIS (ADR 008):**
    - Etapa 1: Planejamento e Pesquisa (10% do tempo)
-   - Etapa 2: Experimentos & Benchmarks (25% do tempo)
+   - Etapa 2: Desenvolvimento e Experimentos (25% do tempo)
    - Etapa 3: Escrita do Artigo (40% do tempo)
-   - Etapa 4: Revisão Geral do Manuscrito (15% do tempo)
-   - Etapa 5: Gatekeeper 1 - Submissão Interna NIT (5% do tempo)
-   - Etapa 6: Gatekeeper 2 - Submissão ao Congresso Alvo (5% do tempo)
+   - Etapa 4: Revisão Técnica e Científica (15% do tempo)
+   - Etapa 5: Parecer do NIT (Gatekeeper 1) (5% do tempo)
+   - Etapa 6: Submissão ao Congresso Alvo (Gatekeeper 2) (5% do tempo)
 
 2. **CÁLCULO E SUGESTÃO DE DATAS DAS ETAPAS:**
    - Calcule e proponha a distribuição dos dias e prazos em cada uma das 6 etapas a partir do total de semanas informado pelo autor (ou data do congresso).

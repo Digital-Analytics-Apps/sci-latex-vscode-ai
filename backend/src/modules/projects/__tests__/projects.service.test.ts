@@ -211,7 +211,9 @@ describe('ProjectsService', () => {
     const stages = await stagesRepository.findByProjectId(created.id);
     expect(stages).toHaveLength(6);
     expect(stages[0].title).toBe('Planejamento e Pesquisa');
-    expect(stages[3].title).toBe('Escrita da Conclusão');
+    expect(stages[1].title).toBe('Desenvolvimento e Experimentos');
+    expect(stages[2].title).toBe('Escrita do Artigo');
+    expect(stages[3].title).toBe('Revisão Técnica e Científica');
     expect(stages[4].title).toBe('Parecer do NIT (Gatekeeper 1)');
     expect(stages[5].title).toBe('Submissão ao Congresso Alvo (Gatekeeper 2)');
     expect(stages[0].plannedCompletionDate).toBeDefined();

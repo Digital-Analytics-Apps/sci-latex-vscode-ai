@@ -45,7 +45,7 @@ def get_http_client() -> httpx.AsyncClient:
     global _http_client
     if _http_client is None or _http_client.is_closed:
         _http_client = httpx.AsyncClient(
-            timeout=12.0,
+            timeout=6.0,
             headers={"User-Agent": ARXIV_USER_AGENT},
             follow_redirects=True,
         )
@@ -144,8 +144,8 @@ async def search_academic_papers_arxiv(
                 params["sortOrder"] = sort_order
 
         client = get_http_client()
-        max_retries = 2
-        retry_delay = 3.5
+        max_retries = 1
+        retry_delay = 1.0
         for attempt in range(max_retries):
             try:
                 response = await client.get(url, params=params)

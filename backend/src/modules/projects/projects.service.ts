@@ -12,7 +12,7 @@ import { IProjectsRepository, ProjectFilterOptions } from '../../repositories/pr
 import { logAudit } from '../../utils/audit';
 import { classificationService } from './services/classification.service';
 import { progressDescriptionService } from './services/progress-description.service';
-
+import { OFFICIAL_SCIA_STAGES } from '../../constants/stages.constants';
 export interface CreateProjectDTO {
   name: string;
   description?: string;
@@ -65,7 +65,7 @@ export class ProjectsService {
     private readonly stagesRepository: IProjectStagesRepository = new PrismaProjectStagesRepository()
   ) {}
 
-  // Criar um novo projeto/artigo e provisionar seu repositório Git/GitHub
+  // Criar um novo projeto/artigo
   async createProject(userId: string, data: CreateProjectDTO) {
     if (process.env.NODE_ENV !== 'test') {
       const creatorUser = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
@@ -255,61 +255,20 @@ Resumo do artigo científico.
       }
     }
 
-    // 2b. Instanciar as 6 Etapas Fixas Obrigatórias (ADR-008)
-    const defaultSixStages = [
-      {
-        order: 1,
-        title: 'Planejamento e Pesquisa TeX',
-        description: 'Levantamento bibliográfico e estruturação TeX',
-        isGatekeeper: false,
-      },
-      {
-        order: 2,
-        title: 'Desenvolvimento e Experimentos',
-        description: 'Coleta de dados e benchmarks',
-        isGatekeeper: false,
-      },
-      {
-        order: 3,
-        title: 'Escrita do Artigo',
-        description: 'Redação das seções em tarefas paralelas',
-        isGatekeeper: false,
-      },
-      {
-        order: 4,
-        title: 'Revisão Técnica e Científica',
-        description: 'Revisão geral do manuscrito consolidado',
-        isGatekeeper: false,
-      },
-      {
-        order: 5,
-        title: 'Parecer do NIT (Gatekeeper 1)',
-        description: 'Validação de propriedade intelectual',
-        isGatekeeper: true,
-        gatekeeperType: 'NIT',
-      },
-      {
-        order: 6,
-        title: 'Submissão ao Congresso Alvo (Gatekeeper 2)',
-        description: 'Submissão externa do artigo compilado',
-        isGatekeeper: true,
-        gatekeeperType: 'TARGET_CONFERENCE',
-      },
-    ];
-
+    // 2b. Instanciar as 6 Etapas Fixas Obrigatórias (ADR-008) com Títulos Canônicos Imutáveis
     await Promise.all(
-      defaultSixStages.map(async (def, i) => {
+      OFFICIAL_SCIA_STAGES.map(async (def, i) => {
         const inputStage = data.stages && data.stages[i];
         await this.stagesRepository.create({
           projectId,
-          title: (inputStage && inputStage.title) || def.title,
-          description: (inputStage && inputStage.description) || def.description,
+          title: def.title,
+          description: def.description,
           plannedStartAt: inputStage?.plannedStartAt,
           plannedEndAt: inputStage?.plannedEndAt || inputStage?.plannedCompletionDate,
           plannedCompletionDate: inputStage?.plannedCompletionDate || inputStage?.plannedEndAt,
           order: def.order,
           isGatekeeper: def.isGatekeeper,
-          gatekeeperType: def.gatekeeperType,
+          gatekeeperType: def.gatekeeperType || undefined,
         });
       })
     );

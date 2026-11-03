@@ -8,7 +8,6 @@ from app.agents.tools.openalex import search_academic_papers_openalex
 
 logger = logging.getLogger(__name__)
 
-
 @tool
 async def execute_academic_search(query: str, limit: int = 5) -> Union[List[Dict[str, Any]], str]:
     """
@@ -77,8 +76,12 @@ async def search_academic_literature(query: str, limit: int = 5) -> str:
     articles = results if isinstance(results, list) else []
 
     if not articles:
-        return "Não foi possível localizar artigos para os termos buscados. Tente refinar a query."
-
+        logger.warning(f"[search_academic_literature] Falha ou sem resultados nas bases externas para query='{query}'")
+        return (
+            "INSTABILIDADE_BUSCA: Tivemos uma instabilidade temporária nas ferramentas de busca acadêmica externas "
+            "(arXiv, Semantic Scholar e OpenAlex) e nenhum artigo foi retornado. "
+            "Informe diretamente ao autor que tivemos uma instabilidade nos serviços de busca e peça para tentar novamente mais tarde."
+        )
     selection_request = {
         "action_requests": [
             {

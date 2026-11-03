@@ -40,13 +40,8 @@ async def search_academic_papers_s2(query: str, limit: int = 5) -> Union[List[Di
                 response = await client.get(url, params=params)
 
                 if response.status_code == 429:
-                    logger.warning(f"[SemanticScholar] Rate Limit (429) na tentativa {attempt+1}")
-                    if attempt < max_retries - 1:
-                        wait_time = retry_delay * (2 ** attempt)
-                        await asyncio.sleep(wait_time)
-                        continue
-                    return "ERRO_RATE_LIMIT: Semantic Scholar sobrecarregado. Fallback para OpenAlex ativado."
-
+                    logger.warning("[SemanticScholar] Rate Limit (429) detectado. Acionando failover imediato...")
+                    return "ERRO_RATE_LIMIT_S2: Semantic Scholar com rate limit ativo. Acionando fallback..."
                 response.raise_for_status()
                 data = response.json()
                 papers = data.get("data", [])

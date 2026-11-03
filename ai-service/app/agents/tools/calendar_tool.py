@@ -3,7 +3,7 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 from langchain_core.tools import tool
-
+from app.core.constants.stages import OFFICIAL_SCIA_STAGES
 logger = logging.getLogger(__name__)
 
 MONTH_MAP_PT = {
@@ -26,14 +26,6 @@ MONTH_MAP_EN = {
     "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
 }
 
-OFFICIAL_STAGE_WEIGHTS = [
-    {"order": 1, "title": "Planejamento e Pesquisa", "weight": 0.10, "is_gatekeeper": False},
-    {"order": 2, "title": "Experimentos & Benchmarks", "weight": 0.25, "is_gatekeeper": False},
-    {"order": 3, "title": "Escrita do Artigo", "weight": 0.40, "is_gatekeeper": False},
-    {"order": 4, "title": "Revisão Geral do Manuscrito", "weight": 0.15, "is_gatekeeper": False},
-    {"order": 5, "title": "Gatekeeper 1 - Submissão Interna NIT", "weight": 0.05, "is_gatekeeper": True, "gatekeeper_type": "NIT"},
-    {"order": 6, "title": "Gatekeeper 2 - Submissão ao Congresso", "weight": 0.05, "is_gatekeeper": True, "gatekeeper_type": "TARGET_CONFERENCE"},
-]
 
 
 def parse_target_date(input_text: str, current_date: date) -> Optional[date]:
@@ -151,7 +143,7 @@ def calculate_deadline_and_stages(target_date_or_weeks: str) -> Dict[str, Any]:
     stages_breakdown = []
     current_stage_start = today
 
-    for stg in OFFICIAL_STAGE_WEIGHTS:
+    for stg in OFFICIAL_SCIA_STAGES:
         stage_days = max(1, int(total_days * stg["weight"]))
         stage_end = current_stage_start + timedelta(days=stage_days)
 

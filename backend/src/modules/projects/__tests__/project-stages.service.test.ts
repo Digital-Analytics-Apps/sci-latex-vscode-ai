@@ -2,10 +2,10 @@ import { ProjectStage, StageStatus } from '@prisma/client';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   CreateStageData,
-  DEFAULT_STAGES,
   IProjectStagesRepository,
   UpdateStageData,
 } from '../../../repositories/project-stages.repository';
+import { OFFICIAL_SCIA_STAGES } from '../../../constants/stages.constants';
 import { ProjectStagesService } from '../project-stages.service';
 
 class InMemoryProjectStagesRepository implements IProjectStagesRepository {
@@ -101,7 +101,7 @@ class InMemoryProjectStagesRepository implements IProjectStagesRepository {
 
   async autoCreateDefaultStages(projectId: string): Promise<ProjectStage[]> {
     const created: ProjectStage[] = [];
-    for (const def of DEFAULT_STAGES) {
+    for (const def of OFFICIAL_SCIA_STAGES) {
       const stage: ProjectStage = {
         id: `stage-${projectId}-${def.order}`,
         projectId,

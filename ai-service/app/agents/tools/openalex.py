@@ -42,13 +42,9 @@ async def search_academic_papers_openalex(
             try:
                 response = await client.get(url, params=params)
 
-                if response.status_code == 429:
-                    logger.warning(f"[OpenAlex] Rate Limit (429) na tentativa {attempt+1}")
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay * (attempt + 1))
-                        continue
-                    return "ERRO_RATE_LIMIT: Limite de requisições do OpenAlex excedido. Tente novamente em instantes."
-
+                if response.status_code in (429, 503):
+                    logger.warning(f"[OpenAlex] Status {response.status_code} detectado. Acionando failover imediato...")
+                    return f"ERRO_OPENALEX_{response.status_code}: OpenAlex temporariamente indisponível. Acionando fallback..."
                 response.raise_for_status()
                 data = response.json()
                 works = data.get("results", [])
