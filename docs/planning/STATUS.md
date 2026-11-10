@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 24 de Outubro de 2026  
-**Status Geral do Projeto:** 🟢 **Arquitetura do Editor Colaborativo Consolidada (ADR-007) & Camada de IA Científica (`ai-service`).** Finalizada a implementação completa da ADR-007 para escalabilidade horizontal do editor colaborativo CodeMirror 6, eliminando I/O desnecessário no Redis, blindando a persistência com debounce híbrido e transações atômicas no PostgreSQL, e estabilizando a sincronização multi-arquivo.
+**Última Atualização:** 09 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura do Editor Colaborativo Consolidada (ADR-007) & Planejamento de Segurança Inter-Serviços (ADR-012).** Mapeada e documentada toda a topologia de comunicação inter-serviços (Backend, SciAI, Compiler, MinIO, PostgreSQL, Redis), formalizando o plano de mitigação de vulnerabilidades (M2M Least Privilege, Compiler Auth e MinIO Private Assets).
 
 ---
 
@@ -21,6 +21,9 @@
     * **Coordenação de Posse (Document Ownership Lease):** Primitivas `acquireDocumentLease` e `renewDocumentLease` no Redis (`editor:document:<docId>:owner`, TTL 10s renovado a cada 3s) garantindo autoridade Single-Writer por documento para orquestração multi-pod em Kubernetes.
     * **Estabilização do WebSocket no Frontend (`useCollabWebSocket.ts`):** Removido `activeFile` das dependências do socket para eliminar reconexões indesejadas ao alternar abas, e adicionada fila de retry offline (`messageQueueRef`).
     * **Sincronização Multi-Arquivo em Tempo Real:** O backend expõe `getAllCollabVersions` no `SYNC_INIT` e une o estado em memória quente em `listProjectFiles`. O frontend rastreia `fileCollabVersions` de forma isolada, corrigindo a propagação de alterações entre arquivos secundários.
+  * **Auditoria de Segurança Inter-Serviços e Planejamento de Hardening:**
+    * **ADR-012 Refinada (Identidade de Serviço e Delegação):** Documentada em [`docs/planning/adrs/adr-012-m2m-security-evolution.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-012-m2m-security-evolution.md) a separação estrita das 4 dimensões (Autenticação, Autorização, Delegação e Auditoria), modelo `AuthenticatedPrincipal` (`type: 'USER' | 'SERVICE'`) e tokens de delegação verificáveis.
+    * **Relatório Geral de Comunicação Inter-Serviços Revisado:** Consolidado em [`docs/RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md) cobrindo requisitos de Sandbox Real do Compiler (usuário não privilegiado, limits cgroups, zero rede no TeX), privacidade estrita do MinIO (URLs pré-assinadas com sanitização de logs e anti-SSRF), separação de responsabilidades do Redis e roadmap em 4 fases por redução de risco.
   * **Estruturação da Nova Camada de IA (`ai-service/`):**
     * **Triagem Limpa do `sci-project`**: Descartados códigos legados e complexidade acidental (compilador Docker síncrono bloqueante, WebSockets colaborativos YRoom com vazamento de memória, autenticação duplicada e CRUDs SQLModel locais).
     * **Extração do Núcleo de Agentes LangGraph**:
