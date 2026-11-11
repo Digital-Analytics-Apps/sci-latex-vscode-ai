@@ -48,6 +48,10 @@
   * **Referências de Chat Copilot & Onboarding no Frontend (`frontend/references-ai-chat/`):**
     * Copiados como modelo de implementação: `OnboardingChat.reference.tsx`, `onboardingApi.reference.ts` e `AIChatSidebar.reference.tsx`.
     * Criado `frontend/references-ai-chat/README.md` com diretrizes para adaptação ao design system do SCIA, tipagens e proxy Fastify.
+  * **Arquitetura de Observabilidade On-Premise Licença Zero (ADR-013 & Especificação Aprovada):**
+    * **ADR-013 Consolidada:** Documentada em [`docs/planning/adrs/adr-013-observabilidade-on-premise-licenca-zero.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-013-observabilidade-on-premise-licenca-zero.md) a escolha de stack 100% livre (Prometheus, Grafana, Loki, Tempo, OpenTelemetry, Opik e GlitchTip).
+    * **Especificação Técnica & WBS:** Documentada em [`docs/planning/specs/observability-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/observability-spec.md) a topologia, portas e plano de tarefas em 4 fases.
+    * **Tutorial Técnico Didático para a Equipe:** Elaborado o guia prático em [`docs/TUTORIAL_OBSERVABILIDADE_ON_PREMISE.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/TUTORIAL_OBSERVABILIDADE_ON_PREMISE.md) ensinando como monitorar cada camada e como o Opik rastreia o LangGraph.
   * **Workflow Editorial & Persistência ACID (ADR-008 & ADR-010):**
     * **Versionamento Relacional Nativo:** Toda colaboração é gerenciada por Transformação Operacional e snapshots no PostgreSQL.
     * **Régua Institucional de 6 Etapas Fixas:** Imutabilidade da ordem 1 a 6 e travas invioláveis de Gatekeepers (Etapa 5 NIT 🔒 e Etapa 6 Congresso Alvo 🔒).

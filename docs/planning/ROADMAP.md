@@ -107,4 +107,20 @@
 
 ---
 
+## 🟡 Fase 8: Observabilidade On-Premise Licença Zero & LLMOps (ADR-013)
+
+- [x] **8.1 Arquitetura & Especificação Técnica da Stack On-Premise (ADR-013 & Spec)**
+  - Formalização da stack livre (Prometheus, Loki, Tempo, OpenTelemetry, Opik e GlitchTip) em `docs/planning/adrs/adr-013-observabilidade-on-premise-licenca-zero.md` e `docs/planning/specs/observability-spec.md`.
+  - Elaboração do tutorial prático e didático de operação das 5 camadas em `docs/TUTORIAL_OBSERVABILIDADE_ON_PREMISE.md`.
+- [ ] **8.2 Infraestrutura On-Premise em Docker & Kubernetes**
+  - Configuração do compose `infra/observability/docker-compose.observability.yml` com Grafana, Prometheus, Loki, Tempo, Opik e GlitchTip.
+- [ ] **8.3 Instrumentação de Métricas no Backend e AI Service**
+  - Exposição de `/metrics` via `fastify-metrics` e `prometheus-fastapi-instrumentator`.
+- [ ] **8.4 Rastreabilidade de LLMs com Opik no LangGraph**
+  - Integração do `OpikTracer` nos fluxos de `graph.astream` e `graph.ainvoke` no `ai-service` para captura de tokens, custos e nós de agentes.
+- [ ] **8.5 Centralização de Logs Estruturados (Loki) & Crash Reporting (GlitchTip)**
+  - Padronização de logs JSON via `pino` e `loguru`, ingestão no Loki e captura de exceções do frontend e backend no GlitchTip.
+
+---
+
 *Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*
