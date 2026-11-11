@@ -71,7 +71,7 @@ flowchart LR
 
     subgraph Roteamento["Como trafegam"]
         B1["OpenTelemetry Collector"]
-        B2["Promtail"]
+        B2["Grafana Alloy (Substituto moderno do Promtail)"]
     end
 
     subgraph Armazenamento["Onde ficam guardados"]
@@ -99,9 +99,10 @@ flowchart LR
 * **Como faz:** De 15 em 15 segundos, o Prometheus faz uma requisição HTTP nos seus serviços (no endpoint `/metrics`) e raspa os números: *"Quantas requisições chegaram?", "Qual a memória atual?", "Quantas conexões estão no banco?"*.
 * **Por que usamos:** É o padrão absoluto da indústria, ultra leve, não consome quase nada de CPU e permite criar gráficos de linha instantâneos.
 
-### 3.2. Grafana Loki (O Buscador de Logs Econômico)
+### 3.2. Grafana Loki + Grafana Alloy (O Buscador de Logs Econômico)
 * **O que faz:** Centraliza todos os logs do Backend, AI Service e Compilador em um só lugar pesquisável.
-* **Como faz diferente do Elasticsearch:** Sistemas tradicionais (como o Elasticsearch) indexam todas as palavras de todos os logs, consumindo 20 a 30 GB de memória RAM. O **Loki** faz o oposto: ele indexa apenas as etiquetas (`app=backend`, `env=production`, `level=error`). O texto do log fica comprimido em disco.
+* **O papel do Grafana Alloy:** O Alloy é o agente oficial moderno da Grafana que substituiu o antigo Promtail (que atingiu EOL em 2026). Ele lê o `stdout` dos containers Docker/Kubernetes e entrega os logs ao Loki.
+* **Como funciona sem explodir a memória (Structured Metadata):** Sistemas tradicionais (como Elasticsearch) indexam todas as palavras de todos os logs, consumindo 20 a 30 GB de RAM. O **Loki** faz o oposto: ele indexa apenas labels de baixíssima cardinalidade (`service="backend"`, `env="production"`). Identificadores únicos como `trace_id`, `user_id` e `article_id` são gravados como **Structured Metadata**. Dessa forma você pesquisa pelo ID exato da requisição com alta velocidade e sem criar milhares de streams no banco.
 * **Resultado:** Você pesquisa logs de semanas inteiras usando uma fração minúscula de memória.
 
 ### 3.3. OpenTelemetry + Grafana Tempo (O Detetive de Requisições)
@@ -122,16 +123,21 @@ flowchart LR
 ### 3.4. Opik (Comet) — O Microscópio do Motor de IA
 * **O que faz:** Monitoramento profundo e especializado para LLMs, Agentes e LangGraph.
 * **Por que o Prometheus/Loki não bastam para IA?** Porque o Prometheus só sabe que uma requisição demorou 3 segundos. Ele não sabe:
-  * Qual prompt foi enviado para o Gemini ou OpenAI?
+  * Qual prompt foi enviado para o modelo de linguagem?
   * Quantos tokens de entrada e saída foram gastos?
   * Quanto essa única mensagem custou em dólares?
   * O agente tomou o caminho do Supervisor, do Curador ou do Escritor LaTeX?
   * O modelo alucinou ou violou alguma regra?
-* **Como o Opik faz:** Ele se conecta como um *callback listener* no LangGraph (`OpikTracer`). Cada vez que um nó do seu grafo roda ou um modelo de linguagem é invocado, o Opik captura silenciosamente o evento em segundo plano e envia para o servidor local do Opik.
+* **Como o Opik e o Tempo trabalham juntos (Correlação):** O Tempo cuida dos spans de rede (Backend $\rightarrow$ FastAPI), enquanto o Opik recebe o `trace_id` do Tempo em seus metadados. Um clique no span do Tempo no Grafana abre diretamente o nó do agente no Opik!
+* **Proteção de Prompts & Sigilo Científico:** Para que manuscritos inéditos de pesquisadores não fiquem expostos no Opik, o SCIA adota **3 níveis de registro**:
+  1. *Nível 1 (Operacional - Default em Produção):* Grava apenas tokens, tempo e modelos. O conteúdo do prompt é ocultado.
+  2. *Nível 2 (Diagnóstico):* Adiciona metadados de ferramentas e artigos retornados do arXiv.
+  3. *Nível 3 (Conteúdo Completo):* Prompts e respostas integrais, restrito a testes controlados e expurgado em 7 dias.
 
-### 3.5. GlitchTip (O Notificador de Panes)
+### 3.5. GlitchTip (O Notificador de Panes Leve)
 * **O que faz:** Captura qualquer exceção não tratada (`crash`) no navegador do usuário ou no servidor e te avisa.
-* **Por que não o Sentry oficial?** O Sentry é maravilhoso, mas a versão auto-hospedada dele exige mais de 16 GB de RAM e usa licença comercial restritiva. O **GlitchTip** é feito em Python/Django, consome apenas 300 MB de RAM, usa licença livre AGPLv3 e **usa exatamente a mesma biblioteca SDK do Sentry** no seu código (`@sentry/react` e `@sentry/node`).
+* **Por que usamos:** O Sentry oficial exige dezenas de containers (Kafka, Snuba, ClickHouse) e consome mais de 16 GB de RAM. O **GlitchTip** é uma alternativa limpa e focada (licença AGPLv3), rodando com Django e PostgreSQL e consumindo pouca memória.
+* **Compatibilidade e Sanitização:** Ele consome os SDKs oficiais do Sentry (`@sentry/react`, `@sentry/node`), com o hook `beforeSend` configurado no cliente para expurgar senhas, tokens JWT e dados pessoais antes de emitir o erro para a rede.
 
 ### 3.6. Grafana (A Central de Comando)
 * **O que faz:** É a tela que junta tudo.
@@ -152,7 +158,7 @@ flowchart LR
 * **Como você controla:**
   1. Registramos o plugin `fastify-metrics`. Ele cria a rota `/metrics` automaticamente.
   2. O Fastify já utiliza o logger `pino` nativamente. Garantimos que ele cuspa JSON estruturado na saída padrão (`stdout`), contendo o `trace_id`.
-  3. O Promtail lê esse terminal e envia pro Loki.
+  3. O Grafana Alloy lê esse terminal e encaminha os logs para o Loki com extração de Structured Metadata (sem explodir labels).
 
 ### Camada 3: O AI Service (FastAPI + LangGraph)
 * **O que você quer controlar:** "Quanto estamos gastando de IA? Qual agente está lento? As buscas no arXiv estão sendo bloqueadas?".
