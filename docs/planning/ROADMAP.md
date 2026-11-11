@@ -96,13 +96,11 @@
 
 ---
 
-## ⚪ Fase 7: Painel Admin em Tempo Real & Métricas de Governança Institucional
+## ⚪ Fase 7: Painel de Governança Acadêmica para Gestores (`Role.MANAGER`)
 
-- [ ] **7.1 Endpoint SSE de Administração (`/api/v1/admin/events`)**
-  - Transmissão em tempo real de contagem de conexões WebSocket ativas, taxa de checkpoints/minuto e saúde do cluster.
-- [ ] **7.2 Página Administrativa no Frontend (`/admin`)**
-  - Tabela de usuários online, tempo de sessão ativa e ações de desconexão preventiva.
-- [ ] **7.3 Dashboard Analítico de Desempenho de Metas por Ciclo**
+- [ ] **7.1 Endpoint de Governança (`/api/v1/manager/events`)**
+  - Métricas de progresso das 6 etapas, metas do ciclo acadêmico ativo e gargalos no NIT (Etapa 5).
+- [ ] **7.2 Dashboard Analítico de Desempenho de Metas por Ciclo (`/manager`)**
   - Painéis consolidados de tempo médio de revisão por etapa e taxas de aceitação nos congressos alvo vs. backup.
 
 ---
@@ -120,6 +118,19 @@
   - Integração do `OpikTracer` nos fluxos de `graph.astream` e `graph.ainvoke` no `ai-service` para captura de tokens, custos e nós de agentes.
 - [ ] **8.5 Centralização de Logs Estruturados (Loki) & Crash Reporting (GlitchTip)**
   - Padronização de logs JSON via `pino` e `loguru`, ingestão no Loki e captura de exceções do frontend e backend no GlitchTip.
+
+---
+
+## 🟡 Fase 9: Painel Administrativo de Saúde da Aplicação e Métricas (`Role.ADMIN` - ADR-014)
+
+- [x] **9.1 Decisão Arquitetural e Especificação Técnica (ADR-014 & Spec)**
+  - Formalização da separação estrita de papéis e design das 5 abas operacionais em `docs/planning/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md` e `docs/planning/specs/system-admin-health-dashboard-spec.md`.
+- [ ] **9.2 Backend BFF & Agregador de Saúde (`/api/v1/system-admin/overview`)**
+  - Implementação do módulo `backend/src/modules/system-admin/` com agregação assíncrona, checagem dos 5 microsserviços, leases do Redis e cache de 15s.
+- [ ] **9.3 Frontend React com 5 Abas Especializadas (`/system-admin`)**
+  - Desenvolvimento de `src/features/system-admin/` com Material UI, controle de semáforos, fila de compilação TeX, telemetria Opik, quotas de storage e logs de auditoria técnica.
+- [ ] **9.4 Blindagem de Rota e RBAC Estrito**
+  - Bloqueio de acesso a qualquer usuário não-admin via `ProtectedRoute` e validação de token JWT no backend Fastify.
 
 ---
 
