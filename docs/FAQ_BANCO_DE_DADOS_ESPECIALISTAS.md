@@ -13,11 +13,11 @@
 
 ## ⚡ 1. Pitch Executivo de 30 Segundos (Elevator Pitch)
 
-> *"No SCIA, escolhemos o **PostgreSQL 16 com transações ACID** para garantir a governança rígida das etapas institucionais, tarefas e autoria científica. 
+> *"No SCIA, escolhemos o **PostgreSQL 16 com transações ACID** para garantir a integridade da governança institucional, etapas e autoria científica. 
 > 
-> Para que o banco não seja sobrecarregado pela digitação colaborativa em tempo real, **desacoplamos a edição do disco**: a digitação opera na memória RAM do Pod Dono (< 2ms) e a persistência no banco é feita por **Debounce Híbrido** e checkpoints atômicos, reduzindo a escrita em **99,8%**. 
+> Para que o banco não seja sobrecarregado pela digitação colaborativa, **desacoplamos a edição do disco**: a digitação opera na memória RAM do Pod Dono (< 2ms) e a persistência é feita por **Debounce Híbrido** periódico, enquanto a proteção contra perda de operações em voo caso o pod sofra crash reside no **buffer local do cliente CodeMirror**, que reexecuta o rebase automaticamente.
 > 
-> Para o ambiente de produção, a alta disponibilidade é baseada em **CloudNativePG (1 Primário + 2 Standbys com failover automático em 10-15s)** e a gestão de conexões em escala é assegurada por **PgBouncer** em Transaction Pooling."*
+> Para o ambiente de produção, a alta disponibilidade é baseada no **CloudNativePG (1 Primário + 2 Standbys com failover automático em 10-15s)** e a gestão de conexões em escala é assegurada por **PgBouncer em HA** com Transaction Pooling na porta 6543, reservando a porta direta 5432 exclusivamente para migrações DDL."*
 
 ---
 
@@ -31,12 +31,14 @@
 
 **Sua Resposta:**
 * **Nenhum caractere digitado gera escrita imediata no banco de dados.**
-* A sincronização em tempo real opera estritamente na **memória RAM do Pod Dono** via WebSockets utilizando Transformação Operacional (OT com `@codemirror/collab`).
-* A persistência no PostgreSQL ocorre de forma assíncrona por **Debounce Híbrido Multi-Critério**:
+* A sincronização em tempo real opera estritamente na **memória RAM do Pod Dono** via WebSockets com Transformação Operacional (`@codemirror/collab`).
+* A persistência no PostgreSQL ocorre de forma assíncrona por **Debounce Híbrido**:
   1. *Por inatividade:* 3 segundos após o autor parar de digitar.
-  2. *Por teto máximo contínuo:* a cada 15 segundos de digitação ininterrupta.
+  2. *Por teto máximo contínuo:* a cada 15 segundos ininterruptos de digitação.
   3. *Por volume:* a cada lote de 50 operações acumuladas.
-* **Resultado prático:** 1.000 teclas digitadas transformam-se em apenas 1 ou 2 transações ACID no PostgreSQL. O banco recebe apenas checkpoints limpos e consistentes.
+* **E se o Pod do backend cair antes do checkpoint?**
+  * O editor CodeMirror Collab no navegador do usuário retém os deltas locais não confirmados (`pendingUpdates`).
+  * Ao reconectar no novo Pod Dono eleito, o cliente consulta a versão do banco via `PULL_UPDATES` e faz o **rebase e reenvio automático das edições pendentes**, garantindo que nenhum texto seja perdido mesmo com falhas de processo.
 
 ---
 
@@ -57,11 +59,11 @@
 > *"Como vocês garantem alta disponibilidade? Se a máquina do banco travar ou reiniciar, o que acontece?"*
 
 **Sua Resposta:**
-* Para produção no Kubernetes (On-Premises), a topologia é gerenciada pelo operador **CloudNativePG (ou Patroni)**:
+* Para produção no Kubernetes (On-Premises), adotamos formalmente o operador **CloudNativePG**:
   * **Topologia de 3 Instâncias:** 1 Primário (Read/Write) + 2 Standbys (Read-Only com replicação física de WALs).
-  * **Isolamento Físico Obrigatório:** Configuração com `podAntiAffinity` para garantir que as 3 instâncias residam em servidores físicos distintos.
-* **Failover Transparente:** Se o nó Primário cair, o operador elege e promove uma réplica em **10 a 15 segundos**, sem necessidade de intervenção humana.
-* **Resiliência na Aplicação:** Durante os segundos de failover, o Backend Fastify segura os rascunhos em memória RAM e reconecta ao novo primário de forma idempotente, sem perda de dados para o autor.
+  * **Isolamento de Hardware:** Configuração de `podAntiAffinity` obrigatória (`topologyKey: kubernetes.io/hostname`) exigindo no mínimo 3 nós Kubernetes distintos no cluster.
+* **Meta de RTO no Failover:** O operador detecta a falha e promove automaticamente um Standby com **meta de RTO entre 10 a 15 segundos** (detecção + promoção + chaveamento de Service K8s).
+* **Resiliência na Aplicação:** Durante os segundos de transição, o Backend Fastify segura as operações em memória e reconecta ao novo primário de forma idempotente, sem perda de dados para o autor.
 
 ---
 
@@ -70,10 +72,13 @@
 > *"Vocês já utilizam ou pretendem subir Read Replicas para balancear as consultas de leitura?"*
 
 **Sua Resposta (Demonstra maturidade sênior de engenharia):**
-* **Não utilizamos Read Replicas no momento para evitar otimização prematura e o problema de *Replication Lag*.**
-* Em réplicas assíncronas, existe um atraso de milissegundos. Se um pesquisador concluir uma tarefa na Etapa 2 e a tela fizer um recarregamento (*refetch*), a consulta de leitura pode bater na réplica defasada e a tarefa continuará aparecendo como "pendente" (*Read-Your-Writes inconsistency*).
-* Um único nó PostgreSQL 16 bem indexado aguenta facilmente de **5.000 a 15.000 consultas por segundo**.
-* **Gatilho de Adoção Objetivo:** Só introduziremos réplicas dedicadas de leitura se a CPU do Primário ultrapassar **75% de uso contínuo** e as métricas (`pg_stat_statements`) provarem que o gargalo vem de relatórios analíticos pesados do gestor ou varreduras em massa do SciAI.
+* **Não utilizamos réplicas de leitura no momento por ausência de necessidade comprovada e para evitar inconsistência de *Replication Lag*.**
+* Em réplicas assíncronas, há um atraso de sincronização. Se um pesquisador avança a etapa de um projeto e a tela recarrega, a consulta pode bater na réplica defasada exibindo a etapa anterior (*quebra de Read-Your-Writes*).
+* Um único nó PostgreSQL 16 sobre hardware dedicado com índices B-Tree bem definidos atende plenamente ao volume acadêmico projetado.
+* **Gatilho de Adoção Objetivo:** Só introduziremos réplicas dedicadas para leitura diante de uma **métrica composta de degradação** comprovada:
+  * Latência P95 das consultas > 500 ms de forma sustentada;
+  * Saturação contínua de I/O de armazenamento;
+  * Relatórios do `pg_stat_statements` provando que o consumo decorre de consultas analíticas pesadas (dashboards gerenciais ou varreduras em lote do SciAI), que serão então isoladas em réplicas de leitura específicas.
 
 ---
 
@@ -83,9 +88,9 @@
 
 **Sua Resposta:**
 * No ambiente de desenvolvimento/MVP atual com pod único, o pool nativo do Prisma Client (`connection_limit=15`) atende com folga.
-* Para produção com auto-scaling horizontal de pods (HPA), a arquitetura especifica formalmente o **PgBouncer** em modo **Transaction Pooling**:
-  * **Porta 6543 (PgBouncer):** Roteia todas as transações das aplicações Fastify. 20 pods com milhares de conexões virtuais compartilham um pool compacto de **apenas 20 a 30 conexões físicas reais** no PostgreSQL.
-  * **Porta 5432 (Postgres Direto):** Reservada exclusivamente para migrações do Prisma (`prisma migrate deploy` / DDL) e ferramentas de monitoramento.
+* Para produção com auto-scaling horizontal de pods (HPA), a arquitetura especifica o **PgBouncer provisionado em Alta Disponibilidade (mínimo 2 réplicas)** em modo **Transaction Pooling**:
+  * **Porta 6543 (PgBouncer):** Roteia todas as transações das aplicações Fastify. Dezenas de pods com centenas de conexões clientes compartilham uma capacidade física inicial planejada de **20 a 30 conexões reais no PostgreSQL**, ajustável sob testes de carga.
+  * **Porta 5432 (Postgres Direto):** Reservada obrigatoriamente para migrações do Prisma (`npx prisma migrate deploy` via `DIRECT_URL`) e ferramentas de monitoramento. **Nenhuma migração DDL trafega pelo pooler transacional.**
 
 ---
 
@@ -95,15 +100,17 @@
 
 **Sua Resposta:**
 * Implementamos **Fencing Tokens monotônicos** integrados ao PostgreSQL ([ADR-007.1](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-007.1-document-ownership-fencing-and-routing.md)):
-  * A tabela `Project` possui a coluna `ownerGeneration Int` gerenciada no PostgreSQL.
-  * Quando um Pod assume a posse de um documento, ele adquire um lease no Redis com número de geração monotônico.
-  * Ao gravar o checkpoint no banco, a query relacional executa atomicamente:
+  * A tabela `Project` mantém a coluna relacional `ownerGeneration Int @default(0)`.
+  * Ao assumir o documento, o Pod adquire um número de geração estritamente monotônico no Redis.
+  * Na persistência atômica do checkpoint no PostgreSQL, a gravação valida atomicamente:
     ```sql
     UPDATE "Project" 
-    SET "content" = :txt, "currentVersion" = :v, "ownerGeneration" = :myGen
-    WHERE "id" = :id AND "ownerGeneration" <= :myGen;
+    SET "currentVersion" = :newVersion, "ownerGeneration" = :myGen
+    WHERE "id" = :id 
+      AND "ownerGeneration" = :myGen 
+      AND "currentVersion" = :expectedOldVersion;
     ```
-  * Se o pod foi destronado enquanto estava desconectado, o PostgreSQL detecta que `currentProject.ownerGeneration > data.ownerGeneration` e **aborta a transação na hora**, impedindo anomalias de *Split-Brain*.
+  * No código atual ([`documents.repository.ts`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/backend/src/modules/documents/documents.repository.ts#L151-L168)), a transação aborta imediatamente com erro `[Fencing Token Conflict]` se a geração no banco for superior à geração do processo, impedindo anomalias de *Split-Brain*.
 
 ---
 
@@ -112,16 +119,16 @@
 > *"Quais são os SLOs de recuperação de desastres (RPO e RTO) do banco de dados?"*
 
 **Sua Resposta:**
-* **RPO (Recovery Point Objective - perda máxima tolerável):** **Inferior a 1 segundo**. Garantido pelo arquivamento contínuo de WALs (*Write-Ahead Logging*) sincronizados para o Object Storage MinIO.
-* **RTO (Recovery Time Objective - tempo de recuperação):**
-  * **10 a 15 segundos** para falhas de nó local (failover automático do CloudNativePG promovendo o Standby).
-  * **Restauração Completa via PITR (*Point-in-Time Recovery*):** Permite restaurar o banco exatamente no estado de qualquer segundo no passado em caso de corrupção humana ou desastre catastrófico.
+* Separamos com clareza o failover local de desastres catastróficos:
+  * **RPO em Operação Normal (Failover de Nó):** **Sub-segundo (< 1s)**, garantido pela replicação física por streaming contínuo de WALs para os Standbys.
+  * **RTO para Queda de Nó:** **10 a 15 segundos** (meta de engenharia do CloudNativePG para promover o Standby e redirecionar o tráfego).
+  * **Disaster Recovery Catastrófico:** Gerenciado via Barman Cloud integrado ao CloudNativePG com backups-base diários no MinIO/S3 e arquivamento de segmentos de WAL. Permite **Point-in-Time Recovery (PITR)** para restaurar o banco exatamente no segundo desejado, com RTO de minutos a horas conforme o volume de dados.
 
 ---
 
 ### Q8. Auditoria, Imutabilidade e Conformidade (LGPD)
 > **Pergunta do Especialista:**  
-> *"Como vocês garantem que os logs de auditoria não sejam apagados ou adulterados por um usuário ou administrador?"*
+> *"Como vocês garantem que os logs de auditoria não sejam apagados ou adulterados por um usuário ou invasor da aplicação?"*
 
 **Sua Resposta:**
 * A tabela `AuditLog` utiliza relacionamento com usuário configurado como `onDelete: SetNull`. Se um usuário for excluído, o payload original e o histórico de ações permanecem congelados na coluna `details Json?`.
@@ -130,7 +137,7 @@
   REVOKE UPDATE, DELETE ON TABLE "AuditLog" FROM "scia_app_user";
   GRANT INSERT, SELECT ON TABLE "AuditLog" TO "scia_app_user";
   ```
-* Isso garante que a própria aplicação só tenha permissão de inserção e leitura, tornando o histórico de auditoria **efetivamente imutável** contra invasões ou erros operacionais.
+* Isso garante que a role utilizada pela aplicação Fastify **não tenha permissão SQL de modificar ou deletar logs**, tornando o histórico de auditoria protegido contra falhas operacionais ou ataques de injeção de SQL.
 
 ---
 
@@ -138,8 +145,10 @@
 
 | Dimensão | Como Outros Fazem | Como o SCIA Faz | Por que a Abordagem do SCIA é Melhor? |
 | :--- | :--- | :--- | :--- |
-| **Colaboração em Tempo Real** | Escreve cada tecla no banco ou NoSQL | RAM do Pod Dono + Debounce Híbrido | Latência sub-milissegundo (< 2ms) e redução de 99,8% de I/O no banco. |
-| **Armazenamento de Imagens** | Grava binários em Base64/Blob no banco | MinIO S3 via URLs pré-assinadas | Banco leve, backups instantâneos e zero consumo de RAM no backend. |
-| **Escala de Conexões** | Centenas de conexões diretas no Postgres | PgBouncer (Transaction Pooling) | Multiplexa centenas de pods em 20 conexões físicas reais no Postgres. |
+| **Colaboração em Tempo Real** | Escreve cada tecla no banco ou NoSQL | RAM do Pod Dono + Debounce Híbrido | Latência sub-milissegundo (< 2ms) e checkpoints limpos no banco. |
+| **Resiliência do Editor** | Confia que o servidor nunca vai cair | Buffer local CodeMirror (`pendingUpdates`) | Se o pod cair, o cliente faz rebase e reenvio automático pós-reconexão. |
+| **Armazenamento de Imagens** | Grava binários em BLOB no banco | MinIO S3 via URLs pré-assinadas | Banco leve, backups ágeis e zero consumo de RAM no backend. |
+| **Escala de Conexões** | Conexões diretas de cada pod no Postgres | PgBouncer HA (Transaction Pooling :6543) | Multiplexa centenas de pods em pool físico compacto de 20-30 conexões reais. |
+| **Migrações de Esquema** | Passa DDLs pelo pooler de conexões | Porta Direta 5432 (`DIRECT_URL`) | Evita falhas de lock e incompatibilidade do Schema Engine do Prisma. |
 | **Prevenção de Split-Brain** | Espera lock do banco ou confia na rede | Fencing Monotônico (`ownerGeneration`) | Imune a partições de rede; o próprio PostgreSQL rejeita writes defasados. |
-| **Tolerância a Falhas** | 1 nó com backup diário em cronjob | CloudNativePG (1 Primário + 2 Standbys) | Failover automático em 10-15s com RPO < 1s. |
+| **Alta Disponibilidade** | 1 nó com backup diário em cronjob | CloudNativePG (1 Primário + 2 Standbys) | Failover automático em 10-15s com replicação física de WALs. |
