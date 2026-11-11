@@ -46,7 +46,10 @@ docs/planning/
 │   ├── adr-009-sciai-api-first-experimentation-and-service-enablement.md (Experimentação Headless via API e Habilitação do SciAI)
 │   ├── adr-010-review-comment-persistence-and-db-alignment.md (Persistência Durável de ReviewComment e Alinhamento do Schema)
 │   ├── adr-011-task-evidences-storage-architecture.md (Upload Direto de Evidências ao MinIO com URLs Pré-Assinadas)
-│   └── adr-012-m2m-security-evolution.md (Evolução da Segurança M2M entre Backend e SciAI Service - PROPOSTO)
+│   ├── adr-012-m2m-security-evolution.md (Evolução da Segurança M2M entre Backend e SciAI Service)
+│   ├── adr-013-observabilidade-on-premise-licenca-zero.md (Arquitetura de Observabilidade On-Premise Licença Zero)
+│   ├── adr-014-painel-admin-saude-e-metricas-aplicacao.md (Painel Administrativo de Saúde e Métricas de Aplicação)
+│   └── adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md (Escalabilidade Relacional, CloudNativePG, PgBouncer e Read Replicas no PostgreSQL)
 
 │
 └── backlog/                    <-- 💡 Análises Pendentes e Ideias Futuras

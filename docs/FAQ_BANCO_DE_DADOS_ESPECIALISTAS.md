@@ -4,6 +4,7 @@
 - **Data:** 10 de Novembro de 2026
 - **Público-Alvo:** DBAs, Arquitetos de Soluções, Engenheiros de Infraestrutura e Comitês Técnicos
 - **Documentos Técnicos Relacionados:** 
+  - [`docs/planning/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md`](planning/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md) — *ADR Oficial de Escalabilidade, HA, PgBouncer e Read Replicas*
   - [`docs/DATABASE.md`](DATABASE.md) — *Especificação Técnica do Banco, ERD e Dicionário de Dados*
   - [`docs/ANALISE_ESCALABILIDADE_RECUPERACAO_POSTGRES.md`](ANALISE_ESCALABILIDADE_RECUPERACAO_POSTGRES.md) — *Análise de HA, PgBouncer e Failover*
   - [`docs/planning/adrs/adr-007.1-document-ownership-fencing-and-routing.md`](planning/adrs/adr-007.1-document-ownership-fencing-and-routing.md) — *Fencing Tokens contra Split-Brain*
