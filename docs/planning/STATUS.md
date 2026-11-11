@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 09 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Arquitetura do Editor Colaborativo Consolidada (ADR-007) & Planejamento de Segurança Inter-Serviços (ADR-012).** Mapeada e documentada toda a topologia de comunicação inter-serviços (Backend, SciAI, Compiler, MinIO, PostgreSQL, Redis), formalizando o plano de mitigação de vulnerabilidades (M2M Least Privilege, Compiler Auth e MinIO Private Assets).
+**Última Atualização:** 10 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura de Observabilidade On-Premise Licença Zero Consolidada (ADR-013).** Estruturado o plano técnico de telemetria completa (Prometheus, Grafana Loki, Grafana Tempo, OpenTelemetry, Opik para LLMOps e GlitchTip para rastreio de exceções), garantindo monitoramento e controle total de ponta a ponta sem custos recorrentes de nuvem e com soberania de dados.
 
 ---
 
@@ -24,6 +24,7 @@
   * **Auditoria de Segurança Inter-Serviços e Planejamento de Hardening:**
     * **ADR-012 Refinada (Identidade de Serviço e Delegação):** Documentada em [`docs/planning/adrs/adr-012-m2m-security-evolution.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-012-m2m-security-evolution.md) a separação estrita das 4 dimensões (Autenticação, Autorização, Delegação e Auditoria), modelo `AuthenticatedPrincipal` (`type: 'USER' | 'SERVICE'`) e tokens de delegação verificáveis.
     * **Relatório Geral de Comunicação Inter-Serviços Revisado:** Consolidado em [`docs/RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md) cobrindo requisitos de Sandbox Real do Compiler (usuário não privilegiado, limits cgroups, zero rede no TeX), privacidade estrita do MinIO (URLs pré-assinadas com sanitização de logs e anti-SSRF), separação de responsabilidades do Redis e roadmap em 4 fases por redução de risco.
+    * **Guia de Defesa do Banco de Dados para Especialistas:** Consolidado em [`docs/FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md) contendo respostas executivas e técnicas para sabatinas de DBAs sobre Capacidade, PgBouncer, CloudNativePG, Read Replicas e Fencing Tokens.
   * **Estruturação da Nova Camada de IA (`ai-service/`):**
     * **Triagem Limpa do `sci-project`**: Descartados códigos legados e complexidade acidental (compilador Docker síncrono bloqueante, WebSockets colaborativos YRoom com vazamento de memória, autenticação duplicada e CRUDs SQLModel locais).
     * **Extração do Núcleo de Agentes LangGraph**:

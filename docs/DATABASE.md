@@ -6,6 +6,8 @@
 > **Camada Auxiliar In-Memory:** Redis 7 (Controle de Presença & Cache Atômico)  
 > **Status:** Produção / Especificação Ativa  
 > **Última Atualização:** Outubro de 2026  
+> 
+> 💡 **Apresentações & Sabatinas com DBAs:** Consulte o [Guia de Defesa & FAQ de Banco de Dados para Especialistas](FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md) para respostas rápidas sobre Capacidade, PgBouncer, Alta Disponibilidade e Fencing Tokens.  
 
 ---
 
