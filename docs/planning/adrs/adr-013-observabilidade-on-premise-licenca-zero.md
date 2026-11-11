@@ -1,43 +1,53 @@
 # ADR 013: Arquitetura de Observabilidade Open Source, Self-Hosted e Soberania Institucional (OpenTelemetry, Prometheus, Loki, Tempo, Opik e GlitchTip)
 
-- **Status:** APROVADO (Revisão Técnica Incorporada — 10/11/2026)
+- **Status:** APROVADO (Consolidado com Análise Técnica de Confiabilidade — 10/11/2026)
 - **Data Original:** 10 de Novembro de 2026
-- **Data de Revisão:** 10 de Novembro de 2026
+- **Data de Consolidação:** 10 de Novembro de 2026
 - **Autor(es):** Equipe de Arquitetura, Engenharia e Segurança SCIA
-- **Revisão Técnica:** Análise de Confiabilidade & Arquitetura SRE/LLMOps
 - **Domínio:** Observabilidade de Microsserviços, LLMOps de Agentes, Monitoramento de Sandbox TeX, Rastreamento Distribuído W3C e Gestão de Incidentes On-Premise
 - **Componentes Relacionados:**
   - `frontend`: `@sentry/react` (sanitizado) conectando ao GlitchTip
   - `backend`: `fastify-metrics`, OpenTelemetry Node SDK, logs JSON via Pino, `@sentry/node`
-  - `ai-service`: `prometheus-fastapi-instrumentator`, `opik` (OpikTracer com propagação de contexto W3C), `loguru`, OpenTelemetry Python SDK
-  - `compiler`: Exporter de métricas de compilação, cgroups, propagação de trace em fila assíncrona
-  - `infra`: Grafana Alloy, OpenTelemetry Collector, Prometheus, Loki, Tempo, Opik, GlitchTip, MinIO, PostgreSQL
+  - `ai-service`: `prometheus-fastapi-instrumentator`, `opik` (OpikTracer com metadado `otel_trace_id`), `loguru`, OpenTelemetry Python SDK
+  - `compiler`: Exporter de métricas TeX (Counter, Gauge, Histogram), cgroups, propagação W3C carrier em fila
+  - `infra`: Grafana Alloy, OpenTelemetry Collector, Prometheus, Loki, Tempo, Opik (MySQL + ClickHouse), GlitchTip (PostgreSQL), MinIO
 
 ---
 
-## ⚡ Guia Rápido & Resumo Executivo ("Elevator Pitch" Revisado)
+## ⚡ Guia Rápido & Resumo Executivo ("Elevator Pitch" Consolidado)
 
 ### 1. O que estamos decidindo e adotando:
-1. **Infraestrutura de Observabilidade 100% Self-Hosted & Soberania Institucional:** Toda a pilha de coleta, armazenamento e visualização de telemetria roda exclusivamente na infraestrutura institucional on-premise. Elimina-se qualquer custo obrigatório recorrente de licenciamento ou SaaS de monitoramento.
-2. **Separação entre Telemetria e Tráfego de Aplicação:** A garantia de soberania local aplica-se à **infraestrutura de observabilidade** (logs, traces, métricas e telemetrias ficam estritamente retidos localmente). O tráfego de aplicação com serviços externos de busca (arXiv, Semantic Scholar, OpenAlex) ou modelos comerciais (Gemini, GPT-4o) é governado separadamente pela política de segurança e classificação de dados do SCIA (ADR-012).
-3. **Padrão Neutro de Coleta e Pipeline Unificado:** Instrumentação com **OpenTelemetry SDK** nos serviços, coleta de logs e métricas de nós via **Grafana Alloy** (substituindo o Promtail descontinuado), e processamento/roteamento via **OpenTelemetry Collector**.
-4. **LLMOps com Opik & Correlação com Tracing Distribuído:** Adoção do **Opik (Apache 2.0)** on-premise para observabilidade semântica dos agentes LangGraph. O identificador W3C `traceparent` é explicitamente vinculado aos metadados do Opik, permitindo correlação bidirecional com o **Grafana Tempo**.
-5. **Classificação e Proteção de Prompts:** Implementação de 3 níveis de registro no Opik (Operacional, Diagnóstico e Conteúdo), com mascaramento mandatório pré-envio para proteger manuscritos inéditos e segredos de pesquisa.
-6. **Gestão Leve de Exceções com GlitchTip:** Substituição de soluções complexas pelo **GlitchTip (AGPLv3)**, com compatibilidade validada via matriz de testes para os SDKs essenciais do Sentry, com sanitização de PII e tokens no cliente.
+1. **Infraestrutura de Observabilidade 100% Self-Hosted & Soberania Institucional:** Toda a pilha de coleta, armazenamento e visualização de telemetria opera exclusivamente na infraestrutura institucional on-premise. Elimina-se qualquer custo recorrente obrigatório de licenciamento de software ou assinaturas de SaaS de monitoramento.
+2. **Separação Estrita de Domínios de Tráfego:** A soberania on-premise aplica-se integralmente à **infraestrutura de observabilidade** (logs, métricas, traces, spans e dados do Opik ficam retidos localmente). O tráfego de aplicação com provedores externos de busca acadêmica (arXiv, Semantic Scholar, OpenAlex) ou modelos comerciais (Gemini, GPT-4o) é governado separadamente pela política de classificação de dados (ADR-012). Quando sigilo institucional absoluto for exigido, o SCIA direciona a execução exclusivamente ao modelo local via **Ollama**.
+3. **Pipeline Unificado sem Duplicidade:**
+   * **OpenTelemetry SDK:** Instrumentação neutra do código de aplicação em TypeScript e Python.
+   * **Grafana Alloy:** Agente unificado para coleta de logs dos containers e métricas de infraestrutura (substituindo Promtail).
+   * **OpenTelemetry Collector:** Processamento, enriquecimento e roteamento central de OTLP.
+   * **Tail-Based Sampling Inteligente:** Retenção a **100%** para erros, traces lentos ($> 2000$ ms) e operações de IA e compilação; amostragem probabilística restrita a rotas de alta frequência de polling/heartbeat.
+4. **LLMOps com Opik & Contrato de Correlação com Tempo:**
+   * O tracing distribuído da requisição HTTP é de responsabilidade do **Grafana Tempo**.
+   * A observabilidade semântica dos agentes LangGraph é de responsabilidade do **Opik**.
+   * O identificador distribuído é explicitamente injetado nos metadados do Opik como `otel_trace_id`, permitindo correlação bidirecional sem colisões de identificadores internos.
+   * A telemetria do Opik é **fail-open** (não-bloqueante): falhas na ingestão do Opik nunca interrompem o fluxo de pesquisa do autor.
+5. **Topologia de Armazenamento Realista:**
+   * O Opik opera sobre sua arquitetura nativa com **MySQL** (metadados/projetos) e **ClickHouse** (traces/análise).
+   * O PostgreSQL institucional permanece isolado para o SCIA e GlitchTip.
+   * Loki e Tempo utilizam o MinIO S3 como armazenamento de objetos de baixo custo.
+6. **Segurança Preventiva e Sanitização em Todos os Emissores:** Sanitização ativa de tokens JWT, credenciais, headers sensíveis e dados pessoais em todos os emissores (React, Fastify, FastAPI e Compiler), impedindo que segredos alcancem os logs, traces ou o GlitchTip.
+7. **Autoscaling Baseado em Métricas Customizadas (KEDA):** O escalonamento de workers do compilador TeX é realizado pelo HPA via métricas customizadas de fila (`compiler_queue_size`) disponibilizadas por KEDA / Prometheus-Adapter, e não por alertas passivos.
 
 ---
 
-## 1. Contexto & Diagnóstico
+## 1. Contexto & Diagnóstico dos Três Regimes de Carga
 
-À medida que o SCIA consolida seu editor colaborativo em memória (ADR-007), suas 6 etapas institucionais (ADR-008) e seu motor multi-agente SciAI (ADR-006 / ADR-009), surgem três regimes de carga com comportamentos e modos de falha radicalmente distintos:
-
-1. **Colaboração e Edição em Tempo Real:** Requisições contínuas, WebSockets concorrentes, leases em memória no Redis e checkpoints ACID no PostgreSQL. Exige rastreio de Event Loop lag, latência < 2ms e reconexões de rede.
-2. **Motor de Inteligência Científica (LangGraph):** Execuções estocásticas assíncronas, grafos multi-agente, streaming de tokens SSE, interrupções humanas e dependência de APIs externas sujeitas a throttling severo (arXiv ToU 3s).
-3. **Sandbox do Compilador LaTeX:** Jobs pesados de CPU/disco, concorrência delimitada, risco de loops infinitos em macros TeX e necessidade de isolamento rígido em cgroups sem rede.
+A plataforma SCIA possui três comportamentos computacionais heterogêneos:
+1. **Colaboração e Edição em Tempo Real:** Requisições contínuas, WebSockets persistentes, leases em memória no Redis e checkpoints periódicos no PostgreSQL. Exige monitoramento de Event Loop lag, latência de processamento de operações colaborativas, tempo de persistência e taxa de reconexões.
+2. **Motor de Inteligência Científica (LangGraph):** Grafos multi-agente estocásticos, streaming SSE, interrupções humanas (*interrupt*) e chamadas a APIs acadêmicas externas com semáforo e throttle mandatório de 3s (arXiv ToU).
+3. **Sandbox do Compilador LaTeX:** Processamento em lote (*batch*), CPU-intensivo, concorrência limitada, risco de loops infinitos em macros TeX e isolamento rígido em cgroups sem rede.
 
 ---
 
-## 2. Decisão Arquitetural: A Stack Open Source e Suas Responsabilidades
+## 2. Decisão Arquitetural: Divisão de Responsabilidades da Stack
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -46,151 +56,146 @@
 │ Domínio             │ Ferramenta Eleita    │ Licença     │ Responsabilidade Específica │
 ├─────────────────────┼──────────────────────┼─────────────┼─────────────────────────────┤
 │ Instrumentação Apps │ OpenTelemetry SDK    │ Apache 2.0  │ Spans e contexto W3C        │
-│ Coleta no Host/K8s  │ Grafana Alloy        │ Apache 2.0  │ Logs, node & pod metrics    │
-│ Pipeline Telemetria │ OTel Collector       │ Apache 2.0  │ Filtragem, enriquecimento   │
-│ Métricas e Séries   │ Prometheus           │ Apache 2.0  │ TSDB métricas e alertas     │
+│ Coleta no Host/K8s  │ Grafana Alloy        │ Apache 2.0  │ Logs e métricas de nós/pods │
+│ Pipeline Telemetria │ OTel Collector       │ Apache 2.0  │ Tail-sampling, roteamento   │
+│ Métricas e Séries   │ Prometheus           │ Apache 2.0  │ Scraping HTTP, TSDB, alertas│
 │ Logs Estruturados   │ Grafana Loki         │ AGPLv3      │ Logs via Structured Metadata│
-│ Tracing Distribuído │ Grafana Tempo        │ AGPLv3      │ Rastreamento entre serviços │
-│ Visualização        │ Grafana OSS          │ AGPLv3      │ Painéis e correlação        │
+│ Tracing Distribuído │ Grafana Tempo        │ AGPLv3      │ Traces HTTP e RPC entre apps│
+│ Visualização        │ Grafana OSS          │ AGPLv3      │ Painéis, alertas e correlação│
 │ LLMOps & Agentes    │ Opik (Comet)         │ Apache 2.0  │ Nós LangGraph, tokens, custo│
-│ Rastreio de Bugs    │ GlitchTip            │ AGPLv3      │ Captura de exceções e crash │
+│ Rastreio de Bugs    │ GlitchTip            │ AGPLv3      │ Captura de exceções e crashes│
 └─────────────────────┴──────────────────────┴─────────────┴─────────────────────────────┘
 ```
 
-> [!NOTE]
-> **Sobre as Licenças AGPLv3 e Custos Operacionais:**
-> A adoção de ferramentas sob licença AGPLv3 (Loki, Tempo, Grafana, GlitchTip) é segura no modelo on-premise do SCIA, pois os serviços são executados como componentes de infraestrutura sem modificação do seu código-fonte proprietário. "Custo Zero" refere-se estritamente à **isenção de faturas recorrentes de licenças de software e assinaturas SaaS**, permanecendo os custos reais de infraestrutura de hardware, energia, armazenamento e sustentação operacional da equipe.
-
 ---
 
-## 3. Correções Técnicas e Definições Críticas
+## 3. Contratos de Integração e Detalhes Técnicos
 
-### 3.1 Soberania de Dados vs. Provedores Externos
-A garantia de soberania local é delimitada à **infraestrutura de observabilidade**:
-* Telemetria, métricas de hardware, logs internos, traces APM e dados capturados pelo Opik residem 100% em volumes e bancos on-premise.
-* A comunicação com serviços acadêmicos externos (arXiv, S2, OpenAlex) transmite exclusivamente termos de busca bibliográfica.
-* Chamadas para modelos de linguagem comerciais externos (Gemini, OpenAI) transmitem prompts e contexto de manuscritos para as APIs desses provedores sob suas respectivas políticas de privacidade. Quando for exigida confidencialidade absoluta institucional, o SCIA direciona a execução exclusivamente ao modelo local via **Ollama**.
+### 3.1 Contrato de Correlação Bidirecional (Tempo ↔ Opik)
+Para evitar colisão com identificadores internos do Opik:
+* O FastAPI extrai o W3C `traceparent` e obtém o `otel_trace_id`.
+* Ao instanciar o callback `OpikTracer`, injeta-se o campo explícito:
+  ```python
+  metadata = {
+      "otel_trace_id": otel_trace_id,       # Chave para correlação no Tempo
+      "conversation_id": conversation_id,   # Sessão do pesquisador
+      "article_id": article_id,             # Projeto acadêmico
+      "project_stage": stage_number         # Etapa institucional (1 a 6)
+  }
+  ```
+* **Navegação Tempo $\rightarrow$ Opik:** O Grafana Tempo possui um *Data Link* que direciona para a interface do Opik filtrando por `metadata.otel_trace_id = ${__trace.id}`.
+* **Navegação Opik $\rightarrow$ Tempo:** O card de metadados na UI do Opik exibe o `otel_trace_id`, que pode ser copiado e pesquisado diretamente no explorador do Tempo no Grafana.
+* **Resiliência Fail-Open:** O `OpikTracer` opera em segundo plano com tratamento de exceções. Se o servidor do Opik estiver inacessível ou falhar, o `ai-service` registra um aviso em log e **continua atendendo a requisição do autor normalmente**, sem propagar erros para o usuário.
 
-### 3.2 Coleta Unificada: Grafana Alloy e OpenTelemetry Collector
-Substitui-se a menção a ferramentas descontinuadas (como o Promtail, EOL em março de 2026):
-* **Grafana Alloy:** Agente unificado para coleta de logs dos containers e métricas de infraestrutura (substitui Promtail e unifica pipelines).
-* **OpenTelemetry Collector:** Atua como pipeline central de telemetria, recebendo spans OTLP (gRPC porta 4317 / HTTP porta 4318), executando amostragem (*tail-based sampling*), higienização de atributos sensíveis e encaminhamento para Prometheus e Tempo.
+### 3.2 Política de Tail-Based Sampling no OTel Collector
+Para evitar a perda de rastros correlacionados com o Opik ou com erros de sistema:
+* **Taxa de 100% de Retenção (Amostragem Forçada):**
+  * Qualquer trace com status de erro (`http.status_code >= 400` ou `otel.status_code == ERROR`).
+  * Qualquer trace com latência total $> 2000$ ms.
+  * Todas as requisições destinadas ao `ai-service` (`service.name == "ai-service"`).
+  * Todos os jobs do `compiler` (`service.name == "compiler"`).
+* **Amostragem Probabilística (ex: 10%):**
+  * Restrita estritamente a requisições de leitura de alta frequência e healthchecks de rotina (`/health`, `/metrics`, heartbeats de sessão).
+* **Topologia em Produção:** Em implantações multi-réplica do Collector, utiliza-se o `loadbalancingexporter` roteando spans por `trace_id` para garantir que todos os spans de uma mesma transação cheguem à mesma instância de amostragem.
 
-```
-Aplicações SCIA (React, Fastify, FastAPI, Compiler)
-       │
-       ├─► [OTel SDKs] ─────────────► OTel Collector ──► Tempo (Traces)
-       ├─► [/metrics Scraping] ────────────────────────► Prometheus (Métricas)
-       ├─► [JSON Logs (stdout)] ────► Grafana Alloy ───► Loki (Logs com Structured Metadata)
-       ├─► [OpikTracer (LangGraph)] ───────────────────► Opik (LLMOps)
-       └─► [Sentry SDK (Higienizado)] ─────────────────► GlitchTip (Exceções)
-```
+### 3.3 Propagação de Contexto W3C no Compilador LaTeX via Filas
+Para garantir que o trace não se perca quando a compilação ocorre em background:
+1. O Backend Fastify utiliza o injetor oficial do OTel (`propagation.inject(carrier)`) para serializar o contexto W3C no payload do job enfileirado no Redis.
+2. O worker do compilador executa `propagation.extract(carrier)` antes de iniciar a execução do LaTeX, criando um span de processamento filho (ou com *Span Link* se a execução for diferida no tempo).
+3. Isso unifica a visão no Tempo: *Clique do Usuário $\rightarrow$ Enfileiramento no Fastify $\rightarrow$ Espera na Fila $\rightarrow$ Execução do pdflatex $\rightarrow$ Upload do PDF no MinIO*.
 
-### 3.3 Integração e Correlação entre Opik e OpenTelemetry (Tempo)
-O Opik e o Grafana Tempo desempenham papéis complementares, não concorrentes:
-* **Tempo:** Rastreamento distribuído entre serviços de borda (Frontend $\rightarrow$ Fastify $\rightarrow$ FastAPI $\rightarrow$ Compiler $\rightarrow$ PostgreSQL).
-* **Opik:** Observabilidade semântica profunda da execução de IA (passos internos do LangGraph, parâmetros de temperatura, prompts do sistema, contagem de tokens e avaliações de qualidade).
+### 3.4 Métricas do Compilador LaTeX (Definição de Tipos e Labels)
+Para prevenir explosão de cardinalidade no Prometheus:
 
-#### Contrato de Correlação:
-1. Ao receber uma requisição HTTP, o `FastAPI` extrai o cabeçalho W3C `traceparent` via middleware OTel, obtendo o `trace_id` distribuído.
-2. O orquestrador injeta esse identificador nos metadados do `OpikTracer`:
-   ```python
-   metadata = {
-       "trace_id": otel_trace_id,       # Vincula ao Tempo
-       "conversation_id": conv_id,       # Vincula à sessão do usuário
-       "article_id": article_id,         # Vincula ao projeto
-       "project_stage": stage_number     # Etapa institucional (1 a 6)
-   }
-   ```
-3. O Grafana é configurado com um link de dados (*Data Link*) no Tempo: clicar em um span do `ai-service` abre diretamente o trace correspondente na interface do Opik utilizando a URL parametrizada `http://opik:5174/traces?trace_id=${__trace.id}`.
+| Métrica | Tipo | Labels Permitidas (Baixa Cardinalidade) | Finalidade |
+| :--- | :--- | :--- | :--- |
+| `compiler_jobs_total` | **Counter** | `compiler_engine`, `status` | Total de compilações solicitadas |
+| `compiler_jobs_active` | **Gauge** | `compiler_engine` | Compilações em execução simultânea |
+| `compiler_job_duration_seconds` | **Histogram** | `compiler_engine` | Duração da compilação ($p50$, $p95$, $p99$) |
+| `compiler_jobs_failed_total` | **Counter** | `compiler_engine`, `failure_category` | Falhas categorizadas |
+| `compiler_timeout_total` | **Counter** | `compiler_engine` | Cancelamentos por teto de 30s (`SIGKILL`) |
+| `compiler_queue_size` | **Gauge** | Nenhuma | Tamanho da fila aguardando worker |
 
-### 3.4 Política de Proteção e Classificação de Prompts no Opik
-Para impedir que o Opik se torne um repositório vulnerável de manuscritos confidenciais não publicados:
-
-| Nível | Escopo dos Dados Registrados | Quando é Ativado? |
-| :--- | :--- | :--- |
-| **1. Operacional** | IDs de execução, tempo de resposta, nome do modelo, contagem de tokens, status HTTP e códigos de erro. Prompts e respostas são omitidos. | **Padrão em Produção** para todas as interações gerais. |
-| **2. Diagnóstico** | Nível Operacional + Metadados de busca (consultas do arXiv, artigos recuperados, parâmetros de ferramentas). | Ativado para depuração de conectores de busca. |
-| **3. Conteúdo Completo** | Prompts integrais, instruções de sistema e textos gerados em LaTeX. | **Restrito**, com mascaramento prévio de PII e retenção máxima de 7 dias, habilitado somente com consentimento institucional. |
+* **Valores de `compiler_engine`:** `pdflatex`, `xelatex`, `lualatex`.
+* **Valores de `failure_category`:** `syntax_error`, `package_missing`, `system_error`.
+* **Proibido em Labels:** `job_id`, `article_id`, `user_id` (devem ser gravados estritamente como atributos no span do Tempo ou nos logs).
 
 ### 3.5 Logs Estruturados no Loki com *Structured Metadata*
-Para evitar a explosão de streams e degradação de desempenho no Loki, identificadores de alta cardinalidade **nunca serão usados como labels**:
-* **Labels do Loki (Baixa Cardinalidade):** `service` (ex: `backend`), `environment` (ex: `production`), `level` (ex: `error`).
-* **Structured Metadata (Alta Cardinalidade):** `trace_id`, `span_id`, `user_id`, `article_id`, `job_id`.
-* **Conteúdo do Log (Mensagem):** Mensagens descritivas, payloads sanitizados e stack traces.
+* **Labels do Loki (Baixa Cardinalidade):** `service.name`, `deployment.environment`, `log.level`.
+* **Structured Metadata (Alta Cardinalidade):** `trace_id`, `span_id`, `user_id`, `article_id`, `job_id`, `k8s.pod.name`.
+* **Conteúdo:** Mensagem textual limpa e stack traces higienizados.
 
-### 3.6 Observabilidade Especializada do Compilador LaTeX
-O worker de compilação expõe métricas e telemetrias dedicadas:
-* `compiler_jobs_total`: Total de compilações solicitadas.
-* `compiler_jobs_active`: Compilações em execução concorrente.
-* `compiler_job_duration_seconds`: Histograma de duração por motor (`pdflatex`, `xelatex`).
-* `compiler_jobs_failed_total`: Falhas categorizadas (`syntax_error`, `package_missing`, `system_error`).
-* `compiler_timeout_total`: Execuções encerradas forçadamente por estouro do teto de 30s (`SIGKILL`).
-* `compiler_queue_size`: Tamanho da fila de espera de compilação.
-* **Propagação de Trace em Filas:** Quando a compilação for assíncrona, o cabeçalho `traceparent` é injetado nos metadados do job na fila (Redis) e extraído pelo worker do compilador, mantendo o trace contínuo da requisição original.
+### 3.6 Política de Segurança, Mascaramento e Classificação de Prompts
+A proteção atua na prevenção (antes do envio):
+* **Nível 1 (Operacional - Default em Produção):** O Opik grava `otel_trace_id`, duração, modelo, contagem de tokens e status. O conteúdo textual do prompt e da resposta é omitido.
+* **Nível 2 (Diagnóstico):** Metadados de busca e parâmetros de ferramentas.
+* **Nível 3 (Conteúdo Completo):** Prompts integrais somente sob autorização expressa em ambiente de testes, com mascaramento de dados e expurgo automatizado em até 7 dias.
 
-### 3.7 Validação da Compatibilidade do GlitchTip
-Reconhece-se que o GlitchTip é uma reimplementação compatível com o núcleo da API do Sentry, mas não possui paridade em 100% dos recursos:
-* **Recursos Suportados e Homologados:** Captura de exceções React (`ErrorBoundary`), stack traces com Source Maps desminificados, exceções não tratadas no Fastify/FastAPI, tags de release e controle de ambientes.
-* **Recursos Não Suportados / Omitidos:** Rastreamento avançado de sessões (*session tracking*) e profiling detalhado de runtime nativa do Sentry.
-* **Sanitização Obrigatória no Cliente:** Configuração do hook `beforeSend` nos SDKs do cliente para expurgar tokens JWT, headers de autorização e dados pessoais sensíveis antes do envio ao GlitchTip.
-
-### 3.8 Dimensionamento Baseado em Benchmark (Remoção da Premissa de < 3 GB)
-A estimativa preliminar de consumo inferior a 3 GB de RAM total foi removida do documento. O Opik opera sobre backend Java/Python e ClickHouse analítico, e o Prometheus/Loki possuem consumo dependente do volume de dados em trânsito.
-* Fica estabelecida a obrigatoriedade de **benchmarks de dimensionamento em 3 fases**:
-  1. *Ambiente de Desenvolvimento:* Carga básica de testes unitários e de integração.
-  2. *Ambiente de Staging/Homologação:* Testes de carga progressiva (50 a 200 usuários concorrentes simulados via k6).
-  3. *Ambiente de Produção:* Dimensionamento com limites e reservas (*requests/limits*) validados no Kubernetes.
+### 3.7 Sanitização Universal nos Emissores de Erro (GlitchTip)
+A higienização ocorre em todos os emissores antes da transmissão pela rede:
+* **Frontend (React):** `beforeSend` expurga dados pessoais, tokens de query/localStorage e credenciais.
+* **Backend Fastify & AI Service FastAPI:** Interceptadores de erro removem headers `Authorization`, cookies de sessão, variáveis de ambiente e trechos confidenciais de arquivos LaTeX.
 
 ---
 
-## 4. Governança, Retenção, Backup e Recuperação (DR)
+## 4. Topologia de Armazenamento, Retenção e Recuperação (DR)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│               POLÍTICA DE RETENÇÃO E ARMAZENAMENTO POR COMPONENTE                      │
-├────────────────────┬───────────┬──────────────────────┬────────────────────────────────┤
-│ Componente         │ Retenção  │ Backend de Storage   │ Estratégia de Backup / DR      │
-├────────────────────┼───────────┼──────────────────────┼────────────────────────────────┤
-│ Prometheus         │ 15 dias   │ PVC Persistente SSD  │ Snapshots regulares + WAL      │
-│ Grafana Loki       │ 14 dias   │ MinIO S3 (Chunks)    │ Replicação de bucket MinIO     │
-│ Grafana Tempo      │ 7 dias    │ MinIO S3 (Traces)    │ Rotação natural (sem backup)   │
-│ Opik (LLMOps)      │ 90 dias*  │ PostgreSQL + ClickH. │ Dump relacional + ClickHouse   │
-│ GlitchTip          │ 30 dias   │ PostgreSQL           │ Dump diário pg_dump transac.   │
-│ Grafana Dashboards │ Indefinido│ Git (Provisioning)   │ Infraestrutura como Código     │
-└────────────────────┴───────────┴──────────────────────┴────────────────────────────────┘
+│               MATRIZ DE ARMAZENAMENTO, RETENÇÃO, RPO E RTO                             │
+├────────────────────┬───────────┬──────────────────────┬──────────┬────────┬────────────┤
+│ Componente         │ Retenção  │ Backend de Storage   │ RPO      │ RTO    │ Criticidade│
+├────────────────────┼───────────┼──────────────────────┼──────────┼────────┼────────────┤
+│ Prometheus         │ 15 dias   │ PVC Persistente SSD  │ 24 horas │ 2 horas│ Média      │
+│ Grafana Loki       │ 14 dias   │ MinIO S3 (Chunks)    │ 24 horas │ 4 horas│ Média      │
+│ Grafana Tempo      │ 7 dias    │ MinIO S3 (Blocos)    │ N/A*     │ 2 horas│ Baixa      │
+│ Opik (Analítico)   │ 90 dias   │ ClickHouse           │ 24 horas │ 4 horas│ Média      │
+│ Opik (Transacional)│ 90 dias   │ MySQL                │ 24 horas │ 2 horas│ Alta (IA)  │
+│ GlitchTip          │ 30 dias   │ PostgreSQL           │ 24 horas │ 2 horas│ Média      │
+│ Grafana Dashboards │ Indefinido│ Git (Provisioning)   │ 0 horas  │ 30 min │ Alta       │
+└────────────────────┴───────────┴──────────────────────┴──────────┴────────┴────────────┘
 ```
-*\*Para o Opik, métricas operacionais e custos são mantidos por 90 dias; prompts de nível de conteúdo são expurgados em até 7 dias.*
+*\*O Grafana Tempo é formalmente classificado como dado operacional transitório de curta duração: em caso de desastre catastrófico no cluster, os traces antigos podem ser perdidos sem impacto à integridade transacional dos manuscritos ou dos usuários do SCIA.*
+
+### 4.1 Resposta à Saturação de Espaço no MinIO
+Em caso de alerta de capacidade no MinIO (espaço livre $< 15\%$):
+1. **Nunca executar expurgo automático cego:** Arquivos de pesquisa, pacotes de evidências e PDFs gerados possuem valor acadêmico institucional.
+2. **Ação Operacional:** Geração de alerta para a equipe de infraestrutura, identificação do bucket causador e **expansão da capacidade do Persistent Volume Claim (PVC)**.
 
 ---
 
-## 5. Estratégia de Alertas e Gestão de Incidentes
+## 5. Indicadores de Confiabilidade (SLIs / SLOs Propostos)
 
-Alertas serão gerenciados via **Prometheus Alertmanager** e **Grafana Alerting**, focando nos sintomas que afetam os pesquisadores:
-
-| Cenário de Falha | Condição do Alerta | Severidade | Ação Esperada |
-| :--- | :--- | :--- | :--- |
-| **Backend Fastify Indisponível** | Falha de healthcheck por > 1 min | 🚨 Crítico (P1) | Reinicialização automática do pod e alerta imediato |
-| **Compiler Sobrecarregado** | Fila > 5 jobs por > 2 min | ⚠️ Aviso (P2) | Escalonamento horizontal (HPA) de workers TeX |
-| **Timeouts Excessivos de TeX** | > 3 timeouts (30s) em 5 min | ⚠️ Alerta (P2) | Investigação de projeto travado ou macro maliciosa |
-| **SciAI / Provedor Bloqueado** | arXiv ou LLM status 429 por > 2 min | ⚠️ Alerta (P2) | Verificação de throttle e acionamento de fallback |
-| **Esgotamento do Pool Postgres** | Conexões ativas > 85% do pool | 🚨 Crítico (P1) | Investigação de queries lentas e transações presas |
-| **MinIO Sem Espaço** | Espaço em disco livre < 15% | 🚨 Crítico (P1) | Expurgar compilações antigas e expandir PVC |
+| Domínio | Indicador de Nível de Serviço (SLI) | Meta Proposta (SLO) |
+| :--- | :--- | :--- |
+| **Editor Colaborativo** | Disponibilidade das salas WebSocket (`/ws/documents/:id`) | $\ge 99.5\%$ de conexões bem-sucedidas |
+| | Latência de processamento de operações na RAM do pod | $p95 < 16$ ms, $p99 < 50$ ms |
+| | Taxa de sucesso de checkpoints no PostgreSQL | $\ge 99.9\%$ das transações concluídas |
+| **SciAI Engine** | Taxa de sucesso na execução de grafos LangGraph | $\ge 98.0\%$ de execuções sem erro fatal |
+| | TTFT (Time To First Token) no streaming SSE | $p90 < 2500$ ms |
+| | Respeito ao semáforo e throttle de 3s do arXiv | $100\%$ de conformidade (zero ban de IP) |
+| **Compilador LaTeX** | Taxa de compilações concluídas sem falha de sistema | $\ge 99.0\%$ (excluindo erro de sintaxe do autor) |
+| | Tempo de espera na fila de compilação | $p95 < 3.0$ s |
+| | Taxa de timeouts (30s) por código infinito | $< 0.5\%$ de todas as compilações |
+| **Infraestrutura** | Disponibilidade dos microsserviços (Fastify, AI, Compiler) | $\ge 99.5\%$ de uptime |
 
 ---
 
-## 6. Roteiro de Implantação em 5 Fases
+## 6. Estratégia de Alertas e Autoscaling (HPA)
 
-```mermaid
-flowchart LR
-    F1["Fase 1<br>Fundação<br>(OTel SDKs + Alloy)"] --> F2["Fase 2<br>Métricas, Logs & Traces<br>(Prometheus + Loki + Tempo)"]
-    F2 --> F3["Fase 3<br>LLMOps & Agentes<br>(Opik + Proteção Prompts)"]
-    F3 --> F4["Fase 4<br>Gestão de Exceções<br>(GlitchTip + SourceMaps)"]
-    F4 --> F5["Fase 5<br>Validação & Carga<br>(Benchmarks de RAM/CPU)"]
-```
+1. **Separação Alertmanager vs. Grafana Alerting:**
+   * **Prometheus Alertmanager:** Responsável exclusivo pela avaliação e roteamento de alertas de infraestrutura, saturação de recursos e indisponibilidade de serviços.
+   * **Grafana Alerting:** Restrito a painéis específicos baseados em consultas compostas de logs e métricas.
+2. **Autoscaling dos Workers de Compilação (HPA):**
+   * O escalonamento do compilador TeX **não depende de alertas**.
+   * Implanta-se o **KEDA (Kubernetes Event-driven Autoscaling)** ou **Prometheus-Adapter** lendo diretamente a métrica `compiler_queue_size`. Se a fila permanecer com $> 3$ jobs por $> 30$ segundos, novos pods do compilador são instanciados automaticamente, respeitando os limites mínimo e máximo configurados.
 
-1. **Fase 1 — Fundação e Pipeline:** OpenTelemetry SDK no Fastify e FastAPI; padronização de logs JSON; deploy do Grafana Alloy e OTel Collector.
-2. **Fase 2 — Observabilidade Operacional:** Prometheus para métricas; Loki com structured metadata; Tempo para tracing distribuído; dashboards e alertas no Grafana.
-3. **Fase 3 — LLMOps de Agentes com Opik:** Deploy on-premise do Opik; instrumentação do LangGraph com correlação ao `trace_id` do Tempo; aplicação da política de mascaramento de prompts.
-4. **Fase 4 — Gestão de Exceções com GlitchTip:** Deploy do GlitchTip; configuração dos SDKs React e Node com higienização de PII e suporte a releases.
-5. **Fase 5 — Validação Operacional e Benchmarks:** Execução de testes de carga com k6; medição real de consumo de CPU, RAM e disco; homologação das rotinas de backup e restauração.
+---
+
+## 7. Roteiro de Implantação em 5 Fases
+
+1. **Fase 1 — Fundação & Pipeline OTel:** OTel SDKs em Fastify e FastAPI; padronização de logs JSON; deploy do Grafana Alloy e OTel Collector com tail-sampling configurado a 100% para erros/IA.
+2. **Fase 2 — Observabilidade Operacional:** Prometheus para métricas; Loki com structured metadata; Tempo integrado ao MinIO; métricas do compilador (Counter/Gauge/Histogram) e propagação W3C na fila.
+3. **Fase 3 — LLMOps com Opik (MySQL + ClickHouse):** Deploy on-premise da stack nativa do Opik; instrumentação com `otel_trace_id`; configuração do Data Link no Tempo e garantia de resiliência fail-open.
+4. **Fase 4 — Gestão de Exceções com GlitchTip:** Deploy do GlitchTip no PostgreSQL; configuração de sanitização universal em todos os serviços (`beforeSend`/interceptors); source maps no frontend.
+5. **Fase 5 — Validação Operacional e Benchmarks:** Testes de carga com k6; calibração real de CPU/RAM para os manifests do Kubernetes; teste de recuperação de desastres (DR) e validação dos SLOs.
