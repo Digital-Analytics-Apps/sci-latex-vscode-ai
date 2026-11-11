@@ -1,7 +1,7 @@
 # Especificação Técnica: Observabilidade Open Source e Soberania Institucional
 
 - **Documento:** `observability-spec.md`
-- **Referência:** ADR 013 (Consolidada com Análise Técnica)
+- **Referência:** ADR 013 (Consolidada com Engenharia de Confiabilidade)
 - **Status:** APROVADO
 - **Alvo:** Frontend, Backend Fastify, AI Service (LangGraph/FastAPI), LaTeX Compiler, Infraestrutura On-Premise
 
@@ -12,18 +12,20 @@
 Esta especificação define os contratos de dados, topologia de rede, modelos de amostragem e planos de tarefas para a observabilidade do SCIA:
 
 1. **Soberania Local de Telemetria:** Métricas, logs, traces e execuções do Opik residem exclusivamente em infraestrutura on-premise.
-2. **Correlação Tempo $\leftrightarrow$ Opik:** O `OpikTracer` recebe explicitamente o campo `otel_trace_id`, permitindo vincular spans de rede ao detalhamento interno de nós de IA no Opik.
-3. **Resiliência Fail-Open da IA:** O rastreamento de LLMs pelo Opik é estritamente não-bloqueante; indisponibilidade do Opik nunca interrompe o atendimento aos pesquisadores no `ai-service`.
-4. **Tail-Based Sampling Inteligente:** Retenção a 100% para erros, requisições lentas ($> 2000$ ms), chamadas de IA e compilações TeX.
-5. **Armazenamento Nativo e Isolado do Opik:** O Opik opera sobre seus bancos nativos dedicados (**MySQL** para dados transacionais e **ClickHouse** para traces analíticos), preservando o PostgreSQL para o SCIA e GlitchTip.
-6. **Autoscaling por Demanda de Fila (KEDA):** O escalonamento de pods do compilador LaTeX lê `compiler_queue_size` via KEDA / Prometheus-Adapter.
+2. **Correlação Tempo $\leftrightarrow$ Opik:** O `OpikTracer` recebe explicitamente o campo `otel_trace_id`, permitindo vincular spans de rede ao detalhamento interno de nós de IA no Opik via variável `${__trace.traceId}`.
+3. **Resiliência Fail-Open da IA:** O rastreamento de LLMs pelo Opik é estritamente não-bloqueante (timeout de 2s, fila limitada a 500 eventos e circuit-breaker); indisponibilidade do Opik nunca interrompe o atendimento aos pesquisadores no `ai-service`.
+4. **Rate-Limit Distribuído para APIs Externas (arXiv):** Coordenação centralizada via Redis para garantir intervalo de 3s entre requisições mesmo com múltiplos pods do `ai-service` ativos.
+5. **Tail-Based Sampling com Atributos Canônicos:** Retenção a 100% para spans com `status_code: [ERROR]`, respostas com `http.response.status_code >= 500`, requisições lentas ($> 2000$ ms), chamadas de IA e compilações TeX.
+6. **Armazenamento Nativo e Isolado do Opik:** O Opik opera sobre seus bancos nativos dedicados (**MySQL** para dados transacionais e **ClickHouse** para traces analíticos), preservando o PostgreSQL para o SCIA e GlitchTip.
+7. **Autoscaling com KEDA:** O escalonamento de pods do compilador LaTeX avalia `min_over_time(compiler_queue_size[30s]) > 3`.
+8. **Sanitização Universal em Todos os Emissores:** Higienização ativa em React, Fastify, FastAPI e Compiler.
 
 ---
 
-## 2. Contratos de Telemetria & Correlação
+## 2. Contratos de Telemetria & Código de Referência
 
-### 2.1 Contrato W3C Trace Context (Tempo $\leftrightarrow$ Opik)
-No endpoint `/chat/stream` e `/runs` do `ai-service`:
+### 2.1 Contrato W3C Trace Context e Fail-Open no Opik
+No `ai-service`:
 
 ```python
 # app/core/opik_tracer.py
@@ -41,6 +43,7 @@ def get_correlated_opik_tracer(conversation_id: str, article_id: str | None = No
         otel_trace_id = format(ctx.trace_id, "032x") if ctx and ctx.trace_id else "unknown"
 
         # Injeta otel_trace_id como metadado sem colidir com identificadores internos do Opik
+        # Configura cliente assíncrono não-bloqueante
         return OpikTracer(
             project_name="scia-academic-copilot",
             metadata={
@@ -55,72 +58,80 @@ def get_correlated_opik_tracer(conversation_id: str, article_id: str | None = No
         return None
 ```
 
-### 2.2 Configuração de Tail-Based Sampling no OTel Collector
+### 2.2 Limitador Distribuído do arXiv no Redis
+No `ai-service/app/agents/tools/arxiv.py`:
+
+```python
+import asyncio
+import redis.asyncio as aioredis
+
+async def acquire_arxiv_distributed_slot(redis_client: aioredis.Redis, timeout: float = 15.0) -> bool:
+    """Garante intervalo de 3s entre chamadas ao arXiv compartilhadas entre múltiplos pods."""
+    start_time = asyncio.get_event_loop().time()
+    while (asyncio.get_event_loop().time() - start_time) < timeout:
+        # Tenta adquirir chave de lock com TTL de 3.1 segundos
+        acquired = await redis_client.set("rate_limit:arxiv:global_lock", "locked", nx=True, px=3100)
+        if acquired:
+            return True
+        await asyncio.sleep(0.2)
+    return False
+```
+
+### 2.3 Configuração de Tail-Based Sampling no OTel Collector
 Configuração do processador `tail_sampling` em `otel-collector-config.yaml`:
 
 ```yaml
 processors:
   tail_sampling:
-    decision_wait: 5s
-    num_traces: 50000
+    decision_wait: 10s
+    num_traces: 10000
     expected_new_traces_per_sec: 2000
     policies:
-      # 1. 100% de retenção para qualquer erro
-      - name: errors-policy
+      # 1. 100% de retenção para qualquer span com status de erro nativo
+      - name: span-error-policy
         type: status_code
         status_code: { status_codes: [ ERROR ] }
-      # 2. 100% de retenção para traces lentos (> 2000ms)
-      - name: latency-policy
+      # 2. 100% de retenção para erros de servidor HTTP (>= 500)
+      - name: http-server-error-policy
         type: numeric_attribute
-        numeric_attribute: { key: "http.status_code", value_condition: { greater_than_or_equal: 400 } }
-      # 3. 100% de retenção para o AI Service e Compiler
+        numeric_attribute: { key: "http.response.status_code", value_condition: { greater_than_or_equal: 500 } }
+      # 3. 100% de retenção para traces lentos (> 2000ms)
+      - name: latency-policy
+        type: latency
+        latency: { threshold_ms: 2000 }
+      # 4. 100% de retenção para o AI Service e Compiler
       - name: critical-services-policy
         type: string_attribute
         string_attribute: { key: "service.name", values: [ "ai-service", "compiler" ] }
-      # 4. Amostragem probabilística de 10% para rotas de alto volume restantes
+      # 5. Amostragem probabilística de 10% para rotas restantes de alto volume
       - name: probabilistic-policy
         type: probabilistic
         probabilistic: { sampling_percentage: 10.0 }
 ```
 
-### 2.3 Métricas do Compilador LaTeX & Propagação em Fila
-No Backend Fastify ao despachar compilação para o Redis:
-```typescript
-import { propagation, context } from '@opentelemetry/api';
+### 2.4 ScaledObject do KEDA para o Compilador LaTeX
+Manifesto Kubernetes para o escalonamento horizontal de workers TeX:
 
-const carrier: Record<string, string> = {};
-propagation.inject(context.active(), carrier);
-
-await redis.rpush('compiler:jobs:queue', JSON.stringify({
-  jobId,
-  projectId,
-  engine: 'pdflatex',
-  traceCarrier: carrier, // Contexto W3C serializado
-}));
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: scia-compiler-autoscaler
+  namespace: scia-system
+spec:
+  scaleTargetRef:
+    name: scia-compiler-worker
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  cooldownPeriod: 300
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://scia_prometheus:9090
+        metricName: compiler_queue_size
+        query: min_over_time(compiler_queue_size[30s])
+        threshold: '3'
 ```
-
-No Worker do Compilador ao consumir o job:
-```typescript
-import { propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
-
-const extractedContext = propagation.extract(ROOT_CONTEXT, job.traceCarrier);
-const tracer = trace.getTracer('compiler-worker');
-
-const span = tracer.startSpan('compiler.execute_latex', {
-  attributes: {
-    'compiler.job_id': job.jobId,
-    'compiler.engine': job.engine,
-  },
-}, extractedContext);
-```
-
-Métricas registradas:
-* `compiler_jobs_total{compiler_engine="...", status="..."}` (Counter)
-* `compiler_jobs_active{compiler_engine="..."}` (Gauge)
-* `compiler_job_duration_seconds{compiler_engine="..."}` (Histogram: `[0.5, 1, 2, 5, 10, 20, 30]`)
-* `compiler_jobs_failed_total{compiler_engine="...", failure_category="..."}` (Counter)
-* `compiler_timeout_total{compiler_engine="..."}` (Counter)
-* `compiler_queue_size` (Gauge)
 
 ---
 
@@ -238,10 +249,10 @@ services:
       - MYSQL_URL=jdbc:mysql://opik-mysql:3306/opik?user=opik&password=opikpassword
       - CLICKHOUSE_URL=jdbc:clickhouse://opik-clickhouse:8123/default
 
-  # 8. Gestão de Exceções (GlitchTip)
-  glitchtip:
+  # 8. Gestão de Exceções (GlitchTip Web + Celery Worker)
+  glitchtip-web:
     image: glitchtip/glitchtip:latest
-    container_name: scia_glitchtip
+    container_name: scia_glitchtip_web
     restart: unless-stopped
     ports:
       - "8005:8000"
@@ -249,6 +260,17 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=glitchtip
       - SECRET_KEY=scia-glitchtip-super-secret-key-1234
       - GLITCHTIP_DOMAIN=http://localhost:8005
+    depends_on:
+      - postgres
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: scia_glitchtip_worker
+    restart: unless-stopped
+    command: ./bin/run-celery-with-beat.sh
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=glitchtip
+      - SECRET_KEY=scia-glitchtip-super-secret-key-1234
     depends_on:
       - postgres
 
@@ -267,27 +289,29 @@ volumes:
 
 ### Fase 1: Fundação & Pipeline de Telemetria
 - [ ] **OBS-01:** Implantar o **Grafana Alloy** com pipeline de leitura de logs do Docker/K8s e envio para o Loki com extração de *Structured Metadata*.
-- [ ] **OBS-02:** Implantar o **OpenTelemetry Collector** com o processador `tail_sampling` retendo 100% de erros, chamadas de IA e tempos $> 2000$ ms.
+- [ ] **OBS-02:** Implantar o **OpenTelemetry Collector** com processador `tail_sampling` retendo 100% de `status_code: [ERROR]`, `http.response.status_code >= 500`, chamadas de IA e tempos $> 2000$ ms.
 - [ ] **OBS-03:** Padronizar saída JSON nos microsserviços via `pino` (Node.js) e `loguru` (Python), garantindo propagação de `trace_id` e `span_id`.
+- [ ] **OBS-04:** Implementar limitador de taxa distribuído do arXiv no Redis com chave de lock atômica (`rate_limit:arxiv:global_lock`) compartilhada entre pods.
 
 ### Fase 2: Observabilidade Operacional (Métricas, Logs, Traces & Compilador)
-- [ ] **OBS-04:** Configurar Prometheus para scraping dos endpoints `/metrics` do Fastify e FastAPI.
-- [ ] **OBS-05:** Configurar Loki e Tempo com MinIO S3 como backend de armazenamento.
-- [ ] **OBS-06:** Implementar injeção do contexto W3C (`propagation.inject`) no despacho de compilações pelo Fastify e extração no worker do compilador TeX.
-- [ ] **OBS-07:** Implementar métricas especializadas do compilador TeX (Counter, Gauge, Histogram) e regras no Prometheus Alertmanager.
+- [ ] **OBS-05:** Configurar Prometheus para scraping dos endpoints `/metrics` do Fastify e FastAPI.
+- [ ] **OBS-06:** Configurar Loki e Tempo com MinIO S3 como backend de armazenamento de blocos.
+- [ ] **OBS-07:** Implementar injeção do contexto W3C (`propagation.inject`) no despacho de compilações pelo Fastify e extração no worker do compilador TeX.
+- [ ] **OBS-08:** Implementar métricas especializadas do compilador TeX (Counter, Gauge, Histogram) e regras no Prometheus Alertmanager.
 
 ### Fase 3: LLMOps com Opik & Proteção de Prompts
-- [ ] **OBS-08:** Implantar o cluster nativo do Opik (MySQL + ClickHouse) e validar endpoints de ingestão.
-- [ ] **OBS-09:** Criar o helper `get_correlated_opik_tracer` no `ai-service` garantindo o campo `otel_trace_id` e resiliência fail-open.
-- [ ] **OBS-10:** Implementar política de proteção de prompts (Nível 1 Operacional ativo por padrão em produção).
-- [ ] **OBS-11:** Configurar Data Link no Grafana Tempo apontando para os traces filtrados no Opik.
+- [ ] **OBS-09:** Implantar o cluster nativo do Opik (MySQL + ClickHouse) e validar endpoints de ingestão.
+- [ ] **OBS-10:** Criar o helper `get_correlated_opik_tracer` no `ai-service` garantindo o campo `otel_trace_id`, cliente assíncrono e resiliência fail-open.
+- [ ] **OBS-11:** Implementar política de proteção de prompts (Nível 1 Operacional ativo por padrão em produção).
+- [ ] **OBS-12:** Configurar Data Link no Grafana Tempo utilizando `${__trace.traceId}` apontando para as consultas do Opik.
 
-### Fase 4: Gestão de Exceções com GlitchTip
-- [ ] **OBS-12:** Implantar GlitchTip em container leve conectado ao schema dedicado no PostgreSQL.
-- [ ] **OBS-13:** Configurar sanitização universal em todos os serviços (React `beforeSend`, interceptadores no Fastify e FastAPI) para expurgar senhas, tokens JWT e PII.
-- [ ] **OBS-14:** Habilitar upload de Source Maps no CI/CD para mapeamento de stack traces desminificados no frontend.
+### Fase 4: Gestão de Exceções com GlitchTip Desacoplado
+- [ ] **OBS-13:** Implantar `glitchtip-web` e `glitchtip-worker` (Celery) conectados ao PostgreSQL 16+.
+- [ ] **OBS-14:** Configurar sanitização universal em todos os 4 emissores (React, Fastify, FastAPI e Compiler) para expurgar senhas, tokens JWT, variáveis de ambiente e trechos `.tex`.
+- [ ] **OBS-15:** Habilitar upload de Source Maps no CI/CD para mapeamento de stack traces desminificados no frontend.
 
 ### Fase 5: Validação Operacional e Benchmarks de Infraestrutura
-- [ ] **OBS-15:** Executar testes de carga com k6 simulando picos de edição colaborativa e chamadas concorrentes ao Copiloto.
-- [ ] **OBS-16:** Medir consumo real de memória RAM e CPU do cluster completo para calibrar quotas (`requests`/`limits`) dos manifests Kubernetes.
-- [ ] **OBS-17:** Homologar rotina de recuperação de desastres (DR) com restauração de snapshots do Prometheus, dumps do MySQL/PostgreSQL e buckets do MinIO.
+- [ ] **OBS-16:** Implantar o `ScaledObject` do KEDA para escalonamento automático de workers do compilador avaliando `min_over_time(compiler_queue_size[30s]) > 3`.
+- [ ] **OBS-17:** Executar testes de carga com k6 simulando picos de edição colaborativa e chamadas concorrentes ao Copiloto.
+- [ ] **OBS-18:** Homologar métricas de saúde do próprio pipeline (`otelcol_processor_tail_sampling_dropped_spans`, `opik_dropped_events_total`, `loki_ingester_dropped_entries_total`).
+- [ ] **OBS-19:** Homologar rotina de recuperação de desastres (DR) com restauração de snapshots do Prometheus, dumps do MySQL/PostgreSQL e buckets do MinIO.
