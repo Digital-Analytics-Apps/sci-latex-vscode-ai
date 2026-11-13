@@ -101,27 +101,27 @@ export interface AdminActivityData {
 
 export const adminCenterApi = {
   async getOverview(): Promise<AdminOverviewData> {
-    const { data } = await api.get<AdminOverviewData>("/api/v1/admin/dashboard/overview");
+    const { data } = await api.get<AdminOverviewData>("/admin/dashboard/overview");
     return data;
   },
 
   async getWorkflow(): Promise<AdminWorkflowData> {
-    const { data } = await api.get<AdminWorkflowData>("/api/v1/admin/dashboard/workflow");
+    const { data } = await api.get<AdminWorkflowData>("/admin/dashboard/workflow");
     return data;
   },
 
   async getInfrastructure(): Promise<AdminInfrastructureData> {
-    const { data } = await api.get<AdminInfrastructureData>("/api/v1/admin/dashboard/infrastructure");
+    const { data } = await api.get<AdminInfrastructureData>("/admin/dashboard/infrastructure");
     return data;
   },
 
   async getCollaboration(): Promise<AdminCollaborationData> {
-    const { data } = await api.get<AdminCollaborationData>("/api/v1/admin/dashboard/collaboration");
+    const { data } = await api.get<AdminCollaborationData>("/admin/dashboard/collaboration");
     return data;
   },
 
   async getActivity(): Promise<AdminActivityData> {
-    const { data } = await api.get<AdminActivityData>("/api/v1/admin/dashboard/activity");
+    const { data } = await api.get<AdminActivityData>("/admin/dashboard/activity");
     return data;
   },
 };

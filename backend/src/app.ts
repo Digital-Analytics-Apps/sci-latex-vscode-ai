@@ -135,6 +135,7 @@ export async function buildApp() {
   await app.register(templatesRoutes, { prefix: '/api/v1/templates' });
   await app.register(aiRoutes, { prefix: '/api/v1/ai' });
   await app.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await app.register(adminRoutes, { prefix: '/admin' });
   // Fallback para LanguageTool
   app.post('/api/v1/languagetool/check', async () => ({ matches: [] }));
   app.post('/api/languagetool/check', async () => ({ matches: [] }));
