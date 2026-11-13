@@ -121,16 +121,16 @@
 
 ---
 
-## 🟡 Fase 9: Painel Administrativo de Saúde da Aplicação e Métricas (`Role.ADMIN` - ADR-014)
+## 🟡 Fase 9: SCIA Admin Center — Observabilidade, Operação e Governança Científica (`Role.ADMIN` - ADR-014)
 
 - [x] **9.1 Decisão Arquitetural e Especificação Técnica (ADR-014 & Spec)**
-  - Formalização da separação estrita de papéis e design das 5 abas operacionais em `docs/planning/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md` e `docs/planning/specs/system-admin-health-dashboard-spec.md`.
-- [ ] **9.2 Backend BFF & Agregador de Saúde (`/api/v1/system-admin/overview`)**
-  - Implementação do módulo `backend/src/modules/system-admin/` com agregação assíncrona, checagem dos 5 microsserviços, leases do Redis e cache de 15s.
-- [ ] **9.3 Frontend React com 5 Abas Especializadas (`/system-admin`)**
-  - Desenvolvimento de `src/features/system-admin/` com Material UI, controle de semáforos, fila de compilação TeX, telemetria Opik, quotas de storage e logs de auditoria técnica.
+  - Formalização do **SCIA Admin Center** com as 5 áreas especializadas (Visão Geral, Fluxo Científico das 6 Etapas, Infraestrutura, Colaboração em Tempo Real e Atividade/Auditoria) em `docs/planning/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md` e `docs/planning/specs/system-admin-health-dashboard-spec.md`.
+- [ ] **9.2 Backend BFF & Rotas REST + Streaming SSE (`/api/v1/admin/dashboard/*`)**
+  - Implementação do módulo `backend/src/modules/admin/` com agregação do PostgreSQL, leases do Redis, métricas Prometheus/Opik e canal Server-Sent Events (`/events`).
+- [ ] **9.3 Frontend React do SCIA Admin Center (`/admin`)**
+  - Desenvolvimento de `src/features/admin/` com layout mestre, 5 abas integradas, gráficos de atividade horária, funil das 6 etapas e links contextuais para o Grafana.
 - [ ] **9.4 Blindagem de Rota e RBAC Estrito**
-  - Bloqueio de acesso a qualquer usuário não-admin via `ProtectedRoute` e validação de token JWT no backend Fastify.
+  - Bloqueio de acesso a qualquer perfil que não seja `Role.ADMIN` via `ProtectedRoute` no React e validação de token JWT no backend Fastify.
 
 ---
 

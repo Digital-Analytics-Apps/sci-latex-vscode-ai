@@ -9,7 +9,7 @@
   - `frontend`: `@sentry/react` (sanitizado) conectando ao GlitchTip
   - `backend`: `fastify-metrics`, OpenTelemetry Node SDK, logs JSON via Pino, `@sentry/node`
   - `ai-service`: `prometheus-fastapi-instrumentator`, `opik` (OpikTracer assíncrono com `otel_trace_id`), `loguru`, rate-limiting distribuído Redis no arXiv
-  - `compiler`: Exporter TeX (Counter, Gauge, Histogram), cgroups, propagação W3C carrier em fila, KEDA autoscaling
+  - `compiler`: Exporter TeX (Counter, Gauge, Histogram), cgroups, propagação W3C carrier em fila, dimensionamento estático de workers (KEDA postergado)
   - `infra`: Grafana Alloy, OpenTelemetry Collector (topologia gateway/tail-sampling), Prometheus, Loki, Tempo, Opik (MySQL + ClickHouse), GlitchTip (Web + Worker Celery + PostgreSQL), MinIO
 
 ---
@@ -34,7 +34,7 @@
    * O Opik opera sobre sua arquitetura nativa com **MySQL** (metadados/projetos) e **ClickHouse** (traces/análise).
    * O GlitchTip opera desacoplado com containers **`glitchtip-web`** e **`glitchtip-worker` (Celery)** sobre PostgreSQL 16+.
    * Loki e Tempo utilizam o MinIO S3 como armazenamento de objetos de baixo custo.
-7. **Autoscaling do Compilador via KEDA:** O escalonamento de pods do compilador TeX é realizado pelo HPA através de métricas customizadas gerenciadas pelo **KEDA** avaliando `min_over_time(compiler_queue_size[30s]) > 3`.
+7. **Dimensionamento dos Workers do Compilador (KEDA Postergado):** Na fase atual, o compilador TeX opera com dimensionamento estático provisionado (pool fixo de réplicas isoladas). A adoção do **KEDA** para escalonamento automático baseado em `compiler_queue_size` foi formalmente postergada para uma fase futura, sendo acionada apenas se e quando a volumetria de concorrência em produção comprovar necessidade.
 8. **Sanitização Universal de Ponta a Ponta:** Higienização ativa em todos os 4 emissores (**React, Fastify, FastAPI e Compiler**), impedindo vazamento de tokens, senhas, variáveis de ambiente ou trechos de manuscritos LaTeX nos logs ou traces.
 
 ---
@@ -133,12 +133,10 @@ Para garantir que traces multi-serviços não sejam fragmentados em Kubernetes:
 * **Valores de `failure_category`:** `syntax_error`, `package_missing`, `system_error`.
 * **Nota sobre `compiler_timeout_total`:** Mede processos interrompidos ao atingir 30s por qualquer causa (documento excessivamente complexo, I/O lento ou loop de macros).
 
-### 3.6 Autoscaling do Compilador via KEDA
-O escalonamento horizontal de workers do compilador TeX é governado exclusivamente pelo **KEDA** através de um `ScaledObject`:
-* **Consulta PromQL:** `min_over_time(compiler_queue_size[30s])`
-* **Threshold de Escala:** $> 3$ jobs na fila.
-* **Limites de Pods:** `minReplicaCount: 1`, `maxReplicaCount: 5`.
-* **Período de Estabilização:** `cooldownPeriod: 300s`.
+### 3.6 Dimensionamento do Compilador (KEDA Postergado para Fase Futura)
+Para manter a complexidade operacional controlada na implantação inicial:
+* Os workers do compilador TeX operam com dimensionamento estático provisionado (réplicas dedicadas com quotas estritas de CPU/RAM em cgroups).
+* A integração com **KEDA** (Kubernetes Event-driven Autoscaling) lendo `min_over_time(compiler_queue_size[30s]) > 3` permanece documentada como caminho evolutivo aprovado, mas **postergada para uma fase futura**, sendo ativada apenas se os testes de carga e a volumetria de produção demonstrarem filas persistentes.
 
 ### 3.7 Sanitização Universal em Todos os Emissores
 
@@ -216,4 +214,4 @@ Para garantir que falhas na telemetria sejam detectadas antes que afetem o diagn
 2. **Fase 2 — Observabilidade Operacional:** Prometheus para métricas; Loki com structured metadata; Tempo integrado ao MinIO; métricas do compilador (Counter/Gauge/Histogram) e propagação W3C na fila.
 3. **Fase 3 — LLMOps com Opik (MySQL + ClickHouse):** Deploy on-premise da stack nativa do Opik; instrumentação com `otel_trace_id`; configuração do Data Link no Tempo e garantia de resiliência fail-open.
 4. **Fase 4 — Gestão de Exceções com GlitchTip (Web + Worker):** Deploy do GlitchTip desacoplado; configuração de sanitização universal em todos os 4 emissores; source maps no frontend.
-5. **Fase 5 — Validação Operacional e Benchmarks:** Implantação do KEDA para o compilador; testes de carga com k6; calibração real de quotas de memória/CPU para os manifests do Kubernetes; teste de recuperação de desastres (DR) e validação dos SLOs.
+5. **Fase 5 — Validação Operacional e Benchmarks:** Dimensionamento e calibração de quotas de memória/CPU dos workers do compilador via testes de carga com k6; homologação de disaster recovery (DR); validação dos SLOs (avaliação de necessidade de KEDA mantida como backlog evolutivo).

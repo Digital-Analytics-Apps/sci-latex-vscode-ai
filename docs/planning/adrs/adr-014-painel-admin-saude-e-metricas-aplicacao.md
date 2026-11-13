@@ -1,164 +1,202 @@
-# ADR 014: Painel Administrativo Exclusivo para Monitoramento de Saúde da Aplicação e Métricas Operacionais
+# ADR 014: SCIA Admin Center — Painel Administrativo de Observabilidade, Operação de Plataforma e Governança Científica
 
 - **Status:** APROVADO
-- **Data:** 10 de Novembro de 2026
+- **Data:** 12 de Novembro de 2026
 - **Autor(es):** Equipe de Arquitetura, Engenharia e Segurança SCIA
-- **Domínio:** Administração de Sistema, Saúde de Microsserviços, Controle de Sandbox TeX, Telemetria SciAI/LLMOps e Isolamento RBAC
+- **Domínio:** Administração de Sistema, Inteligência Operacional, Saúde de Microsserviços, Monitoramento de Colaboração em Tempo Real e Auditoria
 - **Componentes Relacionados:**
-  - `frontend`: `src/features/system-admin/`, `src/routes/index.tsx`, `src/layouts/RoleLayoutResolver.tsx`
-  - `backend`: `src/modules/system-admin/`, `src/modules/system-admin/system-admin.routes.ts`, `src/middlewares/auth.middleware.ts`
-  - `ai-service`: Exposição interna de métricas `/metrics` e agregação com Opik
-  - `compiler`: Exposição de status da fila de workers e cgroups
-  - `infra`: Redis, PostgreSQL, MinIO, Prometheus API
+  - `frontend`: `src/features/admin/`, `src/routes/index.tsx`, `src/layouts/RoleLayoutResolver.tsx`
+  - `backend`: `src/modules/admin/`, `src/modules/admin/admin.routes.ts`, `src/middlewares/auth.middleware.ts`
+  - `ai-service`: Exposição interna de telemetria agregada com Opik
+  - `compiler`: Exposição de status da fila e métricas de sandbox
+  - `infra`: Redis (Leases e presença), PostgreSQL (Artigos, 6 etapas, AuditLog), Prometheus API, GlitchTip
 
 ---
 
 ## ⚡ Guia Rápido & Resumo Executivo ("Elevator Pitch")
 
 ### 1. O que estamos decidindo e estabelecendo:
-1. **Separação Rígida entre Domínio Acadêmico e Saúde Operacional:** Autores, Coordenadores e Gerentes (`Role.MANAGER`) operam artefatos acadêmicos (artigos, 6 etapas, revisões e congressos). O **Painel do Administrador (`Role.ADMIN`)** é estritamente técnico, focado no monitoramento e controle da **saúde, desempenho, capacidade e integridade dos serviços do SCIA**.
-2. **Estrutura em 5 Abas Especializadas:**
-   * **Aba 1 (Microsserviços & Uptime):** Matriz de conectividade dos 5 serviços, latência, RPS, erros 5xx e Event Loop Lag.
-   * **Aba 2 (Compilador LaTeX & Sandbox):** Fila de jobs, tempos de compilação $p50$/$p95$, cancelamentos forçados por timeout (30s) e consumo de disco transitório.
-   * **Aba 3 (SciAI Engine & LLMOps):** TTFT, conexões SSE ativas, conformidade com taxa do arXiv (janela 3s), nós do LangGraph e custos/tokens agregados do Opik.
-   * **Aba 4 (Bancos, Cache & Storage):** Conexões do pool Prisma/PostgreSQL, leases de documentos no Redis (`editor:document:<docId>:owner`) e quotas do MinIO.
-   * **Aba 5 (Conexões Vivas & Auditoria Técnica):** Conexões WebSocket ativas no editor colaborativo e logs de segurança/violação de autenticação M2M.
-3. **Padrão Backend-For-Frontend (BFF Agregador Seguro):** O Frontend nunca acessa portas internas da infraestrutura (Prometheus `:9090`, Opik `:8080`, Redis `:6379`). O Backend Fastify agrega os dados via rotas autenticadas sob a permissão `Role.ADMIN`.
+1. **Criação do SCIA Admin Center no Frontend:** Implementação de um módulo nativo de administração e inteligência operacional no próprio frontend React do SCIA (`/admin`), exclusivo para usuários com perfil `Role.ADMIN`.
+2. **Não Reproduzir o Grafana Dentro do SCIA:** O painel não visa duplicar gráficos brutos de infraestrutura. Em vez disso, é uma **Central de Inteligência Operacional** com linguagem de negócio e engenharia adaptada à plataforma, integrando saúde de serviços, fluxo editorial científico e estado da colaboração em tempo real.
+3. **Estrutura em 5 Áreas Estratégicas:**
+   * **1. Visão Geral:** Resumo executivo ao vivo (usuários ativos, sessões, artigos em andamento, WebSockets ativos, erros/hora e gráfico de atividade horária).
+   * **2. Fluxo de Produção Científica:** Visão operacional dos artigos nas 6 etapas oficiais, gargalos institucionais, artigos atrasados e travas do NIT (Etapa 5) e Congresso (Etapa 6).
+   * **3. Monitoramento da Infraestrutura:** Matriz de saúde dos serviços (Fastify, React, Postgres, Redis, Compiler, SciAI, K8s) com semáforos e links contextuais para o Grafana.
+   * **4. Monitoramento da Colaboração em Tempo Real:** Distribuição de documentos por Pod dono, taxa de operações de Transformação Operacional (OT/s), latência de processamento em RAM, checkpoints pendentes e reconexões.
+   * **5. Atividade e Auditoria:** Timeline ao vivo de eventos operacionais, editoriais e de segurança (`AuditLog`).
+4. **BFF Seguro com REST + Server-Sent Events (SSE):** O frontend nunca acessa portas internas de telemetria (Prometheus, Opik, Redis). O Fastify agrega os dados via endpoints dedicados (`/api/v1/admin/dashboard/*`) e provê atualizações instantâneas via SSE (`/api/v1/admin/dashboard/events`).
+5. **Dimensionamento do Compilador:** O escalonamento de workers TeX opera nesta fase com dimensionamento estático provisionado e monitoramento visual de fila. A adoção do KEDA fica formalmente postergada para uma fase futura, ativada apenas se o volume de concorrência em produção comprovar necessidade.
 
 ---
 
-## 1. Contexto & Problema
+## 1. Contexto & Diagnóstico
 
-O SCIA evoluiu para um ecossistema complexo com múltiplos microsserviços e workers concorrentes. 
+A plataforma SCIA atingiu um nível de sofisticação onde coexistem:
+1. **Regras Críticas de Negócio:** 6 etapas fixas imutáveis, controle de prazos de congressos, gatekeepers do NIT e colaboração editorial.
+2. **Regimes Computacionais Concorrentes:** Centenas de deltas de digitação por segundo na memória RAM dos Pods (ADR-007), grafos de agentes com chamadas assíncronas a LLMs (ADR-006/009/013) e compilação de PDFs em workers isolados (ADR-012).
 
-No modelo anterior:
-1. **Falta de Visibilidade para o Administrador:** O administrador da plataforma não tinha uma tela nativa no frontend para diagnosticar a saúde da aplicação em tempo real. A única alternativa era abrir múltiplos terminais ou acessar ferramentas de baixo nível (como a console do Docker ou banco).
-2. **Risco de Poluição Conceitual:** Misturar indicadores de negócios (como metas de publicação ou contagem de artigos) com métricas de saturação de hardware, filas de compilação ou falhas de provedores de IA causa confusão funcional e quebra a separação de responsabilidades.
-3. **Necessidade de Painel Centralizado sem Expor a Rede Interna:** Expor dashboards brutos de Prometheus ou Grafana em iframes no frontend acarreta brechas de segurança, quebra a identidade visual do Design System e exige autenticações duplicadas.
+No modelo anterior, existia um vácuo operacional:
+* Para saber a saúde técnica da máquina, o administrador precisava de ferramentas externas (Grafana, logs brutos).
+* Para saber se havia artigos travados no NIT ou editores sobrecarregados, precisava rodar queries manuais no PostgreSQL.
+* Faltava uma **interface unificada de controle** que permitisse ao administrador bater o olho e entender se a plataforma e a produção científica estão operando de forma saudável.
 
 ---
 
-## 2. Decisão Arquitetural
+## 2. Decisão Arquitetural: O Módulo "SCIA Admin Center"
 
-Fica estabelecida a criação da área **`System Admin Health Dashboard`** (`/system-admin`) no Frontend do SCIA, sustentada por um módulo agregador seguro no Backend Fastify.
+Fica aprovada a criação do módulo **SCIA Admin Center** (`/admin`), blindado por RBAC estrito (`Role.ADMIN`), estruturado em 5 áreas funcionais:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        MATRIZ DE ISOLAMENTO DE PAPÉIS NO SCIA                          │
-├─────────────────────┬──────────────────────┬───────────────────────────────────────────┤
-│ Perfil (Role)       │ Área no Frontend     │ Escopo e Visibilidade                    │
-├─────────────────────┼──────────────────────┼───────────────────────────────────────────┤
-│ AUTHOR              │ /articles, /workspace│ Escrever manuscritos e executar tarefas   │
-│ COORDINATOR         │ /coordinator         │ Orientar artigos e aprovar revisões       │
-│ MANAGER             │ /manager             │ Governança acadêmica, metas do ciclo e NIT│
-│ ADMIN (Sistema)     │ /system-admin        │ 100% Saúde Operacional, Serviços e Carga  │
-└─────────────────────┴──────────────────────┴───────────────────────────────────────────┘
+│                                   SCIA ADMIN CENTER                                    │
+├───────────────────┬───────────────────┬───────────────────┬───────────────────┬────────┤
+│ [1. Visão Geral]  │ [2. Fluxo Cient.] │ [3. Infraestut.]  │ [4. Colaboração]  │ [5. Aud│
+│ Saúde do sistema, │ Distribuição nas  │ Fastify, SciAI,   │ Pods donos, OT/s, │ Linha  │
+│ usuários ativos,  │ 6 etapas, atrasos,│ Compiler, Bancos, │ latência em RAM,  │ do tem-│
+│ WebSockets e erros│ NIT e submissões  │ Opik e links Graf.│ checkpoints pend. │ po vivo│
+└───────────────────┴───────────────────┴───────────────────┴───────────────────┴────────┘
 ```
 
 ---
 
-## 3. Arquitetura das 5 Abas Especializadas
+## 3. As 5 Áreas Estratégicas e Suas Fontes da Verdade
 
 ```mermaid
 flowchart TD
-    subgraph Admin_Frontend["Painel /system-admin (Role.ADMIN)"]
-        TAB1["Aba 1: Microsserviços & Uptime"]
-        TAB2["Aba 2: Compilador TeX & Sandbox"]
-        TAB3["Aba 3: SciAI Telemetria & Opik"]
-        TAB4["Aba 4: Bancos, Cache & Storage"]
-        TAB5["Aba 5: Conexões Vivas & Auditoria"]
+    subgraph Frontend["Frontend React (/admin)"]
+        UI_TAB1["1. Visão Geral"]
+        UI_TAB2["2. Fluxo Científico"]
+        UI_TAB3["3. Infraestrutura"]
+        UI_TAB4["4. Colaboração em Tempo Real"]
+        UI_TAB5["5. Atividade e Auditoria"]
     end
 
-    subgraph Fastify_BFF["Backend Fastify (/api/v1/system-admin/)"]
-        CTRL["SystemAdminController (Cache 15s no Redis)"]
+    subgraph Fastify_BFF["Fastify Admin BFF (/api/v1/admin/dashboard/)"]
+        API_OVERVIEW["/overview"]
+        API_WORKFLOW["/workflow"]
+        API_INFRA["/infrastructure"]
+        API_COLLAB["/collaboration"]
+        API_ACTIVITY["/activity"]
+        SSE_STREAM["/events (SSE)"]
     end
 
-    subgraph Data_Sources["Sistemas Monitorados"]
-        SVC["Healthchecks (AI Service, Compiler, MinIO)"]
-        TEX["Compiler Sandbox Queue & cgroups"]
-        OPIK["Opik API Local (:8080)"]
-        DB["PostgreSQL Pool & Redis Leases"]
-        AUDIT["Tabela AuditLog (Eventos Técnicos)"]
+    subgraph Fontes["Fontes de Dados Especializadas"]
+        PG[(PostgreSQL - Artigos, Prazos, AuditLog)]
+        RD[(Redis & Pods - Leases, Presença, OT)]
+        PROM[(Prometheus - Latências, RPS, Filas)]
+        OPIK[(Opik - Tokens e Custos de IA)]
+        GLITCH[(GlitchTip - Erros de Aplicação)]
     end
 
-    TAB1 & TAB2 & TAB3 & TAB4 & TAB5 -->|JWT Role.ADMIN| CTRL
-    CTRL --> SVC
-    CTRL --> TEX
-    CTRL --> OPIK
-    CTRL --> DB
-    CTRL --> AUDIT
+    UI_TAB1 --> API_OVERVIEW
+    UI_TAB2 --> API_WORKFLOW
+    UI_TAB3 --> API_INFRA
+    UI_TAB4 --> API_COLLAB
+    UI_TAB5 --> API_ACTIVITY
+    Frontend -.->|Streaming Unidirecional| SSE_STREAM
+
+    API_WORKFLOW & API_ACTIVITY --> PG
+    API_COLLAB --> RD
+    API_INFRA --> PROM & OPIK & GLITCH & PG
+    API_OVERVIEW --> PG & RD & PROM
 ```
 
-### Aba 1: Saúde Geral dos Microsserviços
-* Matriz de conectividade dos 5 serviços com semáforos visuais (`OPERATIONAL`, `DEGRADED`, `DOWN`).
-* Latência de resposta ($p50$, $p95$, $p99$) do Fastify e do `ai-service`.
-* Monitoramento de **Event Loop Lag** e consumo de Heap do Node.js.
-* Taxa de requisições por segundo (RPS) e distribuição de status HTTP (2xx, 4xx, 5xx).
+### Área 1: Visão Geral da Plataforma
+* **Cards de Indicadores Instantâneos:**
+  * Status geral da plataforma (🟢 *Operacional* / 🟡 *Degradado* / 🔴 *Instável*).
+  * Usuários ativos no momento (contagem de sessões válidas).
+  * Artigos em andamento (total de projetos ativos).
+  * WebSockets ativos (conexões estabelecidas no `/ws/documents/:id`).
+  * Erros na última hora (erros 5xx e exceções capturadas no GlitchTip).
+* **Gráfico de Linha / Área:** Atividade da plataforma nas últimas 12 horas (RPS e operações de edição por hora).
 
-### Aba 2: Compilador LaTeX & Sandbox de Processos
-* Estado da fila de compilações (workers ocupados vs ociosos).
-* Histórico recente de tempo de compilação por motor (`pdflatex`, `xelatex`).
-* Métricas de falha categorizadas:
-  * Erros de sintaxe do usuário TeX.
-  * Timeouts com cancelamento forçado (`SIGKILL` após 30s, conforme ADR-012).
-* Volume de armazenamento transitório ocupado por arquivos `.aux`, `.log` e `.pdf`.
+### Área 2: Fluxo de Produção Científica
+Visão analítica de negócio para identificar gargalos operacionais no fluxo acadêmico:
+* **Funil de Distribuição nas 6 Etapas Canônicas:**
+  * Etapa 1: Planejamento e Pesquisa
+  * Etapa 2: Desenvolvimento e Experimentos
+  * Etapa 3: Escrita do Manuscrito
+  * Etapa 4: Revisão Técnica Preliminar
+  * Etapa 5: Validação Institucional (NIT 🔒)
+  * Etapa 6: Submissão ao Congresso Alvo 🔒
+* **Indicadores de Alerta Institucional:**
+  * Artigos com cronograma atrasado.
+  * Artigos estagnados (sem alterações há mais de 15 dias na mesma etapa).
+  * Processos do NIT aguardando parecer de patente/viabilidade.
+  * Artigos na Etapa 6 próximos da data limite de submissão do Congresso Alvo vs. Backup.
 
-### Aba 3: SciAI Engine — Telemetria de LLMs e Conectores
-* Conexões ativas no streaming SSE do chat copiloto (`/api/v1/chat/stream`).
-* Métrica de TTFT (Time To First Token) médio.
-* Monitoramento dos conectores científicos:
-  * Cumprimento do semáforo unitário e throttle de 3s no **arXiv**.
-  * Alertas de taxa de erro HTTP 429 de APIs externas (arXiv / S2 / OpenAlex).
-* Dados consolidados do **Opik**:
-  * Total de tokens consumidos no mês (Prompt vs Completion).
-  * Custo financeiro estimado (USD) agrupado por provedor (Gemini Flash vs OpenAI vs Ollama local).
+### Área 3: Monitoramento da Infraestrutura
+Painel executivo com semáforos dos componentes e links para o Grafana para diagnóstico aprofundado:
 
-### Aba 4: Bancos, Cache e Armazenamento de Objetos
-* **PostgreSQL:**
-  * Conexões em uso no pool Prisma vs limite máximo (capacidade de pool).
-  * Latência de roundtrip e detecção de queries em lock.
-* **Redis:**
-  * Uso de memória RAM alocada vs limite de eviction.
-  * Quantidade de **Leases de Documentos ativas** (`editor:document:<docId>:owner`).
-* **MinIO S3:**
-  * Disponibilidade do bucket `collab-assets`.
-  * Espaço total consumido e taxa de geração de URLs pré-assinadas.
+| Componente | Indicadores Apresentados no Admin Center | Ação ao Clicar |
+| :--- | :--- | :--- |
+| **Backend Fastify** | RPS, Latência $p95$, Taxa de erros 5xx, Event Loop Lag | Link para Dashboard Fastify no Grafana |
+| **Frontend React** | Taxa de crash JS, Web Vitals, falhas de rede | Link para o GlitchTip |
+| **PostgreSQL** | Conexões ativas vs pool, locks ativos, tempo de query | Link para Postgres Dashboard no Grafana |
+| **Redis** | Uso de memória RAM, total de leases de documentos | Link para Redis Dashboard no Grafana |
+| **WebSockets** | Conexões ativas, taxa de reconexão | Link para Métricas de Socket no Grafana |
+| **Compilador LaTeX** | Fila de jobs, tempos de compilação, timeouts (30s) | Link para Métricas TeX no Grafana |
+| **SciAI (LangGraph)** | TTFT, conexões SSE, status do arXiv, tokens e custos | Link para a UI do Opik (`:5174`) |
+| **Kubernetes** | Pods em execução, restarts recentes (OOMKilled) | Link para Dashboard de Nodes no Grafana |
 
-### Aba 5: Conexões Vivas & Auditoria Técnica
-* Monitoramento de salas colaborativas WebSocket ativas (`/ws/documents/:projectId`).
-* Total de operações de Transformação Operacional (OT) processadas por segundo.
-* Log de eventos de segurança técnica:
-  * Tentativas de conexão com tokens inválidos ou expirados.
-  * Falhas de autenticação M2M entre serviços internos.
-  * Ações de cancelamento forçado de compilação ou desconexão de salas zumbis.
+### Área 4: Monitoramento da Colaboração em Tempo Real
+Supervisão do motor de edição colaborativa em memória (ADR-007 e ADR-007.1):
+* Quantidade de artigos sendo editados simultaneamente.
+* Total de pesquisadores conectados ao editor.
+* Distribuição de salas por Pod dono (identifica se algum pod está concentrando documentos em excesso).
+* Taxa de operações de Transformação Operacional (OT ops/s).
+* Latência de processamento de operações na RAM do pod ($p95$).
+* Quantidade de checkpoints atômicos pendentes de persistência no PostgreSQL.
+* Taxa de reconexões WebSocket e eventuais falhas de lease no Redis.
+
+### Área 5: Atividade e Auditoria Institucional
+Linha do tempo ao vivo das ações relevantes ocorridas no sistema:
+* Edições iniciadas e finalizadas em manuscritos.
+* Conclusão de revisões e aprovações de tarefas.
+* Mudanças de etapa (especialmente avanço para Etapa 5 NIT ou Etapa 6 Congresso).
+* Ocorrências de timeout de compilação ou falhas de sistema.
+* Eventos de segurança (tentativas de autenticação inválidas, violação de token M2M).
 
 ---
 
-## 4. Segurança e Isolamento RBAC
+## 4. Arquitetura da API no Backend Fastify
 
-1. **Guarda de Rotas no Frontend (`RoleLayoutResolver` e `ProtectedRoute`):**
-   * A rota `/system-admin` exige estritamente `allowedRoles={[Role.ADMIN]}`.
-   * Tentativas de acesso por usuários não-admin redirecionam imediatamente para `/` com aviso de acesso não autorizado.
-2. **Guarda no Backend (`auth.middleware.ts`):**
-   * O grupo de rotas `/api/v1/system-admin/*` valida a assinatura do JWT e rejeita qualquer requisição cujo `role !== Role.ADMIN` com código `403 Forbidden`.
-3. **Proteção contra Sobrecarga (Cache no Redis):**
-   * As agregações de métricas pesadas executadas pelo Fastify possuem cache temporário no Redis com TTL de **15 segundos**, evitando que consultas repetidas do painel sobrecarreguem o banco ou os serviços satélites.
+Para garantir alta performance e isolamento de segurança:
+1. **Nenhum Serviço Interno Exposto:** O navegador nunca se comunica diretamente com Prometheus (`9090`), Opik (`8081`) ou Redis (`6379`).
+2. **Endpoints REST Agregadores:**
+   * `GET /api/v1/admin/dashboard/overview`
+   * `GET /api/v1/admin/dashboard/workflow`
+   * `GET /api/v1/admin/dashboard/infrastructure`
+   * `GET /api/v1/admin/dashboard/collaboration`
+   * `GET /api/v1/admin/dashboard/activity`
+3. **Streaming Unidirecional em Tempo Real via SSE:**
+   * `GET /api/v1/admin/dashboard/events`
+   * O Fastify publica eventos leves (usuário conectou, checkpoint salvo, erro registrado) via SSE. O frontend atualiza os contadores sem necessidade de polling agressivo.
+4. **Cache em Memória / Redis:** As agregações do PostgreSQL e métricas de infraestrutura possuem cache temporário de 15 a 30 segundos, protegendo o banco contra sobrecarga.
 
 ---
 
-## 5. Consequências da Decisão
+## 5. Decisão sobre Escalonamento do Compilador (KEDA Postergado)
+
+Fica estabelecido que:
+* Os workers do compilador TeX operam com **dimensionamento estático provisionado** (pool dedicado com quotas estritas de CPU e memória em cgroups).
+* A integração com **KEDA** (Kubernetes Event-driven Autoscaling) para escalonamento automático baseado na fila `compiler_queue_size` permanece formalizada e documentada como caminho técnico aprovado, mas **postergada para uma fase futura**, sendo ativada somente quando a volumetria de concorrência em produção comprovar saturação dos workers estáticos.
+
+---
+
+## 6. Consequências da Decisão
 
 ### Positivas:
-* **Controle Total pelo Administrador:** Visibilidade centralizada em interface nativa do sistema sem dependência de ferramentas externas no dia a dia.
-* **Zero Contaminação de Domínio:** O gestor acadêmico continua com sua visão focada em metas e artigos, enquanto o administrador foca 100% na saúde da infraestrutura.
-* **Segurança e Estilo Unificado:** Nenhuma porta de monitoramento (Prometheus, Opik, Redis) é aberta ao navegador. A tela utiliza 100% dos componentes e tema do SCIA Design System.
+* **Central de Controle Completa:** O administrador diagnostica saúde de servidores, gargalos de produção científica e problemas de colaboração em uma única interface.
+* **UX Nativa:** A interface adota 100% dos componentes, paleta de cores e tipografia do SCIA Design System (React 19 + Material UI).
+* **Segurança e Desacoplamento:** Todas as requisições passam pela camada de autorização do Fastify com validação de `Role.ADMIN`.
 
 ### Negativas / Mitigações:
-* **Necessidade de Manter Endpoints de Agregação:** O Fastify precisa consultar os serviços satélites. Mitigado através de rotas de `/health` ultra-rápidas e cache de 15 segundos no Redis.
+* **Desenvolvimento Adicional de Telas:** Exige construir componentes de frontend dedicados. Mitigado pelo aproveitamento dos componentes existentes do Material UI e bibliotecas leves de gráficos (como Recharts).
 
 ---
 
-## 6. Próximos Passos
-1. Criar a especificação técnica detalhada em `docs/planning/specs/system-admin-health-dashboard-spec.md`.
-2. Implementar as rotas no backend: `src/modules/system-admin/`.
-3. Implementar a página com abas no frontend: `src/features/system-admin/`.
+## 7. Próximos Passos
+1. Atualizar a especificação técnica em `docs/planning/specs/system-admin-health-dashboard-spec.md`.
+2. Implementar os endpoints agregadores e rota SSE em `backend/src/modules/admin/`.
+3. Desenvolver a página mestre e as 5 abas em `frontend/src/features/admin/`.

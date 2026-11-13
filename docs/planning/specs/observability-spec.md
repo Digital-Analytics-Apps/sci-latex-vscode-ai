@@ -17,7 +17,7 @@ Esta especificação define os contratos de dados, topologia de rede, modelos de
 4. **Rate-Limit Distribuído para APIs Externas (arXiv):** Coordenação centralizada via Redis para garantir intervalo de 3s entre requisições mesmo com múltiplos pods do `ai-service` ativos.
 5. **Tail-Based Sampling com Atributos Canônicos:** Retenção a 100% para spans com `status_code: [ERROR]`, respostas com `http.response.status_code >= 500`, requisições lentas ($> 2000$ ms), chamadas de IA e compilações TeX.
 6. **Armazenamento Nativo e Isolado do Opik:** O Opik opera sobre seus bancos nativos dedicados (**MySQL** para dados transacionais e **ClickHouse** para traces analíticos), preservando o PostgreSQL para o SCIA e GlitchTip.
-7. **Autoscaling com KEDA:** O escalonamento de pods do compilador LaTeX avalia `min_over_time(compiler_queue_size[30s]) > 3`.
+7. **Dimensionamento dos Workers TeX (KEDA Postergado):** Na fase inicial, o compilador TeX opera com pool estático provisionado. A especificação do KEDA para escalonamento automático baseado em `min_over_time(compiler_queue_size[30s]) > 3` fica registrada para implementação futura sob demanda de carga real.
 8. **Sanitização Universal em Todos os Emissores:** Higienização ativa em React, Fastify, FastAPI e Compiler.
 
 ---
@@ -109,8 +109,8 @@ processors:
         probabilistic: { sampling_percentage: 10.0 }
 ```
 
-### 2.4 ScaledObject do KEDA para o Compilador LaTeX
-Manifesto Kubernetes para o escalonamento horizontal de workers TeX:
+### 2.4 Especificação Evolutiva do KEDA para o Compilador LaTeX (Fase Futura)
+Manifesto Kubernetes de referência para ativação futura caso a volumetria exija:
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
@@ -311,7 +311,7 @@ volumes:
 - [ ] **OBS-15:** Habilitar upload de Source Maps no CI/CD para mapeamento de stack traces desminificados no frontend.
 
 ### Fase 5: Validação Operacional e Benchmarks de Infraestrutura
-- [ ] **OBS-16:** Implantar o `ScaledObject` do KEDA para escalonamento automático de workers do compilador avaliando `min_over_time(compiler_queue_size[30s]) > 3`.
+- [ ] **OBS-16:** Calibrar dimensionamento estático do pool de workers do compilador TeX (mantendo KEDA documentado para fase futura sob demanda).
 - [ ] **OBS-17:** Executar testes de carga com k6 simulando picos de edição colaborativa e chamadas concorrentes ao Copiloto.
 - [ ] **OBS-18:** Homologar métricas de saúde do próprio pipeline (`otelcol_processor_tail_sampling_dropped_spans`, `opik_dropped_events_total`, `loki_ingester_dropped_entries_total`).
 - [ ] **OBS-19:** Homologar rotina de recuperação de desastres (DR) com restauração de snapshots do Prometheus, dumps do MySQL/PostgreSQL e buckets do MinIO.

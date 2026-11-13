@@ -1,196 +1,243 @@
-# Especificação Técnica: Painel Administrativo de Saúde da Aplicação e Métricas Operacionais
+# Especificação Técnica: SCIA Admin Center — Painel Administrativo de Observabilidade, Operação e Governança Científica
 
 - **Documento:** `system-admin-health-dashboard-spec.md`
 - **Referência:** ADR 014
 - **Status:** APROVADO
-- **Alvo:** Frontend (`src/features/system-admin/`), Backend Fastify (`src/modules/system-admin/`), `Role.ADMIN`
+- **Alvo:** Frontend (`src/features/admin/`), Backend Fastify (`src/modules/admin/`), `Role.ADMIN`
 
 ---
 
 ## 1. Escopo e Propósito
 
-Esta especificação define os contratos de API, schemas de dados, componentes de frontend e fluxo de atualização em tempo real para o **Painel Administrativo de Saúde da Aplicação** (`/system-admin`), destinado com exclusividade ao perfil `Role.ADMIN`.
+Esta especificação define os contratos de API, schemas tipados de dados, modelo de streaming em tempo real via Server-Sent Events (SSE) e componentes de frontend para o **SCIA Admin Center** (`/admin`).
 
-O objetivo desta tela é fornecer uma **visão operacional e de infraestrutura**, sem misturar artefatos ou regras do domínio acadêmico (artigos, revisões, metas letivas), permitindo que o administrador diagnostique com precisão qualquer gargalo ou falha de sistema.
+O objetivo deste módulo é atuar como uma **Central de Inteligência Operacional**, combinando:
+1. **Saúde de Serviços & Infraestrutura:** Microsserviços, latências, custos/tokens do Opik, fila do compilador TeX e bancos.
+2. **Governança do Fluxo Científico:** Distribuição de manuscritos nas 6 etapas fixas, atrasos e gargalos no NIT (Etapa 5) e submissões (Etapa 6).
+3. **Colaboração em Tempo Real:** Distribuição de salas por Pod dono, taxa de operações OT/s e persistência de checkpoints.
+4. **Auditoria:** Linha do tempo ao vivo das atividades e incidentes de segurança.
 
 ---
 
 ## 2. Contratos de API (Backend Fastify)
 
-Todas as rotas pertencem ao prefixo `/api/v1/system-admin` e exigem autenticação JWT com validação estrita de `request.user.role === Role.ADMIN`.
+Todas as rotas pertencem ao prefixo `/api/v1/admin/dashboard` e exigem autenticação JWT com validação estrita de `request.user.role === Role.ADMIN`.
 
-### 2.1 `GET /api/v1/system-admin/overview`
-Retorna os dados consolidados das 5 abas, cacheados no Redis com TTL de 15 segundos.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      ROTAS DA API DO ADMIN CENTER                      │
+├────────────────────────────────────────┬───────────┬───────────────────┤
+│ Rota                                   │ Método    │ Finalidade        │
+├────────────────────────────────────────┼───────────┼───────────────────┤
+│ /api/v1/admin/dashboard/overview       │ GET (REST)│ Resumo executivo  │
+│ /api/v1/admin/dashboard/workflow       │ GET (REST)│ Funil 6 etapas/NIT│
+│ /api/v1/admin/dashboard/infrastructure │ GET (REST)│ Saúde de serviços │
+│ /api/v1/admin/dashboard/collaboration  │ GET (REST)│ Editor / Pods / OT│
+│ /api/v1/admin/dashboard/activity       │ GET (REST)│ Timeline auditoria│
+│ /api/v1/admin/dashboard/events         │ GET (SSE) │ Streaming ao vivo │
+└────────────────────────────────────────┴───────────┴───────────────────┘
+```
 
-#### Resposta HTTP 200 (TypeScript Contract):
+---
+
+### 2.1 `GET /api/v1/admin/dashboard/overview`
+Retorna os indicadores consolidados para o card mestre e o gráfico de atividade por hora:
+
 ```typescript
-export interface SystemAdminOverviewResponse {
-  timestamp: string; // ISO 8601
-  
-  // Aba 1: Microsserviços e Uptime
-  servicesHealth: {
-    backend: {
+export interface AdminOverviewResponse {
+  systemStatus: 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
+  activeUsersCount: number;         // Sessões válidas no sistema
+  activeProjectsCount: number;      // Artigos em andamento
+  activeWebSocketsCount: number;    // Conexões estabelecidas no /ws
+  errorsLastHourCount: number;      // Erros 5xx e exceptions GlitchTip
+  hourlyActivity: Array<{
+    hour: string;                   // "14h", "15h", ...
+    requestsCount: number;          // Requisições HTTP
+    collaborativeOpsCount: number;  // Operações de digitação
+  }>;
+}
+```
+
+---
+
+### 2.2 `GET /api/v1/admin/dashboard/workflow`
+Retorna a distribuição de projetos nas 6 etapas oficiais e alertas de gargalos acadêmicos:
+
+```typescript
+export interface AdminWorkflowResponse {
+  totalProjects: number;
+  stagesDistribution: Array<{
+    stageNumber: 1 | 2 | 3 | 4 | 5 | 6;
+    stageName: string;
+    projectsCount: number;
+  }>;
+  bottlenecks: {
+    delayedProjectsCount: number;          // Cronograma estourado
+    stagnantProjectsCount: number;         // > 15 dias sem edição
+    pendingNitValidationsCount: number;    // Etapa 5 aguardando NIT
+    upcomingDeadlinesCount: number;        // Etapa 6 próximos da data
+  };
+  averageDaysPerStage: Record<number, number>; // Ex: { 1: 12.5, 2: 24.0, ... }
+}
+```
+
+---
+
+### 2.3 `GET /api/v1/admin/dashboard/infrastructure`
+Retorna o estado operacional agregado da infraestrutura, alimentado pelo Prometheus, Opik e GlitchTip:
+
+```typescript
+export interface AdminInfrastructureResponse {
+  services: {
+    backendFastify: {
       status: 'UP' | 'DEGRADED' | 'DOWN';
-      uptimeSeconds: number;
-      eventLoopLagMs: number;
-      heapUsedMb: number;
-      heapTotalMb: number;
       rps: number;
-      errorRate5xxPercentage: number;
+      latencyP95Ms: number;
+      errorRate5xx: number;
+      eventLoopLagMs: number;
+      grafanaUrl: string;
     };
     aiService: {
       status: 'UP' | 'DEGRADED' | 'DOWN';
-      latencyMs: number;
-      activeRunsCount: number;
+      avgTtftMs: number;
+      activeSseStreams: number;
+      monthlyEstimatedCostUsd: number;
+      opikUrl: string;
     };
     compiler: {
       status: 'UP' | 'DEGRADED' | 'DOWN';
-      workerPoolAvailable: number;
-      workerPoolTotal: number;
+      queueLength: number;
+      activeJobs: number;
+      avgDurationMs: number;
+      timeoutsLast24h: number;
+      grafanaUrl: string;
     };
     postgres: {
       status: 'UP' | 'DOWN';
-      pingLatencyMs: number;
       activeConnections: number;
       maxConnections: number;
-    };
-    redis: {
-      status: 'UP' | 'DOWN';
-      pingLatencyMs: number;
-      usedMemoryMb: number;
-      maxMemoryMb: number;
-    };
-    minio: {
-      status: 'UP' | 'DOWN';
-      bucketHealthy: boolean;
-      latencyMs: number;
-    };
-  };
-
-  // Aba 2: Compilador TeX & Sandbox
-  compilerMetrics: {
-    queueLength: number;
-    activeCompilations: number;
-    avgDurationMs: number;
-    p95DurationMs: number;
-    statsLastHour: {
-      success: number;
-      syntaxErrors: number;
-      timeoutsKilled: number; // Abortados por passar de 30s
-    };
-    scratchDiskUsedMb: number;
-  };
-
-  // Aba 3: SciAI Engine & LLMOps (Integrado com Opik)
-  sciaiMetrics: {
-    activeSseStreams: number;
-    avgTtftMs: number; // Time To First Token
-    externalApis: {
-      arxiv: {
-        semaphoreFree: boolean;
-        throttleWindowActive: boolean; // Janela obrigatória de 3s
-        rateLimit429Count: number;
-      };
-      semanticScholar: {
-        circuitBreakerOpen: boolean;
-        rateLimit429Count: number;
-      };
-      openAlex: {
-        activeConnections: number;
-        rateLimit429Count: number;
-      };
-    };
-    tokensAndCost: {
-      monthlyPromptTokens: number;
-      monthlyCompletionTokens: number;
-      monthlyEstimatedCostUsd: number;
-      modelsUsagePercentage: {
-        geminiFlash: number;
-        gpt4o: number;
-        ollamaLocal: number;
-      };
-    };
-  };
-
-  // Aba 4: Infraestrutura de Dados & Cache
-  dataStorageMetrics: {
-    postgres: {
-      activeConnectionsRatio: number; // 0.0 a 1.0
-      waitingPoolRequests: number;
       slowQueriesCount: number;
     };
     redis: {
-      activeDocumentLeasesCount: number; // Quantidade de editor:document:<id>:owner
-      connectedClients: number;
-      evictedKeysLastHour: number;
+      status: 'UP' | 'DOWN';
+      usedMemoryMb: number;
+      activeLeasesCount: number;
     };
-    minio: {
-      collabAssetsSizeBytes: number;
-      totalObjectsCount: number;
+    kubernetes: {
+      healthyPodsCount: number;
+      totalPodsCount: number;
+      recentRestartsCount: number;
     };
-  };
-
-  // Aba 5: Conexões Vivas & Auditoria Técnica
-  liveConnectionsAndSecurity: {
-    activeCollaborativeRoomsCount: number;
-    connectedWebSocketsCount: number;
-    otOperationsPerSecond: number;
-    securityEventsLast24h: Array<{
-      id: string;
-      timestamp: string;
-      eventType: 'INVALID_TOKEN' | 'M2M_AUTH_FAILURE' | 'ACCESS_DENIED' | 'RATE_LIMIT_TRIGGERED';
-      sourceIp: string;
-      serviceTarget: string;
-      details: string;
-    }>;
   };
 }
 ```
 
 ---
 
-## 3. Arquitetura de Frontend (React 19 + Material UI)
+### 2.4 `GET /api/v1/admin/dashboard/collaboration`
+Retorna o estado do motor de colaboração em tempo real (ADR-007 / ADR-007.1):
 
-### 3.1 Estrutura de Arquivos e Componentes
+```typescript
+export interface AdminCollaborationResponse {
+  activeDocumentsCount: number;       // Artigos sendo editados simultaneamente
+  connectedUsersCount: number;        // Usuários dentro das salas
+  otOperationsPerSecond: number;      // Throughput de operações colaborativas
+  avgMemoryProcessingMs: number;      // Latência de processamento na RAM do pod
+  pendingCheckpointsCount: number;    // Checkpoints em fila de debounce
+  reconnectsLastHourCount: number;    // Reconexões WebSocket
+  documentsByPod: Array<{
+    podName: string;
+    documentsCount: number;
+    memoryUsageMb: number;
+  }>;
+}
 ```
-frontend/src/features/system-admin/
-├── SystemAdminDashboardPage.tsx       # Componente mestre com layout e abas
-├── api/
-│   └── systemAdminApi.ts              # Cliente Axios para /api/v1/system-admin
-├── hooks/
-│   └── useSystemAdminMetrics.ts       # Hook TanStack Query com auto-refresh (15s)
-└── tabs/
-    ├── ServicesHealthTab.tsx          # Aba 1: Semáforos e latências dos 5 serviços
-    ├── CompilerMetricsTab.tsx         # Aba 2: Fila TeX, tempos p95 e timeouts
-    ├── SciAiMetricsTab.tsx            # Aba 3: Conexões SSE, arXiv status e tokens Opik
-    ├── DataStorageTab.tsx             # Aba 4: Pool Postgres, Leases Redis e MinIO
-    └── LiveConnectionsTab.tsx         # Aba 5: WebSockets ativos e log de segurança
-```
-
-### 3.2 Comportamento da Interface & UX
-* **Auto-Refresh Inteligente:** Os dados são atualizados automaticamente a cada 15 segundos via `refetchInterval` do TanStack Query, com botão de *Pausar / Retomar Atualização Automática* e botão manual de *Atualizar Agora*.
-* **Semáforos Visuais:**
-  * Verde (`success.main`): Saudável / Normal.
-  * Amarelo (`warning.main`): Alerta (ex: fila do compilador > 3, pool do Postgres > 80%, arXiv throttle ativo).
-  * Vermelho (`error.main`): Crítico (ex: serviço offline, erro 5xx > 2%, estouro de memória).
-* **Guarda de Acesso:** Inserido no `routes/index.tsx` protegido com `allowedRoles={[Role.ADMIN]}`.
 
 ---
 
-## 4. Plano de Tarefas Detalhado (WBS)
+### 2.5 `GET /api/v1/admin/dashboard/activity`
+Retorna a linha do tempo recente de auditoria e operações:
 
-### Fase A: Backend BFF & Coleta de Métricas
-- [ ] **ADM-01:** Criar módulo `backend/src/modules/system-admin/` com rota, controller e service.
-- [ ] **ADM-02:** Implementar agregador de healthcheck em `system-admin.service.ts` que executa chamadas assíncronas aos serviços internos (`ai-service:8000/health`, `compiler:4000/health`, MinIO, Prisma e Redis).
-- [ ] **ADM-03:** Conectar leitura de métricas do Redis: contagem de chaves `editor:document:*:owner` e memória utilizada via comando `INFO MEMORY`.
-- [ ] **ADM-04:** Adicionar camada de cache com TTL de 15 segundos no Redis para proteger o backend contra chamadas concorrentes ao endpoint.
+```typescript
+export interface AdminActivityResponse {
+  events: Array<{
+    id: string;
+    timestamp: string;
+    category: 'EDITORIAL' | 'COLLABORATION' | 'COMPILER' | 'SECURITY';
+    title: string;
+    description: string;
+    severity: 'INFO' | 'WARNING' | 'ERROR';
+    entityId?: string; // projectId, userId
+  }>;
+}
+```
 
-### Fase B: Frontend & Componentes de Tela
-- [ ] **ADM-05:** Criar hook `useSystemAdminMetrics` com TanStack Query consumindo a rota protegida.
-- [ ] **ADM-06:** Implementar a página mestre `SystemAdminDashboardPage.tsx` com `Tabs` do Material UI.
-- [ ] **ADM-07:** Implementar `ServicesHealthTab.tsx` com cards e medidores de latência dos microsserviços.
-- [ ] **ADM-08:** Implementar `CompilerMetricsTab.tsx` com gráfico de compilações vs timeouts de 30s.
-- [ ] **ADM-09:** Implementar `SciAiMetricsTab.tsx` com status dos conectores acadêmicos e resumo de tokens Opik.
-- [ ] **ADM-10:** Implementar `DataStorageTab.tsx` (barras de progresso do pool Postgres e memória Redis).
-- [ ] **ADM-11:** Implementar `LiveConnectionsTab.tsx` (tabela de eventos de auditoria e salas ativas).
-- [ ] **ADM-12:** Registrar a rota `/system-admin` no roteador do React (`routes/index.tsx`) isolada para `Role.ADMIN`.
+---
+
+### 2.6 `GET /api/v1/admin/dashboard/events` (Server-Sent Events)
+Canal persistente unidirecional transmitindo eventos em tempo real para o frontend:
+* **Headers:**
+  * `Content-Type: text/event-stream`
+  * `Cache-Control: no-cache`
+  * `Connection: keep-alive`
+* **Exemplo de Eventos:**
+  ```
+  event: OVERVIEW_TICK
+  data: {"activeUsers": 129, "activeWebSockets": 87, "errors": 3}
+
+  event: ACTIVITY_EVENT
+  data: {"title": "Revisão Concluída", "category": "EDITORIAL", "timestamp": "2026-11-12T20:45:00Z"}
+  ```
+
+---
+
+## 3. Arquitetura do Frontend (React 19 + Material UI)
+
+### 3.1 Estrutura de Pastas e Componentes
+```
+frontend/src/features/admin/
+├── AdminCenterPage.tsx               # Página Mestre com Tabs do SCIA Admin Center
+├── api/
+│   └── adminCenterApi.ts             # Cliente Axios e wrapper SSE
+├── hooks/
+│   ├── useAdminOverview.ts           # TanStack Query + SSE Listener
+│   ├── useAdminWorkflow.ts           # Dados das 6 etapas
+│   ├── useAdminInfrastructure.ts     # Dados de infraestrutura e links Grafana
+│   ├── useAdminCollaboration.ts      # Dados em tempo real dos Pods
+│   └── useAdminActivity.ts           # Timeline de auditoria
+└── tabs/
+    ├── OverviewTab.tsx               # Aba 1: Resumo, cards e gráfico de atividade
+    ├── WorkflowTab.tsx               # Aba 2: Funil 6 etapas e gargalos NIT
+    ├── InfrastructureTab.tsx         # Aba 3: Semáforos e links de serviços
+    ├── CollaborationTab.tsx          # Aba 4: Documentos por Pod e OT/s
+    └── ActivityTab.tsx               # Aba 5: Linha do tempo ao vivo
+```
+
+### 3.2 Comportamento da Interface & UX
+* **Visual Soft UI:** Adota 100% dos estilos do Design System do SCIA (sem preto absoluto, paleta profissional Light/Dark).
+* **Navegação Modular:** Alternância instantânea de abas sem perda de estado.
+* **Resiliência SSE:** Reconexão automática do `EventSource` com fallback transparente para polling de 15 segundos caso a conexão SSE caia.
+
+---
+
+## 4. Plano de Implementação em 4 Fases (WBS)
+
+### Fase 1: Fundação do SCIA Admin Center & Visão Geral
+- [ ] **ADM-01:** Criar módulo `backend/src/modules/admin/` com controller, routes e service.
+- [ ] **ADM-02:** Implementar rota `GET /api/v1/admin/dashboard/overview` agregando contadores do PostgreSQL e sessões em memória.
+- [ ] **ADM-03:** Desenvolver `AdminCenterPage.tsx` e `OverviewTab.tsx` no frontend com cards e gráfico de atividade por hora.
+- [ ] **ADM-04:** Configurar guarda de rota no frontend (`routes/index.tsx`) restrita estritamente a `Role.ADMIN`.
+
+### Fase 2: Fluxo Científico & Gargalos Editoriais
+- [ ] **ADM-05:** Implementar rota `GET /api/v1/admin/dashboard/workflow` com agregações Prisma das 6 etapas e cálculo de estagnação.
+- [ ] **ADM-06:** Desenvolver `WorkflowTab.tsx` com gráfico de funil das 6 etapas, indicadores de atraso e lista de validações do NIT pendentes.
+
+### Fase 3: Infraestrutura & Colaboração em Tempo Real
+- [ ] **ADM-07:** Implementar rota `GET /api/v1/admin/dashboard/infrastructure` consultando endpoints de health e agregando dados do Opik/Prometheus.
+- [ ] **ADM-08:** Implementar rota `GET /api/v1/admin/dashboard/collaboration` lendo leases ativas no Redis e agrupando por Pod dono.
+- [ ] **ADM-09:** Desenvolver `InfrastructureTab.tsx` (semáforos e links Grafana) e `CollaborationTab.tsx` (Pods e métricas OT).
+
+### Fase 4: Auditoria & Streaming em Tempo Real (SSE)
+- [ ] **ADM-10:** Implementar endpoint SSE `GET /api/v1/admin/dashboard/events` no Fastify com barramento de eventos interno.
+- [ ] **ADM-11:** Implementar rota `GET /api/v1/admin/dashboard/activity` consultando a tabela `AuditLog`.
+- [ ] **ADM-12:** Desenvolver `ActivityTab.tsx` com linha do tempo de eventos ao vivo e listener SSE no frontend.
