@@ -14,6 +14,7 @@ import {
   ManagerOverviewView,
 } from "../features/manager/ManagerDashboardPage";
 import { EditorPage } from "../features/editor/pages/EditorPage";
+import { LiteratureMindMapDemoPage } from "../features/literature/pages/LiteratureMindMapDemoPage";
 import { RoleLayoutResolver } from "../layouts/RoleLayoutResolver";
 import { PersonaRootResolver } from "./PersonaRootResolver";
 
@@ -44,6 +45,8 @@ export const AppRoutes = () => {
           {/* Rotas por Persona */}
           <Route path="/articles" element={<AuthorArticlesPage />} />
           <Route path="/articles/:projectId" element={<ArticleDetailPage />} />
+          <Route path="/articles/:projectId/literature" element={<LiteratureMindMapDemoPage />} />
+          <Route path="/literature-map" element={<LiteratureMindMapDemoPage />} />
           <Route path="/coordinator" element={<CoordinatorDashboardPage />} />
           <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route path="/workspace/:projectId" element={<EditorPage />} />
