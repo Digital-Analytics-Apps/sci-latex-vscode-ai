@@ -2,7 +2,7 @@
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
 **Última Atualização:** 13 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **SCIA Admin Center (ADR-014) e Observabilidade On-Premise Licença Zero (ADR-013) Implementados e Verificados.** BFF Fastify com 5 endpoints analíticos e canal SSE em tempo real, painel frontend exclusivo para `Role.ADMIN` (`/admin`) estruturado em 5 áreas operacionais distintas, suite de testes unitários aprovada (6/6) e build de backend e frontend com zero erros.
+**Status Geral do Projeto:** 🟢 **SCIA Literature Intelligence, Paper Analysis e ADR-016 Formalizados e Integrados.** Skill científica importada, subagente `methodology-reviewer` com saída estruturada Pydantic implementado no `ai-service`, endpoints FastAPI operacionais com 10/10 testes passando, homologação jurídica do React Flow (`@xyflow/react`) sob licença MIT livre e documentação arquitetural consolidada (ADR-016 e `literature-intelligence-spec.md`).
 
 ---
 
@@ -13,6 +13,19 @@
 
 ### 🔍 Estado Atual da Aplicação
   * **Branch Ativa:** `dev`
+  * **SCIA Literature Intelligence & Ficha Científica (ADR-016 Integrada):**
+    * **Decisão Arquitetural e Especificações Formais:**
+      * Registrada a [`ADR-016`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md) cobrindo os 4 pilares: Skill de auditoria em 6 etapas, subagente em quarentena de contexto (`methodology-reviewer`), mapa mental com `@xyflow/react` sob licença MIT livre e cache relacional com deduplicação por DOI.
+      * Criada a especificação técnica em [`docs/planning/specs/literature-intelligence-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/literature-intelligence-spec.md).
+      * Atualizado o [`docs/planning/ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) com a Fase 10.
+    * **Skill Acadêmica Especializada (`scientific-article-analysis`):**
+      * Importada para `ai-service/skills/scientific-article-analysis/SKILL.md`, `ai/skills/` e `~/.gemini/config/skills/`.
+    * **Subagente e Schemas Pydantic no `ai-service`:**
+      * `app/schemas/paper_analysis.py`: Contrato tipado da Ficha Científica (`ScientificPaperAnalysis`) com pontos fortes, limitações declaradas, ameaças de validade interna/externa e aderência ao artigo do autor.
+      * `app/agents/sub_agents/methodology_reviewer.py`: Subagente com saída estruturada via LLM (`with_structured_output`) e fallback resiliente.
+      * `app/api/v1/endpoints/paper_analysis.py`: Rotas `POST /internal/v1/papers/analyze` e `/analyze-batch` registradas no roteador oficial.
+      * `tests/test_paper_analysis.py`: Suíte de testes automatizados com 10/10 testes aprovados (`uv run pytest`).
+      * Teste prático gerado em `ai-service/reports/exemplo_analise_artigo.md` comprovando extração empírica de métricas, pontos fortes e limitações.
   * **Implementação Completa do SCIA Admin Center (ADR-014):**
     * **Backend BFF Fastify (`backend/src/modules/admin/`):**
       * Zod Schemas tipados (`admin.schemas.ts`) para os 5 domínios operacionais e streaming SSE.

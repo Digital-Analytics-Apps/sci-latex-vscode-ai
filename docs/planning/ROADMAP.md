@@ -138,4 +138,23 @@
 
 ---
 
+## 🟢 Fase 10: SCIA Literature Intelligence — Ficha Científica e Mapa Mental com React Flow (ADR-016)
+
+- [x] **10.1 Decisão Arquitetural e Especificação Técnica (ADR-016 & Spec)**
+  - Formalização da arquitetura em [`docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md) e especificação em [`docs/planning/specs/literature-intelligence-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/literature-intelligence-spec.md).
+  - Homologação corporativa da biblioteca `@xyflow/react` sob licença MIT livre e sem royalties para uso comercial.
+- [x] **10.2 Skill Acadêmica e Subagente `methodology-reviewer` no `ai-service`**
+  - Importação da skill `scientific-article-analysis` (6 etapas de auditoria metodológica).
+  - Implementação do subagente `methodology-reviewer` com saída estruturada Pydantic (`ScientificPaperAnalysis`), auditando pontos fortes, limitações declaradas e ameaças à validade interna/externa.
+  - Endpoints FastAPI no `ai-service` (`/internal/v1/papers/analyze` e `/analyze-batch`).
+  - Cobertura com testes automatizados aprovados (`tests/test_paper_analysis.py`).
+- [ ] **10.3 Backend BFF Fastify & Persistência em Cache no PostgreSQL**
+  - Mapeamento de entidade de literatura acadêmica (`ProjectLiteraturePaper`) com deduplicação por DOI e armazenamento de PDFs no MinIO.
+- [ ] **10.4 Frontend React — Mapa Mental Interativo com React Flow (`@xyflow/react`)**
+  - Desenvolvimento do canvas de mapa mental com `@xyflow/react`, Custom Nodes para artigos (chips de pontos fortes/fracos), Custom Edges com tipos semânticos (`convergent`, `divergent`, `complementary`) e auto-layout Dagre.
+- [ ] **10.5 Drawer da Ficha Científica & Alinhamento com o Manuscrito LaTeX**
+  - Drawer detalhado do artigo selecionado, botão de 1 clique para inclusão no arquivo `.bib` e semáforo de cobertura das seções TeX do autor.
+
+---
+
 *Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*
