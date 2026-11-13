@@ -121,15 +121,15 @@
 
 ---
 
-## 🟡 Fase 9: SCIA Admin Center — Observabilidade, Operação e Governança Científica (`Role.ADMIN` - ADR-014)
+## 🟢 Fase 9: SCIA Admin Center — Observabilidade, Operação e Governança Científica (`Role.ADMIN` - ADR-014)
 
 - [x] **9.1 Decisão Arquitetural e Especificação Técnica (ADR-014 & Spec)**
   - Formalização do **SCIA Admin Center** com as 5 áreas especializadas (Visão Geral, Fluxo Científico das 6 Etapas, Infraestrutura, Colaboração em Tempo Real e Atividade/Auditoria) em `docs/planning/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md` e `docs/planning/specs/system-admin-health-dashboard-spec.md`.
-- [ ] **9.2 Backend BFF & Rotas REST + Streaming SSE (`/api/v1/admin/dashboard/*`)**
+- [x] **9.2 Backend BFF & Rotas REST + Streaming SSE (`/api/v1/admin/dashboard/*`)**
   - Implementação do módulo `backend/src/modules/admin/` com agregação do PostgreSQL, leases do Redis, métricas Prometheus/Opik e canal Server-Sent Events (`/events`).
-- [ ] **9.3 Frontend React do SCIA Admin Center (`/admin`)**
+- [x] **9.3 Frontend React do SCIA Admin Center (`/admin`)**
   - Desenvolvimento de `src/features/admin/` com layout mestre, 5 abas integradas, gráficos de atividade horária, funil das 6 etapas e links contextuais para o Grafana.
-- [ ] **9.4 Blindagem de Rota e RBAC Estrito**
+- [x] **9.4 Blindagem de Rota e RBAC Estrito**
   - Bloqueio de acesso a qualquer perfil que não seja `Role.ADMIN` via `ProtectedRoute` no React e validação de token JWT no backend Fastify.
 
 ---

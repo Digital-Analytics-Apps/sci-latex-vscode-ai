@@ -52,6 +52,18 @@ function broadcastToRoom(documentId: string, payload: unknown, excludeWs?: WebSo
   }
 }
 
+export function getLiveWebSocketStats() {
+  let connectedSockets = 0;
+  for (const clientSet of documentRooms.values()) {
+    connectedSockets += clientSet.size;
+  }
+  return {
+    activeRoomsCount: documentRooms.size,
+    connectedSocketsCount: connectedSockets,
+    podId: POD_ID,
+  };
+}
+
 export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
   const service = defaultDocumentsService;
 

@@ -913,6 +913,25 @@ export class DocumentsService {
     }
     return evictedCount;
   }
+
+  /**
+   * Retorna métricas do estado de memória quente e checkpoints pendentes
+   */
+  getMemoryStats() {
+    let pendingCheckpoints = 0;
+    let totalPendingOps = 0;
+    for (const state of this.activeDocs.values()) {
+      if (state.pendingOps > 0) {
+        pendingCheckpoints++;
+        totalPendingOps += state.pendingOps;
+      }
+    }
+    return {
+      activeDocumentsCount: this.activeDocs.size,
+      pendingCheckpointsCount: pendingCheckpoints,
+      totalPendingOps,
+    };
+  }
 }
 
 export const defaultDocumentsService = new DocumentsService();

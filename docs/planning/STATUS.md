@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 10 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Arquitetura de Observabilidade On-Premise Licença Zero Consolidada (ADR-013).** Estruturado o plano técnico de telemetria completa (Prometheus, Grafana Loki, Grafana Tempo, OpenTelemetry, Opik para LLMOps e GlitchTip para rastreio de exceções), garantindo monitoramento e controle total de ponta a ponta sem custos recorrentes de nuvem e com soberania de dados.
+**Última Atualização:** 13 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **SCIA Admin Center (ADR-014) e Observabilidade On-Premise Licença Zero (ADR-013) Implementados e Verificados.** BFF Fastify com 5 endpoints analíticos e canal SSE em tempo real, painel frontend exclusivo para `Role.ADMIN` (`/admin`) estruturado em 5 áreas operacionais distintas, suite de testes unitários aprovada (6/6) e build de backend e frontend com zero erros.
 
 ---
 
@@ -12,7 +12,25 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Branch Ativa:** `feature/sciai-integration-layer`
+  * **Branch Ativa:** `dev`
+  * **Implementação Completa do SCIA Admin Center (ADR-014):**
+    * **Backend BFF Fastify (`backend/src/modules/admin/`):**
+      * Zod Schemas tipados (`admin.schemas.ts`) para os 5 domínios operacionais e streaming SSE.
+      * Serviço agregador analítico (`admin.service.ts`) coletando métricas ativas de `activeDocs`, salas WebSocket, distribuição de artigos nas 6 etapas do funil oficial, gargalos (atrasos, estagnações, travas NIT), saúde dos 5 serviços com links profundos para Grafana e Opik, autoridade Single-Writer dos pods donos e logs de auditoria imutáveis.
+      * Controller Fastify (`admin.controller.ts`) com handlers REST e streaming Server-Sent Events (`GET /dashboard/events`) com heartbeat a cada 5 segundos.
+      * Rotas registradas (`admin.routes.ts` e `app.ts`) em `/api/v1/admin/dashboard/*` protegidas rigorosamente por JWT e RBAC `requireAdmin` (`Role.ADMIN`).
+      * Testes unitários com Vitest (`admin.service.test.ts`): 6/6 testes passando com sucesso.
+    * **Frontend React 19 (`frontend/src/features/admin/`):**
+      * Cliente HTTP tipado (`adminCenterApi.ts`) e hooks com TanStack Query v5 (`useAdminCenterQueries.ts`) com suporte a auto-refresh parametrizado.
+      * Master Page (`AdminCenterPage.tsx`) com navegação fluida em 5 abas, botão de atualização manual forçada e alternador de auto-refresh.
+      * 5 Abas independentes em conformidade com o Design System:
+        * `OverviewTab.tsx`: KPIs executivos (usuários ativos, artigos em produção, salas WebSocket, erros/hora) e taxa horária de requisições e OT.
+        * `WorkflowTab.tsx`: Gargalos institucionais (atrasos, estagnações, travas NIT) e funil visual das 6 etapas com tempo médio.
+        * `InfrastructureTab.tsx`: Semáforos operacionais de Backend Fastify, SciAI Engine, Compilador LaTeX, PostgreSQL e Redis, com deep-links para Grafana e Opik.
+        * `CollaborationTab.tsx`: Métricas de Transformação Operacional em memória, latência RAM e tabela de pods com contagem de documentos e status de checkpoints ACID.
+        * `ActivityTab.tsx`: Linha do tempo de auditoria com filtros por categoria (`EDITORIAL`, `COLLABORATION`, `COMPILER`, `SECURITY`).
+      * Layout e Roteamento Exclusivo (`AdminLayout.tsx`, `RoleLayoutResolver.tsx`, `PersonaRootResolver.tsx` e `routes/index.tsx`): Isolamento total da persona `ADMIN`, sem misturar com a visão de autores, coordenadores ou gerentes.
+      * Compilação Frontend e Backend com 0 erros (`tsc -b && vite build` e `tsc` no backend aprovados).
   * **Refatoração e Blindagem do Editor Colaborativo (ADR-007 Implementada e Aprovada):**
     * **Limpeza do Hot Path no Redis:** Removido o `rpush` de deltas de texto no Redis em `documents.service.ts`. A digitação opera em memória RAM do Pod dono com latência < 2ms.
     * **Debounce Híbrido Multi-Critério:** Implementado timer de inatividade (3s), teto máximo contínuo (15s) e corte por volume (50 ops) para garantir checkpoints regulares no PostgreSQL sem risco de perda sob digitação ininterrupta.
@@ -97,7 +115,7 @@
 | **Fase IV** | Workflow em 6 Etapas Fixas e Modelo de Revisão em 2 Níveis | 🟢 Concluído | [`ADR-008`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) |
 | **Fase V** | Persistência Relacional de Apontamentos (`ReviewComment`) | 🟢 Concluído | [`ADR-010`](adrs/adr-010-review-comment-persistence-and-db-alignment.md) |
 | **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
-| **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | ⚪ **Prioridade Próxima** | [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) |
+| **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | 🟢 **Concluído** | [`ADR-014`](adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md) |
 | **Fase VIII**| Arquitetura de Evidências de Tarefas & Upload Direto MinIO | 🟢 Concluído | [`ADR-011`](adrs/adr-011-task-evidences-storage-architecture.md) |
 ---
 

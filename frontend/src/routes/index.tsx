@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 import { NotFoundPage } from "../components/common/NotFoundPage";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import { Role } from "../constants/roles";
+import { AdminCenterPage } from "../features/admin/AdminCenterPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ArticleDetailPage } from "../features/author/ArticleDetailPage";
 import { AuthorArticlesPage } from "../features/author/AuthorArticlesPage";
@@ -49,6 +51,13 @@ export const AppRoutes = () => {
             path="/workspace/:projectId/task/:taskId"
             element={<EditorPage />}
           />
+        </Route>
+
+        {/* Rota Exclusiva de Administração da Aplicação e Observabilidade */}
+        <Route element={<ProtectedRoute allowedRoles={[Role.ADMIN]} />}>
+          <Route element={<RoleLayoutResolver />}>
+            <Route path="/admin" element={<AdminCenterPage />} />
+          </Route>
         </Route>
       </Route>
 

@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { Outlet } from "react-router-dom";
 import { Role } from "../constants/roles";
 import type { RootState } from "../store";
+import { AdminLayout } from "./AdminLayout";
 import { AuthorLayout } from "./AuthorLayout";
 import { CoordinatorLayout } from "./CoordinatorLayout";
 import { ManagerLayout } from "./ManagerLayout";
@@ -19,8 +20,9 @@ export const RoleLayoutResolver: React.FC<{ children?: React.ReactNode }> = ({
     case Role.COORDINATOR:
       return <CoordinatorLayout>{content}</CoordinatorLayout>;
     case Role.MANAGER:
-    case Role.ADMIN:
       return <ManagerLayout>{content}</ManagerLayout>;
+    case Role.ADMIN:
+      return <AdminLayout>{content}</AdminLayout>;
     default:
       return <AuthorLayout>{content}</AuthorLayout>;
   }

@@ -1,5 +1,6 @@
 import { useSelector } from "react-redux";
 import { Role } from "../constants/roles";
+import { AdminCenterPage } from "../features/admin/AdminCenterPage";
 import { AuthorArticlesPage } from "../features/author/AuthorArticlesPage";
 import { CoordinatorDashboardPage } from "../features/coordinator/CoordinatorDashboardPage";
 import { ManagerDashboardPage } from "../features/manager/ManagerDashboardPage";
@@ -14,8 +15,9 @@ export const PersonaRootResolver = () => {
     case Role.COORDINATOR:
       return <CoordinatorDashboardPage />;
     case Role.MANAGER:
-    case Role.ADMIN:
       return <ManagerDashboardPage />;
+    case Role.ADMIN:
+      return <AdminCenterPage />;
     default:
       return <AuthorArticlesPage />;
   }
