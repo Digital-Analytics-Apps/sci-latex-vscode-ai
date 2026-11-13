@@ -96,12 +96,16 @@
 
 ---
 
-## ⚪ Fase 7: Painel de Governança Acadêmica para Gestores (`Role.MANAGER`)
+## 🟡 Fase 7: Painel Unificado de Gestão da Produção Científica (`Role.MANAGER` / `Role.COORDINATOR`)
 
-- [ ] **7.1 Endpoint de Governança (`/api/v1/manager/events`)**
-  - Métricas de progresso das 6 etapas, metas do ciclo acadêmico ativo e gargalos no NIT (Etapa 5).
-- [ ] **7.2 Dashboard Analítico de Desempenho de Metas por Ciclo (`/manager`)**
-  - Painéis consolidados de tempo médio de revisão por etapa e taxas de aceitação nos congressos alvo vs. backup.
+- [x] **7.1 Diretrizes e Modelo de Governança por Escopo**
+  - Formalizado em [`docs/DIRETRIZES_GESTAO_PRODUCAO_CIENTIFICA_SCIA.md`](../DIRETRIZES_GESTAO_PRODUCAO_CIENTIFICA_SCIA.md) o modelo de visualização única compartilhada para Gerente e Coordenador, com filtro estrito de artigos/subordinados sob responsabilidade, Kanban como visualização pura (Read-Only) e isolamento do Admin técnico.
+- [ ] **7.2 Portfólio Científico com Semáforos de Risco**
+  - Tabela e cards de artigos com indicadores de No Prazo, Em Atenção, Atrasado (>15 dias de estagnação) e Bloqueado no NIT.
+- [ ] **7.3 Visualizador Kanban Read-Only de Tarefas da Etapa 3**
+  - Painel de colunas para acompanhamento do progresso das tarefas de escrita sem permitir movimentações arbitrárias de etapas.
+- [ ] **7.4 Painel de Carga e Capacidade de Equipe (Workload)**
+  - Distribuição de artigos por orientador e volume de revisões pendentes por revisor técnico.
 
 ---
 
