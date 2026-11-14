@@ -1,10 +1,10 @@
 # 📊 Stack de Observabilidade On-Premise Licença Zero (ADR-013)
 
-Esta pasta contém toda a infraestrutura necessária para monitoramento, métricas, logs e traces distribuídos da **Plataforma SCIA**, em estrita conformidade com a **ADR-013** e a especificação técnica [`observability-spec.md`](../../docs/planning/specs/observability-spec.md).
+Esta pasta contém toda a infraestrutura necessária para monitoramento, métricas, logs, traces distribuídos, LLMOps e monitoramento de erros da **Plataforma SCIA**, em estrita conformidade com a **ADR-013** e a especificação técnica [`observability-spec.md`](../../docs/planning/specs/observability-spec.md).
 
 ---
 
-## 🏗️ Topologia da Stack
+## 🏗️ Topologia da Stack Completa
 
 ```
                              ┌───────────────────┐
@@ -24,6 +24,11 @@ Esta pasta contém toda a infraestrutura necessária para monitoramento, métric
    │ • FastAPI (8000)│        │ (Docker Stdout) │        │ (Tail-Sampling) │
    │ • Compiler(4000)│        │ (Structured Met)│        │ (Port 4317/4318)│
    └─────────────────┘        └─────────────────┘        └─────────────────┘
+            │                          │                          │
+   ┌────────┴────────┐        ┌────────┴────────┐        ┌────────┴────────┐
+   │  GlitchTip(8005)│        │ Opik UI (5174)  │        │ Opik API (8081) │
+   │ (Exception Sentry)│      │(LLMOps Dashboard)│       │ (MySQL + ClickH)│
+   └─────────────────┘        └─────────────────┘        └─────────────────┘
 ```
 
 ---
@@ -31,13 +36,17 @@ Esta pasta contém toda a infraestrutura necessária para monitoramento, métric
 ## 🚀 Como Iniciar
 
 1. Certifique-se de que o Docker e Docker Compose estão ativos na sua máquina.
-2. Na raiz do diretório `infra/observability`, execute:
+2. (Opcional) Copie o arquivo de exemplo de variáveis para customizar credenciais locais:
    ```bash
-   docker compose up -d
+   cp infra/observability/.env.example infra/observability/.env
    ```
-3. Verifique o status dos contêineres:
+3. Na raiz do repositório ou no diretório `infra/observability`, execute:
    ```bash
-   docker compose ps
+   docker compose -f infra/observability/docker-compose.yml up -d
+   ```
+4. Verifique o status dos 11 contêineres:
+   ```bash
+   docker compose -f infra/observability/docker-compose.yml ps
    ```
 
 ---
@@ -46,12 +55,15 @@ Esta pasta contém toda a infraestrutura necessária para monitoramento, métric
 
 | Serviço | Porta | Descrição | Credenciais / Notas |
 | :--- | :---: | :--- | :--- |
-| **Grafana** | `3001` | Painel visual unificado (Métricas + Logs + Traces) | `admin` / `admin_scia_local` |
+| **Grafana** | `3001` | Painel visual unificado (Métricas + Logs + Traces) | `admin` / `${GRAFANA_ADMIN_PASSWORD:-admin_scia_local}` |
 | **Prometheus** | `9090` | Banco de séries temporais TSDB | Scraping ativo a cada 10s-15s |
 | **Grafana Loki** | `3100` | Ingestão e consulta de logs com Structured Metadata | Não indexa strings gigantes |
 | **Grafana Alloy** | `12345` | Agente unificado coletando stdout dos contêineres | Dashboard interno de pipelines |
 | **OTel Collector** | `4317` (gRPC)<br>`4318` (HTTP)<br>`8889` (Prometheus) | Gateway OpenTelemetry com processador de *tail-sampling* | Retenção 100% de erros e rotas críticas |
-| **Grafana Tempo** | `3200` | Rastreamento distribuído de requisições W3C | Integrado com Loki para Data Links |
+| **Grafana Tempo** | `3200` | Rastreamento distribuído de requisições W3C | Integrado com Loki e Grafana |
+| **Opik Frontend (UI)** | `5174` | Interface visual de LLMOps (prompts, tokens, grafos de agentes) | UI acessível via navegador em `http://localhost:5174` |
+| **Opik Backend (API)** | `8081` | Endpoint de ingestão de telemetria de IA do Comet-ML | API REST e JDBC com MySQL + ClickHouse |
+| **GlitchTip** | `8005` | Monitoramento e gestão de exceções (compatível com Sentry SDK) | Single-process moderno web + task worker integrado |
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
 **Última Atualização:** 14 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Observabilidade On-Premise Integral (ADR-013) 100% Implementada.** Infraestrutura de telemetria completa (Prometheus, Loki, Tempo, Alloy, OTel Collector com tail-sampling, Opik LLMOps, GlitchTip e Grafana com Dashboards JSON pré-moldados), propagação W3C Trace Context (`traceparent`), rate-limiting distribuído do arXiv via Redis, endpoints `/metrics` operacionais nos 3 microsserviços, 0 dados sensíveis hardcoded (100% via env/secrets), 84/84 testes automatizados aprovados no monorepo (72 no backend, 12 no ai-service) e build de produção com 0 erros.
+**Status Geral do Projeto:** 🟢 **Observabilidade On-Premise Integral (ADR-013) 100% Implementada e Validada.** Docker Compose modernizado com as versões mais recentes (`:latest`), chave obsoleta `version` removida, Opik LLMOps oficial (ghcr.io/comet-ml) com MySQL e ClickHouse em execução, GlitchTip single-process moderno com fila Redis, Grafana (13.3.1), Prometheus, Loki, Tempo, Alloy e OTel Collector com tail-sampling rodando com 100% de sucesso e HTTP 200 OK nos healthchecks. Zero dados sensíveis em arquivos (100% via env/secrets), 84/84 testes automatizados aprovados no monorepo e build de produção com 0 erros.
 
 ---
 

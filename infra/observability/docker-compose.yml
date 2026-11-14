@@ -1,193 +1,277 @@
-version: '3.8'
+# ==============================================================================
+# SCI-LATEX - STACK DE OBSERVABILIDADE & MONITORAMENTO (ADR-013)
+# ==============================================================================
+# Este Docker Compose orquestra localmente a stack completa de observabilidade on-premise
+# para desenvolvimento e testes antes da subida no cluster Kubernetes via ArgoCD/Helm.
+#
+# Serviços incluídos:
+# 1. Grafana: Interface unificada de visualização e dashboards consolidados.
+# 2. Prometheus: Banco de dados de séries temporais para métricas de CPU, RAM, HTTP e TeX.
+# 3. Loki: Sistema distribuído de agregação e consulta de logs em alta performance.
+# 4. Grafana Alloy: Agente unificado e ultra-leve de coleta de logs do Docker.
+# 5. Tempo: Backend escalável de rastreamento distribuído (distributed tracing).
+# 6. OpenTelemetry Collector: Receptor e pipeline de traces OTLP com tail-sampling.
+# 7. Opik LLMOps: Rastreamento detalhado de prompts, tokens e custos dos agentes de IA.
+# 8. GlitchTip: Gerenciador moderno de erros e exceções não tratadas (single-process com worker integrado).
+#
+# REGRAS DE SEGURANÇA E CONFORMIDADE:
+# - Versões: Sempre utilizando as imagens mais recentes (:latest) oficiais.
+# - Segredos: Nenhum dado sensível em texto plano; sempre usar variáveis ${VAR:-fallback_dev}.
+# ==============================================================================
 
 services:
   # ============================================================================
-  # 1. VISUALIZAÇÃO & MÉTRICAS PRINCIPAIS
+  # 1. VISUALIZAÇÃO & DASHBOARDS: GRAFANA
+  # Centraliza métricas do Prometheus, logs do Loki e traces do Tempo em um só lugar.
   # ============================================================================
-  # Painel Visual Centralizador (Grafana)
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:latest
     container_name: scia_grafana
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3001:3000" # Porta externa 3001 mapeada para a porta interna 3000 da UI Grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin_scia_local}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin} # Usuário administrador configurável via env
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin_scia_local} # Senha admin via env (nunca hardcoded)
+      - GF_USERS_ALLOW_SIGN_UP=false # Desabilita registro público de novos usuários por segurança
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana # Persistência de dados locais do Grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro # Provisionamento declarativo de datasources e dashboards
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway" # Permite ao container comunicar com a máquina host do desenvolvedor
     networks:
       - scia-network
 
-  # Séries Temporais de Métricas (Prometheus)
+  # ============================================================================
+  # 2. MÉTRICAS & SÉRIES TEMPORAIS: PROMETHEUS
+  # Coleta métricas de microsserviços (/metrics) a cada intervalo configurado.
+  # ============================================================================
   prometheus:
-    image: prom/prometheus:v2.54.0
+    image: prom/prometheus:latest
     container_name: scia_prometheus
     restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "9090:9090" # Porta da interface web e API do Prometheus
     command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
-      - --web.enable-lifecycle
+      - --config.file=/etc/prometheus/prometheus.yml # Arquivo principal de configuração de scraping
+      - --storage.tsdb.path=/prometheus # Diretório interno onde o Prometheus persiste séries temporais
+      - --storage.tsdb.retention.time=15d # Retenção de métricas locais por 15 dias
+      - --web.enable-lifecycle # Permite recarregar configurações dinamicamente via HTTP POST /-/reload
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro # Montagem somente-leitura do arquivo de scraping
+      - prometheus_data:/prometheus # Volume persistente para as métricas coletadas
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway" # Permite coletar métricas de serviços rodando no host
     networks:
       - scia-network
 
-  # Ingestão de Logs (Loki)
+  # ============================================================================
+  # 3. INGESTÃO & INDEXAÇÃO DE LOGS: GRAFANA LOKI
+  # Indexa apenas os metadados dos logs, mantendo consumo de memória extremamente baixo.
+  # ============================================================================
   loki:
-    image: grafana/loki:3.1.1
+    image: grafana/loki:latest
     container_name: scia_loki
     restart: unless-stopped
     ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+      - "3100:3100" # Porta de ingestão HTTP e API de consulta LogQL
+    command: -config.file=/etc/loki/local-config.yaml # Configuração de armazenamento e limites do Loki
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
-      - loki_data:/loki
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro # Montagem da configuração local declarativa
+      - loki_data:/loki # Volume persistente para os chunks de logs indexados
     networks:
       - scia-network
 
-  # Agente Unificado de Coleta de Logs (Grafana Alloy)
+  # ============================================================================
+  # 4. COLETOR UNIFICADO DE TELEMETRIA: GRAFANA ALLOY
+  # Agente que lê os logs dos contêineres Docker e encaminha diretamente ao Loki.
+  # ============================================================================
   alloy:
-    image: grafana/alloy:v1.3.0
+    image: grafana/alloy:latest
     container_name: scia_alloy
     restart: unless-stopped
-    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy # Executa o pipeline Alloy
     volumes:
-      - ./config.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/log:/var/log:ro
+      - ./config.alloy:/etc/alloy/config.alloy:ro # Pipeline de descoberta e transformação de logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Socket do Docker para descobrir contêineres e logs em tempo real
+      - /var/log:/var/log:ro # Acesso a logs de sistema da máquina host
     ports:
-      - "12345:12345"
+      - "12345:12345" # Porta de depuração e status interno do Grafana Alloy
     depends_on:
-      - loki
+      - loki # Inicia após o Loki estar pronto para receber dados
     networks:
       - scia-network
 
-  # OpenTelemetry Collector com Tail-Sampling
+  # ============================================================================
+  # 5. COLETOR OPENTELEMETRY: OTEL-COLLECTOR-CONTRIB
+  # Processador OTLP central: recebe spans dos microsserviços e aplica tail-sampling.
+  # ============================================================================
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.108.0
+    image: otel/opentelemetry-collector-contrib:latest
     container_name: scia_otel_collector
     restart: unless-stopped
-    command: [ "--config=/etc/otelcol-config.yaml" ]
+    command: [ "--config=/etc/otelcol-config.yaml" ] # Arquivo com os pipelines de receivers, processors e exporters
     volumes:
-      - ./otelcol-config.yaml:/etc/otelcol-config.yaml:ro
+      - ./otelcol-config.yaml:/etc/otelcol-config.yaml:ro # Configuração OTLP com amostragem inteligente
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
-      - "8889:8889" # Prometheus metrics exporter
+      - "4317:4317" # Porta OTLP gRPC (utilizada pelos SDKs para envio de traces em alta velocidade)
+      - "4318:4318" # Porta OTLP HTTP (utilizada para envio de telemetria via JSON/Protobuf HTTP)
+      - "8889:8889" # Endpoint de métricas de telemetria interna do próprio coletor
     depends_on:
-      - tempo
+      - tempo # Inicia após o Tempo estar ativo para armazenar os traces
     networks:
       - scia-network
 
-  # Tracing Distribuído (Tempo)
+  # ============================================================================
+  # 6. DISTRIBUTED TRACING: GRAFANA TEMPO
+  # Armazenamento e correlação de spans de ponta a ponta (Frontend -> Backend -> AI).
+  # ============================================================================
   tempo:
-    image: grafana/tempo:2.5.0
+    image: grafana/tempo:latest
     container_name: scia_tempo
     restart: unless-stopped
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command: [ "-config.file=/etc/tempo.yaml" ] # Configuração dos protocolos de recebimento e bloco de armazenamento
     ports:
-      - "3200:3200"
+      - "3200:3200" # Porta HTTP de status e consultas de traces pelo Grafana
     volumes:
-      - ./tempo.yaml:/etc/tempo.yaml:ro
-      - tempo_data:/var/tempo
+      - ./tempo.yaml:/etc/tempo.yaml:ro # Configuração declarativa do Tempo
+      - tempo_data:/var/tempo # Volume de persistência local dos blocos de traces
     networks:
       - scia-network
 
   # ============================================================================
-  # 2. LLMOPS: STACK NATIVA DO OPIK (Comet - Apache 2.0)
-  # Rastreia tokens, custos, latência TTFT e nós LangGraph do ai-service
+  # 7. LLMOPS: BANCO DE DADOS RELACIONAL DO OPIK (MYSQL)
+  # Armazena projetos, metadados, usuários e tags de rastreamento de LLM.
   # ============================================================================
   opik-mysql:
-    image: mysql:8.0
+    image: mysql:latest
     container_name: scia_opik_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${OPIK_MYSQL_ROOT_PASSWORD:-opikroot}
-      MYSQL_DATABASE: ${OPIK_MYSQL_DATABASE:-opik}
-      MYSQL_USER: ${OPIK_MYSQL_USER:-opik}
-      MYSQL_PASSWORD: ${OPIK_MYSQL_PASSWORD:-opikpassword}
+      MYSQL_ROOT_PASSWORD: ${OPIK_MYSQL_ROOT_PASSWORD:-opikroot} # Senha root configurável via env
+      MYSQL_DATABASE: ${OPIK_MYSQL_DATABASE:-opik} # Nome do banco do Opik
+      MYSQL_USER: ${OPIK_MYSQL_USER:-opik} # Usuário da aplicação
+      MYSQL_PASSWORD: ${OPIK_MYSQL_PASSWORD:-opikpassword} # Senha da aplicação via env
     volumes:
-      - opik_mysql_data:/var/lib/mysql
+      - opik_mysql_data:/var/lib/mysql # Persistência dos dados relacionais do Opik
     networks:
-      - scia-network
+      scia-network:
+        aliases:
+          - mysql
 
+  # ============================================================================
+  # 8. LLMOPS: BANCO DE DADOS COLUNAR DO OPIK (CLICKHOUSE)
+  # Armazena spans de alta cardinalidade, tokens, custos e latências das LLMs.
+  # ============================================================================
   opik-clickhouse:
-    image: clickhouse/clickhouse-server:24.3-alpine
+    image: clickhouse/clickhouse-server:latest
     container_name: scia_opik_clickhouse
     restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${OPIK_CLICKHOUSE_DATABASE:-opik}
+      CLICKHOUSE_USER: ${OPIK_CLICKHOUSE_USER:-opik}
+      CLICKHOUSE_PASSWORD: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
-      - opik_ch_data:/var/lib/clickhouse
+      - opik_ch_data:/var/lib/clickhouse # Volume colunar persistente de alta velocidade
     networks:
-      - scia-network
+      scia-network:
+        aliases:
+          - clickhouse
 
-  opik:
-    image: cometml/opik:latest
-    container_name: scia_opik
+  # ============================================================================
+  # 9. LLMOPS: BACKEND DA API OPIK (COMET-ML)
+  # API de ingestão que recebe os traces do ai-service e persiste no ClickHouse/MySQL.
+  # ============================================================================
+  opik-backend:
+    image: ghcr.io/comet-ml/opik/opik-backend:latest
+    container_name: scia_opik_backend
     restart: unless-stopped
+    command: [ "bash", "-c", "./run_db_migrations.sh && ./entrypoint.sh" ]
     depends_on:
       - opik-mysql
       - opik-clickhouse
     ports:
-      - "5174:5173" # Interface Web do Opik
-      - "8081:8080" # API Backend de Ingestão de Traces de IA
+      - "8081:8080" # Porta 8081 do host direcionada para a API interna 8080
     environment:
-      MYSQL_URL: jdbc:mysql://opik-mysql:3306/${OPIK_MYSQL_DATABASE:-opik}?user=${OPIK_MYSQL_USER:-opik}&password=${OPIK_MYSQL_PASSWORD:-opikpassword}
-      CLICKHOUSE_URL: jdbc:clickhouse://opik-clickhouse:8123/default
+      STATE_DB_DATABASE_NAME: ${OPIK_MYSQL_DATABASE:-opik} # Nome do banco exigido pelo liquibase
+      STATE_DB_URL: opik-mysql:3306/${OPIK_MYSQL_DATABASE:-opik}?createDatabaseIfNotExist=true&rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+      STATE_DB_USER: ${OPIK_MYSQL_USER:-opik}
+      STATE_DB_PASS: ${OPIK_MYSQL_PASSWORD:-opikpassword}
+      ANALYTICS_DB_MIGRATIONS_URL: jdbc:clickhouse://opik-clickhouse:8123/${OPIK_CLICKHOUSE_DATABASE:-opik}
+      ANALYTICS_DB_MIGRATIONS_USER: ${OPIK_CLICKHOUSE_USER:-opik}
+      ANALYTICS_DB_MIGRATIONS_PASS: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
+      ANALYTICS_DB_HOST: opik-clickhouse
+      ANALYTICS_DB_PORT: 8123
+      ANALYTICS_DB_DATABASE_NAME: ${OPIK_CLICKHOUSE_DATABASE:-opik}
+      ANALYTICS_DB_USERNAME: ${OPIK_CLICKHOUSE_USER:-opik}
+      ANALYTICS_DB_PASS: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
+    networks:
+      scia-network:
+        aliases:
+          - backend
+
+  # ============================================================================
+  # 10. LLMOPS: FRONTEND DA UI DO OPIK
+  # Interface web gráfica para inspeção de grafos LangGraph, prompts e métricas de LLM.
+  # ============================================================================
+  opik-frontend:
+    image: ghcr.io/comet-ml/opik/opik-frontend:latest
+    container_name: scia_opik_frontend
+    restart: unless-stopped
+    depends_on:
+      - opik-backend
+    ports:
+      - "5174:5173" # Interface Web do Opik acessível em http://localhost:5174
+    environment:
+      NGINX_PORT: 5173 # Porta interna do servidor Nginx
+    volumes:
+      - ./opik/nginx.conf:/etc/nginx/templates/default.conf.template:ro # Template processado via envsubst na inicialização
     networks:
       - scia-network
 
   # ============================================================================
-  # 3. GESTÃO DE EXCEÇÕES: GLITCHTIP (Compatível com Sentry SDK)
-  # Captura falhas não tratadas no React e nos microsserviços
+  # 11. GESTÃO DE ERROS: GLITCHTIP (COMPATÍVEL COM SENTRY)
+  # Servidor moderno de captura de exceções não tratadas (single-process web + worker).
   # ============================================================================
-  glitchtip-web:
+  glitchtip:
     image: glitchtip/glitchtip:latest
-    container_name: scia_glitchtip_web
+    container_name: scia_glitchtip
     restart: unless-stopped
     ports:
-      - "8005:8000"
+      - "8005:8000" # Interface e endpoint DSN do GlitchTip acessíveis na porta 8005
     environment:
       DATABASE_URL: ${GLITCHTIP_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/sci_latex_db?schema=glitchtip}
-      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-scia-glitchtip-secret-change-in-production}
-      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8005}
+      REDIS_URL: ${GLITCHTIP_REDIS_URL:-redis://host.docker.internal:6379/1} # Fila assíncrona Valkey/Redis
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-scia-glitchtip-secret-change-in-production} # Chave de sessão via env
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8005} # Domínio base para links e alertas
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway" # Permite conectar ao PostgreSQL do desenvolvedor
     networks:
       - scia-network
 
-  glitchtip-worker:
-    image: glitchtip/glitchtip:latest
-    container_name: scia_glitchtip_worker
-    restart: unless-stopped
-    command: ./bin/run-celery-with-beat.sh
-    environment:
-      DATABASE_URL: ${GLITCHTIP_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/sci_latex_db?schema=glitchtip}
-      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-scia-glitchtip-secret-change-in-production}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - scia-network
-
+# ==============================================================================
+# VOLUMES PERSISTENTES
+# Garante que logs, métricas, dashboards e traces não sejam perdidos no restart.
+# ==============================================================================
 volumes:
   grafana_data:
+    name: scia_grafana_data
   prometheus_data:
+    name: scia_prometheus_data
   loki_data:
+    name: scia_loki_data
   tempo_data:
+    name: scia_tempo_data
   opik_mysql_data:
+    name: scia_opik_mysql_data
   opik_ch_data:
+    name: scia_opik_ch_data
 
+# ==============================================================================
+# REDE INTERNA ISOLADA
+# Permite resolução de nomes por DNS entre os serviços de observabilidade.
+# ==============================================================================
 networks:
   scia-network:
     name: scia-network
