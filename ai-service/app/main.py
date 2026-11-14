@@ -1,6 +1,7 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.config import settings
 from app.api.v1.router import api_router
 
@@ -30,6 +31,14 @@ app.add_middleware(
 
 # Inclui rotas da API interna
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Instrumentação Prometheus para scraping de métricas (/metrics)
+Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    excluded_handlers=["/metrics", "/health"],
+    inprogress_name="scia_ai_requests_inprogress",
+).instrument(app).expose(app, endpoint="/metrics", tags=["metrics"])
 
 
 @app.get("/health", tags=["health"])

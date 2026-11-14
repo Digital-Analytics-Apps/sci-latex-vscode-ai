@@ -1,8 +1,8 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 13 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **SCIA Literature Intelligence, Paper Analysis e ADR-016 Formalizados e Integrados.** Skill científica importada, subagente `methodology-reviewer` com saída estruturada Pydantic implementado no `ai-service`, endpoints FastAPI operacionais com 10/10 testes passando, homologação jurídica do React Flow (`@xyflow/react`) sob licença MIT livre e documentação arquitetural consolidada (ADR-016 e `literature-intelligence-spec.md`).
+**Última Atualização:** 14 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **Stack de Observabilidade On-Premise (ADR-013) e Endpoints `/metrics` Operacionais.** Infraestrutura completa declarada em `infra/observability/` (Grafana, Prometheus, Loki, Tempo, Alloy, OTel Collector com tail-sampling), endpoints de telemetria `/metrics` ativos e testados nos 3 microsserviços (Backend Fastify com `@prometheus-io/client`, AI Service com `prometheus-fastapi-instrumentator` e Compilador TeX Live), monorepo 100% compilando com 0 erros e 81/81 testes automatizados aprovados (70 no backend, 11 no ai-service).
 
 ---
 
@@ -12,7 +12,32 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Branch Ativa:** `dev`
+  * **Branch Ativa:** `feature/observability-stack-adr-013`
+  * **Stack de Observabilidade On-Premise Operacionalizada (ADR-013 Integrada):**
+    * **Infraestrutura Declarativa de Observabilidade (`infra/observability/`):**
+      * `docker-compose.yml`: Orquestração completa de 6 serviços de observabilidade isolados na rede `scia-network`: Grafana (porta 3001), Prometheus (porta 9090), Loki (porta 3100), Grafana Alloy (porta 12345), OpenTelemetry Collector (portas 4317 gRPC, 4318 HTTP, 8889 metrics) e Grafana Tempo (porta 3200).
+      * `prometheus.yml`: Configuração de scraping periódico (10s-15s) nos 3 serviços principais (`scia-backend:3333/metrics`, `scia-ai-service:8000/metrics`, `scia-compiler:4000/metrics`) e no próprio coletor OTel.
+      * `otelcol-config.yaml`: Processador de *tail-sampling* configurado com retenção a 100% para erros HTTP $\ge 500$, spans com status de erro nativo, latência $> 2000$ms e microsserviços críticos (`ai-service` e `compiler`), com amostragem probabilística de 10% nas rotas de rotina.
+      * `config.alloy`: Agente moderno Grafana Alloy para descoberta de contêineres Docker e encaminhamento para o Loki com *Structured Metadata* (`trace_id`, `user_id`, `article_id`), evitando explosão de cardinalidade em streams.
+      * `loki-config.yaml`: Modo TSDB v13 com retenção de 15 dias e suporte nativo a metadados estruturados.
+      * `tempo.yaml`: Armazenamento local de traces com WAL e receptores OTLP gRPC/HTTP ativos.
+      * `grafana/provisioning/`: Data Sources provisionados automaticamente (Prometheus default, Loki, Tempo com Data Link bidirecional entre traces e logs).
+      * `README.md`: Guia de inicialização local com `docker compose up -d`, mapa de portas e descrição das métricas.
+    * **Instrumentação de Telemetria no Backend Fastify (`backend/`):**
+      * Migração para o pacote oficial e moderno `@prometheus-io/client` (eliminando o aviso de deprecation do antigo `prom-client`).
+      * `backend/src/infra/metrics/metrics.plugin.ts`: Plugin de métricas ativado com coleta padrão de runtime (`scia_backend_*`), métricas HTTP com normalização de rotas (`scia_backend_http_requests_total`, `scia_backend_http_request_duration_seconds`) e métricas de colaboração (`scia_backend_collab_active_rooms`, `scia_backend_collab_connected_sockets`, `scia_backend_collab_pending_checkpoints`).
+      * Endpoint `/metrics` exposto e coberto por testes unitários (`src/infra/metrics/__tests__/metrics.plugin.test.ts`).
+    * **Instrumentação de Telemetria no AI Service (`ai-service/`):**
+      * Instalação de `prometheus-fastapi-instrumentator>=8.1.0` via `uv`.
+      * Instrumentação global no `app/main.py` com métricas HTTP e indicador de concorrência (`scia_ai_requests_inprogress`), expondo `/metrics`.
+      * Suíte de testes criada em `tests/test_metrics.py` com 100% de aprovação.
+    * **Instrumentação de Telemetria no Compilador LaTeX (`compiler/`):**
+      * Instalação de `@prometheus-io/client` e instrumentação do Fastify worker em `compiler/src/server.ts`.
+      * Métricas expostas: `scia_compiler_jobs_total{status="success|compilation_error|internal_error"}`, `scia_compiler_duration_seconds`, `scia_compiler_active_jobs` e `/metrics`.
+    * **Qualidade, Compilação e Testes Automatizados:**
+      * Backend Vitest: 15/15 suítes passando (70/70 testes unitários).
+      * AI Service Pytest: 11/11 testes passando.
+      * Monorepo Build: 0 erros no TypeScript do backend (`tsc`), frontend (`tsc -b && vite build`) e compilador (`tsc --noEmit`).
   * **SCIA Literature Intelligence & Ficha Científica (ADR-016 Integrada):**
     * **Decisão Arquitetural e Especificações Formais:**
       * Registrada a [`ADR-016`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md) cobrindo os 4 pilares: Skill de auditoria em 6 etapas, subagente em quarentena de contexto (`methodology-reviewer`), mapa mental com `@xyflow/react` sob licença MIT livre e cache relacional com deduplicação por DOI.

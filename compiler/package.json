@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
+    "@prometheus-io/client": "^0.16.1",
     "fastify": "^5.2.1"
   },
   "devDependencies": {

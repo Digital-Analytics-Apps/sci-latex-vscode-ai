@@ -1,0 +1,81 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 10000
+    expected_new_traces_per_sec: 2000
+    policies:
+      # 1. 100% de retenção para qualquer span com status de erro nativo
+      - name: span-error-policy
+        type: status_code
+        status_code: { status_codes: [ ERROR ] }
+
+      # 2. 100% de retenção para erros de servidor HTTP (>= 500)
+      - name: http-server-error-policy
+        type: numeric_attribute
+        numeric_attribute: { key: "http.response.status_code", value_condition: { greater_than_or_equal: 500 } }
+
+      # 3. 100% de retenção para traces lentos (> 2000ms)
+      - name: latency-policy
+        type: latency
+        latency: { threshold_ms: 2000 }
+
+      # 4. 100% de retenção para o AI Service e Compiler
+      - name: critical-services-policy
+        type: string_attribute
+        string_attribute: { key: "service.name", values: [ "ai-service", "scia-ai-service", "compiler", "scia-compiler" ] }
+
+      # 5. Amostragem probabilística de 10% para as demais requisições de rotina
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic: { sampling_percentage: 10.0 }
+
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: scia
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [otlp/tempo, debug]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus, debug]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]
+
+  telemetry:
+    logs:
+      level: info

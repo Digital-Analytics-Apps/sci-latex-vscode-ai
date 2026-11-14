@@ -27,6 +27,7 @@ import { usersRoutes } from './modules/users/users.routes';
 import { templatesRoutes } from './modules/templates/templates.routes';
 import { aiRoutes } from './modules/ai/ai.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
+import { metricsPlugin } from './infra/metrics/metrics.plugin';
 export async function buildApp() {
   const app = fastify({
     logger: true,
@@ -116,6 +117,9 @@ export async function buildApp() {
       fileSize: 50 * 1024 * 1024,
     },
   });
+
+  // Registra plugin de telemetria e métricas Prometheus (/metrics)
+  await app.register(metricsPlugin);
 
   // Registra WebSocket de colaboração e rotas de documentos
   await app.register(documentsWebSocketPlugin);

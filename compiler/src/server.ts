@@ -5,6 +5,27 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
+import client, { Counter, Histogram, Gauge } from '@prometheus-io/client';
+
+// Habilita métricas de sistema do Node.js
+client.collectDefaultMetrics({ prefix: 'scia_compiler_' });
+
+const compilerJobsTotal = new Counter({
+  name: 'scia_compiler_jobs_total',
+  help: 'Total de compilações LaTeX executadas pelo worker',
+  labelNames: ['status'],
+});
+
+const compilerDurationSeconds = new Histogram({
+  name: 'scia_compiler_duration_seconds',
+  help: 'Duração da compilação LaTeX em segundos',
+  buckets: [0.5, 1, 2, 3, 5, 10, 15, 25, 30],
+});
+
+const compilerActiveJobs = new Gauge({
+  name: 'scia_compiler_active_jobs',
+  help: 'Número de compilações LaTeX sendo processadas concorrentemente',
+});
 
 const fastify = Fastify({
   logger: {
@@ -23,6 +44,11 @@ fastify.get('/health', async () => {
     service: 'latex-compiler-worker',
     timestamp: new Date().toISOString(),
   };
+});
+
+fastify.get('/metrics', async (request, reply) => {
+  reply.header('Content-Type', client.register.contentType);
+  return client.register.metrics();
 });
 
 interface CompileFileItem {
@@ -51,6 +77,8 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
 
   const jobId = crypto.randomUUID();
   const sandboxDir = path.join(os.tmpdir(), `tex-sandbox-${jobId}`);
+  const startTime = process.hrtime();
+  compilerActiveJobs.inc();
 
   try {
     // 1. Cria diretório efêmero isolado para esta compilação
@@ -187,6 +215,7 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
     if (pdfExists) {
       const pdfBuffer = await fs.readFile(pdfPath);
       request.log.info({ jobId, size: pdfBuffer.length }, 'Compilação concluída com sucesso');
+      compilerJobsTotal.inc({ status: 'success' });
 
       return reply
         .header('Content-Type', 'application/pdf')
@@ -194,6 +223,7 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
         .header('Content-Length', pdfBuffer.length)
         .send(pdfBuffer);
     } else {
+      compilerJobsTotal.inc({ status: 'compilation_error' });
       // Se não gerou PDF, extrai trecho do log de erro do LaTeX
       let logContent = compileResult.stdout;
       try {
@@ -217,6 +247,7 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
       });
     }
   } catch (err: unknown) {
+    compilerJobsTotal.inc({ status: 'internal_error' });
     const message = err instanceof Error ? err.message : 'Erro interno no compilador';
     request.log.error({ jobId, err }, 'Erro inesperado no worker de compilação');
     return reply.status(500).send({
@@ -224,6 +255,10 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
       error: message,
     });
   } finally {
+    compilerActiveJobs.dec();
+    const diff = process.hrtime(startTime);
+    compilerDurationSeconds.observe(diff[0] + diff[1] / 1e9);
+
     // 3. Limpeza obrigatória do diretório efêmero no disco
     try {
       await fs.rm(sandboxDir, { recursive: true, force: true });

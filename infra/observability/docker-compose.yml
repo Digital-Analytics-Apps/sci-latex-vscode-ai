@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # 1. Painel Visual Centralizador (Grafana)
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: scia_grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin_scia_local
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - scia-network
+
+  # 2. Séries Temporais de Métricas (Prometheus)
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: scia_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - scia-network
+
+  # 3. Ingestão de Logs (Loki)
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: scia_loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - scia-network
+
+  # 4. Agente Unificado de Coleta de Logs (Grafana Alloy)
+  alloy:
+    image: grafana/alloy:v1.3.0
+    container_name: scia_alloy
+    restart: unless-stopped
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+    ports:
+      - "12345:12345"
+    depends_on:
+      - loki
+    networks:
+      - scia-network
+
+  # 5. OpenTelemetry Collector com Tail-Sampling
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.108.0
+    container_name: scia_otel_collector
+    restart: unless-stopped
+    command: [ "--config=/etc/otelcol-config.yaml" ]
+    volumes:
+      - ./otelcol-config.yaml:/etc/otelcol-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "8889:8889" # Prometheus metrics exporter
+    depends_on:
+      - tempo
+    networks:
+      - scia-network
+
+  # 6. Tracing Distribuído (Tempo)
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: scia_tempo
+    restart: unless-stopped
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    networks:
+      - scia-network
+
+volumes:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+
+networks:
+  scia-network:
+    name: scia-network
+    driver: bridge
