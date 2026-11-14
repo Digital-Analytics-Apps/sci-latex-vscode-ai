@@ -1,3 +1,10 @@
+# ==============================================================================
+# MANIFESTO KUBERNETES: Frontend Single Page Application (sci-latex-frontend)
+# O que é este serviço?
+# É o servidor web leve (NGINX) que entrega os arquivos estáticos (HTML, JS, CSS)
+# da nossa aplicação React 19 compilada pelo Vite para o navegador do pesquisador.
+# ==============================================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,6 +15,7 @@ metadata:
     app.kubernetes.io/name: sci-latex-frontend
 spec:
   revisionHistoryLimit: 2
+  # 2 réplicas para garantir alta disponibilidade mesmo durante atualizações
   replicas: 2
   selector:
     matchLabels:
@@ -28,15 +36,24 @@ spec:
             - name: VITE_MINIO_URL
               value: "http://localhost:9000"
           ports:
+            # O NGINX escuta na porta 80 padrão HTTP
             - containerPort: 80
               name: http
+
+          # --------------------------------------------------------------------
+          # RECURSOS:
+          # Servir arquivos estáticos pelo NGINX é extremamente rápido e leve.
+          # Por isso, 16 Megabytes de RAM e 10m de CPU são mais que suficientes!
+          # --------------------------------------------------------------------
           resources:
             requests:
-              cpu: 10m
-              memory: 16Mi
+              cpu: 10m      # 0.01 núcleo de CPU
+              memory: 16Mi  # 16 Megabytes de RAM
             limits:
-              cpu: 100m
-              memory: 32Mi
+              cpu: 100m     # 0.1 núcleo de CPU
+              memory: 32Mi  # 32 Megabytes de RAM
+
+          # Sonda de prontidão: testa se a página inicial (/) está respondendo
           readinessProbe:
             httpGet:
               path: /
@@ -45,6 +62,8 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
+
+          # Sonda de vivacidade: se o NGINX travar, reinicia o container
           livenessProbe:
             httpGet:
               path: /
@@ -54,6 +73,9 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 3
 ---
+# ==============================================================================
+# SERVICE: Ponto de Acesso do Frontend
+# ==============================================================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -67,6 +89,6 @@ spec:
   selector:
     app: sci-latex-frontend
   ports:
-    - port: 80
-      targetPort: 80
+    - port: 80        # Porta exposta para o Ingress
+      targetPort: 80  # Porta do container NGINX
       name: http

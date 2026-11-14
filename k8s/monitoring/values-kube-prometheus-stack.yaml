@@ -1,46 +1,81 @@
-# Helm values para o chart oficial 'prometheus-community/kube-prometheus-stack'
-# Namespace de destino recomendado: monitoring
+# ==============================================================================
+# ARQUIVO DE CUSTOMIZAÇÃO DO HELM (values.yaml)
+# Chart Oficial: prometheus-community/kube-prometheus-stack
+# Objetivo: Instalar Prometheus + Grafana + Alertmanager no namespace 'monitoring'
+# ==============================================================================
 
+# Configurações globais de permissões do Kubernetes
 global:
   rbac:
+    # Cria automaticamente as 'ClusterRoles' e 'ClusterRoleBindings' necessárias.
+    # O Prometheus precisa disso para consultar a API do Kubernetes e descobrir
+    # onde os Pods e Services estão rodando em todo o cluster.
     create: true
 
+# Configurações do Servidor Prometheus (O banco de séries temporais)
 prometheus:
   prometheusSpec:
+    # Nome da conta de serviço (ServiceAccount) que o pod do Prometheus usará
     serviceAccountName: prometheus-k8s
+
+    # Por quanto tempo as métricas ficam guardadas antes de serem apagadas
     retention: 15d
+
+    # Limite máximo de espaço em disco ocupado pelas métricas (segurança contra estouro de disco)
     retentionSize: 40Gi
+
+    # Intervalo de tempo entre cada coleta: a cada 15 segundos ele consulta os endpoints /metrics
     scrapeInterval: 15s
+
+    # Intervalo para recalcular regras de alerta
     evaluationInterval: 15s
-    # Permite ao Prometheus descobrir ServiceMonitors em qualquer namespace do cluster (cross-namespace)
+
+    # --------------------------------------------------------------------------
+    # CHAVE DE OURO: DESCOBERTA CROSS-NAMESPACE
+    # Por padrão no Helm, o Prometheus só coleta métricas de Services do mesmo namespace.
+    # Colocar 'false' aqui e '{}' nos seletores abaixo diz ao Prometheus:
+    # "Pode buscar ServiceMonitors e PodMonitors em QUALQUER namespace do cluster!"
+    # É isso que permite ao Prometheus no namespace 'monitoring' raspar o Backend no 'default'.
+    # --------------------------------------------------------------------------
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorNamespaceSelector: {}
     podMonitorSelectorNilUsesHelmValues: false
     podMonitorNamespaceSelector: {}
 
+    # Recursos computacionais (CPU e Memória) garantidos para o Prometheus
     resources:
       requests:
-        cpu: 250m
-        memory: 1Gi
+        # Reserva mínima garantida pelo Kubernetes
+        cpu: 250m     # 0.25 núcleos de CPU
+        memory: 1Gi   # 1 Gigabyte de RAM
       limits:
-        cpu: 1000m
-        memory: 2Gi
+        # Teto máximo permitido (evita que o Prometheus derrube o nó se houver sobrecarga)
+        cpu: 1000m    # 1 núcleo inteiro de CPU
+        memory: 2Gi   # 2 Gigabytes de RAM
 
+    # Persistência de dados: garante que ao reiniciar o pod, o histórico de métricas não suma
     storageSpec:
       volumeClaimTemplate:
         spec:
-          accessModes: ["ReadWriteOnce"]
+          accessModes: ["ReadWriteOnce"] # Apenas o pod do Prometheus grava no disco
           resources:
             requests:
-              storage: 50Gi
+              storage: 50Gi # Cria um disco persistente de 50GB no cluster
 
+# Configurações do Grafana (A interface visual de gráficos e dashboards)
 grafana:
   enabled: true
+
+  # Senha do usuário 'admin' para login inicial (altere em produção via Secret)
   adminPassword: "admin_scia_local"
+
+  # Como o Grafana é exposto internamente no cluster
   service:
-    type: ClusterIP
-    port: 80
-    targetPort: 3000
+    type: ClusterIP  # Acessível apenas internamente dentro do cluster
+    port: 80         # Porta exposta pelo Service no cluster
+    targetPort: 3000 # Porta interna real onde o container do Grafana escuta
+
+  # Limites de recursos para o Grafana
   resources:
     requests:
       cpu: 100m
@@ -48,24 +83,36 @@ grafana:
     limits:
       cpu: 500m
       memory: 512Mi
+
+  # --------------------------------------------------------------------------
+  # FONTES DE DADOS AUTOMÁTICAS (Provisioning)
+  # Ao subir o Grafana, ele já conecta automaticamente no Loki e no Tempo
+  # sem precisar clicar em nada na interface web!
+  # --------------------------------------------------------------------------
   additionalDataSources:
+    # Conexão automática com o Loki (logs centralizados)
     - name: Loki
       type: loki
       access: proxy
+      # Endereço FQDN interno do Loki dentro do namespace 'monitoring'
       url: http://loki-gateway.monitoring.svc.cluster.local:80
       jsonData:
-        maxLines: 1000
+        maxLines: 1000 # Quantidade máxima de linhas retornadas por busca de log
+
+    # Conexão automática com o Tempo (traces e linha do tempo de requisições)
     - name: Tempo
       type: tempo
       access: proxy
+      # Endereço FQDN interno do Tempo dentro do namespace 'monitoring'
       url: http://tempo.monitoring.svc.cluster.local:3100
       jsonData:
         httpMethod: GET
 
+# Configurações do Alertmanager (Envio de alertas por e-mail, Slack, Discord, etc.)
 alertmanager:
   enabled: true
   alertmanagerSpec:
-    retention: 120h
+    retention: 120h # Guarda alertas disparados por até 5 dias
     resources:
       requests:
         cpu: 50m

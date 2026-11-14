@@ -1,39 +1,66 @@
+# ==============================================================================
+# POLÍTICA DE SEGURANÇA DE REDE (NetworkPolicy)
+# O que é uma NetworkPolicy?
+# Por padrão, no Kubernetes a rede é totalmente aberta: qualquer pod pode falar
+# com qualquer outro pod de qualquer namespace.
+# Uma NetworkPolicy funciona como um Firewall de Kernel (IPTables / eBPF).
+# Ela bloqueia conexões indesejadas e implementa o conceito de 'Zero-Trust'.
+# ==============================================================================
+
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-monitoring-scraping
+  # Aplica-se aos pods que vivem no namespace 'default'
   namespace: default
   labels:
     app.kubernetes.io/part-of: sci-latex-stack
 spec:
+  # Define quais pods serão protegidos por este firewall:
+  # Neste caso, todos os nossos microsserviços principais (Backend, AI Service e Compiler)
   podSelector:
     matchExpressions:
       - key: app
         operator: In
         values: ["sci-latex-backend", "sci-latex-ai-service", "sci-latex-compiler"]
+
+  # Define o tipo de tráfego filtrado: 'Ingress' significa tráfego de ENTRADA
   policyTypes:
     - Ingress
+
   ingress:
-    # 1. Permite tráfego normal dentro do próprio namespace da aplicação (Backend <-> Compiler <-> DB)
+    # --------------------------------------------------------------------------
+    # REGRA 1: COMUNICAÇÃO INTERNA DA APLICAÇÃO (Dentro do mesmo namespace)
+    # Permite que os pods da nossa própria aplicação conversem entre si normalmente:
+    # - O Frontend pode chamar o Backend na porta 3333
+    # - O Backend pode chamar o Compiler na porta 4000
+    # - O Backend pode chamar o AI Service na porta 8000
+    # --------------------------------------------------------------------------
     - from:
-        - podSelector: {}
+        - podSelector: {} # O seletor vazio '{}' significa "qualquer pod dentro do namespace 'default'"
       ports:
         - protocol: TCP
-          port: 3333
+          port: 3333 # Porta do Backend Fastify
         - protocol: TCP
-          port: 4000
+          port: 4000 # Porta do Compilador LaTeX
         - protocol: TCP
-          port: 8000
+          port: 8000 # Porta do AI Service
 
-    # 2. Permite tráfego cross-namespace estritamente originado pelo namespace 'monitoring' (Prometheus)
+    # --------------------------------------------------------------------------
+    # REGRA 2: RASPAGEM DE MÉTRICAS CROSS-NAMESPACE (Origem: namespace 'monitoring')
+    # Permite que pods que vivem no namespace 'monitoring' (onde o Prometheus roda)
+    # se conectem nas portas dos nossos serviços para raspar o endpoint /metrics.
+    # Qualquer outro namespace que tentar se conectar terá a conexão rejeitada!
+    # --------------------------------------------------------------------------
     - from:
         - namespaceSelector:
             matchLabels:
+              # Identificador oficial atribuído pelo Kubernetes a cada namespace
               kubernetes.io/metadata.name: monitoring
       ports:
         - protocol: TCP
-          port: 3333
+          port: 3333 # Permite raspar http://...:3333/metrics
         - protocol: TCP
-          port: 4000
+          port: 4000 # Permite raspar http://...:4000/metrics
         - protocol: TCP
-          port: 8000
+          port: 8000 # Permite raspar http://...:8000/metrics

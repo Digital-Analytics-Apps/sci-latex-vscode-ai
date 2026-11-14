@@ -1,25 +1,57 @@
-# KinD Cluster Configuration for sci-latex-vscode Local Dev Environment
+# ==============================================================================
+# CONFIGURAÇÃO DE CLUSTER LOCAL KIND (Kubernetes in Docker)
+# O que é o KinD?
+# O KinD é uma ferramenta que cria nós de Kubernetes simulados rodando como
+# contêineres Docker normais na sua máquina de desenvolvimento.
+# Isso permite testar réplicas, Deployments, Services e HPA sem gastar 1 centavo
+# em nuvem pública (AWS EKS, GCP GKE ou Azure AKS).
+# ==============================================================================
+
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+
+# Nome atribuído ao cluster local no Docker (aparecerá como um contêiner no 'docker ps')
 name: sci-latex-kind
+
 nodes:
+  # Nó principal que atua como Control-Plane (servidor de gerenciamento do Kubernetes)
   - role: control-plane
+
+    # Customizações avançadas do Kubeadm ao inicializar o nó
     kubeadmConfigPatches:
       - |
         kind: InitConfiguration
         nodeRegistration:
           kubeletExtraArgs:
+            # Atribui a label 'ingress-ready=true' ao nó.
+            # O NGINX Ingress Controller usa essa label para saber que pode
+            # rotear o tráfego de entrada HTTP/HTTPS por este nó.
             node-labels: "ingress-ready=true"
+
+    # Montagem de pastas do seu computador real (Host) para dentro do nó do K8s
     extraMounts:
+      # Caminho na sua máquina física
       - hostPath: ./storage
+        # Caminho onde os arquivos aparecem dentro do nó Kubernetes
         containerPath: /home/coder/storage
+
+    # --------------------------------------------------------------------------
+    # MAPEAMENTO DE PORTAS (Port Forwarding):
+    # Liga as portas do seu computador físico (hostPort) diretamente nas portas
+    # do cluster Kubernetes simulado no Docker (containerPort).
+    # --------------------------------------------------------------------------
     extraPortMappings:
+      # Porta HTTP padrão para acesso ao Ingress no navegador (http://localhost)
       - containerPort: 80
         hostPort: 80
         protocol: TCP
+
+      # Porta HTTPS segura para conexões com certificado SSL/TLS (https://localhost)
       - containerPort: 443
         hostPort: 443
         protocol: TCP
+
+      # Porta NodePort dedicada ao WebSocket e API do Backend Fastify (http://localhost:30080)
       - containerPort: 30080
         hostPort: 30080
         protocol: TCP

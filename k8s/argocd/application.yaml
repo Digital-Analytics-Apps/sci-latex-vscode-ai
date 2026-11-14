@@ -1,31 +1,78 @@
+# ==============================================================================
+# MANIFESTO GITOPS: ArgoCD Application (Aplicação Principal SCIA)
+# O que é o ArgoCD?
+# O ArgoCD é uma ferramenta de GitOps. Ele fica "vigiando" o repositório Git.
+# Sempre que um commit novo entra na branch (ex: 'dev'), o ArgoCD detecta a
+# alteração e aplica automaticamente os manifestos no cluster Kubernetes,
+# mantendo o cluster idêntico ao código do repositório ("Single Source of Truth").
+# ==============================================================================
+
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  # Nome da aplicação visualizada no painel web do ArgoCD
   name: sci-latex-vscode
+  # O próprio ArgoCD roda no namespace dedicado 'argocd'
   namespace: argocd
   labels:
     app.kubernetes.io/name: sci-latex-vscode
     app.kubernetes.io/part-of: sci-latex-stack
   finalizers:
+    # Garante que, se você deletar este Application no ArgoCD, ele limpa
+    # ordenadamente os recursos criados no Kubernetes antes de sumir.
     - resources-finalizer.argocd.argoproj.io
+
 spec:
+  # Projeto de governança no ArgoCD (default = sem restrições de permissão)
   project: default
+
+  # --------------------------------------------------------------------------
+  # ORIGEM (Source): De onde o ArgoCD deve ler os manifestos Kubernetes?
+  # --------------------------------------------------------------------------
   source:
+    # URL do repositório Git onde estão os arquivos
     repoURL: 'https://github.com/Digital-Analytics-Apps/sci-latex-vscode-ai.git'
+    # Branch monitorada pelo ArgoCD para deploy contínuo
     targetRevision: dev
+    # Pasta dentro do repositório onde estão os arquivos YAML da aplicação
     path: k8s/manifests
+    # Filtro: quais arquivos específicos dessa pasta devem ser aplicados
     directory:
       include: '{backend-cluster.yaml,compiler.yaml,frontend.yaml,hpa.yaml}'
+
+  # --------------------------------------------------------------------------
+  # DESTINO (Destination): Onde o ArgoCD deve aplicar esses manifestos?
+  # --------------------------------------------------------------------------
   destination:
+    # Endereço da API do próprio cluster Kubernetes local onde o ArgoCD está
     server: 'https://kubernetes.default.svc'
+    # Namespace do Kubernetes onde os pods da aplicação vão nascer
     namespace: default
+
+  # --------------------------------------------------------------------------
+  # POLÍTICA DE SINCRONIZAÇÃO (SyncPolicy): Como o deploy acontece?
+  # --------------------------------------------------------------------------
   syncPolicy:
     automated:
+      # 'prune: true': Se um arquivo YAML for apagado do Git, o ArgoCD apaga
+      # o recurso correspondente do cluster também (evita recursos órfãos)
       prune: true
+      # 'selfHeal: true': Se alguém entrar no cluster via 'kubectl' e alterar algo
+      # manualmente, o ArgoCD desfaz a alteração manual e restaura a versão do Git!
       selfHeal: true
     syncOptions:
+      # Cria o namespace de destino automaticamente caso ele ainda não exista
       - CreateNamespace=true
+      # Aplica apenas os recursos que realmente mudaram (economiza chamadas na API)
       - ApplyOutOfSyncOnly=true
+
+  # --------------------------------------------------------------------------
+  # IGNORAR DIFERENÇAS (ignoreDifferences): Evitar conflito com HPA
+  # --------------------------------------------------------------------------
+  # Como nós usamos o HPA (Horizontal Pod Autoscaler) para aumentar/diminuir réplicas
+  # automaticamente conforme o uso de CPU, o número de pods vai mudar dinamicamente.
+  # Esta regra diz ao ArgoCD: "Não considere o número de réplicas como divergência do Git,
+  # deixe o HPA controlar a quantidade de pods livremente!"
   ignoreDifferences:
     - group: apps
       kind: Deployment

@@ -1,21 +1,44 @@
+# ==============================================================================
+# RECURSOS CUSTOMIZADOS: ServiceMonitor (Prometheus Operator)
+# O que é um ServiceMonitor?
+# Em vez de você ter que editar arquivos de texto gigantescos do Prometheus toda
+# vez que cria um novo microsserviço, o 'ServiceMonitor' é um recurso nativo do
+# Kubernetes. Ele diz ao Prometheus Operator:
+# "Monitore qualquer Service que tenha a label X e raspe a porta Y no caminho /metrics"
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. MONITORAMENTO DO BACKEND FASTIFY (sci-latex-backend)
+# ------------------------------------------------------------------------------
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: scia-backend-monitor
+  # Fica no namespace 'default' onde o serviço do backend está rodando
   namespace: default
   labels:
+    # Esta label 'release' é essencial: ela deve bater com o nome da instalação do Helm
+    # do kube-prometheus-stack para o Operator reconhecer este monitor.
     release: kube-prometheus-stack
     app.kubernetes.io/part-of: sci-latex-stack
 spec:
+  # Filtro: seleciona apenas Services que possuam a label 'app: sci-latex-backend'
   selector:
     matchLabels:
       app: sci-latex-backend
   endpoints:
+    # Nome da porta definido no spec.ports[] do Service da aplicação (em backend-cluster.yaml)
     - port: http-ws
+      # Rota onde nossa biblioteca @prometheus-io/client expõe as métricas
       path: /metrics
+      # Intervalo: faz scraping a cada 15 segundos
       interval: 15s
+      # Timeout: se o backend demorar mais de 10s para responder, considera falha na coleta
       scrapeTimeout: 10s
 ---
+# ------------------------------------------------------------------------------
+# 2. MONITORAMENTO DO MOTOR DE IA (sci-latex-ai-service - FastAPI + LangGraph)
+# ------------------------------------------------------------------------------
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -34,6 +57,9 @@ spec:
       interval: 15s
       scrapeTimeout: 10s
 ---
+# ------------------------------------------------------------------------------
+# 3. MONITORAMENTO DO WORKER COMPILADOR LATEX (sci-latex-compiler)
+# ------------------------------------------------------------------------------
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

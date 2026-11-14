@@ -1,3 +1,10 @@
+# ==============================================================================
+# MANIFESTO KUBERNETES: Compilador LaTeX Worker (sci-latex-compiler)
+# O que é este serviço?
+# É o microserviço responsável por receber o código .tex e imagens, executar
+# o motor TeX Live (pdflatex, bibtex, biber) em um sandbox efêmero e retornar o PDF.
+# ==============================================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,6 +14,7 @@ metadata:
     app: sci-latex-compiler
 spec:
   revisionHistoryLimit: 2
+  # Inicialmente 1 pod worker (o HPA pode escalar para mais conforme a fila de compilação)
   replicas: 1
   selector:
     matchLabels:
@@ -18,6 +26,7 @@ spec:
     spec:
       containers:
         - name: compiler
+          # Imagem Docker pesada contendo a distribuição TeX Live instalada
           image: sci-latex-vscode-compiler:latest
           imagePullPolicy: IfNotPresent
           env:
@@ -28,13 +37,22 @@ spec:
           ports:
             - containerPort: 4000
               name: http
+
+          # --------------------------------------------------------------------
+          # RECURSOS (Requests e Limits):
+          # Compilação TeX consome picos fortes de CPU durante os passes do pdflatex.
+          # - limits: 1000m (1 núcleo inteiro) e 1Gi de RAM para suportar artigos
+          #           com centenas de fórmulas e dezenas de gráficos em alta resolução.
+          # --------------------------------------------------------------------
           resources:
             requests:
-              cpu: 200m
+              cpu: 200m     # Reserva mínima de 0.2 CPU
               memory: 256Mi
             limits:
-              cpu: 1000m
-              memory: 1Gi
+              cpu: 1000m    # Pico de até 1.0 CPU
+              memory: 1Gi   # Até 1 Gigabyte de RAM por compilação
+
+          # Sonda de prontidão: garante que o servidor Fastify do worker está escutando na porta 4000
           readinessProbe:
             httpGet:
               path: /health
@@ -42,18 +60,25 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 5
 ---
+# ==============================================================================
+# SERVICE: Ponto de Acesso Interno do Compilador
+# ==============================================================================
 apiVersion: v1
 kind: Service
 metadata:
+  # Nome do service: 'compiler'.
+  # O Backend chama este serviço internamente via: http://compiler:4000
   name: compiler
   namespace: default
   labels:
     app: sci-latex-compiler
 spec:
+  # ClusterIP: O compilador NUNCA deve ser exposto para a internet pública!
+  # Apenas o Backend dentro do cluster tem permissão de mandar código LaTeX para compilar.
   type: ClusterIP
   selector:
     app: sci-latex-compiler
   ports:
-    - port: 4000
-      targetPort: 4000
+    - port: 4000        # Porta interna do serviço
+      targetPort: 4000  # Porta do container
       name: http
