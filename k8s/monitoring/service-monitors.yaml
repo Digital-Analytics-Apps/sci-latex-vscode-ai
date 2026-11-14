@@ -1,0 +1,53 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: scia-backend-monitor
+  namespace: default
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: sci-latex-stack
+spec:
+  selector:
+    matchLabels:
+      app: sci-latex-backend
+  endpoints:
+    - port: http-ws
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: scia-ai-service-monitor
+  namespace: default
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: sci-latex-stack
+spec:
+  selector:
+    matchLabels:
+      app: sci-latex-ai-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: scia-compiler-monitor
+  namespace: default
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: sci-latex-stack
+spec:
+  selector:
+    matchLabels:
+      app: sci-latex-compiler
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
