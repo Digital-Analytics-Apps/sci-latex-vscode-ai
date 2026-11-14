@@ -18,6 +18,7 @@ dependencies = [
     "deepagents>=0.4.4",
     "tavily-python>=0.5.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
+    "redis>=8.1.0",
 ]
 
 [dependency-groups]

@@ -1,7 +1,10 @@
 version: '3.8'
 
 services:
-  # 1. Painel Visual Centralizador (Grafana)
+  # ============================================================================
+  # 1. VISUALIZAÇÃO & MÉTRICAS PRINCIPAIS
+  # ============================================================================
+  # Painel Visual Centralizador (Grafana)
   grafana:
     image: grafana/grafana:11.2.0
     container_name: scia_grafana
@@ -9,8 +12,8 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin_scia_local
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin_scia_local}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
@@ -20,7 +23,7 @@ services:
     networks:
       - scia-network
 
-  # 2. Séries Temporais de Métricas (Prometheus)
+  # Séries Temporais de Métricas (Prometheus)
   prometheus:
     image: prom/prometheus:v2.54.0
     container_name: scia_prometheus
@@ -40,7 +43,7 @@ services:
     networks:
       - scia-network
 
-  # 3. Ingestão de Logs (Loki)
+  # Ingestão de Logs (Loki)
   loki:
     image: grafana/loki:3.1.1
     container_name: scia_loki
@@ -54,7 +57,7 @@ services:
     networks:
       - scia-network
 
-  # 4. Agente Unificado de Coleta de Logs (Grafana Alloy)
+  # Agente Unificado de Coleta de Logs (Grafana Alloy)
   alloy:
     image: grafana/alloy:v1.3.0
     container_name: scia_alloy
@@ -71,7 +74,7 @@ services:
     networks:
       - scia-network
 
-  # 5. OpenTelemetry Collector com Tail-Sampling
+  # OpenTelemetry Collector com Tail-Sampling
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.108.0
     container_name: scia_otel_collector
@@ -88,7 +91,7 @@ services:
     networks:
       - scia-network
 
-  # 6. Tracing Distribuído (Tempo)
+  # Tracing Distribuído (Tempo)
   tempo:
     image: grafana/tempo:2.5.0
     container_name: scia_tempo
@@ -102,11 +105,88 @@ services:
     networks:
       - scia-network
 
+  # ============================================================================
+  # 2. LLMOPS: STACK NATIVA DO OPIK (Comet - Apache 2.0)
+  # Rastreia tokens, custos, latência TTFT e nós LangGraph do ai-service
+  # ============================================================================
+  opik-mysql:
+    image: mysql:8.0
+    container_name: scia_opik_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${OPIK_MYSQL_ROOT_PASSWORD:-opikroot}
+      MYSQL_DATABASE: ${OPIK_MYSQL_DATABASE:-opik}
+      MYSQL_USER: ${OPIK_MYSQL_USER:-opik}
+      MYSQL_PASSWORD: ${OPIK_MYSQL_PASSWORD:-opikpassword}
+    volumes:
+      - opik_mysql_data:/var/lib/mysql
+    networks:
+      - scia-network
+
+  opik-clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    container_name: scia_opik_clickhouse
+    restart: unless-stopped
+    volumes:
+      - opik_ch_data:/var/lib/clickhouse
+    networks:
+      - scia-network
+
+  opik:
+    image: cometml/opik:latest
+    container_name: scia_opik
+    restart: unless-stopped
+    depends_on:
+      - opik-mysql
+      - opik-clickhouse
+    ports:
+      - "5174:5173" # Interface Web do Opik
+      - "8081:8080" # API Backend de Ingestão de Traces de IA
+    environment:
+      MYSQL_URL: jdbc:mysql://opik-mysql:3306/${OPIK_MYSQL_DATABASE:-opik}?user=${OPIK_MYSQL_USER:-opik}&password=${OPIK_MYSQL_PASSWORD:-opikpassword}
+      CLICKHOUSE_URL: jdbc:clickhouse://opik-clickhouse:8123/default
+    networks:
+      - scia-network
+
+  # ============================================================================
+  # 3. GESTÃO DE EXCEÇÕES: GLITCHTIP (Compatível com Sentry SDK)
+  # Captura falhas não tratadas no React e nos microsserviços
+  # ============================================================================
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    container_name: scia_glitchtip_web
+    restart: unless-stopped
+    ports:
+      - "8005:8000"
+    environment:
+      DATABASE_URL: ${GLITCHTIP_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/sci_latex_db?schema=glitchtip}
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-scia-glitchtip-secret-change-in-production}
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8005}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - scia-network
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: scia_glitchtip_worker
+    restart: unless-stopped
+    command: ./bin/run-celery-with-beat.sh
+    environment:
+      DATABASE_URL: ${GLITCHTIP_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/sci_latex_db?schema=glitchtip}
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-scia-glitchtip-secret-change-in-production}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - scia-network
+
 volumes:
   grafana_data:
   prometheus_data:
   loki_data:
   tempo_data:
+  opik_mysql_data:
+  opik_ch_data:
 
 networks:
   scia-network:

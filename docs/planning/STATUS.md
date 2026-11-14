@@ -2,7 +2,7 @@
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
 **Última Atualização:** 14 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Stack de Observabilidade On-Premise (ADR-013) e Endpoints `/metrics` Operacionais.** Infraestrutura completa declarada em `infra/observability/` (Grafana, Prometheus, Loki, Tempo, Alloy, OTel Collector com tail-sampling), endpoints de telemetria `/metrics` ativos e testados nos 3 microsserviços (Backend Fastify com `@prometheus-io/client`, AI Service com `prometheus-fastapi-instrumentator` e Compilador TeX Live), monorepo 100% compilando com 0 erros e 81/81 testes automatizados aprovados (70 no backend, 11 no ai-service).
+**Status Geral do Projeto:** 🟢 **Observabilidade On-Premise Integral (ADR-013) 100% Implementada.** Infraestrutura de telemetria completa (Prometheus, Loki, Tempo, Alloy, OTel Collector com tail-sampling, Opik LLMOps, GlitchTip e Grafana com Dashboards JSON pré-moldados), propagação W3C Trace Context (`traceparent`), rate-limiting distribuído do arXiv via Redis, endpoints `/metrics` operacionais nos 3 microsserviços, 0 dados sensíveis hardcoded (100% via env/secrets), 84/84 testes automatizados aprovados no monorepo (72 no backend, 12 no ai-service) e build de produção com 0 erros.
 
 ---
 
@@ -13,6 +13,22 @@
 
 ### 🔍 Estado Atual da Aplicação
   * **Branch Ativa:** `feature/observability-stack-adr-013`
+  * **Stack de Observabilidade On-Premise Integral (ADR-013 Finalizada):**
+    * **Visualização no Grafana:**
+      * Criado dashboard pré-moldado oficial em [`scia-overview-dashboard.json`](file:///home/gilson-russo/development/professional/sci-latex-vscode/infra/observability/grafana/provisioning/dashboards/scia-overview-dashboard.json) contendo: RPS do backend, Latência P95, Conexões WebSocket ativas, Checkpoints pendentes (RAM -> PostgreSQL), Salas ativas de edição, Taxa de compilações TeX por status e tempo médio.
+    * **Propagação W3C Trace Context (`traceparent` / `x-trace-id`):**
+      * `backend/src/infra/tracing/tracing.plugin.ts`: Plugin Fastify com geração/propagação de cabeçalhos W3C `traceparent` (`00-{traceId}-{spanId}-01`), com 2/2 testes unitários aprovados.
+      * `ai-service/app/main.py`: Middleware ASGI injetando e propagando `traceparent` e `x-trace-id` nas respostas HTTP.
+    * **Rate-Limiting Distribuído do arXiv no Redis:**
+      * `ai-service/app/agents/tools/arxiv.py`: Implementada coordenação atômica de 3.1s via lock no Redis (`rate_limit:arxiv:global_lock`) compartilhada entre múltiplos pods no Kubernetes, com fail-open automático para throttle local em RAM.
+    * **LLMOps com Opik & Gestão de Exceções com GlitchTip:**
+      * `infra/observability/docker-compose.yml`: Adicionados serviços `opik` (Comet Opik UI na porta 5174 e API na 8081), `opik-mysql`, `opik-clickhouse`, `opik-server`, `glitchtip-web` (:8005) e `glitchtip-worker`.
+      * `infra/observability/.env.example`: Template de variáveis de ambiente sem dados sensíveis hardcoded.
+      * `ai-service/app/core/opik_tracer.py`: Helper assíncrono `get_correlated_opik_tracer` correlacionado com o W3C Trace Context e fail-open estrito, com testes aprovados.
+    * **Governança Kubernetes & Helm (`k8s/`):**
+      * Todos os arquivos YAML comentados linha a linha com explicações didáticas em português.
+      * Criados arquivos `README.md` dedicados em cada subpasta (`k8s/manifests/`, `k8s/monitoring/`, `k8s/argocd/`, `k8s/kind/`, `scripts/`).
+      * Helper local `scripts/argocd-ui.sh` atualizado para abrir túneis dinâmicos de Frontend, Backend, ArgoCD, Grafana (:3001) e Prometheus (:9090) com um comando.
   * **Stack de Observabilidade On-Premise Operacionalizada (ADR-013 Integrada):**
     * **Infraestrutura Declarativa de Observabilidade (`infra/observability/`):**
       * `docker-compose.yml`: Orquestração completa de 6 serviços de observabilidade isolados na rede `scia-network`: Grafana (porta 3001), Prometheus (porta 9090), Loki (porta 3100), Grafana Alloy (porta 12345), OpenTelemetry Collector (portas 4317 gRPC, 4318 HTTP, 8889 metrics) e Grafana Tempo (porta 3200).
