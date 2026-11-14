@@ -55,3 +55,18 @@ nodes:
       - containerPort: 30080
         hostPort: 30080
         protocol: TCP
+
+      # Porta NodePort opcional para acesso direto ao Grafana (http://localhost:30001)
+      - containerPort: 30001
+        hostPort: 30001
+        protocol: TCP
+
+      # Porta NodePort opcional para acesso direto ao Prometheus (http://localhost:30090)
+      - containerPort: 30090
+        hostPort: 30090
+        protocol: TCP
+
+      # Porta opcional para acesso direto ao ArgoCD Web UI (https://localhost:8443)
+      - containerPort: 8443
+        hostPort: 8443
+        protocol: TCP
