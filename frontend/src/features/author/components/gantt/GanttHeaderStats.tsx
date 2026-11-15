@@ -1,21 +1,13 @@
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineRounded";
-import FlagIcon from "@mui/icons-material/Flag";
-import GroupIcon from "@mui/icons-material/Group";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import {
-  Box,
-  Button,
-  Card,
-  CircularProgress,
-  Collapse,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { useState } from "react";
-import { StageStatus, TaskStatus } from "../../../../constants/status";
-import type { ProjectStage } from "../../../../types/stage.types";
-import type { TaskItem } from "../../../../types/task.types";
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import FlagIcon from '@mui/icons-material/Flag';
+import GroupIcon from '@mui/icons-material/Group';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { Box, Button, Card, CircularProgress, Collapse, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
+import { StageStatus, TaskStatus } from '../../../../constants/status';
+import type { ProjectStage } from '../../../../types/stage.types';
+import type { TaskItem } from '../../../../types/task.types';
 import {
   type AIRiskAlert,
   getAiSummaryText,
@@ -24,7 +16,7 @@ import {
   getOverdueIconBgColor,
   getOverdueIconColor,
   isTaskCompleted,
-} from "./ganttUtils";
+} from './ganttUtils';
 
 interface GanttHeaderStatsProps {
   stages: ProjectStage[];
@@ -46,37 +38,28 @@ export const GanttHeaderStats = ({
   // Totais
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => isTaskCompleted(t)).length;
-  const inProgressTasks = tasks.filter(
-    (t) => t.status === TaskStatus.IN_PROGRESS,
-  ).length;
-  const overdueTasks = riskAlerts.filter(
-    (r) => r.type === "overdue_task",
-  ).length;
+  const inProgressTasks = tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS).length;
+  const overdueTasks = riskAlerts.filter((r) => r.type === 'overdue_task').length;
 
   const totalStages = stages.length;
-  const completedStages = stages.filter(
-    (s) => s.status === StageStatus.COMPLETED,
-  ).length;
+  const completedStages = stages.filter((s) => s.status === StageStatus.COMPLETED).length;
 
   const overallProgressPercent =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const hasHighRisk = riskAlerts.some((r) => r.severity === "high");
-  const aiSummaryText = getAiSummaryText(
-    riskAlerts.length,
-    targetConferenceName,
-  );
+  const hasHighRisk = riskAlerts.some((r) => r.severity === 'high');
+  const aiSummaryText = getAiSummaryText(riskAlerts.length, targetConferenceName);
 
   return (
     <Box sx={{ mb: 2.5 }}>
       {/* SEÇÃO SUPERIOR: CARDS DE MÉTRICAS (IGUAL AO FIGMA) */}
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gridTemplateColumns: {
-            xs: "1fr",
-            sm: "1fr 1fr",
-            md: "1.2fr 1fr 1fr 1fr 1fr 1.6fr",
+            xs: '1fr',
+            sm: '1fr 1fr',
+            md: '1.2fr 1fr 1fr 1fr 1fr 1.6fr',
           },
           gap: 1.5,
           mb: 1.5,
@@ -87,14 +70,14 @@ export const GanttHeaderStats = ({
           variant="outlined"
           sx={{
             p: 1.5,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 2,
             borderRadius: 2,
-            bgcolor: "background.paper",
+            bgcolor: 'background.paper',
           }}
         >
-          <Box sx={{ position: "relative", display: "inline-flex" }}>
+          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
             <CircularProgress
               variant="determinate"
               value={overallProgressPercent}
@@ -108,33 +91,23 @@ export const GanttHeaderStats = ({
                 left: 0,
                 bottom: 0,
                 right: 0,
-                position: "absolute",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                position: 'absolute',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: 800, fontSize: "0.75rem" }}
-              >
+              <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.75rem' }}>
                 {overallProgressPercent}%
               </Typography>
             </Box>
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 600 }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               PROGRESSO GLOBAL
             </Typography>
 
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 800, color: "success.main" }}
-            >
+            <Typography variant="body2" sx={{ fontWeight: 800, color: 'success.main' }}>
               ↑ {completedTasks}/{totalTasks} Sub-tasks
             </Typography>
           </Box>
@@ -145,30 +118,26 @@ export const GanttHeaderStats = ({
           variant="outlined"
           sx={{
             p: 1.5,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             borderRadius: 2,
-            bgcolor: "background.paper",
+            bgcolor: 'background.paper',
           }}
         >
           <Box
             sx={{
               p: 1,
               borderRadius: 1.5,
-              bgcolor: "rgba(99, 102, 241, 0.12)",
-              color: "primary.main",
-              display: "flex",
+              bgcolor: 'rgba(99, 102, 241, 0.12)',
+              color: 'primary.main',
+              display: 'flex',
             }}
           >
             <FlagIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 600 }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               ETAPAS DE ESCRITA
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 800 }}>
@@ -185,30 +154,26 @@ export const GanttHeaderStats = ({
           variant="outlined"
           sx={{
             p: 1.5,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             borderRadius: 2,
-            bgcolor: "background.paper",
+            bgcolor: 'background.paper',
           }}
         >
           <Box
             sx={{
               p: 1,
               borderRadius: 1.5,
-              bgcolor: "info.softBg",
-              color: "info.main",
-              display: "flex",
+              bgcolor: 'info.softBg',
+              color: 'info.main',
+              display: 'flex',
             }}
           >
             <CheckCircleOutlineIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 600 }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               SUB-TASKS & MERGES
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 800 }}>
@@ -225,8 +190,8 @@ export const GanttHeaderStats = ({
           variant="outlined"
           sx={{
             p: 1.5,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             borderRadius: 2,
             bgcolor: getOverdueCardBgColor(overdueTasks),
@@ -239,30 +204,26 @@ export const GanttHeaderStats = ({
               borderRadius: 1.5,
               bgcolor: getOverdueIconBgColor(overdueTasks),
               color: getOverdueIconColor(overdueTasks),
-              display: "flex",
+              display: 'flex',
             }}
           >
             <WarningAmberIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 600 }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               ATRASOS DETECTADOS
             </Typography>
             <Typography
               variant="body1"
               sx={{
                 fontWeight: 800,
-                color: overdueTasks > 0 ? "error.main" : "text.primary",
+                color: overdueTasks > 0 ? 'error.main' : 'text.primary',
               }}
             >
               {overdueTasks}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {overdueTasks > 0 ? "Requer atenção" : "Nenhum atraso"}
+              {overdueTasks > 0 ? 'Requer atenção' : 'Nenhum atraso'}
             </Typography>
           </Box>
         </Card>
@@ -272,36 +233,29 @@ export const GanttHeaderStats = ({
           variant="outlined"
           sx={{
             p: 1.5,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             borderRadius: 2,
-            bgcolor: "background.paper",
+            bgcolor: 'background.paper',
           }}
         >
           <Box
             sx={{
               p: 1,
               borderRadius: 1.5,
-              bgcolor: "success.softBg",
-              color: "success.main",
-              display: "flex",
+              bgcolor: 'success.softBg',
+              color: 'success.main',
+              display: 'flex',
             }}
           >
             <GroupIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 600 }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               EQUIPE / ALOCAÇÃO
             </Typography>
-            <Typography
-              variant="body1"
-              sx={{ fontWeight: 800, color: "success.main" }}
-            >
+            <Typography variant="body1" sx={{ fontWeight: 800, color: 'success.main' }}>
               Equilibrada
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -316,40 +270,37 @@ export const GanttHeaderStats = ({
           sx={{
             p: 1.5,
             background: (theme) =>
-              theme.palette.mode === "dark"
-                ? "linear-gradient(135deg, #2e1065 0%, #1e1b4b 100%)"
-                : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-            color: "#fff",
+              theme.palette.mode === 'dark'
+                ? 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 100%)'
+                : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+            color: '#fff',
             borderRadius: 2,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
           }}
         >
           <Box
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-              <AutoAwesomeIcon sx={{ fontSize: 18, color: "#fde047" }} />
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: 800, letterSpacing: 0.5 }}
-              >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+              <AutoAwesomeIcon sx={{ fontSize: 18, color: '#fde047' }} />
+              <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 0.5 }}>
                 AI PROJECT SUMMARY
               </Typography>
             </Box>
             <Typography
               variant="caption"
               sx={{
-                bgcolor: "rgba(255,255,255,0.2)",
+                bgcolor: 'rgba(255,255,255,0.2)',
                 px: 0.8,
                 py: 0.2,
                 borderRadius: 1,
-                fontSize: "0.65rem",
+                fontSize: '0.65rem',
                 fontWeight: 700,
               }}
             >
@@ -357,10 +308,7 @@ export const GanttHeaderStats = ({
             </Typography>
           </Box>
 
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 600, mt: 0.5, lineHeight: 1.3 }}
-          >
+          <Typography variant="caption" sx={{ fontWeight: 600, mt: 0.5, lineHeight: 1.3 }}>
             {aiSummaryText}
           </Typography>
 
@@ -370,18 +318,16 @@ export const GanttHeaderStats = ({
               onClick={() => setShowRisksDetail(!showRisksDetail)}
               sx={{
                 mt: 1,
-                color: "#fff",
-                bgcolor: "rgba(255,255,255,0.15)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
-                fontSize: "0.7rem",
+                color: '#fff',
+                bgcolor: 'rgba(255,255,255,0.15)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                fontSize: '0.7rem',
                 py: 0.2,
-                textTransform: "none",
+                textTransform: 'none',
                 fontWeight: 700,
               }}
             >
-              {showRisksDetail
-                ? "Ocultar Alertas AI"
-                : "Ver Alertas de Risco →"}
+              {showRisksDetail ? 'Ocultar Alertas AI' : 'Ver Alertas de Risco →'}
             </Button>
           )}
         </Card>
@@ -393,9 +339,9 @@ export const GanttHeaderStats = ({
           sx={{
             p: 1.5,
             borderRadius: 2,
-            bgcolor: hasHighRisk ? "error.softBg" : "warning.softBg",
-            border: "1px solid",
-            borderColor: hasHighRisk ? "error.main" : "warning.main",
+            bgcolor: hasHighRisk ? 'error.softBg' : 'warning.softBg',
+            border: '1px solid',
+            borderColor: hasHighRisk ? 'error.main' : 'warning.main',
           }}
         >
           <Typography
@@ -403,7 +349,7 @@ export const GanttHeaderStats = ({
             sx={{
               fontWeight: 800,
               mb: 1,
-              color: hasHighRisk ? "error.main" : "warning.main",
+              color: hasHighRisk ? 'error.main' : 'warning.main',
             }}
           >
             ⚠️ Análise Preditiva de Riscos (Inteligência AI)
@@ -413,24 +359,21 @@ export const GanttHeaderStats = ({
               <Box
                 key={alert.id}
                 sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
+                  display: 'flex',
+                  alignItems: 'flex-start',
                   gap: 1,
-                  bgcolor: "background.paper",
+                  bgcolor: 'background.paper',
                   p: 1,
                   borderRadius: 1.5,
                 }}
               >
                 <WarningAmberIcon
                   fontSize="small"
-                  color={alert.severity === "high" ? "error" : "warning"}
+                  color={alert.severity === 'high' ? 'error' : 'warning'}
                   sx={{ mt: 0.2 }}
                 />
                 <Box>
-                  <Typography
-                    variant="caption"
-                    sx={{ fontWeight: 700, display: "block" }}
-                  >
+                  <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
                     {alert.entityTitle}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">

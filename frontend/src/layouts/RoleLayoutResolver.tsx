@@ -1,16 +1,14 @@
-import React from "react";
-import { useSelector } from "react-redux";
-import { Outlet } from "react-router-dom";
-import { Role } from "../constants/roles";
-import type { RootState } from "../store";
-import { AdminLayout } from "./AdminLayout";
-import { AuthorLayout } from "./AuthorLayout";
-import { CoordinatorLayout } from "./CoordinatorLayout";
-import { ManagerLayout } from "./ManagerLayout";
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { Outlet } from 'react-router-dom';
+import { Role } from '../constants/roles';
+import type { RootState } from '../store';
+import { AdminLayout } from './AdminLayout';
+import { AuthorLayout } from './AuthorLayout';
+import { CoordinatorLayout } from './CoordinatorLayout';
+import { ManagerLayout } from './ManagerLayout';
 
-export const RoleLayoutResolver: React.FC<{ children?: React.ReactNode }> = ({
-  children,
-}) => {
+export const RoleLayoutResolver: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const user = useSelector((state: RootState) => state.auth.user);
   const content = children ?? <Outlet />;
 

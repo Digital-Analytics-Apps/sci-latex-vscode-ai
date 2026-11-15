@@ -269,7 +269,15 @@ export const LiteratureMindMapDemoPage: React.FC = () => {
           <Typography color="text.primary">Literature Intelligence</Typography>
         </Breadcrumbs>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
               <Brain size={30} color="#1976d2" />
@@ -285,7 +293,8 @@ export const LiteratureMindMapDemoPage: React.FC = () => {
               />
             </Box>
             <Typography variant="body2" color="text.secondary">
-              Visualização interativa de relações conceituais, pontos fortes, limitações e cobertura do seu artigo LaTeX.
+              Visualização interativa de relações conceituais, pontos fortes, limitações e cobertura
+              do seu artigo LaTeX.
             </Typography>
           </Box>
 

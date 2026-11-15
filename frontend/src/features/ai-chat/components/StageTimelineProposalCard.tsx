@@ -40,7 +40,14 @@ export const StageTimelineProposalCard: React.FC<StageTimelineProposalCardProps>
       }}
     >
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 1,
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <RocketLaunchIcon color="success" sx={{ fontSize: 22 }} />
             <Typography variant="subtitle2" color="success.main" sx={{ fontWeight: 700 }}>
@@ -122,17 +129,29 @@ export const StageTimelineProposalCard: React.FC<StageTimelineProposalCardProps>
             mb: 2,
           }}
         >
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}
+          >
             ABSTRACT / RESUMO PROPOSTO:
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5, fontStyle: 'italic' }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ lineHeight: 1.5, fontStyle: 'italic' }}
+          >
             "{proposal.abstract}"
           </Typography>
         </Paper>
 
         {/* Cronograma das 6 Etapas Fixas (ADR-008) */}
         <Box sx={{ mb: 2 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, display: 'block', mb: 1 }}
+          >
             CRONOGRAMA CALCULADO NAS 6 ETAPAS FIXAS (ADR 008):
           </Typography>
 

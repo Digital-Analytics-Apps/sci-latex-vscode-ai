@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import client, { Counter, Histogram, Gauge } from '@prometheus-io/client';
+import client, { Counter, Gauge, Histogram } from '@prometheus-io/client';
 import { getLiveWebSocketStats } from '../../modules/documents/documents.websocket';
 import { defaultDocumentsService } from '../../modules/documents/documents.service';
 

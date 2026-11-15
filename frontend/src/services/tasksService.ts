@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 import type {
   AddLinkEvidenceInput,
   CreateTaskInput,
@@ -6,9 +6,9 @@ import type {
   PresignUploadResponse,
   TaskEvidenceItem,
   TaskItem,
-} from "../types/task.types";
-import { MINIO_BASE } from "../constants/api.constants";
-import { api } from "./api";
+} from '../types/task.types';
+import { MINIO_BASE } from '../constants/api.constants';
+import { api } from './api';
 
 /**
  * Normaliza o host do MinIO para apontar para a variável de ambiente pública do frontend (VITE_MINIO_URL)
@@ -18,7 +18,7 @@ export function normalizeStorageUrl(rawUrl?: string | null): string | undefined 
   try {
     const target = new URL(MINIO_BASE);
     const parsed = new URL(rawUrl);
-    if (parsed.hostname === "minio") {
+    if (parsed.hostname === 'minio') {
       parsed.protocol = target.protocol;
       parsed.hostname = target.hostname;
       parsed.port = target.port;
@@ -33,7 +33,7 @@ export const tasksService = {
   // Buscar tarefas de um projeto diretamente da API REST real (/projects/:projectId/tasks)
   async getTasksByProject(
     projectId: string,
-    params?: Record<string, unknown>,
+    params?: Record<string, unknown>
   ): Promise<TaskItem[]> {
     if (!projectId) return [];
     const response = await api.get(`/projects/${projectId}/tasks`, { params });
@@ -41,56 +41,40 @@ export const tasksService = {
   },
 
   // Criar nova tarefa
-  async createTask(
-    projectId: string,
-    data: CreateTaskInput,
-  ): Promise<TaskItem> {
+  async createTask(projectId: string, data: CreateTaskInput): Promise<TaskItem> {
     const response = await api.post(`/projects/${projectId}/tasks`, data);
     return response.data.task || response.data;
   },
 
   // Ativar workspace da tarefa no Pod Kubernetes
   async activateWorkspace(projectId: string, taskId: string) {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/workspace`,
-    );
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/workspace`);
     return response.data;
   },
 
   // Assinar tarefa (Claim)
   async claimTask(projectId: string, taskId: string): Promise<TaskItem> {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/claim`,
-    );
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/claim`);
     return response.data.task || response.data;
   },
 
   // Desassinar tarefa (Unclaim)
   async unclaimTask(projectId: string, taskId: string): Promise<TaskItem> {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/unclaim`,
-    );
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/unclaim`);
     return response.data.task || response.data;
   },
 
   // Solicitar revisão de tarefa (Autor -> REVIEW_REQUESTED)
-  async requestReview(
-    projectId: string,
-    taskId: string,
-    notes?: string,
-  ): Promise<TaskItem> {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/request-review`,
-      { notes },
-    );
+  async requestReview(projectId: string, taskId: string, notes?: string): Promise<TaskItem> {
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/request-review`, {
+      notes,
+    });
     return response.data.task || response.data;
   },
 
   // Revisor assume inspeção (Revisor -> IN_REVIEW)
   async startReview(projectId: string, taskId: string): Promise<TaskItem> {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/start-review`,
-    );
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/start-review`);
     return response.data.task || response.data;
   },
 
@@ -98,26 +82,21 @@ export const tasksService = {
   async reviewDecision(
     projectId: string,
     taskId: string,
-    decision: "APPROVED" | "CHANGES_REQUESTED",
-    feedback?: string,
+    decision: 'APPROVED' | 'CHANGES_REQUESTED',
+    feedback?: string
   ): Promise<TaskItem> {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/decision`,
-      { decision, feedback },
-    );
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/decision`, {
+      decision,
+      feedback,
+    });
     return response.data.task || response.data;
   },
 
   /**
    * Busca a lista de evidências confirmadas de uma tarefa
    */
-  async getEvidences(
-    projectId: string,
-    taskId: string,
-  ): Promise<TaskEvidenceItem[]> {
-    const response = await api.get(
-      `/projects/${projectId}/tasks/${taskId}/evidences`,
-    );
+  async getEvidences(projectId: string, taskId: string): Promise<TaskEvidenceItem[]> {
+    const response = await api.get(`/projects/${projectId}/tasks/${taskId}/evidences`);
     const list: TaskEvidenceItem[] = response.data.evidences || [];
     return list.map((ev) => ({
       ...ev,
@@ -130,11 +109,11 @@ export const tasksService = {
   async presignEvidenceUpload(
     projectId: string,
     taskId: string,
-    data: PresignUploadInput,
+    data: PresignUploadInput
   ): Promise<PresignUploadResponse> {
     const response = await api.post(
       `/projects/${projectId}/tasks/${taskId}/evidences/presign`,
-      data,
+      data
     );
     return response.data;
   },
@@ -146,18 +125,16 @@ export const tasksService = {
   async uploadBinaryToMinio(
     uploadUrl: string,
     file: File,
-    onProgress?: (percent: number) => void,
+    onProgress?: (percent: number) => void
   ): Promise<void> {
     const targetUrl = normalizeStorageUrl(uploadUrl) || uploadUrl;
     await axios.put(targetUrl, file, {
       headers: {
-        "Content-Type": file.type || "application/octet-stream",
+        'Content-Type': file.type || 'application/octet-stream',
       },
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total && onProgress) {
-          const percent = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total,
-          );
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           onProgress(percent);
         }
       },
@@ -170,10 +147,10 @@ export const tasksService = {
   async confirmEvidenceUpload(
     projectId: string,
     taskId: string,
-    evidenceId: string,
+    evidenceId: string
   ): Promise<TaskEvidenceItem> {
     const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}/confirm`,
+      `/projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}/confirm`
     );
     return response.data;
   },
@@ -184,25 +161,16 @@ export const tasksService = {
   async addLinkEvidence(
     projectId: string,
     taskId: string,
-    data: AddLinkEvidenceInput,
+    data: AddLinkEvidenceInput
   ): Promise<TaskEvidenceItem> {
-    const response = await api.post(
-      `/projects/${projectId}/tasks/${taskId}/evidences/link`,
-      data,
-    );
+    const response = await api.post(`/projects/${projectId}/tasks/${taskId}/evidences/link`, data);
     return response.data;
   },
 
   /**
    * Exclui uma evidência e remove o binário associado do MinIO
    */
-  async deleteEvidence(
-    projectId: string,
-    taskId: string,
-    evidenceId: string,
-  ): Promise<void> {
-    await api.delete(
-      `/projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}`,
-    );
+  async deleteEvidence(projectId: string, taskId: string, evidenceId: string): Promise<void> {
+    await api.delete(`/projects/${projectId}/tasks/${taskId}/evidences/${evidenceId}`);
   },
 };

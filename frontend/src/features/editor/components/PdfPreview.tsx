@@ -229,11 +229,22 @@ export function PdfPreview({
             }}
           >
             <FileCheck size={38} />
-            <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: 'text.primary' }}>
+            <Typography
+              sx={{
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                color: 'text.primary',
+              }}
+            >
               Nenhum PDF compilado ainda
             </Typography>
             <Typography
-              sx={{ fontSize: '0.78rem', maxWidth: 300, lineHeight: 1.4, color: 'text.secondary' }}
+              sx={{
+                fontSize: '0.78rem',
+                maxWidth: 300,
+                lineHeight: 1.4,
+                color: 'text.secondary',
+              }}
             >
               Clique em <strong>Recompile</strong> acima para compilar o código LaTeX no
               micro-serviço TeX Live.
@@ -250,7 +261,13 @@ export function PdfPreview({
             }}
           >
             <CircularProgress size={28} color="inherit" />
-            <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary' }}>
+            <Typography
+              sx={{
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                color: 'text.primary',
+              }}
+            >
               Compilando documento via pdflatex...
             </Typography>
           </Stack>

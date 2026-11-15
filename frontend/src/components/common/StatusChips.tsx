@@ -1,6 +1,6 @@
-import { Chip } from "@mui/material";
-import React from "react";
-import { NITStatus } from "../../constants/status";
+import { Chip } from '@mui/material';
+import React from 'react';
+import { NITStatus } from '../../constants/status';
 
 export interface NITStatusChipProps {
   status: string;
@@ -43,32 +43,15 @@ export const NITStatusChip: React.FC<NITStatusChipProps> = ({ status }) => {
 };
 
 export interface DeadlineStatusChipProps {
-  status: "ON_TIME" | "WARNING_SOON" | "OVERDUE" | string;
+  status: 'ON_TIME' | 'WARNING_SOON' | 'OVERDUE' | string;
 }
 
-export const DeadlineStatusChip: React.FC<DeadlineStatusChipProps> = ({
-  status,
-}) => {
+export const DeadlineStatusChip: React.FC<DeadlineStatusChipProps> = ({ status }) => {
   const label =
-    status === "ON_TIME"
-      ? "No Prazo"
-      : status === "WARNING_SOON"
-        ? "Atenção"
-        : "Atrasado";
-  const color =
-    status === "ON_TIME"
-      ? "success"
-      : status === "WARNING_SOON"
-        ? "warning"
-        : "error";
+    status === 'ON_TIME' ? 'No Prazo' : status === 'WARNING_SOON' ? 'Atenção' : 'Atrasado';
+  const color = status === 'ON_TIME' ? 'success' : status === 'WARNING_SOON' ? 'warning' : 'error';
 
   return (
-    <Chip
-      label={label}
-      size="small"
-      color={color}
-      variant="filled"
-      sx={{ fontWeight: 600 }}
-    />
+    <Chip label={label} size="small" color={color} variant="filled" sx={{ fontWeight: 600 }} />
   );
 };

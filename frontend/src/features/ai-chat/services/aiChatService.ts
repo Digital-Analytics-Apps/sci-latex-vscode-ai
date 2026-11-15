@@ -1,10 +1,6 @@
 import { API_BASE } from '../../../constants/api.constants';
 import { store } from '../../../store';
-import type {
-  ResumeChatPayload,
-  SendChatStreamPayload,
-  StreamEvent,
-} from '../types/chat.types';
+import type { ResumeChatPayload, SendChatStreamPayload, StreamEvent } from '../types/chat.types';
 
 function getAuthHeaders(): Record<string, string> {
   const token = store.getState().auth.token || localStorage.getItem('token');

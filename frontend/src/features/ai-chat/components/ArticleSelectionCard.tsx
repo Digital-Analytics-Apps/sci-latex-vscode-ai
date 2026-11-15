@@ -63,7 +63,14 @@ export const ArticleSelectionCard: React.FC<ArticleSelectionCardProps> = ({
       }}
     >
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 1.5,
+          }}
+        >
           <Box>
             <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 700 }}>
               📚 Artigos Científicos Encontrados ({articles.length})
@@ -114,14 +121,26 @@ export const ArticleSelectionCard: React.FC<ArticleSelectionCardProps> = ({
                       {art.title}
                     </Typography>
 
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, my: 0.75 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: 1,
+                        my: 0.75,
+                      }}
+                    >
                       <Typography variant="caption" color="text.secondary">
                         {art.authors.slice(0, 3).join(', ')}
                         {art.authors.length > 3 ? ' et al.' : ''}
                       </Typography>
 
                       {art.year && (
-                        <Chip size="small" label={art.year} sx={{ height: 18, fontSize: '0.65rem' }} />
+                        <Chip
+                          size="small"
+                          label={art.year}
+                          sx={{ height: 18, fontSize: '0.65rem' }}
+                        />
                       )}
 
                       {art.venue && (
@@ -159,7 +178,11 @@ export const ArticleSelectionCard: React.FC<ArticleSelectionCardProps> = ({
                           rel="noreferrer"
                           variant="caption"
                           underline="hover"
-                          sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.25,
+                          }}
                         >
                           <OpenInNewIcon sx={{ fontSize: 12 }} /> Abstract
                         </Link>
@@ -172,7 +195,11 @@ export const ArticleSelectionCard: React.FC<ArticleSelectionCardProps> = ({
                           variant="caption"
                           underline="hover"
                           color="error.main"
-                          sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.25,
+                          }}
                         >
                           <PictureAsPdfIcon sx={{ fontSize: 12 }} /> PDF Direto
                         </Link>

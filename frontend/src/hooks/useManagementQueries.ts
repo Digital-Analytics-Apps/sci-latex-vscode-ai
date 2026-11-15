@@ -1,25 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type AcademicPeriod,
   managementService,
   type ManagerDashboardData,
   type ManagerMetrics,
-} from "../services/managementService";
+} from '../services/managementService';
 
 // Hook para buscar a lista de Períodos Acadêmicos (ex: Ciclo 2026/2027)
 export function useAcademicPeriods() {
   return useQuery<AcademicPeriod[]>({
-    queryKey: ["academic-periods"],
+    queryKey: ['academic-periods'],
     queryFn: () => managementService.getAcademicPeriods(),
   });
 }
 
 // Hook para buscar o Dashboard Consolidado do Gerente (Prisma)
-export function useManagerDashboardQuery(filters?: {
-  academicPeriodId?: string;
-}) {
+export function useManagerDashboardQuery(filters?: { academicPeriodId?: string }) {
   return useQuery<ManagerDashboardData>({
-    queryKey: ["manager-dashboard", filters],
+    queryKey: ['manager-dashboard', filters],
     queryFn: () => managementService.getManagerDashboard(filters),
   });
 }
@@ -27,7 +25,7 @@ export function useManagerDashboardQuery(filters?: {
 // Hook para buscar as métricas do Gerente filtradas por Período Acadêmico (legacy fallback)
 export function useManagerMetrics(periodId?: string) {
   return useQuery<ManagerMetrics>({
-    queryKey: ["manager-metrics", periodId],
+    queryKey: ['manager-metrics', periodId],
     queryFn: () => managementService.getManagerMetrics(periodId),
   });
 }
@@ -43,12 +41,11 @@ export function useCreateAcademicPeriodMutation() {
       targetArticlesCount?: number;
     }) => managementService.createAcademicPeriod(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["academic-periods"] });
-      queryClient.invalidateQueries({ queryKey: ["manager-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['manager-dashboard'] });
     },
   });
 }
-
 
 // Hook para o Coordenador alterar a data limite de uma tarefa da equipe
 export function useUpdateDeadlineMutation() {
@@ -58,8 +55,8 @@ export function useUpdateDeadlineMutation() {
     mutationFn: (data: { taskId: string; newDueDate: string }) =>
       managementService.updateTaskDeadline(data.taskId, data.newDueDate),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coordinator-deadlines"] });
-      queryClient.invalidateQueries({ queryKey: ["project"] });
+      queryClient.invalidateQueries({ queryKey: ['coordinator-deadlines'] });
+      queryClient.invalidateQueries({ queryKey: ['project'] });
     },
   });
 }

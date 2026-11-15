@@ -157,4 +157,22 @@
 
 ---
 
+## 🟢 Fase 11: Governança de Templates LaTeX Oficiais, MinIO & Bootstrap Mínimo (ADR-017)
+
+- [x] **11.1 Decisão Arquitetural Aprovada (ADR-017)**
+  - Formalização de governança para templates de conferências e periódicos científicos em [`docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md).
+  - Regra de ouro: preservação incondicional dos nomes de arquivos originais (`.cls`, `.sty`, `.bst`, `.tex` raiz sem forçar `main.tex`).
+  - Padrão semântico de slugs e paths no MinIO: `[ANO]-[CONGRESSO]-[FORMATO]` (ex: `2026-sbc-artigo`, `2027-ieee-conference`).
+  - Política de repositório leve: apenas 1 baseline seed essencial em `latex-templates/` para subir a aplicação pronta para uso, deixando a expansão para uploads pós-deploy pelos pesquisadores.
+- [x] **11.2 Limpeza de Mocks Falsos no Backend & MinIO**
+  - Expurgar o array `SYSTEM_TEMPLATES` e strings TeX hardcoded em `templates.service.ts`.
+  - Remover execução em tempo de execução de `ensureSystemTemplates` em rotas de listagem (`listTemplates`).
+  - Deletar templates fictícios legados no banco de dados e no MinIO.
+- [x] **11.3 Baseline Seed Dinâmico a partir de `latex-templates/`**
+  - Refatorar o `seed.ts` para ler os pacotes `.zip` reais da pasta `latex-templates/`, extrair metadados e persistir intactos no MinIO (`templates/{slug}/bundle.zip`) e PostgreSQL.
+- [x] **11.4 Propagação do `mainEntryPath` no Compilador TeXLive e Editor Colaborativo**
+  - Ajustar `projects.service.ts`, `documents.service.ts`, `documents.websocket.ts` e o frontend para operar dinamicamente com base no `mainEntryPath` original do template sem forçar `main.tex` nem fallbacks mascaradores de erro.
+
+---
+
 *Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*

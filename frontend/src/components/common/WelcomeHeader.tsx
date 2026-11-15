@@ -1,59 +1,47 @@
-import { Box, Chip, Typography } from "@mui/material";
-import React from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../store";
+import { Box, Chip, Typography } from '@mui/material';
+import React from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
 
 export interface WelcomeHeaderProps {
   userName?: string;
   title?: string;
   subtitle?: string;
   chipLabel?: string;
-  chipColor?:
-    | "default"
-    | "primary"
-    | "secondary"
-    | "info"
-    | "success"
-    | "warning"
-    | "error";
+  chipColor?: 'default' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error';
   action?: React.ReactNode;
 }
 
 export const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({
   userName,
   title,
-  subtitle = "Seja bem-vindo ao SCIA — Scientific Collaboration and Intelligent Assistance.",
+  subtitle = 'Seja bem-vindo ao SCIA — Scientific Collaboration and Intelligent Assistance.',
   chipLabel,
-  chipColor = "primary",
+  chipColor = 'primary',
   action,
 }) => {
   const reduxUser = useSelector((state: RootState) => state.auth.user);
-  const nameToDisplay = userName || reduxUser?.name || "Pesquisador";
+  const nameToDisplay = userName || reduxUser?.name || 'Pesquisador';
   const displayTitle = title || `Olá, ${nameToDisplay} 👋`;
 
   return (
     <Box
       sx={{
         mb: 3,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        flexWrap: "wrap",
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 2,
       }}
     >
       <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
           <Typography variant="h2" component="h1" sx={{ fontWeight: 700 }}>
             {displayTitle}
           </Typography>
           {chipLabel && (
-            <Chip
-              label={chipLabel}
-              color={chipColor}
-              size="small"
-              sx={{ fontWeight: 700 }}
-            />
+            <Chip label={chipLabel} color={chipColor} size="small" sx={{ fontWeight: 700 }} />
           )}
         </Box>
         {subtitle && (
@@ -63,11 +51,7 @@ export const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({
         )}
       </Box>
 
-      {action && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          {action}
-        </Box>
-      )}
+      {action && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>{action}</Box>}
     </Box>
   );
 };

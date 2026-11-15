@@ -1,18 +1,14 @@
-import { Box, Paper } from "@mui/material";
-import { addDays, startOfDay, subDays } from "date-fns";
-import React, { useMemo, useState } from "react";
-import type { ProjectStage } from "../../../../types/stage.types";
-import type { TaskItem } from "../../../../types/task.types";
-import { GanttChartGrid } from "./GanttChartGrid";
-import { GanttHeaderStats } from "./GanttHeaderStats";
-import { GanttTableTree } from "./GanttTableTree";
-import { GanttTaskDetailDrawer } from "./GanttTaskDetailDrawer";
-import { GanttToolbar } from "./GanttToolbar";
-import {
-  detectAIRisks,
-  generateGanttColumns,
-  type TimeScale,
-} from "./ganttUtils";
+import { Box, Paper } from '@mui/material';
+import { addDays, startOfDay, subDays } from 'date-fns';
+import React, { useMemo, useState } from 'react';
+import type { ProjectStage } from '../../../../types/stage.types';
+import type { TaskItem } from '../../../../types/task.types';
+import { GanttChartGrid } from './GanttChartGrid';
+import { GanttHeaderStats } from './GanttHeaderStats';
+import { GanttTableTree } from './GanttTableTree';
+import { GanttTaskDetailDrawer } from './GanttTaskDetailDrawer';
+import { GanttToolbar } from './GanttToolbar';
+import { detectAIRisks, generateGanttColumns, type TimeScale } from './ganttUtils';
 
 interface GanttTimelineViewProps {
   stages: ProjectStage[];
@@ -54,12 +50,10 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
   isReviewer = false,
 }) => {
   // Estado da escala de tempo (Dias / Semanas / Meses)
-  const [scale, setScale] = useState<TimeScale>("days");
+  const [scale, setScale] = useState<TimeScale>('days');
 
   // Estado da janela do calendário (Data inicial e final do projeto)
-  const [rangeStart, setRangeStart] = useState<Date>(() =>
-    subDays(startOfDay(new Date()), 5),
-  );
+  const [rangeStart, setRangeStart] = useState<Date>(() => subDays(startOfDay(new Date()), 5));
 
   const [rangeEnd, setRangeEnd] = useState<Date>(() => {
     if (targetConferenceDate) {
@@ -76,25 +70,25 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
   // Geração das Colunas da Régua de Datas
   const columns = useMemo(
     () => generateGanttColumns(rangeStart, rangeEnd, scale),
-    [rangeStart, rangeEnd, scale],
+    [rangeStart, rangeEnd, scale]
   );
 
   // Detecção Inteligente de Riscos e Prazos pela IA
   const riskAlerts = useMemo(
     () => detectAIRisks(stages, tasks, targetConferenceDate),
-    [stages, tasks, targetConferenceDate],
+    [stages, tasks, targetConferenceDate]
   );
 
   // Formatação do Texto do Intervalo no Toolbar
   const dateRangeText = useMemo(() => {
-    const startStr = rangeStart.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
+    const startStr = rangeStart.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
     });
-    const endStr = rangeEnd.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    const endStr = rangeEnd.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
     });
     return `${startStr} – ${endStr}`;
   }, [rangeStart, rangeEnd]);
@@ -116,10 +110,7 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
     setRangeEnd((prev) => addDays(prev, 7));
   };
 
-  const handleSelectEntity = (
-    stage?: ProjectStage | null,
-    task?: TaskItem | null,
-  ) => {
+  const handleSelectEntity = (stage?: ProjectStage | null, task?: TaskItem | null) => {
     setSelectedStage(stage || null);
     setSelectedTask(task || null);
     setIsDrawerOpen(true);
@@ -128,11 +119,11 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
   return (
     <Box
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        width: "100%",
-        overflow: "hidden",
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
+        overflow: 'hidden',
       }}
     >
       {/* 1. SEÇÃO DE METRICAS KPI E ALERTAS AI */}
@@ -153,7 +144,7 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
         onNextPeriod={handleNextPeriod}
         dateRangeText={dateRangeText}
         onAutoScheduleAI={() =>
-          alert("Otimização preditiva de prazos via IA executada com sucesso!")
+          alert('Otimização preditiva de prazos via IA executada com sucesso!')
         }
       />
 
@@ -163,9 +154,9 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
         sx={{
           flex: 1,
           minHeight: 0,
-          display: "flex",
+          display: 'flex',
           borderRadius: 2,
-          overflow: "hidden",
+          overflow: 'hidden',
           boxShadow: 1,
         }}
       >

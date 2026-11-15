@@ -66,7 +66,7 @@ interface CompileRequestBody {
 }
 
 fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) => {
-  const { content, files, mainEntry = 'main.tex', documentId = 'doc' } = request.body || {};
+  const { content, files, mainEntry, documentId = 'doc' } = request.body || {};
 
   if (!content && (!files || files.length === 0)) {
     return reply.status(400).send({
@@ -74,6 +74,30 @@ fastify.post<{ Body: CompileRequestBody }>('/compile', async (request, reply) =>
       error: 'O corpo da requisição deve conter "content" ou a lista "files" com os arquivos do projeto LaTeX.',
     });
   }
+
+  if (files && files.length > 0) {
+    if (!mainEntry) {
+      return reply.status(400).send({
+        success: false,
+        error: 'O parâmetro "mainEntry" é obrigatório e estrito quando "files" é fornecido (sem fallback).',
+      });
+    }
+    const normalizedTarget = path.normalize(mainEntry).replace(/^(\.\.[\/\\])+/, '');
+    const foundEntry = files.some(
+      (f) => path.normalize(f.path).replace(/^(\.\.[\/\\])+/, '') === normalizedTarget
+    );
+    if (!foundEntry) {
+      return reply.status(400).send({
+        success: false,
+        error: `O arquivo principal de compilação "${mainEntry}" não foi localizado na lista "files" do projeto.`,
+      });
+    }
+  }
+
+  const safeMainEntry = mainEntry
+    ? path.normalize(mainEntry).replace(/^(\.\.[\/\\])+/, '')
+    : 'main.tex'; // Válido apenas quando chamado com string simples "content"
+
 
   const jobId = crypto.randomUUID();
   const sandboxDir = path.join(os.tmpdir(), `tex-sandbox-${jobId}`);

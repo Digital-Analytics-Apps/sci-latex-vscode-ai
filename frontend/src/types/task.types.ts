@@ -1,5 +1,5 @@
-import type { TaskStatus } from "../constants/status";
-import type { UserSimple } from "./user.types";
+import type { TaskStatus } from '../constants/status';
+import type { UserSimple } from './user.types';
 
 export interface TaskSummary {
   id: string;

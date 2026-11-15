@@ -102,8 +102,12 @@ export class ProjectsService {
 
     // 1a. Semear arquivos TeX iniciais do artigo no banco de dados (ProjectFile)
     if (process.env.NODE_ENV !== 'test') {
-      let seededFromTemplate = false;
-      const targetTemplateId = data.templateId || 'tpl-system-ieeetran';
+      const targetTemplateId = data.templateId;
+      if (!targetTemplateId) {
+        throw new Error(
+          '[ProjectsService] templateId é obrigatório para provisionar os arquivos do artigo.'
+        );
+      }
 
       try {
         const templatesService = new TemplatesService();
@@ -112,14 +116,17 @@ export class ProjectsService {
 
         const projectFilesData: Prisma.ProjectFileCreateManyInput[] = [];
 
-        // 1. Sempre adiciona o documento LaTeX principal (rootDoc) como main.tex
+        // 1. Adiciona o documento LaTeX principal com seu caminho original estrito (sem forçar main.tex)
         if (parsed.rootDoc) {
           let rootContent = parsed.rootDoc.content;
           if (data.name && /\\title\{[^}]*\}/.test(rootContent)) {
             rootContent = rootContent.replace(/\\title\{[^}]*\}/, `\\title{${data.name}}`);
           }
 
-          if (data.description && /\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/.test(rootContent)) {
+          if (
+            data.description &&
+            /\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/.test(rootContent)
+          ) {
             rootContent = rootContent.replace(
               /\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/,
               `\\begin{abstract}\n${data.description}\n\\end{abstract}`
@@ -127,7 +134,7 @@ export class ProjectsService {
           }
           projectFilesData.push({
             projectId,
-            path: 'main.tex',
+            path: parsed.rootDoc.path,
             fileType: 'text',
             mimeType: 'text/x-tex',
             sizeBytes: BigInt(Buffer.byteLength(rootContent, 'utf-8')),
@@ -137,7 +144,7 @@ export class ProjectsService {
 
         // 2. Adiciona os demais arquivos do template (.cls, .sty, .bib, imagens, etc.)
         for (const file of parsed.files) {
-          if (file.path === 'main.tex' || file.path === parsed.rootDoc?.path) {
+          if (file.path === parsed.rootDoc?.path) {
             continue;
           }
 
@@ -174,90 +181,11 @@ export class ProjectsService {
           await prisma.projectFile.createMany({
             data: projectFilesData,
           });
-          seededFromTemplate = true;
         }
       } catch (err) {
-        console.warn(
-          `[ProjectsService] Falha ao extrair template ${targetTemplateId} do MinIO, aplicando fallback padrão:`,
-          err
+        throw new Error(
+          `[ProjectsService] Falha ao extrair e provisionar template "${targetTemplateId}" do MinIO: ${(err as Error).message}`
         );
-      }
-
-      if (!seededFromTemplate) {
-        await prisma.projectFile.createMany({
-          data: [
-            {
-              projectId,
-              path: 'main.tex',
-              fileType: 'text',
-              mimeType: 'text/x-tex',
-              sizeBytes: BigInt(850),
-              content: `\\documentclass{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-\\usepackage{graphicx}
-
-\\title{${data.name}}
-\\author{\\IEEEauthorblockN{Autores do Artigo}}
-
-\\begin{document}
-\\maketitle
-
-\\begin{abstract}
-Resumo do artigo científico.
-\\end{abstract}
-
-\\input{sections/01-introduction.tex}
-\\input{sections/02-methodology.tex}
-\\input{sections/03-results.tex}
-\\input{sections/04-conclusion.tex}
-
-\\bibliographystyle{IEEEtran}
-\\bibliography{references}
-\\end{document}`,
-            },
-            {
-              projectId,
-              path: 'sections/01-introduction.tex',
-              fileType: 'text',
-              mimeType: 'text/x-tex',
-              sizeBytes: BigInt(200),
-              content: `\\section{Introdução}\nEscreva a introdução e motivação do trabalho aqui.\n`,
-            },
-            {
-              projectId,
-              path: 'sections/02-methodology.tex',
-              fileType: 'text',
-              mimeType: 'text/x-tex',
-              sizeBytes: BigInt(180),
-              content: `\\section{Metodologia}\nDescreva o modelo, hipóteses e procedimentos experimentais.\n`,
-            },
-            {
-              projectId,
-              path: 'sections/03-results.tex',
-              fileType: 'text',
-              mimeType: 'text/x-tex',
-              sizeBytes: BigInt(190),
-              content: `\\section{Resultados}\nApresente os dados obtidos e análise comparativa.\n`,
-            },
-            {
-              projectId,
-              path: 'sections/04-conclusion.tex',
-              fileType: 'text',
-              mimeType: 'text/x-tex',
-              sizeBytes: BigInt(150),
-              content: `\\section{Conclusão}\nSíntese das contribuições e direcionamentos futuros.\n`,
-            },
-            {
-              projectId,
-              path: 'references.bib',
-              fileType: 'text',
-              mimeType: 'text/x-bibtex',
-              sizeBytes: BigInt(120),
-              content: `@article{ref1,\n  author = {Silva, A.},\n  title = {Exemplo de Referência},\n  year = {2026}\n}\n`,
-            },
-          ],
-        });
       }
     }
 

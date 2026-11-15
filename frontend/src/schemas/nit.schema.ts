@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const nitDispatchSchema = z.object({
   sentToNitAt: z.string().optional(),
@@ -6,8 +6,8 @@ export const nitDispatchSchema = z.object({
 });
 
 export const nitParecerSchema = z.object({
-  nitStatus: z.enum(["APPROVED_NIT", "REJECTED_NIT", "WAITING_NIT"], {
-    message: "Selecione o parecer do NIT (Aprovado ou Rejeitado)",
+  nitStatus: z.enum(['APPROVED_NIT', 'REJECTED_NIT', 'WAITING_NIT'], {
+    message: 'Selecione o parecer do NIT (Aprovado ou Rejeitado)',
   }),
   nitNotes: z.string().optional(),
   sentToNitAt: z.string().optional(),

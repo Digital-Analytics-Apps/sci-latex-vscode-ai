@@ -1,7 +1,7 @@
-import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 
-export type AlertSeverity = "success" | "error" | "warning" | "info";
+export type AlertSeverity = 'success' | 'error' | 'warning' | 'info';
 
 interface NotificationState {
   open: boolean;
@@ -11,21 +11,21 @@ interface NotificationState {
 
 const initialState: NotificationState = {
   open: false,
-  message: "",
-  severity: "info",
+  message: '',
+  severity: 'info',
 };
 
 export const notificationSlice = createSlice({
-  name: "notification",
+  name: 'notification',
   initialState,
   reducers: {
     showNotification: (
       state,
-      action: PayloadAction<{ message: string; severity?: AlertSeverity }>,
+      action: PayloadAction<{ message: string; severity?: AlertSeverity }>
     ) => {
       state.open = true;
       state.message = action.payload.message;
-      state.severity = action.payload.severity || "info";
+      state.severity = action.payload.severity || 'info';
     },
     hideNotification: (state) => {
       state.open = false;

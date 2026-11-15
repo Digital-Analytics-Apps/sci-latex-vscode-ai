@@ -1,27 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogContent,
-  Paper,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Chip, Dialog, DialogContent, Paper, Typography } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import {
-  ChatContainer,
-  ChatMessageList,
-  ChatInputBar,
-} from '../../../components/chat';
-import {
-  useAiChatStream,
-  InterruptActionResolver,
-  type ArticleProposalData,
-} from '../../ai-chat';
+import { ChatContainer, ChatMessageList, ChatInputBar } from '../../../components/chat';
+import { useAiChatStream, InterruptActionResolver, type ArticleProposalData } from '../../ai-chat';
 import { useCreateProjectMutation } from '../../../hooks/useProjectQueries';
 import { useTemplatesQuery } from '../../../hooks/useTemplateQueries';
 import { showNotification } from '../../../store/slices/notificationSlice';
@@ -192,15 +176,24 @@ export const CreateArticleAiModal: React.FC<CreateArticleAiModalProps> = ({
       </Typography>
 
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, mb: 3 }}>
-        Olá! Sou a <strong>Belisa</strong>, sua assistente inteligente do SCIA. Me conte sobre a sua ideia de pesquisa
-        ou o tema que você deseja investigar, e vou te ajudar a delimitar o problema, buscar os artigos mais relevantes no{' '}
-        <strong>arXiv</strong> e estruturar o seu projeto com o template oficial.
+        Olá! Sou a <strong>Belisa</strong>, sua assistente inteligente do SCIA. Me conte sobre a sua
+        ideia de pesquisa ou o tema que você deseja investigar, e vou te ajudar a delimitar o
+        problema, buscar os artigos mais relevantes no <strong>arXiv</strong> e estruturar o seu
+        projeto com o template oficial.
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5 }}>
         OU SELECIONE UMA SUGESTÃO INICIAL:
       </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 1, maxWidth: 640 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 1,
+          maxWidth: 640,
+        }}
+      >
         {QUICK_SUGGESTIONS.map((sug, idx) => (
           <Chip
             key={idx}

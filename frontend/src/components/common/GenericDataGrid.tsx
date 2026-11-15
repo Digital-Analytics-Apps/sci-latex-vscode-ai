@@ -1,12 +1,12 @@
-import { Box, Card, CardContent, Typography } from "@mui/material";
+import { Box, Card, CardContent, Typography } from '@mui/material';
 import {
   DataGrid,
   type GridColDef,
   type GridPaginationModel,
   type GridValidRowModel,
-} from "@mui/x-data-grid";
-import { ptBR } from "@mui/x-data-grid/locales";
-import React from "react";
+} from '@mui/x-data-grid';
+import { ptBR } from '@mui/x-data-grid/locales';
+import React from 'react';
 
 export interface GenericDataGridProps<TData extends GridValidRowModel> {
   rows: TData[];
@@ -38,17 +38,16 @@ export function GenericDataGrid<TData extends GridValidRowModel>({
   paginationModel,
   onPaginationModelChange,
   pageSizeOptions = [5, 10, 25, 50],
-  width = "100%",
+  width = '100%',
   height = 480,
-  emptyMessage = "Nenhum registro encontrado.",
+  emptyMessage = 'Nenhum registro encontrado.',
   rowHeight = 56,
   title,
   headerToolbarContent,
   cardWrapper,
 }: Readonly<GenericDataGridProps<TData>>) {
   const isServerPagination = totalCount !== undefined;
-  const shouldWrapInCard =
-    cardWrapper ?? Boolean(title || headerToolbarContent);
+  const shouldWrapInCard = cardWrapper ?? Boolean(title || headerToolbarContent);
 
   const dataGridNode = (
     <DataGrid<TData>
@@ -57,7 +56,7 @@ export function GenericDataGrid<TData extends GridValidRowModel>({
       getRowId={getRowId}
       loading={loading}
       rowCount={isServerPagination ? totalCount : undefined}
-      paginationMode={isServerPagination ? "server" : "client"}
+      paginationMode={isServerPagination ? 'server' : 'client'}
       paginationModel={paginationModel}
       onPaginationModelChange={onPaginationModelChange}
       pageSizeOptions={pageSizeOptions}
@@ -68,27 +67,27 @@ export function GenericDataGrid<TData extends GridValidRowModel>({
         noRowsLabel: emptyMessage,
       }}
       sx={{
-        border: "none",
-        width: "100%",
-        height: "100%",
+        border: 'none',
+        width: '100%',
+        height: '100%',
         px: 2,
-        "& .MuiDataGrid-columnHeaders": {
-          bgcolor: "action.hover",
+        '& .MuiDataGrid-columnHeaders': {
+          bgcolor: 'action.hover',
           fontWeight: 700,
         },
-        "& .MuiDataGrid-cell": {
-          display: "flex",
-          alignItems: "center",
+        '& .MuiDataGrid-cell': {
+          display: 'flex',
+          alignItems: 'center',
         },
       }}
       slots={{
         noRowsOverlay: () => (
           <Box
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
             }}
           >
             <Typography color="text.secondary" variant="body2">
@@ -107,18 +106,18 @@ export function GenericDataGrid<TData extends GridValidRowModel>({
         sx={{
           width,
           height,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
         {(title || headerToolbarContent) && (
           <Box
             sx={{
-              bgcolor: "background.paper",
-              borderBottom: "1px solid",
-              borderColor: "divider",
-              flex: "0 0 auto",
+              bgcolor: 'background.paper',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              flex: '0 0 auto',
             }}
           >
             {title && (
@@ -134,8 +133,8 @@ export function GenericDataGrid<TData extends GridValidRowModel>({
             p: 0,
             flex: 1,
             minHeight: 0,
-            width: "100%",
-            "&:last-child": { pb: 0 },
+            width: '100%',
+            '&:last-child': { pb: 0 },
           }}
         >
           {dataGridNode}
@@ -149,7 +148,7 @@ export function GenericDataGrid<TData extends GridValidRowModel>({
       sx={{
         width,
         height,
-        position: "relative",
+        position: 'relative',
       }}
     >
       {dataGridNode}

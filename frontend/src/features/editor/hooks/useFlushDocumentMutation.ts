@@ -8,7 +8,9 @@ export function useFlushDocumentMutation(documentId: string) {
   return useMutation<FlushDocumentResponse, Error, void>({
     mutationFn: () => EditorService.flushDocument({ documentId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.history(documentId) });
+      queryClient.invalidateQueries({
+        queryKey: editorKeys.history(documentId),
+      });
     },
   });
 }

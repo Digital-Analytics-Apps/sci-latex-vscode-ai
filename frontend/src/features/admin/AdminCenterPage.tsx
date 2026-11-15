@@ -1,14 +1,4 @@
-import {
-  Box,
-  Button,
-  Chip,
-  Container,
-  Paper,
-  Stack,
-  Tab,
-  Tabs,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Chip, Container, Paper, Stack, Tab, Tabs, Typography } from '@mui/material';
 import {
   Activity,
   Cpu,
@@ -17,15 +7,15 @@ import {
   Radio,
   RefreshCw,
   ShieldCheck,
-} from "lucide-react";
-import React, { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ADMIN_CENTER_KEYS } from "./hooks/useAdminCenterQueries";
-import { OverviewTab } from "./tabs/OverviewTab";
-import { WorkflowTab } from "./tabs/WorkflowTab";
-import { InfrastructureTab } from "./tabs/InfrastructureTab";
-import { CollaborationTab } from "./tabs/CollaborationTab";
-import { ActivityTab } from "./tabs/ActivityTab";
+} from 'lucide-react';
+import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ADMIN_CENTER_KEYS } from './hooks/useAdminCenterQueries';
+import { OverviewTab } from './tabs/OverviewTab';
+import { WorkflowTab } from './tabs/WorkflowTab';
+import { InfrastructureTab } from './tabs/InfrastructureTab';
+import { CollaborationTab } from './tabs/CollaborationTab';
+import { ActivityTab } from './tabs/ActivityTab';
 
 export const AdminCenterPage: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<number>(0);
@@ -44,19 +34,15 @@ export const AdminCenterPage: React.FC = () => {
       {/* Top Header */}
       <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
         <Stack
-          direction={{ xs: "column", md: "row" }}
+          direction={{ xs: 'column', md: 'row' }}
           spacing={2}
           sx={{
-            justifyContent: "space-between",
-            alignItems: { xs: "flex-start", md: "center" },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
           }}
         >
           <Box>
-            <Stack
-              direction="row"
-              spacing={1.5}
-              sx={{ alignItems: "center", mb: 0.5 }}
-            >
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
               <ShieldCheck size={28} color="#2563eb" />
               <Typography variant="h4" sx={{ fontWeight: 800 }}>
                 SCIA Admin Center
@@ -65,7 +51,7 @@ export const AdminCenterPage: React.FC = () => {
                 label="Role.ADMIN"
                 color="primary"
                 size="small"
-                sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                sx={{ fontWeight: 700, fontSize: '0.75rem' }}
               />
             </Stack>
             <Typography variant="body2" color="text.secondary">
@@ -73,13 +59,13 @@ export const AdminCenterPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <Chip
-              label={autoRefresh ? "Auto-Refresh: 15s" : "Auto-Refresh: Pausado"}
-              color={autoRefresh ? "success" : "default"}
+              label={autoRefresh ? 'Auto-Refresh: 15s' : 'Auto-Refresh: Pausado'}
+              color={autoRefresh ? 'success' : 'default'}
               variant="outlined"
               onClick={() => setAutoRefresh(!autoRefresh)}
-              sx={{ cursor: "pointer", fontWeight: 600 }}
+              sx={{ cursor: 'pointer', fontWeight: 600 }}
             />
             <Button
               variant="contained"
@@ -95,7 +81,7 @@ export const AdminCenterPage: React.FC = () => {
       </Paper>
 
       {/* Tabs Navigation */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs
           value={currentTab}
           onChange={(_, newTab) => setCurrentTab(newTab)}
@@ -105,8 +91,16 @@ export const AdminCenterPage: React.FC = () => {
           <Tab icon={<LayoutDashboard size={18} />} iconPosition="start" label="1. Visão Geral" />
           <Tab icon={<Layers size={18} />} iconPosition="start" label="2. Fluxo Científico" />
           <Tab icon={<Cpu size={18} />} iconPosition="start" label="3. Infraestrutura" />
-          <Tab icon={<Radio size={18} />} iconPosition="start" label="4. Colaboração em Tempo Real" />
-          <Tab icon={<Activity size={18} />} iconPosition="start" label="5. Atividade & Auditoria" />
+          <Tab
+            icon={<Radio size={18} />}
+            iconPosition="start"
+            label="4. Colaboração em Tempo Real"
+          />
+          <Tab
+            icon={<Activity size={18} />}
+            iconPosition="start"
+            label="5. Atividade & Auditoria"
+          />
         </Tabs>
       </Box>
 

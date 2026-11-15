@@ -1,35 +1,23 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import HomeIcon from "@mui/icons-material/Home";
-import {
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Paper,
-} from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import ArticleIcon from '@mui/icons-material/Article';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import HomeIcon from '@mui/icons-material/Home';
+import { List, ListItemButton, ListItemIcon, ListItemText, Paper } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface ManagerSidebarProps {
   height: number;
   width?: number;
 }
 
-export const ManagerSidebar = ({
-  height,
-  width = 250,
-}: ManagerSidebarProps) => {
+export const ManagerSidebar = ({ height, width = 250 }: ManagerSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const pathname = location.pathname;
-  const isDashboard =
-    pathname === "/" || pathname === "/manager" || pathname === "/manager/";
+  const isDashboard = pathname === '/' || pathname === '/manager' || pathname === '/manager/';
   const isAcademicPeriods =
-    pathname === "/academic-periods" ||
-    pathname.startsWith("/manager/academic-periods");
-  const isArticles =
-    pathname === "/articles" || pathname.startsWith("/manager/articles");
+    pathname === '/academic-periods' || pathname.startsWith('/manager/academic-periods');
+  const isArticles = pathname === '/articles' || pathname.startsWith('/manager/articles');
 
   return (
     <Paper
@@ -40,32 +28,32 @@ export const ManagerSidebar = ({
         height,
         flexShrink: 0,
         p: 2,
-        display: "flex",
-        flexDirection: "column",
+        display: 'flex',
+        flexDirection: 'column',
         borderRadius: 2,
-        bgcolor: "background.paper",
+        bgcolor: 'background.paper',
       }}
     >
       <List component="nav" sx={{ pt: 1 }}>
         <ListItemButton
           selected={isDashboard}
-          onClick={() => navigate("/")}
+          onClick={() => navigate('/')}
           sx={{
             borderRadius: 1.5,
             mb: 1,
-            "&.Mui-selected": {
-              bgcolor: "primary.soft",
-              color: "primary.main",
+            '&.Mui-selected': {
+              bgcolor: 'primary.soft',
+              color: 'primary.main',
               fontWeight: 700,
-              borderLeft: "4px solid",
-              borderColor: "primary.main",
+              borderLeft: '4px solid',
+              borderColor: 'primary.main',
             },
           }}
         >
           <ListItemIcon
             sx={{
               minWidth: 36,
-              color: isDashboard ? "primary.main" : "text.secondary",
+              color: isDashboard ? 'primary.main' : 'text.secondary',
             }}
           >
             <HomeIcon />
@@ -74,7 +62,7 @@ export const ManagerSidebar = ({
             primary="Dashboard"
             slotProps={{
               primary: {
-                variant: "body2",
+                variant: 'body2',
                 sx: { fontWeight: isDashboard ? 700 : 500 },
               },
             }}
@@ -83,23 +71,23 @@ export const ManagerSidebar = ({
 
         <ListItemButton
           selected={isAcademicPeriods}
-          onClick={() => navigate("/academic-periods")}
+          onClick={() => navigate('/academic-periods')}
           sx={{
             borderRadius: 1.5,
             mb: 1,
-            "&.Mui-selected": {
-              bgcolor: "warning.soft",
-              color: "warning.main",
+            '&.Mui-selected': {
+              bgcolor: 'warning.soft',
+              color: 'warning.main',
               fontWeight: 700,
-              borderLeft: "4px solid",
-              borderColor: "warning.main",
+              borderLeft: '4px solid',
+              borderColor: 'warning.main',
             },
           }}
         >
           <ListItemIcon
             sx={{
               minWidth: 36,
-              color: isAcademicPeriods ? "warning.main" : "text.secondary",
+              color: isAcademicPeriods ? 'warning.main' : 'text.secondary',
             }}
           >
             <CalendarTodayIcon />
@@ -108,7 +96,7 @@ export const ManagerSidebar = ({
             primary="Ciclos Acadêmicos"
             slotProps={{
               primary: {
-                variant: "body2",
+                variant: 'body2',
                 sx: { fontWeight: isAcademicPeriods ? 700 : 500 },
               },
             }}
@@ -117,23 +105,23 @@ export const ManagerSidebar = ({
 
         <ListItemButton
           selected={isArticles}
-          onClick={() => navigate("/articles")}
+          onClick={() => navigate('/articles')}
           sx={{
             borderRadius: 1.5,
             mb: 1,
-            "&.Mui-selected": {
-              bgcolor: "success.soft",
-              color: "success.main",
+            '&.Mui-selected': {
+              bgcolor: 'success.soft',
+              color: 'success.main',
               fontWeight: 700,
-              borderLeft: "4px solid",
-              borderColor: "success.main",
+              borderLeft: '4px solid',
+              borderColor: 'success.main',
             },
           }}
         >
           <ListItemIcon
             sx={{
               minWidth: 36,
-              color: isArticles ? "success.main" : "text.secondary",
+              color: isArticles ? 'success.main' : 'text.secondary',
             }}
           >
             <ArticleIcon />
@@ -142,7 +130,7 @@ export const ManagerSidebar = ({
             primary="Artigos"
             slotProps={{
               primary: {
-                variant: "body2",
+                variant: 'body2',
                 sx: { fontWeight: isArticles ? 700 : 500 },
               },
             }}

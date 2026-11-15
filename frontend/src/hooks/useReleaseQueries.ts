@@ -1,12 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  type CreateRCInput,
-  releasesService,
-} from "../services/releasesService";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type CreateRCInput, releasesService } from '../services/releasesService';
 
 export function useReleaseCandidatesQuery(projectId: string) {
   return useQuery({
-    queryKey: ["release-candidates", projectId],
+    queryKey: ['release-candidates', projectId],
     queryFn: () => releasesService.getReleaseCandidates(projectId),
     enabled: Boolean(projectId),
   });
@@ -15,11 +12,10 @@ export function useReleaseCandidatesQuery(projectId: string) {
 export function useCreateRCMutation(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data?: CreateRCInput) =>
-      releasesService.createReleaseCandidate(projectId, data),
+    mutationFn: (data?: CreateRCInput) => releasesService.createReleaseCandidate(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["release-candidates", projectId],
+        queryKey: ['release-candidates', projectId],
       });
     },
   });
@@ -28,23 +24,22 @@ export function useCreateRCMutation(projectId: string) {
 export function usePublishReleaseMutation(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (versionTag?: string) =>
-      releasesService.publishRelease(projectId, versionTag),
+    mutationFn: (versionTag?: string) => releasesService.publishRelease(projectId, versionTag),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["release-candidates", projectId],
+        queryKey: ['release-candidates', projectId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["releases", projectId],
+        queryKey: ['releases', projectId],
       });
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     },
   });
 }
 
 export function useReleasesQuery(projectId: string) {
   return useQuery({
-    queryKey: ["releases", projectId],
+    queryKey: ['releases', projectId],
     queryFn: () => releasesService.getReleases(projectId),
     enabled: Boolean(projectId),
   });

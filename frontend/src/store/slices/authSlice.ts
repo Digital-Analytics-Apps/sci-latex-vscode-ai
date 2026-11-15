@@ -1,8 +1,7 @@
-import type { PayloadAction } from "@reduxjs/toolkit";
-import { createSlice } from "@reduxjs/toolkit";
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 
-export type UserRole =
-  "AUTHOR" | "REVIEWER" | "COORDINATOR" | "MANAGER" | "ADMIN";
+export type UserRole = 'AUTHOR' | 'REVIEWER' | 'COORDINATOR' | 'MANAGER' | 'ADMIN';
 
 export interface User {
   id: string;
@@ -17,15 +16,12 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-const rawToken = localStorage.getItem("token");
-const initialToken =
-  rawToken && rawToken !== "undefined" && rawToken !== "null" ? rawToken : null;
+const rawToken = localStorage.getItem('token');
+const initialToken = rawToken && rawToken !== 'undefined' && rawToken !== 'null' ? rawToken : null;
 
-const rawUser = localStorage.getItem("user");
+const rawUser = localStorage.getItem('user');
 const initialUser =
-  rawUser && rawUser !== "undefined" && rawUser !== "null"
-    ? JSON.parse(rawUser)
-    : null;
+  rawUser && rawUser !== 'undefined' && rawUser !== 'null' ? JSON.parse(rawUser) : null;
 
 const initialState: AuthState = {
   token: initialToken,
@@ -34,25 +30,22 @@ const initialState: AuthState = {
 };
 
 export const authSlice = createSlice({
-  name: "auth",
+  name: 'auth',
   initialState,
   reducers: {
-    setCredentials: (
-      state,
-      action: PayloadAction<{ token: string; user: User }>,
-    ) => {
+    setCredentials: (state, action: PayloadAction<{ token: string; user: User }>) => {
       state.token = action.payload.token;
       state.user = action.payload.user;
       state.isAuthenticated = true;
-      localStorage.setItem("token", action.payload.token);
-      localStorage.setItem("user", JSON.stringify(action.payload.user));
+      localStorage.setItem('token', action.payload.token);
+      localStorage.setItem('user', JSON.stringify(action.payload.user));
     },
     logout: (state) => {
       state.token = null;
       state.user = null;
       state.isAuthenticated = false;
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
   },
 });

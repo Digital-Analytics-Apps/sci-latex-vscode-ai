@@ -14,17 +14,10 @@ import {
   TableHead,
   TableRow,
   Typography,
-} from "@mui/material";
-import {
-  Activity,
-  CheckCircle,
-  FileText,
-  Radio,
-  Server,
-  Zap,
-} from "lucide-react";
-import React from "react";
-import { useAdminCollaboration } from "../hooks/useAdminCenterQueries";
+} from '@mui/material';
+import { Activity, CheckCircle, FileText, Radio, Server, Zap } from 'lucide-react';
+import React from 'react';
+import { useAdminCollaboration } from '../hooks/useAdminCenterQueries';
 
 interface CollaborationTabProps {
   autoRefresh: boolean;
@@ -35,7 +28,7 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />
       </Box>
     );
@@ -43,7 +36,7 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
 
   if (isError || !data) {
     return (
-      <Paper sx={{ p: 4, textAlign: "center" }}>
+      <Paper sx={{ p: 4, textAlign: 'center' }}>
         <Typography color="error">Erro ao carregar dados de colaboração em tempo real.</Typography>
       </Paper>
     );
@@ -54,9 +47,9 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
       {/* 1. Indicadores em Tempo Real da Colaboração */}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <FileText size={18} color="#3b82f6" />
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Artigos em Edição
@@ -73,9 +66,9 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <Radio size={18} color="#06b6d4" />
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Usuários no Editor
@@ -92,16 +85,16 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <Activity size={18} color="#10b981" />
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Throughput OT
                 </Typography>
               </Stack>
               <Typography variant="h4" color="success.main" sx={{ fontWeight: 800 }}>
-                {data.otOperationsPerSecond.toFixed(1)}{" "}
+                {data.otOperationsPerSecond.toFixed(1)}{' '}
                 <Typography component="span" variant="body1">
                   ops/s
                 </Typography>
@@ -114,9 +107,9 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <Zap size={18} color="#f59e0b" />
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Latência em RAM
@@ -135,7 +128,7 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
 
       {/* 2. Distribuição de Documentos por Pod Dono */}
       <Paper sx={{ p: 3, borderRadius: 2 }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
           <Server size={20} />
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Distribuição de Documentos e Carga por Pod Dono
@@ -160,7 +153,7 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
               {data.documentsByPod.map((pod) => (
                 <TableRow key={pod.podName}>
                   <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: "monospace" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
                       {pod.podName}
                     </Typography>
                   </TableCell>
@@ -168,13 +161,27 @@ export const CollaborationTab: React.FC<CollaborationTabProps> = ({ autoRefresh 
                   <TableCell>{pod.memoryUsageMb} MB</TableCell>
                   <TableCell>
                     {data.pendingCheckpointsCount > 0 ? (
-                      <Chip label={`${data.pendingCheckpointsCount} pendentes`} size="small" color="warning" />
+                      <Chip
+                        label={`${data.pendingCheckpointsCount} pendentes`}
+                        size="small"
+                        color="warning"
+                      />
                     ) : (
-                      <Chip label="Sincronizado (ACID)" size="small" color="success" variant="outlined" />
+                      <Chip
+                        label="Sincronizado (ACID)"
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                      />
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip icon={<CheckCircle size={14} />} label="Ativo & Conectado" size="small" color="success" />
+                    <Chip
+                      icon={<CheckCircle size={14} />}
+                      label="Ativo & Conectado"
+                      size="small"
+                      color="success"
+                    />
                   </TableCell>
                 </TableRow>
               ))}

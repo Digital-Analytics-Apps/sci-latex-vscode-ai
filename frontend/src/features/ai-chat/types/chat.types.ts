@@ -1,11 +1,7 @@
 export type ChatRole = 'user' | 'assistant' | 'system';
 
 export type AgentName =
-  | 'supervisor'
-  | 'idea_refiner'
-  | 'search_specialist'
-  | 'curation_manager'
-  | 'writer';
+  'supervisor' | 'idea_refiner' | 'search_specialist' | 'curation_manager' | 'writer';
 
 export interface ArticleItem {
   title: string;
@@ -76,10 +72,19 @@ export interface ChatMessage {
 export type StreamEvent =
   | { type: 'token'; content: string; agent?: string }
   | { type: 'agent'; name: AgentName }
-  | { type: 'interrupt'; data?: unknown; action_requests?: InterruptActionRequest[] }
+  | {
+      type: 'interrupt';
+      data?: unknown;
+      action_requests?: InterruptActionRequest[];
+    }
   | { type: 'action_request'; data?: InterruptPayload }
   | { type: 'articles_found'; articles: ArticleItem[] }
-  | { type: 'roadmap_generated'; title?: string; abstract?: string; stages?: StageTimelineItem[] }
+  | {
+      type: 'roadmap_generated';
+      title?: string;
+      abstract?: string;
+      stages?: StageTimelineItem[];
+    }
   | { type: 'status'; message: string }
   | { type: 'error'; message: string }
   | { type: 'done' };

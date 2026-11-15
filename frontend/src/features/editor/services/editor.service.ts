@@ -136,7 +136,10 @@ export const EditorService: EditorServiceType = {
         let errorDetails: string | null = null;
         try {
           const text = await error.response.data.text();
-          const errJson = JSON.parse(text) as { error?: string; details?: string };
+          const errJson = JSON.parse(text) as {
+            error?: string;
+            details?: string;
+          };
           errorDetails = errJson.details || errJson.error || null;
         } catch {
           // Resposta não é JSON
@@ -180,10 +183,9 @@ export const EditorService: EditorServiceType = {
   async fetchProjectFiles(request: FetchProjectFilesRequest): Promise<FetchProjectFilesResponse> {
     const { documentId, signal } = request;
     try {
-      const response = await httpClient.get<RawProjectFile[]>(
-        `/documents/${documentId}/files`,
-        { signal }
-      );
+      const response = await httpClient.get<RawProjectFile[]>(`/documents/${documentId}/files`, {
+        signal,
+      });
       return response.data.map((item) => ({
         id: item.id,
         name: item.path,

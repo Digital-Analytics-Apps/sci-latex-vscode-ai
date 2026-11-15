@@ -1,14 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
-import {
-  EditorState,
-  ChangeSet,
-} from '@codemirror/state';
-import {
-  collab,
-  sendableUpdates,
-  receiveUpdates,
-  getSyncedVersion,
-} from '@codemirror/collab';
+import { EditorState, ChangeSet } from '@codemirror/state';
+import { collab, sendableUpdates, receiveUpdates, getSyncedVersion } from '@codemirror/collab';
 import {
   EditorView,
   lineNumbers,
@@ -30,10 +22,7 @@ import {
   indentOnInput,
 } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
-import {
-  autocompletion,
-  closeBrackets,
-} from '@codemirror/autocomplete';
+import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { search, highlightSelectionMatches } from '@codemirror/search';
 import { lintGutter, linter, Diagnostic, forceLinting } from '@codemirror/lint';
 
@@ -159,7 +148,11 @@ export interface CodeMirrorEditorProps {
   settings?: EditorSettings;
   comments?: ReviewComment[];
   activeCommentId?: string | null;
-  pendingCommentSelection?: { from: number; to: number; selectedText: string } | null;
+  pendingCommentSelection?: {
+    from: number;
+    to: number;
+    selectedText: string;
+  } | null;
   onLinePositionsChange?: (info: EditorLineLayoutInfo) => void;
   externalScrollTop?: number;
   onSelectComment?: (commentId: string | null) => void;
@@ -170,7 +163,12 @@ export interface CodeMirrorEditorProps {
   activeFile?: string;
   collabVersion?: number;
   onPushCollabUpdates?: (file: string, version: number, updates: CollabUpdateJSON[]) => void;
-  incomingCollabUpdates?: { file: string; version: number; updates: CollabUpdateJSON[]; timestamp: number } | null;
+  incomingCollabUpdates?: {
+    file: string;
+    version: number;
+    updates: CollabUpdateJSON[];
+    timestamp: number;
+  } | null;
   onDocContentChange?: (content: string) => void;
   onHistoryChange?: (status: HistoryStatus) => void;
   onRegisterActions?: (actions: { undo: () => boolean; redo: () => boolean } | null) => void;
@@ -337,7 +335,10 @@ export function CodeMirrorEditor({
       const coords = view.coordsAtPos(line.from);
       if (coords) {
         const relativeTop = coords.top - scrollerRect.top + scroller.scrollTop;
-        tops[comment.id] = { lineNumber: line.number, top: Math.max(0, relativeTop) };
+        tops[comment.id] = {
+          lineNumber: line.number,
+          top: Math.max(0, relativeTop),
+        };
       }
     }
 
@@ -436,11 +437,7 @@ export function CodeMirrorEditor({
         getSpellcheckExtension(settings.spellcheck, settings.spellcheckLanguage)
       ),
       editorConfigCompart.of(
-        getEditorConfigExtension(
-          settings.fontSize,
-          settings.lineHeight,
-          settings.nonBlinkingCursor
-        )
+        getEditorConfigExtension(settings.fontSize, settings.lineHeight, settings.nonBlinkingCursor)
       ),
       readOnlyCompart.of(EditorState.readOnly.of(Boolean(readOnly))),
       collab({
@@ -626,12 +623,13 @@ export function CodeMirrorEditor({
       viewRef.current.dispatch({
         effects: [
           wordWrapCompart.reconfigure(settings.wordWrap ? EditorView.lineWrapping : []),
-          autoCloseBracketsCompart.reconfigure(
-            settings.autoCloseBrackets ? closeBrackets() : []
-          ),
+          autoCloseBracketsCompart.reconfigure(settings.autoCloseBrackets ? closeBrackets() : []),
           autocompleteCompart.reconfigure(
             settings.autoComplete
-              ? autocompletion({ override: [latexCompletionSource], defaultKeymap: true })
+              ? autocompletion({
+                  override: [latexCompletionSource],
+                  defaultKeymap: true,
+                })
               : []
           ),
           linterCompart.reconfigure(
@@ -642,9 +640,7 @@ export function CodeMirrorEditor({
                 : []
           ),
           grammarLinterCompart.reconfigure(
-            settings.spellcheck
-              ? [linter(grammarLinterSource, { delay: 800 })]
-              : []
+            settings.spellcheck ? [linter(grammarLinterSource, { delay: 800 })] : []
           ),
           spellcheckCompart.reconfigure(
             getSpellcheckExtension(settings.spellcheck, settings.spellcheckLanguage)
@@ -676,7 +672,6 @@ export function CodeMirrorEditor({
       effects: readOnlyCompart.reconfigure(EditorState.readOnly.of(Boolean(readOnly))),
     });
   }, [readOnly]);
-
 
   // Atualiza cursores remotos
   useEffect(() => {

@@ -84,22 +84,46 @@ export function parseLatexZip(zipBuffer: Buffer): ParsedLatexProject {
     throw new Error('O arquivo ZIP está vazio ou corrompido.');
   }
 
+  // 1. Filtra entradas válidas descartando diretórios puros e lixo de SO
+  const validEntries = zipEntries.filter((entry) => {
+    if (entry.isDirectory) return false;
+    const name = entry.entryName;
+    if (
+      name.includes('__MACOSX') ||
+      name.startsWith('.') ||
+      name.includes('/.') ||
+      name.endsWith('Thumbs.db')
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  if (validEntries.length === 0) {
+    throw new Error('O arquivo ZIP não contém arquivos válidos utilizáveis.');
+  }
+
+  // 2. Heurística Overleaf: Se todas as entradas estiverem sob uma única pasta-mãe de topo, remove o wrapper
+  const rawPaths = validEntries.map((e) =>
+    e.entryName.replace(/^(\.\.[/\\])+/, '').replace(/^[\\/]+/, '')
+  );
+  const splitPaths = rawPaths.map((p) => p.split(/[/\\]/));
+  let commonPrefix = '';
+  if (
+    splitPaths.length > 0 &&
+    splitPaths.every((parts) => parts.length > 1 && parts[0] === splitPaths[0][0])
+  ) {
+    commonPrefix = splitPaths[0][0] + '/';
+  }
+
   const parsedFiles: ParsedZipFile[] = [];
   const texFiles: Array<{ path: string; content: string }> = [];
 
-  for (const entry of zipEntries) {
-    // Descarta diretórios puros e arquivos de sistema indesejados
-    if (
-      entry.isDirectory ||
-      entry.entryName.includes('__MACOSX') ||
-      entry.name.startsWith('.') ||
-      entry.name === 'Thumbs.db'
-    ) {
-      continue;
+  for (const entry of validEntries) {
+    let normalizedPath = entry.entryName.replace(/^(\.\.[/\\])+/, '').replace(/^[\\/]+/, '');
+    if (commonPrefix && normalizedPath.startsWith(commonPrefix)) {
+      normalizedPath = normalizedPath.substring(commonPrefix.length);
     }
-
-    // Normaliza o caminho relativo seguro (remove leading / ou ../)
-    const normalizedPath = entry.entryName.replace(/^(\.\.[/\\])+/, '').replace(/^[\\/]+/, '');
     if (!normalizedPath) continue;
 
     const fileType = resolveFileType(normalizedPath);

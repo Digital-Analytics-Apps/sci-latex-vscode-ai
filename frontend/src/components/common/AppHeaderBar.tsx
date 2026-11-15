@@ -1,7 +1,7 @@
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import Brightness7Icon from "@mui/icons-material/Brightness7";
-import LogoutIcon from "@mui/icons-material/Logout";
-import SignalCellularAltIcon from "@mui/icons-material/SignalCellularAlt";
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import LogoutIcon from '@mui/icons-material/Logout';
+import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
 import {
   AppBar,
   Box,
@@ -13,16 +13,16 @@ import {
   Toolbar,
   Tooltip,
   Typography,
-} from "@mui/material";
-import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { useSSEEventSource } from "../../hooks/useSSEEventSource";
-import type { RootState } from "../../store";
-import { logout } from "../../store/slices/authSlice";
-import { useColorMode } from "../../theme";
+} from '@mui/material';
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { useSSEEventSource } from '../../hooks/useSSEEventSource';
+import type { RootState } from '../../store';
+import { logout } from '../../store/slices/authSlice';
+import { useColorMode } from '../../theme';
 
-import { UserAvatar } from "./UserAvatar";
+import { UserAvatar } from './UserAvatar';
 
 export interface AppHeaderBarProps {
   /** Título principal exibido na barra superior. Padrão: "SCIA — Scientific Collaboration and Intelligent Assistance" */
@@ -39,7 +39,7 @@ export interface AppHeaderBarProps {
  * e menu de perfil/logout em todas as visões de layout por persona.
  */
 export const AppHeaderBar = ({
-  title = "SCIA — Scientific Collaboration and Intelligent Assistance",
+  title = 'SCIA — Scientific Collaboration and Intelligent Assistance',
   icon,
   extraHeaderActions,
 }: AppHeaderBarProps) => {
@@ -70,36 +70,33 @@ export const AppHeaderBar = ({
       color="default"
       elevation={0}
       sx={{
-        bgcolor: "background.paper",
-        borderBottom: "1px solid",
-        borderColor: "divider",
+        bgcolor: 'background.paper',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
         borderRadius: 0,
       }}
     >
-      <Toolbar
-        variant="dense"
-        sx={{ justifyContent: "space-between", gap: 2, minHeight: 48 }}
-      >
+      <Toolbar variant="dense" sx={{ justifyContent: 'space-between', gap: 2, minHeight: 48 }}>
         {/* Lado Esquerdo: Marca, Ícone, Título e Ações Secundárias */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {icon && (
             <Box
-              onClick={() => navigate("/")}
-              sx={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+              onClick={() => navigate('/')}
+              sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             >
               {icon}
             </Box>
           )}
 
-          {typeof title === "string" ? (
+          {typeof title === 'string' ? (
             <Typography
               variant="subtitle1"
               sx={{
                 fontWeight: 700,
-                color: "primary.main",
-                cursor: "pointer",
+                color: 'primary.main',
+                cursor: 'pointer',
               }}
-              onClick={() => navigate("/")}
+              onClick={() => navigate('/')}
             >
               {title}
             </Typography>
@@ -111,26 +108,20 @@ export const AppHeaderBar = ({
         </Box>
 
         {/* Lado Direito: SSE Status, Alternador de Tema e Perfil do Usuário */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Tooltip
-            title={
-              isConnected
-                ? "Conexão Real-time SSE Ativa"
-                : "Desconectado do SSE"
-            }
-          >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Tooltip title={isConnected ? 'Conexão Real-time SSE Ativa' : 'Desconectado do SSE'}>
             <Chip
               icon={<SignalCellularAltIcon fontSize="small" />}
-              label={isConnected ? "Real-time SSE" : "Offline"}
+              label={isConnected ? 'Real-time SSE' : 'Offline'}
               size="small"
-              color={isConnected ? "success" : "default"}
+              color={isConnected ? 'success' : 'default'}
               variant="outlined"
             />
           </Tooltip>
 
           <Tooltip title="Alternar Modo Claro / Escuro">
             <IconButton onClick={toggleColorMode} size="small" color="inherit">
-              {mode === "dark" ? (
+              {mode === 'dark' ? (
                 <Brightness7Icon fontSize="small" />
               ) : (
                 <Brightness4Icon fontSize="small" />
@@ -144,7 +135,7 @@ export const AppHeaderBar = ({
               role={user?.role}
               size={28}
               showTooltip={false}
-              sx={{ bgcolor: "primary.main" }}
+              sx={{ bgcolor: 'primary.main' }}
             />
           </IconButton>
 
@@ -152,22 +143,19 @@ export const AppHeaderBar = ({
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleCloseUserMenu}
-            transformOrigin={{ horizontal: "right", vertical: "top" }}
-            anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
             <Stack sx={{ px: 2, py: 1, gap: 0.5 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {user?.name || "Usuário"}
+                {user?.name || 'Usuário'}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Perfil Ativo: {user?.role || "Geral"}
+                Perfil Ativo: {user?.role || 'Geral'}
               </Typography>
             </Stack>
 
-            <MenuItem
-              onClick={handleLogout}
-              sx={{ gap: 1, color: "error.main", fontWeight: 600 }}
-            >
+            <MenuItem onClick={handleLogout} sx={{ gap: 1, color: 'error.main', fontWeight: 600 }}>
               <LogoutIcon fontSize="small" />
               Sair
             </MenuItem>

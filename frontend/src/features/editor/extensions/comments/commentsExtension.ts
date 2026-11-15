@@ -83,7 +83,12 @@ export function buildCommentDecorations(
 
 export const commentsField = StateField.define<CommentsFieldState>({
   create() {
-    return { comments: [], activeId: null, pendingSelection: null, decorations: Decoration.none };
+    return {
+      comments: [],
+      activeId: null,
+      pendingSelection: null,
+      decorations: Decoration.none,
+    };
   },
   update(state, tr) {
     let comments = state.comments;

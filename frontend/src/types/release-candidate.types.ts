@@ -1,4 +1,4 @@
-import type { RCStatus } from "../constants/status";
+import type { RCStatus } from '../constants/status';
 
 export interface ReleaseCandidateItem {
   id: string;

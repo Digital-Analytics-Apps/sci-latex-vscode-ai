@@ -463,7 +463,11 @@ export function ReviewSidebar({
                   <Stack
                     direction="row"
                     spacing={1}
-                    sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}
+                    sx={{
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mb: 0.8,
+                    }}
                   >
                     <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
                       <Avatar
@@ -479,7 +483,11 @@ export function ReviewSidebar({
                         {comment.userName.charAt(0).toUpperCase()}
                       </Avatar>
                       <Typography
-                        sx={{ fontSize: '0.76rem', fontWeight: 700, color: 'text.primary' }}
+                        sx={{
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          color: 'text.primary',
+                        }}
                       >
                         {comment.userName} {comment.userId === currentUserId ? '(Você)' : ''}
                       </Typography>
@@ -532,7 +540,14 @@ export function ReviewSidebar({
                         gap: 0.5,
                       }}
                     >
-                      <Quote size={10} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
+                      <Quote
+                        size={10}
+                        style={{
+                          color: '#d97706',
+                          flexShrink: 0,
+                          marginTop: 2,
+                        }}
+                      />
                       <Typography
                         sx={{
                           fontSize: '0.7rem',
@@ -565,7 +580,12 @@ export function ReviewSidebar({
                   {comment.replies && comment.replies.length > 0 && (
                     <Stack
                       spacing={0.8}
-                      sx={{ pl: 1.5, mb: 1, borderLeft: 1, borderColor: 'divider' }}
+                      sx={{
+                        pl: 1.5,
+                        mb: 1,
+                        borderLeft: 1,
+                        borderColor: 'divider',
+                      }}
                     >
                       {comment.replies.map((reply: CommentReply) => (
                         <Box key={reply.id} sx={{ py: 0.2 }}>
@@ -588,12 +608,21 @@ export function ReviewSidebar({
                             <Typography sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
                               {reply.userName}
                             </Typography>
-                            <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary' }}>
+                            <Typography
+                              sx={{
+                                fontSize: '0.62rem',
+                                color: 'text.secondary',
+                              }}
+                            >
                               {reply.createdAt}
                             </Typography>
                           </Stack>
                           <Typography
-                            sx={{ fontSize: '0.74rem', color: 'text.secondary', pl: 2.2 }}
+                            sx={{
+                              fontSize: '0.74rem',
+                              color: 'text.secondary',
+                              pl: 2.2,
+                            }}
                           >
                             {reply.content}
                           </Typography>
@@ -611,7 +640,10 @@ export function ReviewSidebar({
                         placeholder="Escreva uma resposta..."
                         value={replyInputs[comment.id] || ''}
                         onChange={(e) =>
-                          setReplyInputs((prev) => ({ ...prev, [comment.id]: e.target.value }))
+                          setReplyInputs((prev) => ({
+                            ...prev,
+                            [comment.id]: e.target.value,
+                          }))
                         }
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
@@ -633,7 +665,12 @@ export function ReviewSidebar({
                       >
                         <Button
                           size="small"
-                          onClick={() => setReplyOpen((prev) => ({ ...prev, [comment.id]: false }))}
+                          onClick={() =>
+                            setReplyOpen((prev) => ({
+                              ...prev,
+                              [comment.id]: false,
+                            }))
+                          }
                           sx={{
                             fontSize: '0.65rem',
                             height: 20,
@@ -669,13 +706,19 @@ export function ReviewSidebar({
                   <Stack
                     direction="row"
                     spacing={0.8}
-                    sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+                    sx={{
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
                   >
                     <Button
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setReplyOpen((prev) => ({ ...prev, [comment.id]: !prev[comment.id] }));
+                        setReplyOpen((prev) => ({
+                          ...prev,
+                          [comment.id]: !prev[comment.id],
+                        }));
                       }}
                       sx={{
                         fontSize: '0.68rem',

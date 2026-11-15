@@ -1,48 +1,45 @@
-import AddIcon from "@mui/icons-material/Add";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { Button, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
-import type { GridColDef } from "@mui/x-data-grid";
-import { useMemo, useState } from "react";
-import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { AutoSizer } from "react-virtualized-auto-sizer";
+import AddIcon from '@mui/icons-material/Add';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { Button, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import type { GridColDef } from '@mui/x-data-grid';
+import { useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 import {
   createActionsColumn,
   createAvatarStackColumn,
   createChipColumn,
   createProgressColumn,
   createTitleSubtitleColumn,
-} from "../../components/common/dataGridColumns";
-import { GenericDataGrid } from "../../components/common/GenericDataGrid";
-import { PageContainer } from "../../components/common/PageContainer";
-import { TableContainer } from "../../components/common/TableContainer";
-import { TableHeaderToolbar } from "../../components/common/TableFilters";
-import { WelcomeHeader } from "../../components/common/WelcomeHeader";
-import { useUserArticlesQuery } from "../../hooks/useArticleQueries";
-import type { ArticleItem } from "../../services/articlesService";
-import type { RootState } from "../../store";
-import { CreateProjectModal } from "./modals/CreateProjectModal";
-import { CreateArticleAiModal } from "./modals/CreateArticleAiModal";
+} from '../../components/common/dataGridColumns';
+import { GenericDataGrid } from '../../components/common/GenericDataGrid';
+import { PageContainer } from '../../components/common/PageContainer';
+import { TableContainer } from '../../components/common/TableContainer';
+import { TableHeaderToolbar } from '../../components/common/TableFilters';
+import { WelcomeHeader } from '../../components/common/WelcomeHeader';
+import { useUserArticlesQuery } from '../../hooks/useArticleQueries';
+import type { ArticleItem } from '../../services/articlesService';
+import type { RootState } from '../../store';
+import { CreateProjectModal } from './modals/CreateProjectModal';
+import { CreateArticleAiModal } from './modals/CreateArticleAiModal';
 export const AuthorArticlesPage = () => {
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const { data: articles = [], isLoading } = useUserArticlesQuery();
 
-  const [searchArticleQuery, setSearchArticleQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [searchArticleQuery, setSearchArticleQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const articlesWithRoles = useMemo(() => {
     return articles.map((art) => {
       const isReviewer = art.members?.some(
         (m) =>
-          m.role === "REVIEWER" &&
-          (m.userId === currentUser?.id || m.user?.id === currentUser?.id),
+          m.role === 'REVIEWER' && (m.userId === currentUser?.id || m.user?.id === currentUser?.id)
       );
-      const role: "Autor" | "Revisor Oficial" = isReviewer
-        ? "Revisor Oficial"
-        : "Autor";
+      const role: 'Autor' | 'Revisor Oficial' = isReviewer ? 'Revisor Oficial' : 'Autor';
       return {
         ...art,
         role,
@@ -51,31 +48,27 @@ export const AuthorArticlesPage = () => {
   }, [articles, currentUser?.id]);
 
   const authorCount = useMemo(
-    () => articlesWithRoles.filter((a) => a.role === "Autor").length,
-    [articlesWithRoles],
+    () => articlesWithRoles.filter((a) => a.role === 'Autor').length,
+    [articlesWithRoles]
   );
 
   const reviewerCount = useMemo(
-    () => articlesWithRoles.filter((a) => a.role === "Revisor Oficial").length,
-    [articlesWithRoles],
+    () => articlesWithRoles.filter((a) => a.role === 'Revisor Oficial').length,
+    [articlesWithRoles]
   );
 
   const filteredArticles = useMemo(() => {
     return articlesWithRoles.filter((article) => {
       const matchesSearch =
-        searchArticleQuery.trim() === "" ||
-        article.title
-          .toLowerCase()
-          .includes(searchArticleQuery.toLowerCase()) ||
-        article.conference
-          .toLowerCase()
-          .includes(searchArticleQuery.toLowerCase()) ||
+        searchArticleQuery.trim() === '' ||
+        article.title.toLowerCase().includes(searchArticleQuery.toLowerCase()) ||
+        article.conference.toLowerCase().includes(searchArticleQuery.toLowerCase()) ||
         article.status.toLowerCase().includes(searchArticleQuery.toLowerCase());
 
       const matchesRole =
-        roleFilter === "ALL" ||
-        (roleFilter === "AUTHOR" && article.role === "Autor") ||
-        (roleFilter === "REVIEWER" && article.role === "Revisor Oficial");
+        roleFilter === 'ALL' ||
+        (roleFilter === 'AUTHOR' && article.role === 'Autor') ||
+        (roleFilter === 'REVIEWER' && article.role === 'Revisor Oficial');
 
       return matchesSearch && matchesRole;
     });
@@ -85,119 +78,114 @@ export const AuthorArticlesPage = () => {
     () => [
       createTitleSubtitleColumn<ArticleItem>(
         {
-          field: "title",
-          headerName: "Artigo Científico",
+          field: 'title',
+          headerName: 'Artigo Científico',
           flex: 2.2,
           minWidth: 260,
         },
         (params) => ({
           title: params.row.title,
           subtitle: params.row.conference,
-        }),
+        })
       ),
       createChipColumn<ArticleItem>(
         {
-          field: "role",
-          headerName: "Atuação",
+          field: 'role',
+          headerName: 'Atuação',
           flex: 1.1,
           minWidth: 150,
         },
         (params) => ({
           label: String(params.value),
-          variant: String(params.value).includes("Revisor")
-            ? "filled"
-            : "outlined",
-          color: String(params.value).includes("Revisor")
-            ? "secondary"
-            : "primary",
-        }),
+          variant: String(params.value).includes('Revisor') ? 'filled' : 'outlined',
+          color: String(params.value).includes('Revisor') ? 'secondary' : 'primary',
+        })
       ),
       createChipColumn<ArticleItem>(
         {
-          field: "status",
-          headerName: "Status da Submissão",
+          field: 'status',
+          headerName: 'Status da Submissão',
           flex: 1.2,
           minWidth: 160,
         },
         (params) => ({
           label: String(params.value),
-          variant: "outlined",
+          variant: 'outlined',
           color:
-            String(params.value).includes("Aprovado") ||
-            String(params.value).includes("Publicado")
-              ? "success"
-              : "info",
-        }),
+            String(params.value).includes('Aprovado') || String(params.value).includes('Publicado')
+              ? 'success'
+              : 'info',
+        })
       ),
       createProgressColumn<ArticleItem>(
         {
-          field: "progress",
-          headerName: "Progresso da Escrita",
+          field: 'progress',
+          headerName: 'Progresso da Escrita',
           flex: 1.5,
           minWidth: 180,
         },
         (params) => ({
           value: Number(params.value || 0),
-          label: "Progresso",
-          color: params.row.role === "Autor" ? "primary" : "secondary",
-        }),
+          label: 'Progresso',
+          color: params.row.role === 'Autor' ? 'primary' : 'secondary',
+        })
       ),
       createTitleSubtitleColumn<ArticleItem>(
         {
-          field: "tasks",
-          headerName: "Tarefas Ativas",
+          field: 'tasks',
+          headerName: 'Tarefas Ativas',
           flex: 1,
           minWidth: 130,
         },
         (params) => ({
           title: `${params.row.tasks.length} Tarefa(s)`,
-          icon: "📋",
-        }),
+          icon: '📋',
+        })
       ),
       createAvatarStackColumn<ArticleItem>(
         {
-          field: "members",
-          headerName: "Coautores / Equipe",
+          field: 'members',
+          headerName: 'Coautores / Equipe',
           flex: 1.2,
           minWidth: 140,
           filterable: false,
           sortable: false,
           hideable: false,
         },
-        (params) => params.row.members,
+        (params) => params.row.members
       ),
       createActionsColumn<ArticleItem>(
         {
-          field: "actions",
-          headerName: "Ação",
+          field: 'actions',
+          headerName: 'Ação',
           flex: 1.3,
           minWidth: 160,
         },
         [
           {
-            label: "Ver Tarefas",
+            label: 'Ver Tarefas',
             icon: <ArrowForwardIcon />,
-            color: "primary",
-            variant: "contained",
+            color: 'primary',
+            variant: 'contained',
             onClick: (row) => navigate(`/articles/${row.id}`),
           },
-        ],
+        ]
       ),
     ],
-    [navigate],
+    [navigate]
   );
 
   const headerToolbarNode = useMemo(
     () => (
       <TableHeaderToolbar
-        sx={{ borderBottom: "none", p: 2 }}
+        sx={{ borderBottom: 'none', p: 2 }}
         searchProps={{
-          placeholder: "Buscar artigo por Título ou Conferência...",
+          placeholder: 'Buscar artigo por Título ou Conferência...',
           value: searchArticleQuery,
           onChange: setSearchArticleQuery,
         }}
         actions={
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <ToggleButtonGroup
               size="small"
               value={roleFilter}
@@ -207,21 +195,15 @@ export const AuthorArticlesPage = () => {
               }}
               sx={{ height: 40 }}
             >
-              <ToggleButton
-                value="ALL"
-                sx={{ fontWeight: 600, textTransform: "none", px: 1.5 }}
-              >
+              <ToggleButton value="ALL" sx={{ fontWeight: 600, textTransform: 'none', px: 1.5 }}>
                 Todos ({articlesWithRoles.length})
               </ToggleButton>
-              <ToggleButton
-                value="AUTHOR"
-                sx={{ fontWeight: 600, textTransform: "none", px: 1.5 }}
-              >
+              <ToggleButton value="AUTHOR" sx={{ fontWeight: 600, textTransform: 'none', px: 1.5 }}>
                 Meus Artigos ({authorCount})
               </ToggleButton>
               <ToggleButton
                 value="REVIEWER"
-                sx={{ fontWeight: 600, textTransform: "none", px: 1.5 }}
+                sx={{ fontWeight: 600, textTransform: 'none', px: 1.5 }}
               >
                 Sob Minha Revisão ({reviewerCount})
               </ToggleButton>
@@ -233,7 +215,7 @@ export const AuthorArticlesPage = () => {
               size="small"
               startIcon={<AutoAwesomeIcon />}
               onClick={() => setIsAiModalOpen(true)}
-              sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
+              sx={{ whiteSpace: 'nowrap', height: 40, fontWeight: 700 }}
             >
               Criar com Belisa
             </Button>
@@ -244,22 +226,22 @@ export const AuthorArticlesPage = () => {
               size="small"
               startIcon={<AddIcon />}
               onClick={() => setIsCreateModalOpen(true)}
-              sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 700 }}
+              sx={{ whiteSpace: 'nowrap', height: 40, fontWeight: 700 }}
             >
               Novo Artigo
             </Button>
           </Stack>
         }
         clearFiltersProps={{
-          visible: searchArticleQuery.trim() !== "" || roleFilter !== "ALL",
+          visible: searchArticleQuery.trim() !== '' || roleFilter !== 'ALL',
           onClear: () => {
-            setSearchArticleQuery("");
-            setRoleFilter("ALL");
+            setSearchArticleQuery('');
+            setRoleFilter('ALL');
           },
         }}
       />
     ),
-    [searchArticleQuery, roleFilter],
+    [searchArticleQuery, roleFilter]
   );
 
   return (

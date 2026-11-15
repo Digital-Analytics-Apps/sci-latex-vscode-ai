@@ -163,6 +163,7 @@ describe('DocumentsService - Motor Colaborativo com @codemirror/collab', () => {
       id: 'doc-test-1',
       title: 'Artigo de Teste',
       content: initialDocContent,
+      mainEntryPath: 'main.tex',
       version: 1,
       updatedAt: new Date().toISOString(),
     });

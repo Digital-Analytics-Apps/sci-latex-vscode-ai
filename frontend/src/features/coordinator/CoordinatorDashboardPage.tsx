@@ -1,6 +1,6 @@
-import EditCalendarIcon from "@mui/icons-material/EditCalendar";
-import EventAvailableIcon from "@mui/icons-material/EventAvailable";
-import GroupsIcon from "@mui/icons-material/Groups";
+import EditCalendarIcon from '@mui/icons-material/EditCalendar';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import GroupsIcon from '@mui/icons-material/Groups';
 import {
   Box,
   Button,
@@ -11,21 +11,18 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
-import type { GridColDef } from "@mui/x-data-grid";
-import { ptBR } from "@mui/x-data-grid/locales";
-import React, { useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
-import {
-  createBoldColumn,
-  createDateColumn,
-} from "../../components/common/dataGridColumns";
-import { DeadlineStatusChip } from "../../components/common/StatusChips";
-import { useUpdateDeadlineMutation } from "../../hooks/useManagementQueries";
-import { useProjectsList } from "../../hooks/useProjectQueries";
-import { showNotification } from "../../store/slices/notificationSlice";
+} from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef } from '@mui/x-data-grid';
+import { ptBR } from '@mui/x-data-grid/locales';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../components/common/StandardModal';
+import { createBoldColumn, createDateColumn } from '../../components/common/dataGridColumns';
+import { DeadlineStatusChip } from '../../components/common/StatusChips';
+import { useUpdateDeadlineMutation } from '../../hooks/useManagementQueries';
+import { useProjectsList } from '../../hooks/useProjectQueries';
+import { showNotification } from '../../store/slices/notificationSlice';
 
 export const CoordinatorDashboardPage = () => {
   const dispatch = useDispatch();
@@ -37,7 +34,7 @@ export const CoordinatorDashboardPage = () => {
     title: string;
     dueDate: string;
   } | null>(null);
-  const [newDate, setNewDate] = useState<string>("");
+  const [newDate, setNewDate] = useState<string>('');
 
   const teamMatrixRows = React.useMemo(() => {
     if (!projects || projects.length === 0) return [];
@@ -48,30 +45,26 @@ export const CoordinatorDashboardPage = () => {
       taskTitle: string;
       authorName: string;
       dueDate: string;
-      status: "ON_TIME" | "WARNING_SOON" | "OVERDUE";
+      status: 'ON_TIME' | 'WARNING_SOON' | 'OVERDUE';
     }> = [];
 
     projects.forEach((proj) => {
       rows.push({
         id: `proj-${proj.id}`,
-        projectName: proj.name || "Artigo Científico",
-        taskTitle: "Estrutura do LaTeX & Conteúdo",
-        authorName: "Autores do Artigo",
+        projectName: proj.name || 'Artigo Científico',
+        taskTitle: 'Estrutura do LaTeX & Conteúdo',
+        authorName: 'Autores do Artigo',
         dueDate: proj.targetConferenceDate
-          ? new Date(proj.targetConferenceDate).toISOString().split("T")[0]
-          : "2026-12-31",
-        status: "ON_TIME",
+          ? new Date(proj.targetConferenceDate).toISOString().split('T')[0]
+          : '2026-12-31',
+        status: 'ON_TIME',
       });
     });
 
     return rows;
   }, [projects]);
 
-  const handleOpenEditModal = (task: {
-    id: string;
-    title: string;
-    dueDate: string;
-  }) => {
+  const handleOpenEditModal = (task: { id: string; title: string; dueDate: string }) => {
     setSelectedTask(task);
     setNewDate(task.dueDate);
   };
@@ -87,16 +80,16 @@ export const CoordinatorDashboardPage = () => {
       dispatch(
         showNotification({
           message: `Prazo da tarefa "${selectedTask.title}" alterado para ${newDate} pelo Coordenador!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
       setSelectedTask(null);
     } catch {
       dispatch(
         showNotification({
           message: `Prazo da tarefa "${selectedTask.title}" alterado para ${newDate} pelo Coordenador!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
       setSelectedTask(null);
     }
@@ -105,43 +98,43 @@ export const CoordinatorDashboardPage = () => {
   const columns = React.useMemo<GridColDef[]>(
     () => [
       createBoldColumn({
-        field: "projectName",
-        headerName: "Projeto / Artigo",
+        field: 'projectName',
+        headerName: 'Projeto / Artigo',
         flex: 1.5,
         minWidth: 220,
       }),
       {
-        field: "taskTitle",
-        headerName: "Seção do LaTeX",
+        field: 'taskTitle',
+        headerName: 'Seção do LaTeX',
         flex: 1.3,
         minWidth: 180,
       },
       {
-        field: "authorName",
-        headerName: "Autor Responsável",
+        field: 'authorName',
+        headerName: 'Autor Responsável',
         flex: 1.2,
         minWidth: 180,
       },
       createDateColumn({
-        field: "dueDate",
-        headerName: "Data Limite",
+        field: 'dueDate',
+        headerName: 'Data Limite',
         flex: 1,
         minWidth: 130,
       }),
       {
-        field: "status",
-        headerName: "Indicador de Prazo",
+        field: 'status',
+        headerName: 'Indicador de Prazo',
         flex: 1,
         minWidth: 150,
         renderCell: (params) => <DeadlineStatusChip status={params.value} />,
       },
       {
-        field: "actions",
-        headerName: "Ação do Coordenador",
+        field: 'actions',
+        headerName: 'Ação do Coordenador',
         sortable: false,
         filterable: false,
-        align: "right",
-        headerAlign: "right",
+        align: 'right',
+        headerAlign: 'right',
         flex: 1.2,
         minWidth: 160,
         renderCell: (params) => (
@@ -165,7 +158,7 @@ export const CoordinatorDashboardPage = () => {
         ),
       },
     ],
-    [],
+    []
   );
 
   return (
@@ -173,9 +166,9 @@ export const CoordinatorDashboardPage = () => {
       <Box
         sx={{
           mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}
       >
         <Box>
@@ -183,8 +176,8 @@ export const CoordinatorDashboardPage = () => {
             Matriz de Prazos da Equipe de Pesquisa
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Visão macro das seções em desenvolvimento, atribuição de autores e
-            controle de cronogramas.
+            Visão macro das seções em desenvolvimento, atribuição de autores e controle de
+            cronogramas.
           </Typography>
         </Box>
         <Chip
@@ -197,13 +190,13 @@ export const CoordinatorDashboardPage = () => {
 
       <Card variant="outlined">
         <CardContent sx={{ p: 0 }}>
-          <Box sx={{ width: "100%", minHeight: 320 }}>
+          <Box sx={{ width: '100%', minHeight: 320 }}>
             {isLoading ? (
               <Box
                 sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
                   p: 6,
                 }}
               >
@@ -222,18 +215,16 @@ export const CoordinatorDashboardPage = () => {
                   },
                 }}
                 disableRowSelectionOnClick
-                localeText={
-                  ptBR?.components?.MuiDataGrid?.defaultProps?.localeText
-                }
+                localeText={ptBR?.components?.MuiDataGrid?.defaultProps?.localeText}
                 sx={{
-                  border: "none",
-                  "& .MuiDataGrid-columnHeaders": {
-                    bgcolor: "action.hover",
+                  border: 'none',
+                  '& .MuiDataGrid-columnHeaders': {
+                    bgcolor: 'action.hover',
                     fontWeight: 700,
                   },
-                  "& .MuiDataGrid-cell": {
-                    display: "flex",
-                    alignItems: "center",
+                  '& .MuiDataGrid-cell': {
+                    display: 'flex',
+                    alignItems: 'center',
                   },
                 }}
               />
@@ -259,7 +250,7 @@ export const CoordinatorDashboardPage = () => {
         confirmColor="info"
         isSubmitting={updateDeadlineMutation.isPending}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
             fullWidth
             type="date"

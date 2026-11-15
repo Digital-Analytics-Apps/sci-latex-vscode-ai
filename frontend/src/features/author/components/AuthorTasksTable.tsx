@@ -1,6 +1,6 @@
-import AddIcon from "@mui/icons-material/Add";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import LockIcon from "@mui/icons-material/Lock";
+import AddIcon from '@mui/icons-material/Add';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LockIcon from '@mui/icons-material/Lock';
 import {
   Accordion,
   AccordionDetails,
@@ -13,32 +13,32 @@ import {
   Paper,
   Tooltip,
   Typography,
-} from "@mui/material";
-import type { GridColDef } from "@mui/x-data-grid";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { GenericDataGrid } from "../../../components/common/GenericDataGrid";
+} from '@mui/material';
+import type { GridColDef } from '@mui/x-data-grid';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { GenericDataGrid } from '../../../components/common/GenericDataGrid';
 import {
   TableHeaderFilterToolbar,
   type TableSelectOption,
-} from "../../../components/common/TableFilters";
-import { TaskStatus } from "../../../constants/status";
-import { useTableFilters } from "../../../hooks/useTableFilters";
+} from '../../../components/common/TableFilters';
+import { TaskStatus } from '../../../constants/status';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
   useClaimTaskMutation,
   useTasksQuery,
   useUnclaimTaskMutation,
-} from "../../../hooks/useTaskQueries";
-import { projectsService } from "../../../services/projectsService";
-import { colors } from "../../../theme/tokens";
-import type { TaskItem } from "../../../types/task.types";
+} from '../../../hooks/useTaskQueries';
+import { projectsService } from '../../../services/projectsService';
+import { colors } from '../../../theme/tokens';
+import type { TaskItem } from '../../../types/task.types';
 import {
   TaskActionCell,
   TaskAssigneeCell,
   TaskDueDateCell,
   TaskStatusChip,
   TaskTitleBranchCell,
-} from "./TaskDataGridCells";
+} from './TaskDataGridCells';
 
 export interface AuthorTasksTableProps {
   projectId: string;
@@ -54,18 +54,18 @@ export interface AuthorTaskFilters {
 }
 
 const DEFAULT_AUTHOR_TASK_FILTERS: AuthorTaskFilters = {
-  search: "",
-  status: "ALL",
+  search: '',
+  status: 'ALL',
 };
 
 const TASK_STATUS_OPTIONS: TableSelectOption[] = [
-  { value: "ALL", label: "Todos os Status" },
-  { value: TaskStatus.NOT_STARTED, label: "Não Iniciada" },
-  { value: TaskStatus.IN_PROGRESS, label: "Em Andamento" },
-  { value: TaskStatus.REVIEW_REQUESTED, label: "Aguardando Revisão" },
-  { value: TaskStatus.IN_REVIEW, label: "Em Revisão" },
-  { value: TaskStatus.CHANGES_REQUESTED, label: "Ajustes Solicitados" },
-  { value: TaskStatus.COMPLETED, label: "Concluída" },
+  { value: 'ALL', label: 'Todos os Status' },
+  { value: TaskStatus.NOT_STARTED, label: 'Não Iniciada' },
+  { value: TaskStatus.IN_PROGRESS, label: 'Em Andamento' },
+  { value: TaskStatus.REVIEW_REQUESTED, label: 'Aguardando Revisão' },
+  { value: TaskStatus.IN_REVIEW, label: 'Em Revisão' },
+  { value: TaskStatus.CHANGES_REQUESTED, label: 'Ajustes Solicitados' },
+  { value: TaskStatus.COMPLETED, label: 'Concluída' },
 ];
 
 export const AuthorTasksTable = ({
@@ -75,8 +75,9 @@ export const AuthorTasksTable = ({
   onStartWorkspace,
   onOpenCreateTask,
 }: AuthorTasksTableProps) => {
-  const { apiParams, isFiltered, resetFilters, searchProps, bindSelect } =
-    useTableFilters(DEFAULT_AUTHOR_TASK_FILTERS);
+  const { apiParams, isFiltered, resetFilters, searchProps, bindSelect } = useTableFilters(
+    DEFAULT_AUTHOR_TASK_FILTERS
+  );
 
   const claimTaskMutation = useClaimTaskMutation(projectId);
   const unclaimTaskMutation = useUnclaimTaskMutation(projectId);
@@ -88,15 +89,13 @@ export const AuthorTasksTable = ({
   } = useTasksQuery(projectId, apiParams);
 
   const { data: stages = [] } = useQuery({
-    queryKey: ["project-stages", projectId],
+    queryKey: ['project-stages', projectId],
     queryFn: () => projectsService.getProjectStages(projectId),
     enabled: Boolean(projectId),
   });
 
   // Controla quais acordeões de etapa estão expandidos
-  const [expandedStages, setExpandedStages] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [expandedStages, setExpandedStages] = useState<Record<string, boolean>>({});
 
   const toggleStage = (stageId: string) => {
     setExpandedStages((prev) => ({
@@ -108,15 +107,15 @@ export const AuthorTasksTable = ({
   const columns = useMemo<GridColDef<TaskItem>[]>(
     () => [
       {
-        field: "title",
-        headerName: "Sub-tarefa da Etapa",
+        field: 'title',
+        headerName: 'Sub-tarefa da Etapa',
         flex: 2,
         minWidth: 260,
         renderCell: (params) => <TaskTitleBranchCell row={params.row} />,
       },
       {
-        field: "assignee",
-        headerName: "Autor Responsável",
+        field: 'assignee',
+        headerName: 'Autor Responsável',
         flex: 1.8,
         minWidth: 250,
         renderCell: (params) => (
@@ -131,26 +130,26 @@ export const AuthorTasksTable = ({
         ),
       },
       {
-        field: "dueDate",
-        headerName: "Data Limite",
+        field: 'dueDate',
+        headerName: 'Data Limite',
         flex: 1,
         minWidth: 140,
         renderCell: (params) => <TaskDueDateCell row={params.row} />,
       },
       {
-        field: "status",
-        headerName: "Status",
+        field: 'status',
+        headerName: 'Status',
         flex: 1,
         minWidth: 150,
         renderCell: (params) => <TaskStatusChip status={params.value} />,
       },
       {
-        field: "actions",
-        headerName: "Ação",
+        field: 'actions',
+        headerName: 'Ação',
         sortable: false,
         filterable: false,
-        align: "right",
-        headerAlign: "right",
+        align: 'right',
+        headerAlign: 'right',
         flex: 1.5,
         minWidth: 200,
         renderCell: (params) => (
@@ -163,13 +162,7 @@ export const AuthorTasksTable = ({
         ),
       },
     ],
-    [
-      currentUserId,
-      claimTaskMutation,
-      unclaimTaskMutation,
-      provisioningTaskId,
-      onStartWorkspace,
-    ],
+    [currentUserId, claimTaskMutation, unclaimTaskMutation, provisioningTaskId, onStartWorkspace]
   );
 
   // Mapear tarefas por stageId
@@ -195,68 +188,66 @@ export const AuthorTasksTable = ({
     // Etapas padrão fallback se não carregadas
     return [
       {
-        id: "stage-1",
-        title: "Planejamento e Pesquisa",
+        id: 'stage-1',
+        title: 'Planejamento e Pesquisa',
         order: 1,
         isGatekeeper: false,
-        status: "IN_PROGRESS",
+        status: 'IN_PROGRESS',
       },
       {
-        id: "stage-2",
-        title: "Desenvolvimento e Experimentos",
+        id: 'stage-2',
+        title: 'Desenvolvimento e Experimentos',
         order: 2,
         isGatekeeper: false,
-        status: "NOT_STARTED",
+        status: 'NOT_STARTED',
       },
       {
-        id: "stage-3",
-        title: "Escrita da Versão Rascunho",
+        id: 'stage-3',
+        title: 'Escrita da Versão Rascunho',
         order: 3,
         isGatekeeper: false,
-        status: "NOT_STARTED",
+        status: 'NOT_STARTED',
       },
       {
-        id: "stage-4",
-        title: "Parecer do NIT (Gatekeeper 1)",
+        id: 'stage-4',
+        title: 'Parecer do NIT (Gatekeeper 1)',
         order: 4,
         isGatekeeper: true,
-        status: "NOT_STARTED",
+        status: 'NOT_STARTED',
       },
       {
-        id: "stage-5",
-        title: "Submissão Oficial (Gatekeeper 2)",
+        id: 'stage-5',
+        title: 'Submissão Oficial (Gatekeeper 2)',
         order: 5,
         isGatekeeper: true,
-        status: "NOT_STARTED",
+        status: 'NOT_STARTED',
       },
     ];
   }, [stages]);
 
   return (
-    <Box
-      sx={{ display: "flex", flexDirection: "column", gap: 2, width: "100%" }}
-    >
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
       {/* TOOLBAR SUPERIOR DE FILTROS E NOVA TAREFA */}
       <Paper
         elevation={0}
         sx={{
           p: 2,
-          border: "1px solid",
-          borderColor: "divider",
+          border: '1px solid',
+          borderColor: 'divider',
           borderRadius: 2,
         }}
       >
         <TableHeaderFilterToolbar<AuthorTaskFilters>
           search={{
-            placeholder: "Buscar tarefa por Título ou Autor...",
+            placeholder: 'Buscar tarefa por Título ou Autor...',
             ...searchProps,
           }}
           selectFilters={[
             {
-              id: "status",
-              label: "Status da Tarefa",
+              id: 'status',
+              label: 'Status da Tarefa',
               options: TASK_STATUS_OPTIONS,
-              ...bindSelect("status"),
+              ...bindSelect('status'),
             },
           ]}
           clearFilters={{
@@ -272,12 +263,10 @@ export const AuthorTasksTable = ({
         const isExpanded = expandedStages[stage.id] ?? true;
         const totalSubtasks = stageTasks.length;
         const completedSubtasks = stageTasks.filter(
-          (t) => t.status === TaskStatus.COMPLETED,
+          (t) => t.status === TaskStatus.COMPLETED
         ).length;
         const progressPct =
-          totalSubtasks > 0
-            ? Math.round((completedSubtasks / totalSubtasks) * 100)
-            : 0;
+          totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
         return (
           <Accordion
@@ -285,99 +274,90 @@ export const AuthorTasksTable = ({
             expanded={isExpanded}
             onChange={() => toggleStage(stage.id)}
             sx={{
-              border: "1px solid",
-              borderColor: stage.isGatekeeper ? colors.amber[600] : "divider",
-              borderRadius: "8px !important",
-              overflow: "hidden",
-              "&:before": { display: "none" },
+              border: '1px solid',
+              borderColor: stage.isGatekeeper ? colors.amber[600] : 'divider',
+              borderRadius: '8px !important',
+              overflow: 'hidden',
+              '&:before': { display: 'none' },
             }}
           >
             <AccordionSummary
               component="div"
               expandIcon={<ExpandMoreIcon />}
               sx={{
-                bgcolor: stage.isGatekeeper
-                  ? "rgba(245, 158, 11, 0.08)"
-                  : "action.hover",
+                bgcolor: stage.isGatekeeper ? 'rgba(245, 158, 11, 0.08)' : 'action.hover',
                 px: 2.5,
                 py: 1,
               }}
             >
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
                   mr: 2,
-                  flexWrap: "wrap",
+                  flexWrap: 'wrap',
                   gap: 1.5,
                 }}
               >
                 {/* ETAPA TITLE & BADGES */}
                 <Box
                   sx={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     gap: 1.5,
                   }}
                 >
                   <Chip
                     label={
-                      stage.isGatekeeper
-                        ? `Gatekeeper ${stage.order}`
-                        : `Etapa ${stage.order}`
+                      stage.isGatekeeper ? `Gatekeeper ${stage.order}` : `Etapa ${stage.order}`
                     }
                     size="small"
-                    color={stage.isGatekeeper ? "warning" : "primary"}
+                    color={stage.isGatekeeper ? 'warning' : 'primary'}
                     variant="outlined"
-                    sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                    sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                   />
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: 700, color: "text.primary" }}
-                  >
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {stage.title}
                   </Typography>
 
                   <Chip
                     label={
-                      stage.status === "COMPLETED"
-                        ? "Concluída"
-                        : stage.status === "IN_PROGRESS"
-                          ? "Em Progresso"
-                          : "Não Iniciada"
+                      stage.status === 'COMPLETED'
+                        ? 'Concluída'
+                        : stage.status === 'IN_PROGRESS'
+                          ? 'Em Progresso'
+                          : 'Não Iniciada'
                     }
                     size="small"
                     color={
-                      stage.status === "COMPLETED"
-                        ? "success"
-                        : stage.status === "IN_PROGRESS"
-                          ? "primary"
-                          : "default"
+                      stage.status === 'COMPLETED'
+                        ? 'success'
+                        : stage.status === 'IN_PROGRESS'
+                          ? 'primary'
+                          : 'default'
                     }
-                    sx={{ height: 22, fontSize: "0.7rem", fontWeight: 600 }}
+                    sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600 }}
                   />
                 </Box>
 
                 {/* PROGRESSO E AÇÃO DO WORKSPACE DA ETAPA */}
                 <Box
                   sx={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     gap: 2,
                   }}
                 >
-                  <Box
-                    sx={{ minWidth: 160, display: { xs: "none", sm: "block" } }}
-                  >
+                  <Box sx={{ minWidth: 160, display: { xs: 'none', sm: 'block' } }}>
                     <Box
                       sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        justifyContent: "space-between",
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
                         mb: 0.5,
                       }}
                     >
@@ -398,8 +378,7 @@ export const AuthorTasksTable = ({
                   {/* BOTÃO DA ETAPA DE ESCRITA: EXCLUSIVO DA ETAPA DE ESCRITA E ATIVADO SE HOUVER TASKS */}
                   {(() => {
                     const isWritingStage =
-                      stage.order === 3 ||
-                      stage.title.toLowerCase().includes("escrita");
+                      stage.order === 3 || stage.title.toLowerCase().includes('escrita');
                     if (!isWritingStage) return null;
 
                     if (totalSubtasks === 0) {
@@ -415,7 +394,7 @@ export const AuthorTasksTable = ({
                               onClick={(e) => e.stopPropagation()}
                               sx={{
                                 fontWeight: 600,
-                                fontSize: "0.75rem",
+                                fontSize: '0.75rem',
                                 height: 32,
                               }}
                             >
@@ -443,7 +422,11 @@ export const AuthorTasksTable = ({
                           };
                           void onStartWorkspace(featureBranchTask);
                         }}
-                        sx={{ fontWeight: 700, fontSize: "0.75rem", height: 32 }}
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          height: 32,
+                        }}
                       >
                         🚀 Workspace de Escrita
                       </Button>
@@ -460,13 +443,13 @@ export const AuthorTasksTable = ({
                           onOpenCreateTask?.(stage.id);
                         }}
                         sx={{
-                          border: "1px solid",
-                          borderColor: "divider",
+                          border: '1px solid',
+                          borderColor: 'divider',
                           borderRadius: 1.5,
                           p: 0.6,
-                          "&:hover": {
-                            borderColor: "primary.main",
-                            bgcolor: "action.hover",
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            bgcolor: 'action.hover',
                           },
                         }}
                       >
@@ -478,14 +461,10 @@ export const AuthorTasksTable = ({
               </Box>
             </AccordionSummary>
 
-            <AccordionDetails sx={{ p: 0, bgcolor: "background.paper" }}>
+            <AccordionDetails sx={{ p: 0, bgcolor: 'background.paper' }}>
               {stageTasks.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: "center" }}>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ fontStyle: "italic" }}
-                  >
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
                     Nenhuma sub-tarefa criada nesta etapa ainda.
                   </Typography>
                   {onOpenCreateTask && (
@@ -502,7 +481,7 @@ export const AuthorTasksTable = ({
                   )}
                 </Box>
               ) : (
-                <Box sx={{ width: "100%" }}>
+                <Box sx={{ width: '100%' }}>
                   <GenericDataGrid<TaskItem>
                     rows={stageTasks}
                     columns={columns}
@@ -523,7 +502,7 @@ export const AuthorTasksTable = ({
       {tasksByStage.unmapped.length > 0 && (
         <Accordion
           defaultExpanded
-          sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>

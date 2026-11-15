@@ -89,12 +89,26 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
       </Paper>
 
       {/* Área da Lista de Mensagens */}
-      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {children}
       </Box>
 
       {/* Barra de Entrada de Texto */}
-      <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+      <Box
+        sx={{
+          p: 2,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
         {inputBar}
       </Box>
     </Box>

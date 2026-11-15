@@ -42,14 +42,7 @@ describe('Literature Mind Map Components', () => {
       onSelectPaper: handleSelect,
     };
 
-    render(
-      <PaperNode
-        id="paper-1"
-        data={paperData}
-        type="paperNode"
-        {...defaultNodeProps}
-      />
-    );
+    render(<PaperNode id="paper-1" data={paperData} type="paperNode" {...defaultNodeProps} />);
 
     expect(screen.getByText('Attention Is All You Need')).toBeDefined();
     expect(screen.getByText(/Paralelização massiva/)).toBeDefined();
@@ -71,14 +64,7 @@ describe('Literature Mind Map Components', () => {
       recommendedAction: 'Explorar Transformers em hardware de borda.',
     };
 
-    render(
-      <GapNode
-        id="gap-1"
-        data={gapData}
-        type="gapNode"
-        {...defaultNodeProps}
-      />
-    );
+    render(<GapNode id="gap-1" data={gapData} type="gapNode" {...defaultNodeProps} />);
 
     expect(screen.getByText('Atenção Eficiente sob Dados Ruidosos em IoT')).toBeDefined();
     expect(screen.getByText('Lacuna de Pesquisa (SciAI)')).toBeDefined();
@@ -96,12 +82,7 @@ describe('Literature Mind Map Components', () => {
     };
 
     render(
-      <SectionAnchorNode
-        id="sec-1"
-        data={sectionData}
-        type="sectionNode"
-        {...defaultNodeProps}
-      />
+      <SectionAnchorNode id="sec-1" data={sectionData} type="sectionNode" {...defaultNodeProps} />
     );
 
     expect(screen.getByText('Fundamentação Teórica')).toBeDefined();

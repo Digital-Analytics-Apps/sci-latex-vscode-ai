@@ -1,8 +1,8 @@
-import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import DownloadIcon from "@mui/icons-material/Download";
-import TodayIcon from "@mui/icons-material/Today";
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DownloadIcon from '@mui/icons-material/Download';
+import TodayIcon from '@mui/icons-material/Today';
 import {
   Box,
   Button,
@@ -12,8 +12,8 @@ import {
   ToggleButtonGroup,
   Tooltip,
   Typography,
-} from "@mui/material";
-import type { TimeScale } from "./ganttUtils";
+} from '@mui/material';
+import type { TimeScale } from './ganttUtils';
 
 interface GanttToolbarProps {
   scale: TimeScale;
@@ -37,21 +37,21 @@ export const GanttToolbar = ({
   return (
     <Box
       sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
         gap: 1.5,
         p: 1.2,
-        bgcolor: "background.paper",
+        bgcolor: 'background.paper',
         borderRadius: 2,
-        border: "1px solid",
-        borderColor: "divider",
+        border: '1px solid',
+        borderColor: 'divider',
         mb: 2,
       }}
     >
       {/* LADO ESQUERDO: SELETOR DE ESCALA E NAVEGAÇÃO */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         <ToggleButtonGroup
           size="small"
           value={scale}
@@ -59,22 +59,13 @@ export const GanttToolbar = ({
           onChange={(_, newScale) => newScale && onChangeScale(newScale)}
           sx={{ height: 32 }}
         >
-          <ToggleButton
-            value="days"
-            sx={{ px: 1.5, fontWeight: 700, fontSize: "0.75rem" }}
-          >
+          <ToggleButton value="days" sx={{ px: 1.5, fontWeight: 700, fontSize: '0.75rem' }}>
             Dias
           </ToggleButton>
-          <ToggleButton
-            value="weeks"
-            sx={{ px: 1.5, fontWeight: 700, fontSize: "0.75rem" }}
-          >
+          <ToggleButton value="weeks" sx={{ px: 1.5, fontWeight: 700, fontSize: '0.75rem' }}>
             Semanas
           </ToggleButton>
-          <ToggleButton
-            value="months"
-            sx={{ px: 1.5, fontWeight: 700, fontSize: "0.75rem" }}
-          >
+          <ToggleButton value="months" sx={{ px: 1.5, fontWeight: 700, fontSize: '0.75rem' }}>
             Meses
           </ToggleButton>
         </ToggleButtonGroup>
@@ -87,21 +78,18 @@ export const GanttToolbar = ({
           sx={{
             height: 32,
             fontWeight: 700,
-            fontSize: "0.75rem",
+            fontSize: '0.75rem',
             borderRadius: 1.5,
           }}
         >
           Hoje
         </Button>
 
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           <IconButton size="small" onClick={onPrevPeriod}>
             <ChevronLeftIcon fontSize="small" />
           </IconButton>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 800, px: 0.5, fontSize: "0.85rem" }}
-          >
+          <Typography variant="body2" sx={{ fontWeight: 800, px: 0.5, fontSize: '0.85rem' }}>
             {dateRangeText}
           </Typography>
           <IconButton size="small" onClick={onNextPeriod}>
@@ -111,7 +99,7 @@ export const GanttToolbar = ({
       </Stack>
 
       {/* LADO DIREITO: AÇÕES DE INTELIGÊNCIA IA E CRIAÇÃO */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         <Tooltip title="Otimização Inteligente de Prazos pela IA">
           <Button
             variant="outlined"
@@ -122,7 +110,7 @@ export const GanttToolbar = ({
             sx={{
               height: 32,
               fontWeight: 700,
-              fontSize: "0.75rem",
+              fontSize: '0.75rem',
               borderRadius: 1.5,
             }}
           >
@@ -134,8 +122,8 @@ export const GanttToolbar = ({
           <IconButton
             size="small"
             sx={{
-              border: "1px solid",
-              borderColor: "divider",
+              border: '1px solid',
+              borderColor: 'divider',
               height: 32,
               width: 32,
             }}
@@ -143,7 +131,6 @@ export const GanttToolbar = ({
             <DownloadIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-
       </Stack>
     </Box>
   );

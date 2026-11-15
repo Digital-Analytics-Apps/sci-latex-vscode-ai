@@ -219,7 +219,9 @@ export function SettingsModal({ open, onClose, settings, onUpdateSettings }: Set
                     size="small"
                     value={settings.uiLanguage}
                     onChange={(e) =>
-                      onUpdateSettings({ uiLanguage: e.target.value as 'pt-BR' | 'en' })
+                      onUpdateSettings({
+                        uiLanguage: e.target.value as 'pt-BR' | 'en',
+                      })
                     }
                     sx={{ minWidth: 170, fontSize: '0.85rem' }}
                   >
@@ -254,7 +256,9 @@ export function SettingsModal({ open, onClose, settings, onUpdateSettings }: Set
                     value={settings.spellcheckLanguage}
                     disabled={!settings.spellcheck}
                     onChange={(e) =>
-                      onUpdateSettings({ spellcheckLanguage: e.target.value as 'pt-BR' | 'en-US' })
+                      onUpdateSettings({
+                        spellcheckLanguage: e.target.value as 'pt-BR' | 'en-US',
+                      })
                     }
                     sx={{ minWidth: 170, fontSize: '0.85rem' }}
                   >

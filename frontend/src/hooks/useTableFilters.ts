@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDebounce } from "./useDebounce";
-import { useUrlFilters } from "./useUrlFilters";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDebounce } from './useDebounce';
+import { useUrlFilters } from './useUrlFilters';
 
 export interface UseTableFiltersOptions {
   /** Tempo de espera do debounce da busca em ms (padrão: 400) */
@@ -16,9 +16,9 @@ export interface UseTableFiltersOptions {
  */
 export function useTableFilters<T extends Record<string, any>>(
   defaultValues: T,
-  options: UseTableFiltersOptions = {},
+  options: UseTableFiltersOptions = {}
 ) {
-  const { debounceMs = 400, searchKey = "search" } = options;
+  const { debounceMs = 400, searchKey = 'search' } = options;
 
   const {
     filters,
@@ -27,7 +27,7 @@ export function useTableFilters<T extends Record<string, any>>(
     resetFilters: baseResetFilters,
   } = useUrlFilters<T>(defaultValues);
 
-  const urlSearchValue = (filters[searchKey] as string) || "";
+  const urlSearchValue = (filters[searchKey] as string) || '';
   const [searchTerm, setSearchTerm] = useState<string>(urlSearchValue);
   const [prevUrlSearch, setPrevUrlSearch] = useState<string>(urlSearchValue);
   const debouncedSearchTerm = useDebounce(searchTerm, debounceMs);
@@ -43,18 +43,15 @@ export function useTableFilters<T extends Record<string, any>>(
   // Atualiza a URL com sincronização à prova de piscar (zero ping-pong ao resetar)
   useEffect(() => {
     // 1. Se a busca local foi limpa para vazio, sincroniza imediatamente para remover da URL
-    if (searchTerm === "") {
-      if (urlSearchValue !== "") {
-        setFilters({ [searchKey]: "" } as Partial<T>);
+    if (searchTerm === '') {
+      if (urlSearchValue !== '') {
+        setFilters({ [searchKey]: '' } as Partial<T>);
       }
       return;
     }
 
     // 2. Se o usuário está digitando, aguarda a estabilização do debounce (debouncedSearchTerm === searchTerm)
-    if (
-      debouncedSearchTerm === searchTerm &&
-      debouncedSearchTerm !== urlSearchValue
-    ) {
+    if (debouncedSearchTerm === searchTerm && debouncedSearchTerm !== urlSearchValue) {
       setFilters({ [searchKey]: debouncedSearchTerm } as Partial<T>);
     }
   }, [searchTerm, debouncedSearchTerm, urlSearchValue, searchKey, setFilters]);
@@ -71,8 +68,8 @@ export function useTableFilters<T extends Record<string, any>>(
 
   // Reset unificado instantâneo (evita ping-pong com debounce antigo)
   const resetFilters = useCallback(() => {
-    setSearchTerm("");
-    setPrevUrlSearch("");
+    setSearchTerm('');
+    setPrevUrlSearch('');
     baseResetFilters();
   }, [baseResetFilters]);
 
@@ -82,16 +79,16 @@ export function useTableFilters<T extends Record<string, any>>(
       value: searchTerm,
       onChange: setSearchTerm,
     }),
-    [searchTerm],
+    [searchTerm]
   );
 
   // Helper para vincular um dropdown ao `selectFilters` do TableHeaderFilterToolbar
   const bindSelect = useCallback(
     (key: keyof T) => ({
-      value: (filters[key] as string) || "",
+      value: (filters[key] as string) || '',
       onChange: (val: string) => setFilters({ [key]: val } as Partial<T>),
     }),
-    [filters, setFilters],
+    [filters, setFilters]
   );
 
   return useMemo(
@@ -106,15 +103,6 @@ export function useTableFilters<T extends Record<string, any>>(
       searchProps,
       bindSelect,
     }),
-    [
-      filters,
-      setFilters,
-      apiParams,
-      searchTerm,
-      isFiltered,
-      resetFilters,
-      searchProps,
-      bindSelect,
-    ],
+    [filters, setFilters, apiParams, searchTerm, isFiltered, resetFilters, searchProps, bindSelect]
   );
 }

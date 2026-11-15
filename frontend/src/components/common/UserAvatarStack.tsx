@@ -1,8 +1,8 @@
-import type { StackProps } from "@mui/material";
-import { Stack } from "@mui/material";
-import type { ProjectMember } from "../../types/user.types";
-import { UserAvatar } from "./UserAvatar";
-import { getRandomColor } from "../../utils/memberUtils";
+import type { StackProps } from '@mui/material';
+import { Stack } from '@mui/material';
+import type { ProjectMember } from '../../types/user.types';
+import { UserAvatar } from './UserAvatar';
+import { getRandomColor } from '../../utils/memberUtils';
 
 export interface UserAvatarStackProps extends StackProps {
   members: ProjectMember[];
@@ -15,7 +15,7 @@ export interface UserAvatarStackProps extends StackProps {
 export const UserAvatarStack = ({
   members,
   avatarSize = 28,
-  direction = "row",
+  direction = 'row',
   spacing = -1.1,
   sx,
   ...restStackProps
@@ -26,7 +26,7 @@ export const UserAvatarStack = ({
     <Stack
       direction={direction}
       spacing={spacing}
-      sx={{ alignItems: "center", ...sx }}
+      sx={{ alignItems: 'center', ...sx }}
       {...restStackProps}
     >
       {members.map((m, idx) => (
@@ -38,7 +38,7 @@ export const UserAvatarStack = ({
           sx={{
             zIndex: members.length - idx,
             bgcolor: getRandomColor(
-              m.user?.id || m.userId || m.id || m.user?.email || m.user?.name,
+              m.user?.id || m.userId || m.id || m.user?.email || m.user?.name
             ),
           }}
         />

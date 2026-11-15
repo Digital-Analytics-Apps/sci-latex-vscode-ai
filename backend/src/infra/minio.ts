@@ -1,16 +1,16 @@
 import * as Minio from 'minio';
 import { env } from '../config/env';
 
-const rawEndpoint = env.MINIO_ENDPOINT || 'http://127.0.0.1:9000';
+const rawEndpoint = env.MINIO_ENDPOINT;
 const endpointUrl = new URL(rawEndpoint);
 
 const MINIO_HOST = endpointUrl.hostname;
 const MINIO_PORT = parseInt(endpointUrl.port, 10) || (endpointUrl.protocol === 'https:' ? 443 : 80);
 const MINIO_USE_SSL = endpointUrl.protocol === 'https:';
 
-const MINIO_ACCESS_KEY = env.MINIO_ACCESS_KEY || 'minioadmin';
-const MINIO_SECRET_KEY = env.MINIO_SECRET_KEY || 'minioadmin123';
-export const MINIO_BUCKET = env.MINIO_BUCKET || 'collab-assets';
+const MINIO_ACCESS_KEY = env.MINIO_ACCESS_KEY;
+const MINIO_SECRET_KEY = env.MINIO_SECRET_KEY;
+export const MINIO_BUCKET = env.MINIO_BUCKET;
 
 export const minioClient = new Minio.Client({
   endPoint: MINIO_HOST,
@@ -21,7 +21,7 @@ export const minioClient = new Minio.Client({
   secretKey: MINIO_SECRET_KEY,
 });
 
-const publicEndpoint = env.MINIO_PUBLIC_URL || 'http://localhost:9000';
+const publicEndpoint = env.MINIO_PUBLIC_URL;
 const publicUrl = new URL(publicEndpoint);
 const PUBLIC_MINIO_HOST = publicUrl.hostname;
 const PUBLIC_MINIO_PORT =

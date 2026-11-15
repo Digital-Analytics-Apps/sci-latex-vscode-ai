@@ -4,6 +4,7 @@ export const DocumentSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   content: z.string(),
+  mainEntryPath: z.string().min(1),
   version: z.number().int().nonnegative(),
   ownerGeneration: z.number().int().nonnegative().optional(),
   updatedAt: z.string(),
@@ -45,7 +46,7 @@ export const CollabUpdateSchema = z.object({
 export type CollabUpdate = z.infer<typeof CollabUpdateSchema>;
 
 export const PushUpdatesSchema = z.object({
-  file: z.string().default('main.tex'),
+  file: z.string().min(1),
   version: z.number(),
   updates: z.array(CollabUpdateSchema),
 });

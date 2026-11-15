@@ -40,7 +40,7 @@ export interface IProjectStagesRepository {
     projectId: string,
     stageOrders: { id: string; order: number }[]
   ): Promise<ProjectStage[]>;
-};
+}
 
 export class PrismaProjectStagesRepository implements IProjectStagesRepository {
   async findByProjectId(projectId: string): Promise<ProjectStage[]> {

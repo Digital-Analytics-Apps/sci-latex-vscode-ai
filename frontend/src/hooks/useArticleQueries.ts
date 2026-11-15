@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { articlesService } from "../services/articlesService";
+import { useQuery } from '@tanstack/react-query';
+import { articlesService } from '../services/articlesService';
 
 export function useUserArticlesQuery() {
   return useQuery({
-    queryKey: ["articles"],
+    queryKey: ['articles'],
     queryFn: () => articlesService.getUserArticles(),
   });
 }

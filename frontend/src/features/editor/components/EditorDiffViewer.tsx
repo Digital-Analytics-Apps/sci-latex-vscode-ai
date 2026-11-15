@@ -210,10 +210,23 @@ export function EditorDiffViewer({
             fontWeight: 600,
           }}
         >
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary' }}>
+          <Typography
+            sx={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'text.secondary',
+            }}
+          >
             📜 Versão {snapshot.version} (Histórico Congelado)
           </Typography>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'primary.main', pl: 1 }}>
+          <Typography
+            sx={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'primary.main',
+              pl: 1,
+            }}
+          >
             ✏️ Versão Atual de Trabalho
           </Typography>
         </Box>

@@ -1,7 +1,7 @@
-import { api } from "../../../services/api";
+import { api } from '../../../services/api';
 
 export interface AdminOverviewData {
-  systemStatus: "OPERATIONAL" | "DEGRADED" | "CRITICAL";
+  systemStatus: 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
   activeUsersCount: number;
   activeProjectsCount: number;
   activeWebSocketsCount: number;
@@ -32,7 +32,7 @@ export interface AdminWorkflowData {
 export interface AdminInfrastructureData {
   services: {
     backendFastify: {
-      status: "UP" | "DEGRADED" | "DOWN";
+      status: 'UP' | 'DEGRADED' | 'DOWN';
       rps: number;
       latencyP95Ms: number;
       errorRate5xx: number;
@@ -40,14 +40,14 @@ export interface AdminInfrastructureData {
       grafanaUrl: string;
     };
     aiService: {
-      status: "UP" | "DEGRADED" | "DOWN";
+      status: 'UP' | 'DEGRADED' | 'DOWN';
       avgTtftMs: number;
       activeSseStreams: number;
       monthlyEstimatedCostUsd: number;
       opikUrl: string;
     };
     compiler: {
-      status: "UP" | "DEGRADED" | "DOWN";
+      status: 'UP' | 'DEGRADED' | 'DOWN';
       queueLength: number;
       activeJobs: number;
       avgDurationMs: number;
@@ -55,13 +55,13 @@ export interface AdminInfrastructureData {
       grafanaUrl: string;
     };
     postgres: {
-      status: "UP" | "DOWN";
+      status: 'UP' | 'DOWN';
       activeConnections: number;
       maxConnections: number;
       slowQueriesCount: number;
     };
     redis: {
-      status: "UP" | "DOWN";
+      status: 'UP' | 'DOWN';
       usedMemoryMb: number;
       activeLeasesCount: number;
     };
@@ -91,37 +91,37 @@ export interface AdminActivityData {
   events: Array<{
     id: string;
     timestamp: string;
-    category: "EDITORIAL" | "COLLABORATION" | "COMPILER" | "SECURITY";
+    category: 'EDITORIAL' | 'COLLABORATION' | 'COMPILER' | 'SECURITY';
     title: string;
     description: string;
-    severity: "INFO" | "WARNING" | "ERROR";
+    severity: 'INFO' | 'WARNING' | 'ERROR';
     entityId?: string;
   }>;
 }
 
 export const adminCenterApi = {
   async getOverview(): Promise<AdminOverviewData> {
-    const { data } = await api.get<AdminOverviewData>("/admin/dashboard/overview");
+    const { data } = await api.get<AdminOverviewData>('/admin/dashboard/overview');
     return data;
   },
 
   async getWorkflow(): Promise<AdminWorkflowData> {
-    const { data } = await api.get<AdminWorkflowData>("/admin/dashboard/workflow");
+    const { data } = await api.get<AdminWorkflowData>('/admin/dashboard/workflow');
     return data;
   },
 
   async getInfrastructure(): Promise<AdminInfrastructureData> {
-    const { data } = await api.get<AdminInfrastructureData>("/admin/dashboard/infrastructure");
+    const { data } = await api.get<AdminInfrastructureData>('/admin/dashboard/infrastructure');
     return data;
   },
 
   async getCollaboration(): Promise<AdminCollaborationData> {
-    const { data } = await api.get<AdminCollaborationData>("/admin/dashboard/collaboration");
+    const { data } = await api.get<AdminCollaborationData>('/admin/dashboard/collaboration');
     return data;
   },
 
   async getActivity(): Promise<AdminActivityData> {
-    const { data } = await api.get<AdminActivityData>("/admin/dashboard/activity");
+    const { data } = await api.get<AdminActivityData>('/admin/dashboard/activity');
     return data;
   },
 };

@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import { FastifyPluginAsync } from 'fastify';
 import type { RawData, WebSocket } from 'ws';
-import { defaultDocumentsService, DocumentsService } from './documents.service';
-import { DeltaOperation, DocumentSnapshot } from './documents.schema';
 import { POD_ID, redisService } from '../../infra/redis/redis.service';
+import { DeltaOperation, DocumentSnapshot } from './documents.schema';
+import { defaultDocumentsService } from './documents.service';
 interface ClientMeta {
   ws: WebSocket;
   userId: string;
@@ -132,10 +132,21 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
         try {
           const message = JSON.parse(raw.toString());
 
+          const activeDoc = await service.getDocument(documentId);
           switch (message.type) {
             // Cliente enviou atualizações com @codemirror/collab
             case 'PUSH_UPDATES': {
-              const targetFile = message.file || 'main.tex';
+              const targetFile = message.file;
+              if (!targetFile) {
+                socket.send(
+                  JSON.stringify({
+                    type: 'ERROR',
+                    code: 'MISSING_FILE',
+                    message: 'O campo "file" é obrigatório em PUSH_UPDATES.',
+                  })
+                );
+                break;
+              }
               const clientVersion = typeof message.version === 'number' ? message.version : 0;
               const updates = Array.isArray(message.updates) ? message.updates : [];
 
@@ -179,7 +190,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
             }
 
             case 'PULL_UPDATES': {
-              const targetFile = message.file || 'main.tex';
+              const targetFile = message.file || activeDoc.mainEntryPath;
               const clientVersion = typeof message.version === 'number' ? message.version : 0;
               const historyUpdates = service.getUpdatesSince(documentId, targetFile, clientVersion);
               socket.send(
@@ -195,8 +206,17 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
 
             // Cliente enviou um delta de texto atômico (insert ou delete)
             case 'APPLY_DELTA': {
-              const targetFile =
-                message.file || (message.delta && message.delta.file) || 'main.tex';
+              const targetFile = message.file || (message.delta && message.delta.file);
+              if (!targetFile) {
+                socket.send(
+                  JSON.stringify({
+                    type: 'ERROR',
+                    code: 'MISSING_FILE',
+                    message: 'O campo "file" é obrigatório em APPLY_DELTA.',
+                  })
+                );
+                break;
+              }
               const delta: DeltaOperation = {
                 type: message.delta.type,
                 position: message.delta.position,
@@ -207,7 +227,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                 timestamp: Date.now(),
               };
 
-              if (targetFile === 'main.tex') {
+              if (targetFile === activeDoc.mainEntryPath) {
                 // Aplica no serviço e obtém o novo estado consolidado
                 const { operation, newContent, newVersion } = await service.applyDelta(
                   documentId,
@@ -228,7 +248,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                   documentId,
                   {
                     type: 'DELTA_BROADCAST',
-                    file: 'main.tex',
+                    file: targetFile,
                     operation,
                     version: newVersion,
                     author: { userId, userName, color },
@@ -241,7 +261,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                 socket.send(
                   JSON.stringify({
                     type: 'ACK_DELTA',
-                    file: 'main.tex',
+                    file: targetFile,
                     operationId: operation.id,
                     version: newVersion,
                     status: 'pending_debounce',
@@ -398,7 +418,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
           JSON.stringify({
             type: 'SYNC_INIT',
             document: doc,
-            version: service.getCollabVersion(documentId, 'main.tex'),
+            version: service.getCollabVersion(documentId, doc.mainEntryPath),
             fileVersions: service.getAllCollabVersions(documentId),
             comments,
             collaborators: getDocumentClients(documentId).map((c) => ({

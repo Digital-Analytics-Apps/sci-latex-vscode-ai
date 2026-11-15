@@ -1,18 +1,11 @@
-import AddTaskIcon from "@mui/icons-material/AddTask";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import {
-  Box,
-  InputAdornment,
-  TextField,
-} from "@mui/material";
-import React, { useMemo, useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import {
-  useCreateStageMutation,
-  useProjectDetails,
-} from "../../../hooks/useProjectQueries";
-import { showNotification } from "../../../store/slices/notificationSlice";
+import AddTaskIcon from '@mui/icons-material/AddTask';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { Box, InputAdornment, TextField } from '@mui/material';
+import React, { useMemo, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { useCreateStageMutation, useProjectDetails } from '../../../hooks/useProjectQueries';
+import { showNotification } from '../../../store/slices/notificationSlice';
 
 interface CreateStageModalProps {
   open: boolean;
@@ -31,34 +24,30 @@ export const CreateStageModal = ({
   const createStageMutation = useCreateStageMutation(projectId);
   const { data: projectDetails } = useProjectDetails(projectId);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [plannedCompletionDate, setPlannedCompletionDate] = useState("");
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [plannedCompletionDate, setPlannedCompletionDate] = useState('');
 
   const targetSubmissionDateStr = useMemo(() => {
-    const raw =
-      projectDetails?.targetConferenceDate ||
-      projectDetails?.backupConferenceDate;
-    if (!raw) return "";
-    return new Date(raw).toISOString().split("T")[0];
+    const raw = projectDetails?.targetConferenceDate || projectDetails?.backupConferenceDate;
+    if (!raw) return '';
+    return new Date(raw).toISOString().split('T')[0];
   }, [projectDetails]);
 
   const targetSubmissionDateFormatted = useMemo(() => {
     if (!targetSubmissionDateStr) return null;
-    const [year, month, day] = targetSubmissionDateStr.split("-");
+    const [year, month, day] = targetSubmissionDateStr.split('-');
     return `${day}/${month}/${year}`;
   }, [targetSubmissionDateStr]);
-
-
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       dispatch(
         showNotification({
-          message: "Informe o título da etapa de escrita.",
-          severity: "warning",
-        }),
+          message: 'Informe o título da etapa de escrita.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -73,8 +62,8 @@ export const CreateStageModal = ({
       dispatch(
         showNotification({
           message: `A data limite da etapa não pode ser maior que a data de submissão do artigo (${targetSubmissionDateFormatted}).`,
-          severity: "error",
-        }),
+          severity: 'error',
+        })
       );
       return;
     }
@@ -90,20 +79,17 @@ export const CreateStageModal = ({
       dispatch(
         showNotification({
           message: `Nova Etapa "${title}" adicionada com sucesso!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
 
-      setTitle("");
-      setDescription("");
-      setPlannedCompletionDate("");
+      setTitle('');
+      setDescription('');
+      setPlannedCompletionDate('');
       onClose();
     } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Erro ao criar etapa de escrita.";
-      dispatch(showNotification({ message: msg, severity: "error" }));
+      const msg = err.response?.data?.message || err.message || 'Erro ao criar etapa de escrita.';
+      dispatch(showNotification({ message: msg, severity: 'error' }));
     }
   };
 
@@ -120,7 +106,7 @@ export const CreateStageModal = ({
       confirmColor="primary"
       isSubmitting={createStageMutation.isPending}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           fullWidth
           size="small"
@@ -130,7 +116,6 @@ export const CreateStageModal = ({
           onChange={(e) => setTitle(e.target.value)}
           required
         />
-
 
         <TextField
           fullWidth
@@ -153,7 +138,7 @@ export const CreateStageModal = ({
           helperText={
             targetSubmissionDateFormatted
               ? `Data limite de submissão do artigo: ${targetSubmissionDateFormatted}`
-              : "Defina o prazo final previsto de conclusão desta etapa."
+              : 'Defina o prazo final previsto de conclusão desta etapa.'
           }
           value={plannedCompletionDate}
           onChange={(e) => setPlannedCompletionDate(e.target.value)}

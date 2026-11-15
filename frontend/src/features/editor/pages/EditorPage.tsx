@@ -5,7 +5,10 @@ import { EditorHeader } from '../components/EditorHeader';
 import { EditorWorkspace } from '../components/EditorWorkspace';
 
 export function EditorPage() {
-  const { projectId, documentId } = useParams<{ projectId?: string; documentId?: string }>();
+  const { projectId, documentId } = useParams<{
+    projectId?: string;
+    documentId?: string;
+  }>();
   const activeDocumentId = projectId || documentId || 'doc-1';
 
   return (

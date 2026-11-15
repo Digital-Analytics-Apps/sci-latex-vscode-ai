@@ -1,13 +1,13 @@
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import FlagIcon from "@mui/icons-material/Flag";
-import LockIcon from "@mui/icons-material/Lock";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import TimelineIcon from "@mui/icons-material/Timeline";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FlagIcon from '@mui/icons-material/Flag';
+import LockIcon from '@mui/icons-material/Lock';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import {
   Avatar,
   Box,
@@ -22,11 +22,11 @@ import {
   Stack,
   Tooltip,
   Typography,
-} from "@mui/material";
-import React, { useState } from "react";
-import { StageStatus, TaskStatus } from "../../constants/status";
-import { type ProjectStage } from "../../services/projectsService";
-import { StandardModal } from "./StandardModal";
+} from '@mui/material';
+import React, { useState } from 'react';
+import { StageStatus, TaskStatus } from '../../constants/status';
+import { type ProjectStage } from '../../services/projectsService';
+import { StandardModal } from './StandardModal';
 
 interface ArticleTimelineHeaderProps {
   stages: ProjectStage[];
@@ -59,9 +59,9 @@ const StepperNode: React.FC<StepperNodeProps> = ({
   onClick,
 }) => {
   // Ícone e cores semânticas do nó
-  let nodeBg = "grey.800";
-  let nodeBorder = "grey.600";
-  let nodeColor = "grey.400";
+  let nodeBg = 'grey.800';
+  let nodeBorder = 'grey.600';
+  let nodeColor = 'grey.400';
   let icon = (
     <Typography variant="caption" sx={{ fontWeight: 800 }}>
       {stage.order}
@@ -69,25 +69,25 @@ const StepperNode: React.FC<StepperNodeProps> = ({
   );
 
   if (isCompleted) {
-    nodeBg = "success.dark";
-    nodeBorder = "success.main";
-    nodeColor = "#fff";
+    nodeBg = 'success.dark';
+    nodeBorder = 'success.main';
+    nodeColor = '#fff';
     icon = <CheckCircleIcon sx={{ fontSize: 18 }} />;
   } else if (isInProgress) {
-    nodeBg = "primary.dark";
-    nodeBorder = "primary.main";
-    nodeColor = "#fff";
+    nodeBg = 'primary.dark';
+    nodeBorder = 'primary.main';
+    nodeColor = '#fff';
     icon = <PlayArrowIcon sx={{ fontSize: 18 }} />;
   } else if (isGatekeeper) {
     if (isLocked) {
-      nodeBg = "rgba(255, 152, 0, 0.15)";
-      nodeBorder = "warning.main";
-      nodeColor = "warning.main";
+      nodeBg = 'rgba(255, 152, 0, 0.15)';
+      nodeBorder = 'warning.main';
+      nodeColor = 'warning.main';
       icon = <LockIcon sx={{ fontSize: 16 }} />;
     } else {
-      nodeBg = "secondary.dark";
-      nodeBorder = "secondary.main";
-      nodeColor = "#fff";
+      nodeBg = 'secondary.dark';
+      nodeBorder = 'secondary.main';
+      nodeColor = '#fff';
       icon = <FlagIcon sx={{ fontSize: 16 }} />;
     }
   }
@@ -96,15 +96,15 @@ const StepperNode: React.FC<StepperNodeProps> = ({
     <Box
       onClick={onClick}
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        cursor: "pointer",
-        position: "relative",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        cursor: 'pointer',
+        position: 'relative',
         zIndex: isSelected ? 2 : 1,
-        transition: "transform 0.15s ease",
-        "&:hover": {
-          transform: "scale(1.08)",
+        transition: 'transform 0.15s ease',
+        '&:hover': {
+          transform: 'scale(1.08)',
         },
       }}
     >
@@ -113,18 +113,18 @@ const StepperNode: React.FC<StepperNodeProps> = ({
         sx={{
           width: 36,
           height: 36,
-          borderRadius: "50%",
+          borderRadius: '50%',
           bgcolor: nodeBg,
-          border: "2px solid",
-          borderColor: isSelected ? "common.white" : nodeBorder,
+          border: '2px solid',
+          borderColor: isSelected ? 'common.white' : nodeBorder,
           boxShadow: isSelected
-            ? "0 0 0 4px rgba(25, 118, 210, 0.4), 0 4px 12px rgba(0,0,0,0.5)"
+            ? '0 0 0 4px rgba(25, 118, 210, 0.4), 0 4px 12px rgba(0,0,0,0.5)'
             : isInProgress
-              ? "0 0 10px rgba(25, 118, 210, 0.5)"
-              : "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+              ? '0 0 10px rgba(25, 118, 210, 0.5)'
+              : 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           color: nodeColor,
           mb: 0.8,
         }}
@@ -138,24 +138,24 @@ const StepperNode: React.FC<StepperNodeProps> = ({
         sx={{
           fontWeight: isSelected || isInProgress ? 700 : 500,
           color: isSelected
-            ? "primary.light"
+            ? 'primary.light'
             : isCompleted
-              ? "success.light"
+              ? 'success.light'
               : isInProgress
-                ? "text.primary"
-                : "text.secondary",
-          fontSize: "0.72rem",
-          textAlign: "center",
+                ? 'text.primary'
+                : 'text.secondary',
+          fontSize: '0.72rem',
+          textAlign: 'center',
           maxWidth: 110,
           lineHeight: 1.2,
-          display: "-webkit-box",
+          display: '-webkit-box',
           WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
         }}
         title={stage.title}
       >
-        {stage.order}. {stage.title.replace(/ \(Gatekeeper \d+\)/, "")}
+        {stage.order}. {stage.title.replace(/ \(Gatekeeper \d+\)/, '')}
       </Typography>
     </Box>
   );
@@ -166,15 +166,11 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
   selectedStageId: externalSelectedStageId,
   onSelectStage,
 }) => {
-  const [internalSelectedStageId, setInternalSelectedStageId] = useState<
-    string | null
-  >(null);
+  const [internalSelectedStageId, setInternalSelectedStageId] = useState<string | null>(null);
   const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
 
   // Controle dos Accordions por Etapa no Modal
-  const [expandedStageIds, setExpandedStageIds] = useState<
-    Record<string, boolean>
-  >({});
+  const [expandedStageIds, setExpandedStageIds] = useState<Record<string, boolean>>({});
 
   if (!stages || stages.length === 0) return null;
 
@@ -205,24 +201,20 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
   const gatekeeperStages = stages.filter((s) => s.isGatekeeper);
 
   const totalStages = stages.length;
-  const completedStages = stages.filter(
-    (s) => s.status === StageStatus.COMPLETED,
-  ).length;
+  const completedStages = stages.filter((s) => s.status === StageStatus.COMPLETED).length;
   const progressPercent = Math.round((completedStages / totalStages) * 100);
 
-  const writingStagesCompleted = customStages.every(
-    (s) => s.status === StageStatus.COMPLETED,
-  );
+  const writingStagesCompleted = customStages.every((s) => s.status === StageStatus.COMPLETED);
 
   const formatDateShort = (dateStr?: string | null) => {
     if (!dateStr) return null;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "UTC",
+    return d.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'UTC',
     });
   };
 
@@ -234,45 +226,42 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
           mb: 2.5,
           borderRadius: 2,
           boxShadow: 1,
-          bgcolor: "background.paper",
+          bgcolor: 'background.paper',
         }}
       >
-        <CardContent sx={{ p: 2, pb: "16px !important" }}>
+        <CardContent sx={{ p: 2, pb: '16px !important' }}>
           {/* CABEÇALHO DO PAINEL DE LINHA DO TEMPO */}
           <Box
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               mb: 1.5,
-              flexWrap: "wrap",
+              flexWrap: 'wrap',
               gap: 1,
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Typography
-                variant="subtitle1"
-                sx={{ fontWeight: 700, fontSize: "0.95rem" }}
-              >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
                 Fluxo Sequencial
               </Typography>
               <Chip
                 label={`${completedStages}/${totalStages} Concluídas (${progressPercent}%)`}
                 size="small"
-                color={progressPercent === 100 ? "success" : "primary"}
+                color={progressPercent === 100 ? 'success' : 'primary'}
                 variant="outlined"
-                sx={{ fontWeight: 700, fontSize: "0.72rem", height: 22 }}
+                sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
               />
             </Box>
 
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <Button
                 variant="outlined"
                 color="primary"
                 size="small"
                 startIcon={<TimelineIcon sx={{ fontSize: 16 }} />}
                 onClick={() => setIsTimelineModalOpen(true)}
-                sx={{ fontWeight: 700, fontSize: "0.75rem", height: 28 }}
+                sx={{ fontWeight: 700, fontSize: '0.75rem', height: 28 }}
               >
                 Timeline Ampla
               </Button>
@@ -282,30 +271,30 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
           {/* STEPPER RIBBON DE 1 LINHA DE ALTURA (SEM DRAG AND DROP) */}
           <Box
             sx={{
-              position: "relative",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
               pt: 1,
               pb: 1.5,
               px: 1,
-              overflowX: "auto",
-              "&::-webkit-scrollbar": { height: 4 },
-              "&::-webkit-scrollbar-thumb": {
+              overflowX: 'auto',
+              '&::-webkit-scrollbar': { height: 4 },
+              '&::-webkit-scrollbar-thumb': {
                 borderRadius: 2,
-                backgroundColor: "rgba(255,255,255,0.15)",
+                backgroundColor: 'rgba(255,255,255,0.15)',
               },
             }}
           >
             {/* LINHA CONECTORA HORIZONTAL DE FUNDO */}
             <Box
               sx={{
-                position: "absolute",
+                position: 'absolute',
                 top: 28,
                 left: 40,
                 right: 40,
                 height: 3,
-                bgcolor: "divider",
+                bgcolor: 'divider',
                 zIndex: 0,
                 borderRadius: 1.5,
               }}
@@ -368,37 +357,30 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
         showConfirm={false}
         cancelText="Fechar"
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* HEADER RESUMO DE PROGRESSO */}
           <Box
             sx={{
               p: 2.5,
               borderRadius: 2,
-              bgcolor: "background.paper",
-              border: "1px solid",
-              borderColor: "divider",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
               gap: 2,
               boxShadow: 1,
             }}
           >
             <Box>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontWeight: 600 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                 Progresso Geral do Fluxo Sequencial
               </Typography>
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: 800, color: "primary.main" }}
-              >
-                {completedStages} de {totalStages} Etapas Concluídas (
-                {progressPercent}%)
+              <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                {completedStages} de {totalStages} Etapas Concluídas ({progressPercent}
+                %)
               </Typography>
             </Box>
 
@@ -406,17 +388,17 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
               <LinearProgress
                 variant="determinate"
                 value={progressPercent}
-                color={progressPercent === 100 ? "success" : "primary"}
+                color={progressPercent === 100 ? 'success' : 'primary'}
                 sx={{ height: 10, borderRadius: 5, mb: 0.8 }}
               />
               <Typography
                 variant="caption"
                 color="text.secondary"
                 align="right"
-                sx={{ display: "block", fontWeight: 600 }}
+                sx={{ display: 'block', fontWeight: 600 }}
               >
-                {totalStages - completedStages} etapa(s) pendente(s) • Clique em
-                uma etapa para ver as tarefas
+                {totalStages - completedStages} etapa(s) pendente(s) • Clique em uma etapa para ver
+                as tarefas
               </Typography>
             </Box>
           </Box>
@@ -427,33 +409,28 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
               const isCompleted = stage.status === StageStatus.COMPLETED;
               const isInProgress = stage.status === StageStatus.IN_PROGRESS;
               const isGatekeeper = stage.isGatekeeper;
-              const isLocked =
-                isGatekeeper && !writingStagesCompleted && !isCompleted;
+              const isLocked = isGatekeeper && !writingStagesCompleted && !isCompleted;
               const isExpanded = Boolean(expandedStageIds[stage.id]);
 
-              const startDateStr = formatDateShort(
-                stage.plannedStartAt || stage.createdAt,
-              );
-              const stageDeadlineStr =
-                stage.plannedCompletionDate || stage.plannedEndAt;
+              const startDateStr = formatDateShort(stage.plannedStartAt || stage.createdAt);
+              const stageDeadlineStr = stage.plannedCompletionDate || stage.plannedEndAt;
               const endDateStr = formatDateShort(stageDeadlineStr);
 
               const stageTasks: any[] = stage.tasks || [];
               const tasksCount = stageTasks.length;
 
-              let statusColor: "success" | "primary" | "warning" | "default" =
-                "default";
-              let statusLabel = "Pendente";
+              let statusColor: 'success' | 'primary' | 'warning' | 'default' = 'default';
+              let statusLabel = 'Pendente';
 
               if (isCompleted) {
-                statusColor = "success";
-                statusLabel = "Concluída";
+                statusColor = 'success';
+                statusLabel = 'Concluída';
               } else if (isInProgress) {
-                statusColor = "primary";
-                statusLabel = "Em Progresso";
+                statusColor = 'primary';
+                statusLabel = 'Em Progresso';
               } else if (isLocked) {
-                statusColor = "warning";
-                statusLabel = "Bloqueada (Gatekeeper)";
+                statusColor = 'warning';
+                statusLabel = 'Bloqueada (Gatekeeper)';
               }
 
               return (
@@ -463,37 +440,37 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                   sx={{
                     borderRadius: 2,
                     borderColor: isCompleted
-                      ? "success.main"
+                      ? 'success.main'
                       : isInProgress
-                        ? "primary.main"
+                        ? 'primary.main'
                         : isLocked
-                          ? "warning.main"
-                          : "divider",
+                          ? 'warning.main'
+                          : 'divider',
                     bgcolor: isCompleted
-                      ? "rgba(46, 125, 50, 0.03)"
+                      ? 'rgba(46, 125, 50, 0.03)'
                       : isInProgress
-                        ? "rgba(25, 118, 210, 0.03)"
-                        : "background.paper",
-                    transition: "all 0.2s ease",
+                        ? 'rgba(25, 118, 210, 0.03)'
+                        : 'background.paper',
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                     {/* CABEÇALHO DA ETAPA (CLICKABLE ACCORDION HEADER) */}
                     <Box
                       onClick={() => toggleExpandStage(stage.id)}
                       sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        cursor: "pointer",
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
                         gap: 2,
-                        flexWrap: "wrap",
+                        flexWrap: 'wrap',
                       }}
                     >
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: 1.5,
                           flex: 1,
                         }}
@@ -501,14 +478,11 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                         <Chip
                           label={`Etapa ${stage.order}`}
                           size="small"
-                          color={isGatekeeper ? "warning" : "primary"}
-                          variant={isGatekeeper ? "filled" : "outlined"}
+                          color={isGatekeeper ? 'warning' : 'primary'}
+                          variant={isGatekeeper ? 'filled' : 'outlined'}
                           sx={{ fontWeight: 800 }}
                         />
-                        <Typography
-                          variant="h6"
-                          sx={{ fontWeight: 700, fontSize: "1rem" }}
-                        >
+                        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
                           {stage.title}
                         </Typography>
                         <Chip
@@ -516,28 +490,22 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                           label={`${tasksCount} Tarefa(s)`}
                           size="small"
                           variant="outlined"
-                          sx={{ fontWeight: 700, fontSize: "0.72rem" }}
+                          sx={{ fontWeight: 700, fontSize: '0.72rem' }}
                         />
                       </Box>
 
-                      <Stack
-                        direction="row"
-                        spacing={1.5}
-                        sx={{ alignItems: "center" }}
-                      >
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                         <Chip
                           label={statusLabel}
                           color={statusColor}
                           size="small"
-                          sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                          sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                         />
                         <IconButton size="small" color="primary">
                           <ExpandMoreIcon
                             sx={{
-                              transform: isExpanded
-                                ? "rotate(180deg)"
-                                : "rotate(0deg)",
-                              transition: "transform 0.2s ease",
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.2s ease',
                             }}
                           />
                         </IconButton>
@@ -545,11 +513,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                     </Box>
 
                     {stage.description && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mt: 1, mb: 1 }}
-                      >
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 1 }}>
                         {stage.description}
                       </Typography>
                     )}
@@ -557,61 +521,50 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                     {/* DATAS DA ETAPA */}
                     <Box
                       sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         gap: 2,
-                        flexWrap: "wrap",
+                        flexWrap: 'wrap',
                         pt: 1,
                         mt: 1,
-                        borderTop: "1px dashed",
-                        borderColor: "divider",
+                        borderTop: '1px dashed',
+                        borderColor: 'divider',
                       }}
                     >
-                      <Stack
-                        direction="row"
-                        spacing={3}
-                        sx={{ alignItems: "center" }}
-                      >
+                      <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
                         <Box
                           sx={{
-                            display: "flex",
-                            alignItems: "center",
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: 0.8,
                           }}
                         >
-                          <CalendarMonthIcon
-                            sx={{ fontSize: 16, color: "text.secondary" }}
-                          />
+                          <CalendarMonthIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                           <Typography
                             variant="caption"
                             color="text.secondary"
                             sx={{ fontWeight: 600 }}
                           >
-                            Início:{" "}
-                            <strong>
-                              {startDateStr || "Não especificado"}
-                            </strong>
+                            Início: <strong>{startDateStr || 'Não especificado'}</strong>
                           </Typography>
                         </Box>
 
                         <Box
                           sx={{
-                            display: "flex",
-                            alignItems: "center",
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: 0.8,
                           }}
                         >
-                          <AccessTimeIcon
-                            sx={{ fontSize: 16, color: "text.secondary" }}
-                          />
+                          <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                           <Typography
                             variant="caption"
                             color="text.secondary"
                             sx={{ fontWeight: 600 }}
                           >
-                            Término Previsto (Data Limite):{" "}
-                            <strong>{endDateStr || "Não especificado"}</strong>
+                            Término Previsto (Data Limite):{' '}
+                            <strong>{endDateStr || 'Não especificado'}</strong>
                           </Typography>
                         </Box>
                       </Stack>
@@ -620,13 +573,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                         <LinearProgress
                           variant="determinate"
                           value={isCompleted ? 100 : isInProgress ? 50 : 0}
-                          color={
-                            isCompleted
-                              ? "success"
-                              : isInProgress
-                                ? "primary"
-                                : "inherit"
-                          }
+                          color={isCompleted ? 'success' : isInProgress ? 'primary' : 'inherit'}
                           sx={{ height: 6, borderRadius: 3 }}
                         />
                       </Box>
@@ -638,14 +585,11 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                         sx={{
                           mt: 2,
                           pt: 2,
-                          borderTop: "1px solid",
-                          borderColor: "divider",
+                          borderTop: '1px solid',
+                          borderColor: 'divider',
                         }}
                       >
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 700, mb: 1.5 }}
-                        >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
                           📋 Tarefas da Etapa {stage.order} ({tasksCount}):
                         </Typography>
 
@@ -654,8 +598,8 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                             variant="outlined"
                             sx={{
                               p: 2,
-                              textAlign: "center",
-                              color: "text.secondary",
+                              textAlign: 'center',
+                              color: 'text.secondary',
                             }}
                           >
                             Nenhuma tarefa vinculada diretamente a esta etapa.
@@ -664,24 +608,21 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                           <Stack spacing={1.2}>
                             {stageTasks.map((task: any) => {
                               const taskDueDateStr = task.dueDate;
-                              const formattedTaskDueDate =
-                                formatDateShort(taskDueDateStr);
+                              const formattedTaskDueDate = formatDateShort(taskDueDateStr);
 
                               // Regra de Validação de Datas: A data da tarefa NÃO pode ser maior que o prazo limite da etapa
                               const isTaskOverdueStageDeadline = Boolean(
                                 taskDueDateStr &&
                                 stageDeadlineStr &&
-                                new Date(taskDueDateStr) >
-                                  new Date(stageDeadlineStr),
+                                new Date(taskDueDateStr) > new Date(stageDeadlineStr)
                               );
 
                               const assigneeName =
-                                typeof task.assignee === "object" &&
-                                task.assignee
+                                typeof task.assignee === 'object' && task.assignee
                                   ? task.assignee.name
-                                  : typeof task.assignee === "string"
+                                  : typeof task.assignee === 'string'
                                     ? task.assignee
-                                    : "Não atribuído";
+                                    : 'Não atribuído';
 
                               return (
                                 <Paper
@@ -691,22 +632,22 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                     p: 1.5,
                                     borderRadius: 1.5,
                                     bgcolor: isTaskOverdueStageDeadline
-                                      ? "rgba(211, 47, 47, 0.06)"
-                                      : "background.paper",
+                                      ? 'rgba(211, 47, 47, 0.06)'
+                                      : 'background.paper',
                                     borderColor: isTaskOverdueStageDeadline
-                                      ? "error.main"
-                                      : "divider",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
+                                      ? 'error.main'
+                                      : 'divider',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
                                     gap: 1.5,
-                                    flexWrap: "wrap",
+                                    flexWrap: 'wrap',
                                   }}
                                 >
                                   <Box
                                     sx={{
-                                      display: "flex",
-                                      alignItems: "center",
+                                      display: 'flex',
+                                      alignItems: 'center',
                                       gap: 1.5,
                                       flex: 1,
                                       minWidth: 240,
@@ -717,25 +658,22 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                         width: 24,
                                         height: 24,
                                         fontSize: 11,
-                                        bgcolor: "primary.main",
+                                        bgcolor: 'primary.main',
                                       }}
                                     >
-                                      {assigneeName?.[0]?.toUpperCase() || "T"}
+                                      {assigneeName?.[0]?.toUpperCase() || 'T'}
                                     </Avatar>
                                     <Box>
                                       <Typography
                                         variant="subtitle2"
                                         sx={{
                                           fontWeight: 700,
-                                          fontSize: "0.85rem",
+                                          fontSize: '0.85rem',
                                         }}
                                       >
                                         {task.title}
                                       </Typography>
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                      >
+                                      <Typography variant="caption" color="text.secondary">
                                         Autor: {assigneeName}
                                       </Typography>
                                     </Box>
@@ -744,7 +682,7 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                   <Stack
                                     direction="row"
                                     spacing={1.5}
-                                    sx={{ alignItems: "center" }}
+                                    sx={{ alignItems: 'center' }}
                                   >
                                     {/* SE EXCEDER A DATA LIMITE DA ETAPA -> EXIBE ALERTA VERMELHO */}
                                     {isTaskOverdueStageDeadline ? (
@@ -752,33 +690,29 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                         title={`A data limite da tarefa (${formattedTaskDueDate}) ultrapassa o prazo final da etapa (${endDateStr}). Ajuste o prazo da tarefa.`}
                                       >
                                         <Chip
-                                          icon={
-                                            <WarningAmberIcon
-                                              sx={{ fontSize: 14 }}
-                                            />
-                                          }
+                                          icon={<WarningAmberIcon sx={{ fontSize: 14 }} />}
                                           label={`⚠️ Excede o limite da etapa (${endDateStr})`}
                                           color="error"
                                           size="small"
                                           sx={{
                                             fontWeight: 700,
-                                            fontSize: "0.72rem",
+                                            fontSize: '0.72rem',
                                           }}
                                         />
                                       </Tooltip>
                                     ) : (
                                       <Chip
-                                        label={`📅 Vencimento: ${formattedTaskDueDate || "Sem prazo"}`}
+                                        label={`📅 Vencimento: ${formattedTaskDueDate || 'Sem prazo'}`}
                                         size="small"
                                         variant="outlined"
                                         color={
                                           task.status === TaskStatus.COMPLETED
-                                            ? "success"
-                                            : "default"
+                                            ? 'success'
+                                            : 'default'
                                         }
                                         sx={{
                                           fontWeight: 600,
-                                          fontSize: "0.72rem",
+                                          fontSize: '0.72rem',
                                         }}
                                       />
                                     )}
@@ -786,21 +720,18 @@ export const ArticleTimelineHeader: React.FC<ArticleTimelineHeaderProps> = ({
                                     <Chip
                                       label={
                                         task.status === TaskStatus.COMPLETED
-                                          ? "Concluída"
-                                          : task.status ===
-                                              TaskStatus.IN_PROGRESS
-                                            ? "Em Andamento"
-                                            : "Pendente"
+                                          ? 'Concluída'
+                                          : task.status === TaskStatus.IN_PROGRESS
+                                            ? 'Em Andamento'
+                                            : 'Pendente'
                                       }
                                       size="small"
                                       color={
-                                        task.status === TaskStatus.COMPLETED
-                                          ? "success"
-                                          : "default"
+                                        task.status === TaskStatus.COMPLETED ? 'success' : 'default'
                                       }
                                       sx={{
                                         fontWeight: 700,
-                                        fontSize: "0.7rem",
+                                        fontSize: '0.7rem',
                                       }}
                                     />
                                   </Stack>

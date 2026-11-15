@@ -1,8 +1,8 @@
-import type { AvatarProps } from "@mui/material";
-import { Avatar, Tooltip } from "@mui/material";
-import type { Role } from "../../constants/roles";
-import type { ProjectMember, UserSimple } from "../../types/user.types";
-import { getMemberAvatarColor } from "../../utils/memberUtils";
+import type { AvatarProps } from '@mui/material';
+import { Avatar, Tooltip } from '@mui/material';
+import type { Role } from '../../constants/roles';
+import type { ProjectMember, UserSimple } from '../../types/user.types';
+import { getMemberAvatarColor } from '../../utils/memberUtils';
 
 export interface UserAvatarProps extends AvatarProps {
   member?: ProjectMember;
@@ -32,7 +32,7 @@ export const UserAvatar = ({
   ...restAvatarProps
 }: UserAvatarProps) => {
   const name = member?.user?.name || user?.name || nameProp;
-  if (!name || typeof name !== "string") return null;
+  if (!name || typeof name !== 'string') return null;
 
   const role = member?.role || user?.role || roleProp;
   const title = tooltipTitle || (role ? `${name} (${role})` : name);
@@ -41,9 +41,7 @@ export const UserAvatar = ({
 
   // Usa cor determinística se explicitado ou se for membro de lista; caso contrário usa cor padrão do tema
   const defaultBgColor =
-    useDeterministicColor || Boolean(member)
-      ? getMemberAvatarColor(avatarId)
-      : "primary.main";
+    useDeterministicColor || Boolean(member) ? getMemberAvatarColor(avatarId) : 'primary.main';
 
   const avatarNode = (
     <Avatar

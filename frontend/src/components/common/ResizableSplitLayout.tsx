@@ -1,4 +1,11 @@
-import { useState, useRef, useCallback, useEffect, ReactNode, PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  ReactNode,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
@@ -67,7 +74,11 @@ export function ResizableSplitLayout({
         const saved = window.localStorage.getItem(storageKey);
         if (saved !== null) {
           const parsed = parseFloat(saved);
-          if (!Number.isNaN(parsed) && parsed >= minPrimaryRatio && parsed <= 100 - minSecondaryRatio) {
+          if (
+            !Number.isNaN(parsed) &&
+            parsed >= minPrimaryRatio &&
+            parsed <= 100 - minSecondaryRatio
+          ) {
             return parsed;
           }
         }
@@ -305,7 +316,10 @@ export function ResizableSplitLayout({
                 zIndex: 11,
               }}
             >
-              <Tooltip title={toggleTooltip ?? 'Recolher / Expandir'} placement={isHorizontal ? 'right' : 'bottom'}>
+              <Tooltip
+                title={toggleTooltip ?? 'Recolher / Expandir'}
+                placement={isHorizontal ? 'right' : 'bottom'}
+              >
                 <IconButton
                   size="small"
                   onClick={(e) => {

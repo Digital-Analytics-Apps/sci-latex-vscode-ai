@@ -1,16 +1,9 @@
-import {
-  Autocomplete,
-  Box,
-  Chip,
-  CircularProgress,
-  TextField,
-  Typography,
-} from "@mui/material";
-import { useMemo, useState } from "react";
-import { useDebounce } from "../../hooks/useDebounce";
-import { useUserSearchQuery } from "../../hooks/useUserQueries";
-import { MEMBER_ROLE_LABELS } from "../../constants/roles";
-import type { UserMemberItem } from "../../types/user.types";
+import { Autocomplete, Box, Chip, CircularProgress, TextField, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useUserSearchQuery } from '../../hooks/useUserQueries';
+import { MEMBER_ROLE_LABELS } from '../../constants/roles';
+import type { UserMemberItem } from '../../types/user.types';
 
 function normalizeRoles(roles?: string[] | string): string[] {
   if (!roles) return [];
@@ -26,7 +19,7 @@ interface BaseUserSearchProps {
   required?: boolean;
   fullWidth?: boolean;
   helperText?: string;
-  size?: "small" | "medium";
+  size?: 'small' | 'medium';
   freeSolo?: boolean;
 }
 
@@ -42,25 +35,23 @@ export interface MultiUserSearchProps extends BaseUserSearchProps {
   onChange: (emails: string[], users: UserMemberItem[]) => void;
 }
 
-export type UserSearchAutocompleteProps =
-  SingleUserSearchProps | MultiUserSearchProps;
+export type UserSearchAutocompleteProps = SingleUserSearchProps | MultiUserSearchProps;
 
 export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
   const {
     allowedRoles,
     excludeRoles,
-    label = "Busca por nome ou e-mail",
-    placeholder = "Digite nome ou e-mail do pesquisador...",
+    label = 'Busca por nome ou e-mail',
+    placeholder = 'Digite nome ou e-mail do pesquisador...',
     required = false,
     fullWidth = true,
     helperText,
-    size = "medium",
+    size = 'medium',
     freeSolo = false,
   } = props;
 
   // Estado único para o texto pesquisado no input (SEMPRE string)
-  const initialValue =
-    !props.multiple && typeof props.value === "string" ? props.value : "";
+  const initialValue = !props.multiple && typeof props.value === 'string' ? props.value : '';
   const [searchText, setSearchText] = useState<string>(initialValue);
 
   // Sincronização de valor derivado quando a prop value é alterada externamente
@@ -68,30 +59,23 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
   if (props.value !== prevValue) {
     setPrevValue(props.value);
     if (!props.multiple) {
-      setSearchText(typeof props.value === "string" ? props.value : "");
+      setSearchText(typeof props.value === 'string' ? props.value : '');
     }
   }
 
   const debouncedSearch = useDebounce(searchText, 300);
 
   // Normalização de arrays de roles permitidas e excluídas
-  const allowedRolesArray = useMemo(
-    () => normalizeRoles(allowedRoles),
-    [allowedRoles],
-  );
+  const allowedRolesArray = useMemo(() => normalizeRoles(allowedRoles), [allowedRoles]);
 
-  const excludeRolesArray = useMemo(
-    () => normalizeRoles(excludeRoles),
-    [excludeRoles],
-  );
+  const excludeRolesArray = useMemo(() => normalizeRoles(excludeRoles), [excludeRoles]);
 
   // Se houver apenas 1 role permitida, envia filtro direto para o backend
-  const backendRoleFilter =
-    allowedRolesArray.length === 1 ? allowedRolesArray[0] : undefined;
+  const backendRoleFilter = allowedRolesArray.length === 1 ? allowedRolesArray[0] : undefined;
 
   const { data: usersList = [], isFetching } = useUserSearchQuery(
     debouncedSearch,
-    backendRoleFilter,
+    backendRoleFilter
   );
 
   // Filtragem local dos usuários encontrados pelo texto digitado
@@ -111,21 +95,18 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
     });
   }, [usersList, allowedRolesArray, excludeRolesArray]);
 
-  const singleValue =
-    !props.multiple && typeof props.value === "string" ? props.value : "";
+  const singleValue = !props.multiple && typeof props.value === 'string' ? props.value : '';
 
   // Deriva o objeto UserMemberItem selecionado a partir do valor string (email ou id)
   const selectedOption = useMemo(() => {
     if (!singleValue) return null;
-    const found = filteredUsers.find(
-      (u) => u.email === singleValue || u.id === singleValue,
-    );
+    const found = filteredUsers.find((u) => u.email === singleValue || u.id === singleValue);
     if (found) return found;
     return {
-      id: "",
+      id: '',
       name: singleValue,
       email: singleValue,
-      role: "AUTHOR",
+      role: 'AUTHOR',
     } as unknown as UserMemberItem;
   }, [filteredUsers, singleValue]);
 
@@ -150,8 +131,8 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
         loading={isFetching}
         noOptionsText={
           debouncedSearch.trim().length > 0 && debouncedSearch.trim().length < 3
-            ? "Digite ao menos 3 letras para pesquisar..."
-            : "Nenhum usuário encontrado."
+            ? 'Digite ao menos 3 letras para pesquisar...'
+            : 'Nenhum usuário encontrado.'
         }
         renderInput={(params) => (
           <TextField
@@ -167,9 +148,7 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
                 ...params.slotProps.input,
                 endAdornment: (
                   <>
-                    {isFetching ? (
-                      <CircularProgress color="inherit" size={18} />
-                    ) : null}
+                    {isFetching ? <CircularProgress color="inherit" size={18} /> : null}
                     {params.slotProps.input.endAdornment}
                   </>
                 ),
@@ -185,10 +164,10 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
               key={key || option.id}
               {...optionProps}
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                width: "100%",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                width: '100%',
                 py: 1,
               }}
             >
@@ -202,13 +181,11 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
               </Box>
               <Chip
                 label={
-                  MEMBER_ROLE_LABELS[
-                    option.role as keyof typeof MEMBER_ROLE_LABELS
-                  ] || option.role
+                  MEMBER_ROLE_LABELS[option.role as keyof typeof MEMBER_ROLE_LABELS] || option.role
                 }
                 size="small"
                 variant="outlined"
-                color={option.role === "COORDINATOR" ? "warning" : "default"}
+                color={option.role === 'COORDINATOR' ? 'warning' : 'default'}
               />
             </Box>
           );
@@ -229,30 +206,30 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
         inputValue={searchText}
         onInputChange={(_e, newInputValue, reason) => {
           setSearchText(newInputValue);
-          if (reason === "input") {
+          if (reason === 'input') {
             singleProps.onChange(newInputValue, null);
-          } else if (reason === "clear") {
-            singleProps.onChange("", null);
+          } else if (reason === 'clear') {
+            singleProps.onChange('', null);
           }
         }}
         onChange={(_e, newValue) => {
-          if (typeof newValue === "string") {
+          if (typeof newValue === 'string') {
             setSearchText(newValue);
             singleProps.onChange(newValue, null);
           } else if (newValue) {
             setSearchText(newValue.name || newValue.email);
             singleProps.onChange(newValue.email, newValue);
           } else {
-            setSearchText("");
-            singleProps.onChange("", null);
+            setSearchText('');
+            singleProps.onChange('', null);
           }
         }}
         getOptionLabel={(option) => {
-          if (typeof option === "string") return option;
+          if (typeof option === 'string') return option;
           return `${option.name} (${option.email})`;
         }}
         isOptionEqualToValue={(option, val) => {
-          if (typeof val === "string") {
+          if (typeof val === 'string') {
             return option.email === val || option.name === val;
           }
           return option.id === val.id;
@@ -260,8 +237,8 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
         loading={isFetching}
         noOptionsText={
           debouncedSearch.trim().length > 0 && debouncedSearch.trim().length < 3
-            ? "Digite ao menos 3 letras para pesquisar..."
-            : "Nenhum usuário encontrado."
+            ? 'Digite ao menos 3 letras para pesquisar...'
+            : 'Nenhum usuário encontrado.'
         }
         renderInput={(params) => (
           <TextField
@@ -277,9 +254,7 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
                 ...params.slotProps.input,
                 endAdornment: (
                   <>
-                    {isFetching ? (
-                      <CircularProgress color="inherit" size={18} />
-                    ) : null}
+                    {isFetching ? <CircularProgress color="inherit" size={18} /> : null}
                     {params.slotProps.input.endAdornment}
                   </>
                 ),
@@ -288,7 +263,7 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
           />
         )}
         renderOption={(renderProps, option) => {
-          if (typeof option === "string") return null;
+          if (typeof option === 'string') return null;
           const { key, ...optionProps } = renderProps as any;
           return (
             <Box
@@ -296,10 +271,10 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
               key={key || option.id}
               {...optionProps}
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                width: "100%",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                width: '100%',
                 py: 1,
               }}
             >
@@ -313,13 +288,11 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
               </Box>
               <Chip
                 label={
-                  MEMBER_ROLE_LABELS[
-                    option.role as keyof typeof MEMBER_ROLE_LABELS
-                  ] || option.role
+                  MEMBER_ROLE_LABELS[option.role as keyof typeof MEMBER_ROLE_LABELS] || option.role
                 }
                 size="small"
                 variant="outlined"
-                color={option.role === "COORDINATOR" ? "warning" : "default"}
+                color={option.role === 'COORDINATOR' ? 'warning' : 'default'}
               />
             </Box>
           );
@@ -337,8 +310,8 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
       inputValue={searchText}
       onInputChange={(_e, newInputValue, reason) => {
         setSearchText(newInputValue);
-        if (reason === "clear") {
-          singleProps.onChange("", null);
+        if (reason === 'clear') {
+          singleProps.onChange('', null);
         }
       }}
       onChange={(_e, newValue) => {
@@ -346,21 +319,19 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
           setSearchText(newValue.name || newValue.email);
           singleProps.onChange(newValue.email, newValue);
         } else {
-          setSearchText("");
-          singleProps.onChange("", null);
+          setSearchText('');
+          singleProps.onChange('', null);
         }
       }}
       getOptionLabel={(option) =>
-        option.name ? `${option.name} (${option.email})` : option.email || ""
+        option.name ? `${option.name} (${option.email})` : option.email || ''
       }
-      isOptionEqualToValue={(option, val) =>
-        option.id === val.id || option.email === val.email
-      }
+      isOptionEqualToValue={(option, val) => option.id === val.id || option.email === val.email}
       loading={isFetching}
       noOptionsText={
         debouncedSearch.trim().length > 0 && debouncedSearch.trim().length < 3
-          ? "Digite ao menos 3 letras para pesquisar..."
-          : "Nenhum usuário encontrado na lista."
+          ? 'Digite ao menos 3 letras para pesquisar...'
+          : 'Nenhum usuário encontrado na lista.'
       }
       renderInput={(params) => (
         <TextField
@@ -376,9 +347,7 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
               ...params.slotProps.input,
               endAdornment: (
                 <>
-                  {isFetching ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : null}
+                  {isFetching ? <CircularProgress color="inherit" size={18} /> : null}
                   {params.slotProps.input.endAdornment}
                 </>
               ),
@@ -394,10 +363,10 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
             key={key || option.id}
             {...optionProps}
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              width: '100%',
               py: 1,
             }}
           >
@@ -411,13 +380,11 @@ export const UserSearchAutocomplete = (props: UserSearchAutocompleteProps) => {
             </Box>
             <Chip
               label={
-                MEMBER_ROLE_LABELS[
-                  option.role as keyof typeof MEMBER_ROLE_LABELS
-                ] || option.role
+                MEMBER_ROLE_LABELS[option.role as keyof typeof MEMBER_ROLE_LABELS] || option.role
               }
               size="small"
               variant="outlined"
-              color={option.role === "COORDINATOR" ? "warning" : "default"}
+              color={option.role === 'COORDINATOR' ? 'warning' : 'default'}
             />
           </Box>
         );

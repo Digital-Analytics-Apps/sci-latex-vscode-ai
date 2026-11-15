@@ -89,7 +89,11 @@ const CodeBlock: React.FC<{
               },
             }}
           >
-            {copied ? <CheckIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 15 }} />}
+            {copied ? (
+              <CheckIcon sx={{ fontSize: 15 }} />
+            ) : (
+              <ContentCopyIcon sx={{ fontSize: 15 }} />
+            )}
           </IconButton>
         </Tooltip>
       </Box>

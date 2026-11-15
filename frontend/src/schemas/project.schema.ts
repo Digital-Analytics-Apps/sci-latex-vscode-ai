@@ -1,18 +1,10 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const createProjectSchema = z.object({
-  name: z
-    .string()
-    .min(3, "O título do artigo deve conter pelo menos 3 caracteres"),
-  targetConference: z
-    .string()
-    .min(2, "Informe o congresso ou periódico alvo (ex: IEEE S&P 2027)"),
-  submissionDeadline: z
-    .string()
-    .min(1, "Selecione a data limite para submissão"),
-  templateId: z
-    .string()
-    .min(1, "Selecione o modelo/template LaTeX desejado"),
+  name: z.string().min(3, 'O título do artigo deve conter pelo menos 3 caracteres'),
+  targetConference: z.string().min(2, 'Informe o congresso ou periódico alvo (ex: IEEE S&P 2027)'),
+  submissionDeadline: z.string().min(1, 'Selecione a data limite para submissão'),
+  templateId: z.string().min(1, 'Selecione o modelo/template LaTeX desejado'),
 });
 
 export type CreateProjectFormData = z.infer<typeof createProjectSchema>;

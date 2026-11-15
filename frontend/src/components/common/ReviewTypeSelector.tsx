@@ -1,11 +1,6 @@
-import {
-  Box,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from "@mui/material";
+import { Box, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 
-export type ReviewType = "TECHNICAL_REVIEW" | "PEER_REVIEW";
+export type ReviewType = 'TECHNICAL_REVIEW' | 'PEER_REVIEW';
 
 interface ReviewTypeSelectorProps {
   value: ReviewType;
@@ -16,7 +11,7 @@ interface ReviewTypeSelectorProps {
 export const ReviewTypeSelector = ({
   value,
   onChange,
-  label = "Tipo de Revisão (ADR-003)",
+  label = 'Tipo de Revisão (ADR-003)',
 }: ReviewTypeSelectorProps) => {
   return (
     <Box>
@@ -31,10 +26,10 @@ export const ReviewTypeSelector = ({
         onChange={(_, val) => val && onChange(val)}
         color="primary"
       >
-        <ToggleButton value="TECHNICAL_REVIEW" sx={{ textTransform: "none" }}>
+        <ToggleButton value="TECHNICAL_REVIEW" sx={{ textTransform: 'none' }}>
           🎓 Revisão Técnica (Orientador)
         </ToggleButton>
-        <ToggleButton value="PEER_REVIEW" sx={{ textTransform: "none" }}>
+        <ToggleButton value="PEER_REVIEW" sx={{ textTransform: 'none' }}>
           👥 Revisão entre Pares (Co-autores)
         </ToggleButton>
       </ToggleButtonGroup>

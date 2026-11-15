@@ -9,17 +9,10 @@ import {
   Paper,
   Stack,
   Typography,
-} from "@mui/material";
-import {
-  Activity,
-  AlertTriangle,
-  BookOpen,
-  CheckCircle2,
-  Radio,
-  Users,
-} from "lucide-react";
-import React from "react";
-import { useAdminOverview } from "../hooks/useAdminCenterQueries";
+} from '@mui/material';
+import { Activity, AlertTriangle, BookOpen, CheckCircle2, Radio, Users } from 'lucide-react';
+import React from 'react';
+import { useAdminOverview } from '../hooks/useAdminCenterQueries';
 
 interface OverviewTabProps {
   autoRefresh: boolean;
@@ -30,7 +23,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />
       </Box>
     );
@@ -38,7 +31,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
   if (isError || !data) {
     return (
-      <Paper sx={{ p: 4, textAlign: "center", bgcolor: "background.paper" }}>
+      <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
         <Typography color="error">
           Não foi possível carregar a visão geral da plataforma.
         </Typography>
@@ -52,11 +45,15 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
       <Grid container spacing={2.5}>
         {/* Status Geral */}
         <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Stack
                 direction="row"
-                sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}
+                sx={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1,
+                }}
               >
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Sistema
@@ -64,13 +61,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
                 <CheckCircle2 size={20} color="#10b981" />
               </Stack>
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {data.systemStatus === "OPERATIONAL" ? "Operacional" : "Atenção"}
+                {data.systemStatus === 'OPERATIONAL' ? 'Operacional' : 'Atenção'}
               </Typography>
               <Chip
                 label="Todos os nós ativos"
                 size="small"
-                color={data.systemStatus === "OPERATIONAL" ? "success" : "warning"}
-                sx={{ mt: 1, fontSize: "0.75rem" }}
+                color={data.systemStatus === 'OPERATIONAL' ? 'success' : 'warning'}
+                sx={{ mt: 1, fontSize: '0.75rem' }}
               />
             </CardContent>
           </Card>
@@ -78,11 +75,15 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
         {/* Usuários Ativos */}
         <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Stack
                 direction="row"
-                sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}
+                sx={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1,
+                }}
               >
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Usuários Ativos
@@ -101,11 +102,15 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
         {/* Artigos em Andamento */}
         <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Stack
                 direction="row"
-                sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}
+                sx={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1,
+                }}
               >
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Artigos Ativos
@@ -124,11 +129,15 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
         {/* WebSockets Ativos */}
         <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Stack
                 direction="row"
-                sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}
+                sx={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1,
+                }}
               >
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   WebSockets
@@ -147,23 +156,27 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
         {/* Erros Última Hora */}
         <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-          <Card sx={{ height: "100%", borderRadius: 2 }}>
+          <Card sx={{ height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Stack
                 direction="row"
-                sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}
+                sx={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1,
+                }}
               >
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                   Erros (1h)
                 </Typography>
                 <AlertTriangle
                   size={20}
-                  color={data.errorsLastHourCount > 5 ? "#ef4444" : "#10b981"}
+                  color={data.errorsLastHourCount > 5 ? '#ef4444' : '#10b981'}
                 />
               </Stack>
               <Typography
                 variant="h4"
-                color={data.errorsLastHourCount > 5 ? "error.main" : "text.primary"}
+                color={data.errorsLastHourCount > 5 ? 'error.main' : 'text.primary'}
                 sx={{ fontWeight: 800 }}
               >
                 {data.errorsLastHourCount}
@@ -178,7 +191,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
       {/* 2. Gráfico / Barras de Atividade da Plataforma por Hora */}
       <Paper sx={{ p: 3, borderRadius: 2 }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
           <Activity size={20} />
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Atividade da Plataforma nas Últimas Horas
@@ -190,14 +203,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
 
         <Grid container spacing={2}>
           {data.hourlyActivity.map((item, idx) => {
-            const maxReq = Math.max(
-              ...data.hourlyActivity.map((a) => a.requestsCount),
-              1
-            );
-            const percent = Math.min(
-              Math.round((item.requestsCount / maxReq) * 100),
-              100
-            );
+            const maxReq = Math.max(...data.hourlyActivity.map((a) => a.requestsCount), 1);
+            const percent = Math.min(Math.round((item.requestsCount / maxReq) * 100), 100);
 
             return (
               <Grid size={{ xs: 12, sm: 6, md: 1.7 }} key={idx}>
@@ -205,8 +212,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
                   variant="outlined"
                   sx={{
                     p: 2,
-                    textAlign: "center",
-                    bgcolor: "action.hover",
+                    textAlign: 'center',
+                    bgcolor: 'action.hover',
                     borderRadius: 2,
                   }}
                 >
@@ -216,7 +223,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ autoRefresh }) => {
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ display: "block", my: 0.5 }}
+                    sx={{ display: 'block', my: 0.5 }}
                   >
                     {item.requestsCount} reqs · {item.collaborativeOpsCount} ops
                   </Typography>

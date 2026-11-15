@@ -5,13 +5,13 @@ import {
   isAfter,
   isBefore,
   startOfDay,
-} from "date-fns";
-import { StageStatus, TaskStatus } from "../../../../constants/status";
-import type { ProjectStage } from "../../../../types/stage.types";
-import type { TaskItem } from "../../../../types/task.types";
-import type { UserSimple } from "../../../../types/user.types";
+} from 'date-fns';
+import { StageStatus, TaskStatus } from '../../../../constants/status';
+import type { ProjectStage } from '../../../../types/stage.types';
+import type { TaskItem } from '../../../../types/task.types';
+import type { UserSimple } from '../../../../types/user.types';
 
-export type TimeScale = "days" | "weeks" | "months";
+export type TimeScale = 'days' | 'weeks' | 'months';
 
 export interface GanttDateColumn {
   date: Date;
@@ -23,8 +23,8 @@ export interface GanttDateColumn {
 
 export interface AIRiskAlert {
   id: string;
-  type: "conference_deadline_breach" | "stage_deadline_breach" | "overdue_task";
-  severity: "high" | "medium" | "low";
+  type: 'conference_deadline_breach' | 'stage_deadline_breach' | 'overdue_task';
+  severity: 'high' | 'medium' | 'low';
   message: string;
   entityId: string;
   entityTitle: string;
@@ -40,14 +40,8 @@ export const normalizeDate = (d: Date | string): Date => {
 /**
  * Calcula a diferença em dias entre duas datas usando date-fns
  */
-export const getDaysDifference = (
-  startDate: Date | string,
-  endDate: Date | string,
-): number => {
-  return differenceInCalendarDays(
-    normalizeDate(endDate),
-    normalizeDate(startDate),
-  );
+export const getDaysDifference = (startDate: Date | string, endDate: Date | string): number => {
+  return differenceInCalendarDays(normalizeDate(endDate), normalizeDate(startDate));
 };
 
 /**
@@ -56,7 +50,7 @@ export const getDaysDifference = (
 export const generateGanttColumns = (
   rangeStart: Date,
   rangeEnd: Date,
-  scale: TimeScale = "days",
+  scale: TimeScale = 'days'
 ): GanttDateColumn[] => {
   const columns: GanttDateColumn[] = [];
   const todayNormalized = startOfDay(new Date());
@@ -67,25 +61,23 @@ export const generateGanttColumns = (
     const dayOfWeek = curr.getDay();
     const isToday = curr.getTime() === todayNormalized.getTime();
 
-    if (scale === "days") {
+    if (scale === 'days') {
       columns.push({
         date: curr,
-        label: curr.toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "short",
+        label: curr.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: 'short',
         }),
-        subLabel: curr
-          .toLocaleDateString("pt-BR", { weekday: "short" })
-          .toUpperCase(),
+        subLabel: curr.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase(),
         isToday,
         isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
       });
       curr = addDays(curr, 1);
-    } else if (scale === "weeks") {
+    } else if (scale === 'weeks') {
       const endOfWeek = addDays(curr, 6);
       columns.push({
         date: curr,
-        label: `Sem ${curr.getDate()} ${curr.toLocaleDateString("pt-BR", { month: "short" })}`,
+        label: `Sem ${curr.getDate()} ${curr.toLocaleDateString('pt-BR', { month: 'short' })}`,
         subLabel: `${curr.getDate()}/${curr.getMonth() + 1} - ${endOfWeek.getDate()}/${endOfWeek.getMonth() + 1}`,
         isToday,
       });
@@ -94,9 +86,9 @@ export const generateGanttColumns = (
       // months
       columns.push({
         date: curr,
-        label: curr.toLocaleDateString("pt-BR", {
-          month: "long",
-          year: "numeric",
+        label: curr.toLocaleDateString('pt-BR', {
+          month: 'long',
+          year: 'numeric',
         }),
         isToday,
       });
@@ -115,29 +107,24 @@ export const calculateBarPosition = (
   endDateStr: string | undefined | null,
   rangeStart: Date,
   totalDaysInRange: number,
-  fallbackStartDateStr?: string | null,
+  fallbackStartDateStr?: string | null
 ): { leftPercent: number; widthPercent: number } => {
   const effectiveStartStr = startDateStr ?? fallbackStartDateStr;
   if (!effectiveStartStr && !endDateStr) {
     return { leftPercent: 0, widthPercent: 10 };
   }
 
-  const start = effectiveStartStr
-    ? normalizeDate(effectiveStartStr)
-    : normalizeDate(rangeStart);
+  const start = effectiveStartStr ? normalizeDate(effectiveStartStr) : normalizeDate(rangeStart);
   const end = endDateStr ? normalizeDate(endDateStr) : start;
   const baseStart = normalizeDate(rangeStart);
 
   const startOffsetDays = getDaysDifference(baseStart, start);
   const durationDays = Math.max(1, getDaysDifference(start, end) + 1);
 
-  const leftPercent = Math.min(
-    100,
-    Math.max(0, (startOffsetDays / totalDaysInRange) * 100),
-  );
+  const leftPercent = Math.min(100, Math.max(0, (startOffsetDays / totalDaysInRange) * 100));
   const widthPercent = Math.min(
     100 - leftPercent,
-    Math.max(2, (durationDays / totalDaysInRange) * 100),
+    Math.max(2, (durationDays / totalDaysInRange) * 100)
   );
 
   return { leftPercent, widthPercent };
@@ -155,9 +142,7 @@ export const isTaskCompleted = (task: TaskItem): boolean => {
  */
 export const isTaskStarted = (task: TaskItem): boolean => {
   return (
-    task.status !== TaskStatus.NOT_STARTED ||
-    Boolean(task.startedAt) ||
-    Boolean(task.startDate)
+    task.status !== TaskStatus.NOT_STARTED || Boolean(task.startedAt) || Boolean(task.startDate)
   );
 };
 
@@ -174,7 +159,7 @@ export const isStageStarted = (stage: ProjectStage): boolean => {
 export const calculateTimeElapsedPercent = (
   startDateStr?: string | null,
   endDateStr?: string | null,
-  isStarted: boolean = true,
+  isStarted: boolean = true
 ): number => {
   if (!isStarted || !startDateStr || !endDateStr) return 0;
   const start = normalizeDate(startDateStr).getTime();
@@ -188,45 +173,34 @@ export const calculateTimeElapsedPercent = (
   if (totalDuration <= 0) return 100;
 
   const elapsed = today - start;
-  return Math.min(
-    100,
-    Math.max(0, Math.round((elapsed / totalDuration) * 100)),
-  );
+  return Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)));
 };
 
 /**
  * Retorna o nome de exibição do responsável (string ou UserSimple) sem fallbacks inventados
  */
-export const getAssigneeDisplayName = (
-  assignee: TaskItem["assignee"],
-): string => {
-  if (!assignee) return "";
-  if (typeof assignee === "object") return assignee.name;
+export const getAssigneeDisplayName = (assignee: TaskItem['assignee']): string => {
+  if (!assignee) return '';
+  if (typeof assignee === 'object') return assignee.name;
   return assignee;
 };
 
 /**
  * Retorna a cor de fundo da barra de tarefas do Gantt sem ternários aninhados
  */
-export const getTaskBarBgColor = (
-  isMerged: boolean,
-  isOverdue: boolean,
-): string => {
-  if (isMerged) return "success.main";
-  if (isOverdue) return "error.main";
-  return "secondary.main";
+export const getTaskBarBgColor = (isMerged: boolean, isOverdue: boolean): string => {
+  if (isMerged) return 'success.main';
+  if (isOverdue) return 'error.main';
+  return 'secondary.main';
 };
 
 /**
  * Retorna a cor de fundo das colunas no cabeçalho do Gantt
  */
-export const getColumnBgColor = (
-  isToday: boolean,
-  isWeekend?: boolean,
-): string => {
-  if (isToday) return "rgba(99, 102, 241, 0.12)";
-  if (isWeekend) return "action.hover";
-  return "transparent";
+export const getColumnBgColor = (isToday: boolean, isWeekend?: boolean): string => {
+  if (isToday) return 'rgba(99, 102, 241, 0.12)';
+  if (isWeekend) return 'action.hover';
+  return 'transparent';
 };
 
 /**
@@ -235,9 +209,9 @@ export const getColumnBgColor = (
 export const getTaskTooltipText = (
   taskTitle: string,
   dueDate?: string | null,
-  assigneeName?: string,
+  assigneeName?: string
 ): string => {
-  const dueStr = dueDate ? ` | Due: ${dueDate}` : "";
+  const dueStr = dueDate ? ` | Due: ${dueDate}` : '';
   if (assigneeName) {
     return `Sub-task: ${taskTitle} | Responsável: ${assigneeName}${dueStr}`;
   }
@@ -247,23 +221,20 @@ export const getTaskTooltipText = (
 /**
  * Retorna o texto do progresso da barra de tarefa
  */
-export const getTaskProgressText = (
-  isMerged: boolean,
-  progress?: number,
-): string => {
-  if (isMerged) return "100% ✓";
-  if (typeof progress === "number") return `${progress}%`;
-  return "";
+export const getTaskProgressText = (isMerged: boolean, progress?: number): string => {
+  if (isMerged) return '100% ✓';
+  if (typeof progress === 'number') return `${progress}%`;
+  return '';
 };
 
 /**
  * Extrai user e name de assignee de forma limpa para props de componentes
  */
 export const extractAssigneeUserAndName = (
-  assignee: TaskItem["assignee"],
+  assignee: TaskItem['assignee']
 ): { user?: UserSimple; name?: string } => {
   if (!assignee) return {};
-  if (typeof assignee === "object") {
+  if (typeof assignee === 'object') {
     return { user: assignee, name: assignee.name };
   }
   return { name: assignee };
@@ -274,7 +245,7 @@ export const extractAssigneeUserAndName = (
  */
 export const getDrawerEntityDetails = (
   stage: ProjectStage | null | undefined,
-  task: TaskItem | null | undefined,
+  task: TaskItem | null | undefined
 ) => {
   if (stage) {
     return {
@@ -315,13 +286,13 @@ export const getDrawerEntityDetails = (
  */
 export const getAiSummaryText = (
   riskAlertsCount: number,
-  targetConferenceName?: string | null,
+  targetConferenceName?: string | null
 ): string => {
   if (riskAlertsCount === 0) {
     if (targetConferenceName) {
       return `Projeto alinhado para submissão à ${targetConferenceName} sem impedimentos detectados.`;
     }
-    return "Projeto alinhado para submissão sem impedimentos detectados.";
+    return 'Projeto alinhado para submissão sem impedimentos detectados.';
   }
   return `${riskAlertsCount} alerta(s) de prazo detectados pela IA.`;
 };
@@ -330,34 +301,32 @@ export const getAiSummaryText = (
  * Retorna a cor do card de atrasos
  */
 export const getOverdueCardBgColor = (overdueTasksCount: number): string => {
-  if (overdueTasksCount > 0) return "error.softBg";
-  return "background.paper";
+  if (overdueTasksCount > 0) return 'error.softBg';
+  return 'background.paper';
 };
 
 /**
  * Retorna a cor da borda do card de atrasos
  */
-export const getOverdueCardBorderColor = (
-  overdueTasksCount: number,
-): string => {
-  if (overdueTasksCount > 0) return "error.main";
-  return "divider";
+export const getOverdueCardBorderColor = (overdueTasksCount: number): string => {
+  if (overdueTasksCount > 0) return 'error.main';
+  return 'divider';
 };
 
 /**
  * Retorna a cor do ícone do card de atrasos
  */
 export const getOverdueIconBgColor = (overdueTasksCount: number): string => {
-  if (overdueTasksCount > 0) return "error.main";
-  return "grey.200";
+  if (overdueTasksCount > 0) return 'error.main';
+  return 'grey.200';
 };
 
 /**
  * Retorna a cor do texto do ícone do card de atrasos
  */
 export const getOverdueIconColor = (overdueTasksCount: number): string => {
-  if (overdueTasksCount > 0) return "#fff";
-  return "grey.700";
+  if (overdueTasksCount > 0) return '#fff';
+  return 'grey.700';
 };
 
 /**
@@ -375,14 +344,12 @@ export const calculateStageProgress = (tasks: TaskItem[]): number => {
 export const detectAIRisks = (
   stages: ProjectStage[],
   tasks: TaskItem[],
-  targetConferenceDate?: string | null,
+  targetConferenceDate?: string | null
 ): AIRiskAlert[] => {
   const alerts: AIRiskAlert[] = [];
   const today = startOfDay(new Date());
 
-  const conferenceDeadline = targetConferenceDate
-    ? normalizeDate(targetConferenceDate)
-    : null;
+  const conferenceDeadline = targetConferenceDate ? normalizeDate(targetConferenceDate) : null;
 
   // 1. Verificar estouro da Submissão ao Congresso
   if (conferenceDeadline) {
@@ -392,11 +359,11 @@ export const detectAIRisks = (
         if (isAfter(stageEnd, conferenceDeadline)) {
           alerts.push({
             id: `conf-breach-${stage.id}`,
-            type: "conference_deadline_breach",
-            severity: "high",
+            type: 'conference_deadline_breach',
+            severity: 'high',
             entityId: stage.id,
             entityTitle: stage.title,
-            message: `A Etapa Principal "${stage.title}" possui prazo (${stageEnd.toLocaleDateString("pt-BR")}) posterior à Submissão do Congresso (${conferenceDeadline.toLocaleDateString("pt-BR")}).`,
+            message: `A Etapa Principal "${stage.title}" possui prazo (${stageEnd.toLocaleDateString('pt-BR')}) posterior à Submissão do Congresso (${conferenceDeadline.toLocaleDateString('pt-BR')}).`,
           });
         }
       }
@@ -408,8 +375,8 @@ export const detectAIRisks = (
         if (isAfter(taskDue, conferenceDeadline)) {
           alerts.push({
             id: `conf-task-breach-${task.id}`,
-            type: "conference_deadline_breach",
-            severity: "high",
+            type: 'conference_deadline_breach',
+            severity: 'high',
             entityId: task.id,
             entityTitle: task.title,
             message: `A Sub-task "${task.title}" estoura o prazo limite de Submissão do Congresso.`,
@@ -426,11 +393,11 @@ export const detectAIRisks = (
       if (isBefore(taskDue, today)) {
         alerts.push({
           id: `overdue-${task.id}`,
-          type: "overdue_task",
-          severity: "medium",
+          type: 'overdue_task',
+          severity: 'medium',
           entityId: task.id,
           entityTitle: task.title,
-          message: `Sub-task "${task.title}" está com a data limite de entrega vencida (${taskDue.toLocaleDateString("pt-BR")}).`,
+          message: `Sub-task "${task.title}" está com a data limite de entrega vencida (${taskDue.toLocaleDateString('pt-BR')}).`,
         });
       }
     }

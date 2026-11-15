@@ -2,11 +2,7 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { ArticleSelectionCard } from './ArticleSelectionCard';
 import { StageTimelineProposalCard } from './StageTimelineProposalCard';
-import type {
-  ArticleItem,
-  ArticleProposalData,
-  InterruptActionRequest,
-} from '../types/chat.types';
+import type { ArticleItem, ArticleProposalData, InterruptActionRequest } from '../types/chat.types';
 
 interface InterruptActionResolverProps {
   interrupt: InterruptActionRequest;

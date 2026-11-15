@@ -13,14 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import {
-  Box,
-  Paper,
-  Typography,
-  Chip,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
+import { Box, Paper, Typography, Chip, IconButton, Tooltip } from '@mui/material';
 import { Filter, RotateCcw } from 'lucide-react';
 
 import { PaperNode } from './PaperNode';
@@ -90,7 +83,17 @@ export const LiteratureMindMap: React.FC<LiteratureMindMapProps> = ({
   }, [nodes, filterType]);
 
   return (
-    <Box sx={{ width: '100%', height, position: 'relative', bgcolor: 'background.default', borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+    <Box
+      sx={{
+        width: '100%',
+        height,
+        position: 'relative',
+        bgcolor: 'background.default',
+        borderRadius: 3,
+        overflow: 'hidden',
+        border: '1px solid rgba(0,0,0,0.1)',
+      }}
+    >
       <ReactFlow
         nodes={filteredNodes}
         edges={edges}

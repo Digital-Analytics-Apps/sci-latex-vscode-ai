@@ -1,7 +1,7 @@
-import Autocomplete from "@mui/material/Autocomplete";
-import Chip from "@mui/material/Chip";
-import TextField from "@mui/material/TextField";
-import type { ReviewType } from "./ReviewTypeSelector";
+import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
+import type { ReviewType } from './ReviewTypeSelector';
 
 export interface UserOption {
   id: string;
@@ -23,7 +23,7 @@ export const ReviewerSelector = ({
   selectedPeers,
   onPeersChange,
 }: ReviewerSelectorProps) => {
-  if (reviewType === "TECHNICAL_REVIEW") {
+  if (reviewType === 'TECHNICAL_REVIEW') {
     return (
       <TextField
         fullWidth
@@ -50,20 +50,14 @@ export const ReviewerSelector = ({
       filterSelectedOptions
       noOptionsText={
         peerOptions.length === 0
-          ? "Nenhum outro autor cadastrado neste projeto"
-          : "Todos os autores do projeto já foram selecionados"
+          ? 'Nenhum outro autor cadastrado neste projeto'
+          : 'Todos os autores do projeto já foram selecionados'
       }
       renderValue={(value, getItemProps) =>
         value.map((option, index) => {
           const { key, ...itemProps } = getItemProps({ index });
           return (
-            <Chip
-              variant="outlined"
-              size="small"
-              label={option.name}
-              key={key}
-              {...itemProps}
-            />
+            <Chip variant="outlined" size="small" label={option.name} key={key} {...itemProps} />
           );
         })
       }
@@ -73,10 +67,9 @@ export const ReviewerSelector = ({
           size="small"
           label="Atribuir Autores para Revisão (Pares)"
           placeholder={
-            selectedPeers.length === peerOptions.length &&
-            peerOptions.length > 0
-              ? ""
-              : "Selecione um ou mais autores..."
+            selectedPeers.length === peerOptions.length && peerOptions.length > 0
+              ? ''
+              : 'Selecione um ou mais autores...'
           }
           helperText="Por padrão, os demais autores são selecionados para avaliar esta tarefa."
         />

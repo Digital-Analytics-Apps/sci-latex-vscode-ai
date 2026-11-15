@@ -1,26 +1,23 @@
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import { Box, TextField } from "@mui/material";
-import React, { useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import { useCreateAcademicPeriodMutation } from "../../../hooks/useManagementQueries";
-import { showNotification } from "../../../store/slices/notificationSlice";
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { Box, TextField } from '@mui/material';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { useCreateAcademicPeriodMutation } from '../../../hooks/useManagementQueries';
+import { showNotification } from '../../../store/slices/notificationSlice';
 
 interface CreateAcademicPeriodModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-export const CreateAcademicPeriodModal = ({
-  open,
-  onClose,
-}: CreateAcademicPeriodModalProps) => {
+export const CreateAcademicPeriodModal = ({ open, onClose }: CreateAcademicPeriodModalProps) => {
   const dispatch = useDispatch();
   const createPeriodMutation = useCreateAcademicPeriodMutation();
 
-  const [name, setName] = useState("");
-  const [startDate, setStartDate] = useState("2026-09-01");
-  const [endDate, setEndDate] = useState("2027-08-31");
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState('2026-09-01');
+  const [endDate, setEndDate] = useState('2027-08-31');
   const [targetArticlesCount, setTargetArticlesCount] = useState<number>(15);
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -37,17 +34,17 @@ export const CreateAcademicPeriodModal = ({
       dispatch(
         showNotification({
           message: `Novo Período Acadêmico "${name}" criado com sucesso!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
-      setName("");
+      setName('');
       onClose();
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao criar Período Acadêmico.",
-          severity: "error",
-        }),
+          message: 'Erro ao criar Período Acadêmico.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -65,7 +62,7 @@ export const CreateAcademicPeriodModal = ({
       confirmColor="warning"
       isSubmitting={createPeriodMutation.isPending}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           required
           fullWidth

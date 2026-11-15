@@ -9,10 +9,7 @@ interface ChatMessageBubbleProps {
   children?: React.ReactNode;
 }
 
-export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
-  message,
-  children,
-}) => {
+export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message, children }) => {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
 

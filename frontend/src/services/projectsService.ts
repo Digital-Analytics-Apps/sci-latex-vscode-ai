@@ -1,21 +1,13 @@
-import type { StageStatus } from "../constants/status";
-import type {
-  CreateProjectInput,
-  ProjectDetails,
-  ProjectListItem,
-} from "../types/project.types";
-import type { CreateStageInput, ProjectStage } from "../types/stage.types";
-import { api } from "./api";
+import type { StageStatus } from '../constants/status';
+import type { CreateProjectInput, ProjectDetails, ProjectListItem } from '../types/project.types';
+import type { CreateStageInput, ProjectStage } from '../types/stage.types';
+import { api } from './api';
 
-export type { ProjectMember } from "../types/user.types";
-export type { ProjectStage } from "../types/stage.types";
-export type {
-  CreateProjectInput,
-  ProjectDetails,
-  ProjectListItem,
-} from "../types/project.types";
+export type { ProjectMember } from '../types/user.types';
+export type { ProjectStage } from '../types/stage.types';
+export type { CreateProjectInput, ProjectDetails, ProjectListItem } from '../types/project.types';
 
-const PROJETCT_URL = "/projects";
+const PROJETCT_URL = '/projects';
 
 export const projectsService = {
   // Buscar lista de projetos/artigos aos quais o usuário tem acesso
@@ -35,28 +27,18 @@ export const projectsService = {
   },
 
   // Salvar Progresso (Commit Silencioso do Autor via Service Token)
-  async saveProgress(
-    projectId: string,
-    taskId: string,
-    commitMessage?: string,
-  ) {
-    const response = await api.post(
-      `${PROJETCT_URL}/${projectId}/tasks/${taskId}/commit`,
-      {
-        commitMessage,
-      },
-    );
+  async saveProgress(projectId: string, taskId: string, commitMessage?: string) {
+    const response = await api.post(`${PROJETCT_URL}/${projectId}/tasks/${taskId}/commit`, {
+      commitMessage,
+    });
     return response.data;
   },
 
   // Obter Resumo Acadêmico de Alterações do Rascunho (Desde o último salvamento)
   async getTaskDiffSummary(projectId: string, taskId: string) {
-    const response = await api.get(
-      `${PROJETCT_URL}/${projectId}/tasks/${taskId}/diff-summary`,
-    );
+    const response = await api.get(`${PROJETCT_URL}/${projectId}/tasks/${taskId}/diff-summary`);
     return response.data;
   },
-
 
   // Criar Novo Projeto / Artigo Científico
   async createProject(data: CreateProjectInput) {
@@ -77,14 +59,8 @@ export const projectsService = {
   },
 
   // Criar nova etapa customizada de escrita
-  async createProjectStage(
-    projectId: string,
-    data: CreateStageInput,
-  ): Promise<ProjectStage> {
-    const response = await api.post(
-      `${PROJETCT_URL}/${projectId}/stages`,
-      data,
-    );
+  async createProjectStage(projectId: string, data: CreateStageInput): Promise<ProjectStage> {
+    const response = await api.post(`${PROJETCT_URL}/${projectId}/stages`, data);
     return response.data;
   },
 
@@ -100,24 +76,20 @@ export const projectsService = {
       plannedCompletionDate?: string | null;
       plannedStartAt?: string | null;
       plannedEndAt?: string | null;
-    },
+    }
   ): Promise<ProjectStage> {
-    const response = await api.patch(
-      `${PROJETCT_URL}/${projectId}/stages/${stageId}`,
-      data,
-    );
+    const response = await api.patch(`${PROJETCT_URL}/${projectId}/stages/${stageId}`, data);
     return response.data;
   },
 
   // Reordenar etapas do artigo em lote
   async reorderProjectStages(
     projectId: string,
-    stages: { id: string; order: number }[],
+    stages: { id: string; order: number }[]
   ): Promise<ProjectStage[]> {
-    const response = await api.put(
-      `${PROJETCT_URL}/${projectId}/stages/reorder`,
-      { stages },
-    );
+    const response = await api.put(`${PROJETCT_URL}/${projectId}/stages/reorder`, {
+      stages,
+    });
     return response.data;
   },
 
@@ -128,21 +100,13 @@ export const projectsService = {
 
   // Obter apontamentos de revisão agrupados por etapa
   async getReviewCommentsByStage(projectId: string): Promise<any[]> {
-    const response = await api.get(
-      `${PROJETCT_URL}/${projectId}/review-comments-by-stage`,
-    );
+    const response = await api.get(`${PROJETCT_URL}/${projectId}/review-comments-by-stage`);
     return response.data;
   },
 
   // Adicionar membro ao projeto / artigo
-  async addProjectMember(
-    projectId: string,
-    data: { userId: string; role: string },
-  ) {
-    const response = await api.post(
-      `${PROJETCT_URL}/${projectId}/members`,
-      data,
-    );
+  async addProjectMember(projectId: string, data: { userId: string; role: string }) {
+    const response = await api.post(`${PROJETCT_URL}/${projectId}/members`, data);
     return response.data;
   },
 };

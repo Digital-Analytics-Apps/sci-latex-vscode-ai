@@ -1,6 +1,6 @@
-import type { BoxProps } from "@mui/material";
-import { Box } from "@mui/material";
-import React from "react";
+import type { BoxProps } from '@mui/material';
+import { Box } from '@mui/material';
+import React from 'react';
 
 export interface PageContainerProps extends BoxProps {
   children: React.ReactNode;
@@ -21,13 +21,13 @@ export const PageContainer = ({
   return (
     <Box
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        width: "100%",
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
         p: disablePadding ? 0 : { xs: 2, sm: 3, md: 4 },
-        boxSizing: "border-box",
-        overflow: "hidden",
+        boxSizing: 'border-box',
+        overflow: 'hidden',
         ...sx,
       }}
       {...restProps}

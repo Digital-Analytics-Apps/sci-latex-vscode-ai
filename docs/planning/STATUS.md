@@ -2,7 +2,7 @@
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
 **Última Atualização:** 14 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Observabilidade On-Premise Integral (ADR-013) 100% Implementada e Validada.** Docker Compose modernizado com as versões mais recentes (`:latest`), chave obsoleta `version` removida, Opik LLMOps oficial (ghcr.io/comet-ml) com MySQL e ClickHouse em execução, GlitchTip single-process moderno com fila Redis, Grafana (13.3.1), Prometheus, Loki, Tempo, Alloy e OTel Collector com tail-sampling rodando com 100% de sucesso e HTTP 200 OK nos healthchecks. Zero dados sensíveis em arquivos (100% via env/secrets), 84/84 testes automatizados aprovados no monorepo e build de produção com 0 erros.
+**Status Geral do Projeto:** 🟢 **Governança Estrita de Templates LaTeX Oficiais (ADR-017) 100% Implementada e Validada.** Expurgados todos os templates fakes hardcoded do backend. Integrado o template real IEEE (`latex-templates/2026-ieee-conference.zip`) sincronizado automaticamente no MinIO S3 (`collab-assets/templates/2026-ieee-conference/bundle.zip`) e PostgreSQL (`LatexTemplate`). Heurística estilo Overleaf para remoção automática de diretório-mãe de ZIPs sem renomeação forçada para `main.tex`. Backend, WebSocket colaborativo, compilação TeXLive e editor frontend operando dinamicamente com base no `mainEntryPath` real do documento sem fallbacks mascaradores de erro (*Fail-Fast* estrito). 72/72 testes do backend e 5/5 testes do frontend aprovados com 0 erros de compilação TypeScript/Vite.
 
 ---
 
@@ -13,6 +13,20 @@
 
 ### 🔍 Estado Atual da Aplicação
   * **Branch Ativa:** `feature/observability-stack-adr-013`
+  * **Governança de Templates LaTeX Oficiais e Storage Architecture (ADR-017 Concluída):**
+    * **Decisão Arquitetural Aprovada:** Documentada em [`ADR-017`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md) com a convenção semântica de diretórios `[ANO]-[NOME_DO_CONGRESSO]-[TIPO]` (ex: `2026-ieee-conference`) e o princípio inegociável de *Fail-Fast* (zero fallbacks para `main.tex`).
+    * **Expurgo de Templates Fakes e Seed de Baseline Real:**
+      * Removidas ~250 linhas de strings e arquivos simulados em `backend/src/modules/templates/templates.service.ts`.
+      * Mantido apenas o template oficial real em `latex-templates/2026-ieee-conference.zip` (com `IEEEtran.cls`, `IEEE-conference-template-062824.tex` e `fig1.png`).
+      * Método `seedBaselineTemplates()` executado com sucesso: uploads para o bucket MinIO `collab-assets` e upsert na tabela `LatexTemplate` via Prisma.
+    * **Descompactação Overleaf-Style & Detecção de Arquivo Raiz:**
+      * `latex-zip-parser.ts` aprimorado para despir pasta-mãe única de ZIPs oficiais e detectar o arquivo que contém `\documentclass` preservando seu nome de origem intacto.
+    * **Suporte Dinâmico na Colaboração em Tempo Real (Backend & Frontend):**
+      * `backend/src/modules/documents/documents.schema.ts`: `DocumentSchema` exige `mainEntryPath: z.string().min(1)`.
+      * `backend/src/modules/documents/documents.repository.ts`: Consultas e checkpoints salvam o arquivo apontado por `mainEntryPath`, lançando `DocumentIntegrityError` se faltar no banco.
+      * `backend/src/modules/documents/documents.service.ts` & `documents.websocket.ts`: OT, broadcast, versionamento e snapshots atrelados dinamicamente ao `mainEntryPath`.
+      * `compiler/src/server.ts`: Compilador TeXLive exige que `mainEntry` conste explicitamente na lista de arquivos recebidos (*fail-fast* 400).
+      * `frontend`: `EditorWorkspace.tsx`, `FileTreeSidebar.tsx` e `CollabEditorContext.tsx` renderizam a árvore fiel aos arquivos do evento e vinculam a digitação e compilação ao arquivo principal original.
   * **Stack de Observabilidade On-Premise Integral (ADR-013 Finalizada):**
     * **Visualização no Grafana:**
       * Criado dashboard pré-moldado oficial em [`scia-overview-dashboard.json`](file:///home/gilson-russo/development/professional/sci-latex-vscode/infra/observability/grafana/provisioning/dashboards/scia-overview-dashboard.json) contendo: RPS do backend, Latência P95, Conexões WebSocket ativas, Checkpoints pendentes (RAM -> PostgreSQL), Salas ativas de edição, Taxa de compilações TeX por status e tempo médio.
@@ -174,6 +188,7 @@
 | **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
 | **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | 🟢 **Concluído** | [`ADR-014`](adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md) |
 | **Fase VIII**| Arquitetura de Evidências de Tarefas & Upload Direto MinIO | 🟢 Concluído | [`ADR-011`](adrs/adr-011-task-evidences-storage-architecture.md) |
+| **Fase IX** | Governança de Templates LaTeX Oficiais, MinIO & Bootstrap | 🟢 **Aprovado** | [`ADR-017`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md) |
 ---
 
 ## 🔄 3. Protocolo de Pausa e Atualização de Status
