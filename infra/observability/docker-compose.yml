@@ -219,11 +219,16 @@ services:
       ANALYTICS_DB_MIGRATIONS_URL: jdbc:clickhouse://opik-clickhouse:8123?compress=0
       ANALYTICS_DB_MIGRATIONS_USER: ${OPIK_CLICKHOUSE_USER:-opik}
       ANALYTICS_DB_MIGRATIONS_PASS: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
+      ANALYTICS_DB_PROTOCOL: "HTTP"
       ANALYTICS_DB_HOST: opik-clickhouse
       ANALYTICS_DB_PORT: 8123
       ANALYTICS_DB_DATABASE_NAME: ${OPIK_CLICKHOUSE_DATABASE:-opik}
       ANALYTICS_DB_USERNAME: ${OPIK_CLICKHOUSE_USER:-opik}
       ANALYTICS_DB_PASS: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
+      ANALYTICS_DB_CLUSTER_HEALTH_CHECK_ENABLED: "false"
+      ANALYTICS_DB_COLD_STORAGE_DISK_HEALTH_CHECK_ENABLED: "false"
+      ANALYTICS_DB_QUERY_PARAMETERS: "compress=0&auto_discovery=false&health_check_interval=5000"
+      JAVA_OPTS: "-Dliquibase.propertySubstitutionEnabled=true -XX:+UseG1GC -XX:MaxRAMPercentage=80.0"
       REDIS_URL: ${OPIK_REDIS_URL:-redis://host.docker.internal:6379/2}
     extra_hosts:
       - "host.docker.internal:host-gateway"
