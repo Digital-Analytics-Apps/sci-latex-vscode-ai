@@ -35,32 +35,68 @@ async function main() {
   console.log('👤 Creating users...');
   const usersToCreate = [
     {
-      name: 'Gilson Russo',
-      email: 'gilson.russo@example.com',
-      passwordHash: defaultPasswordHash,
-      role: Role.ADMIN,
-    },
-    {
-      name: 'Roce Russo',
-      email: 'roce.russo@example.com',
+      name: 'Coordenador 01',
+      email: 'coordenador.01@example.com',
       passwordHash: defaultPasswordHash,
       role: Role.COORDINATOR,
     },
+     {
+      name: 'Coordenador 02',
+      email: 'coordenador.02@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.COORDINATOR,
+    },
+     {
+      name: 'Gerente 01',
+      email: 'gerente.01@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.MANAGER,
+    },
+     {
+      name: 'Gerente 02',
+      email: 'gerente.02@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.MANAGER,
+    },
     {
-      name: 'Bianca Russo',
-      email: 'bianca.russo@example.com',
+      name: 'Author 01',
+      email: 'author.01@example.com',
       passwordHash: defaultPasswordHash,
       role: Role.AUTHOR,
     },
     {
-      name: 'Elisa Russo',
-      email: 'elisa.russo@example.com',
+      name: 'Author 02',
+      email: 'author.02@example.com',
       passwordHash: defaultPasswordHash,
       role: Role.AUTHOR,
     },
     {
-      name: 'Carlos Lima',
-      email: 'carlos.revisor@example.com',
+      name: 'Author 03',
+      email: 'author.03@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.AUTHOR,
+    },
+    {
+      name: 'Author 04',
+      email: 'author.04@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.AUTHOR,
+    },
+    {
+      name: 'Author 05',
+      email: 'author.05@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.AUTHOR,
+    },
+    {
+      name: 'Revisor 01',
+      email: 'revisor.01@example.com',
+      passwordHash: defaultPasswordHash,
+      role: Role.AUTHOR, // Membro comum; atua como revisor no contexto do artigo
+    },
+    {
+      name: 'Revisor 02',
+      email: 'revisor.02@example.com',
       passwordHash: defaultPasswordHash,
       role: Role.AUTHOR, // Membro comum; atua como revisor no contexto do artigo
     },
@@ -83,12 +119,12 @@ async function main() {
   console.log('📅 Creating academic period...');
   const academicPeriod = await prisma.academicPeriod.create({
     data: {
-      name: 'Ciclo Acadêmico 2026/2027',
+      name: '2026/2027',
       startDate: new Date('2026-01-01T00:00:00Z'),
       endDate: new Date('2026-12-31T23:59:59Z'),
       targetArticlesCount: 10,
       status: PeriodStatus.ACTIVE,
-      managerId: createdUsers['gilson.russo@example.com'].id,
+      managerId: createdUsers['admin@example.com'].id,
     },
   });
   console.log(`   - Período: ${academicPeriod.name} (Meta Geral: ${academicPeriod.targetArticlesCount} artigos)`);
@@ -102,15 +138,6 @@ async function main() {
 
   console.log('\n=========================================');
   console.log('✅ SEED EXECUTADO COM SUCESSO!');
-  console.log('=========================================');
-  console.log('Credenciais de Acesso (Senha padrão: 123456):');
-  console.log('   - Gilson Russo (ADMIN / Gestor):      gilson.russo@example.com');
-  console.log('   - Roce Russo (COORDENADOR):           roce.russo@example.com');
-  console.log('   - Bianca Russo (AUTOR):               bianca.russo@example.com');
-  console.log('   - Elisa Russo (AUTOR):                elisa.russo@example.com');
-  console.log('   - Carlos Lima (Membro / Revisor):     carlos.revisor@example.com');
-  console.log('   - System Admin (ADMIN):               admin@google.com');
-  console.log('   - Pesquisador Padrão (AUTOR):         user@google.com');
   console.log('=========================================\n');
 }
 

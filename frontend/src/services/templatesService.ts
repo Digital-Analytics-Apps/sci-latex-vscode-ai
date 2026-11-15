@@ -29,6 +29,12 @@ export const templatesService = {
     if (input.targetConference) {
       formData.append('targetConference', input.targetConference);
     }
+    if (input.year) {
+      formData.append('year', input.year);
+    }
+    if (input.templateType) {
+      formData.append('templateType', input.templateType);
+    }
 
     const response = await api.post<{ template: LatexTemplateItem }>(
       `${TEMPLATES_URL}/upload`,

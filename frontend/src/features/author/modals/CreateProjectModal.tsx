@@ -87,6 +87,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [customFile, setCustomFile] = useState<File | null>(null);
   const [customName, setCustomName] = useState('');
   const [customConf, setCustomConf] = useState('');
+  const [customYear, setCustomYear] = useState(String(new Date().getFullYear()));
+  const [customType, setCustomType] = useState('artigo');
 
   const {
     register,
@@ -102,7 +104,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       name: '',
       targetConference: 'IEEE International Symposium 2027',
       submissionDeadline: '2027-02-15',
-      templateId: 'tpl-system-ieeetran',
+      templateId: '',
     },
   });
 
@@ -175,12 +177,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         file: customFile,
         name: customName.trim() || undefined,
         targetConference: customConf.trim() || undefined,
+        year: customYear.trim() || undefined,
+        templateType: customType.trim() || undefined,
       });
 
       setValue('templateId', uploaded.id);
       dispatch(
         showNotification({
-          message: `Template "${uploaded.name}" enviado com sucesso para o MinIO!`,
+          message: `Template oficial "${uploaded.id}" cadastrado no Catálogo Global e selecionado para este artigo!`,
           severity: 'success',
         })
       );
@@ -462,30 +466,48 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Upload de Template LaTeX (.zip para o MinIO)
+                Cadastrar Novo Template Oficial no Catálogo Global (.zip)
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Envie um pacote comprimido contendo o arquivo principal (<code>main.tex</code>),
-                classes (<code>.cls</code>), estilos (<code>.sty</code>) ou bibliografia (
-                <code>.bib</code>).
+                Envie o pacote oficial (.zip) fornecido pelo congresso ou revista. Ele será
+                catalogado globalmente sob o padrão <code>[ANO]-[CONGRESSO]-[TIPO]</code> e
+                selecionado para o seu novo artigo.
               </Typography>
 
-              <TextField
-                fullWidth
-                size="small"
-                label="Nome do Template (Opcional)"
-                placeholder="Ex: SBC WebMedia 2027 Template"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-              />
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  size="small"
+                  label="Sigla do Congresso / Revista"
+                  placeholder="Ex: SBC, IEEE, ACM"
+                  value={customConf}
+                  onChange={(e) => setCustomConf(e.target.value)}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  size="small"
+                  label="Ano"
+                  placeholder="2026"
+                  value={customYear}
+                  onChange={(e) => setCustomYear(e.target.value)}
+                  sx={{ width: 100 }}
+                />
+                <TextField
+                  size="small"
+                  label="Tipo / Formato"
+                  placeholder="artigo, resumo"
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+              </Stack>
 
               <TextField
                 fullWidth
                 size="small"
-                label="Conferência / Periódico Alvo (Opcional)"
-                placeholder="Ex: WebMedia"
-                value={customConf}
-                onChange={(e) => setCustomConf(e.target.value)}
+                label="Nome Descritivo (Opcional)"
+                placeholder="Ex: SBC 2026 - Artigo Completo"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
               />
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -495,7 +517,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   size="small"
                   startIcon={<CloudUploadIcon />}
                 >
-                  {customFile ? customFile.name : 'Selecionar Arquivo .ZIP'}
+                  {customFile ? customFile.name : 'Selecionar Arquivo .ZIP Oficial'}
                   <input
                     type="file"
                     accept=".zip,application/zip,application/x-zip-compressed"
@@ -515,7 +537,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   disabled={!customFile || uploadTemplateMutation.isPending}
                   onClick={handleUploadCustomTemplate}
                 >
-                  {uploadTemplateMutation.isPending ? 'Enviando...' : 'Salvar no MinIO'}
+                  {uploadTemplateMutation.isPending
+                    ? 'Cadastrando...'
+                    : 'Cadastrar no Catálogo Global'}
                 </Button>
               </Box>
             </Card>

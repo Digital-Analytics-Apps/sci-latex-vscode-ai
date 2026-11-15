@@ -115,6 +115,7 @@ describe('TemplatesService', () => {
       zipBuffer,
     });
 
+    expect(created.id).toBe('2027-ieee-conference');
     expect(created.name).toBe('2027 IEEE Conference');
     expect(created.targetConference).toBe('IEEE');
     expect(created.isSystem).toBe(false);

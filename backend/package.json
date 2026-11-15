@@ -4,7 +4,7 @@
   "description": "Backend API for sci-latex-vscode platform",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --inspect=0.0.0.0:9229 src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "NODE_ENV=test vitest run",
@@ -70,14 +70,15 @@
     "@types/pg": "^8.23.1",
     "@typescript-eslint/eslint-plugin": "^8.2.0",
     "@typescript-eslint/parser": "^8.2.0",
-    "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
-    "prettier": "^3.3.3",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.9.6",
     "prisma": "^7.10.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.0",
-    "typescript": "^5.5.4",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.69.0",
     "vitest": "^2.0.5"
   }
 }

@@ -188,7 +188,7 @@
 | **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
 | **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | 🟢 **Concluído** | [`ADR-014`](adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md) |
 | **Fase VIII**| Arquitetura de Evidências de Tarefas & Upload Direto MinIO | 🟢 Concluído | [`ADR-011`](adrs/adr-011-task-evidences-storage-architecture.md) |
-| **Fase IX** | Governança de Templates LaTeX Oficiais, MinIO & Bootstrap | 🟢 **Aprovado** | [`ADR-017`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md) |
+| **Fase IX** | Governança de Templates LaTeX, Catálogo Global e Extração Direta | 🟢 **Aprovado** | [`ADR-017`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md) |
 ---
 
 ## 🔄 3. Protocolo de Pausa e Atualização de Status

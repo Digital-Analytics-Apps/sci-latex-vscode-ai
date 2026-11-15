@@ -18,6 +18,8 @@ export interface CreateCustomTemplateDTO {
   name?: string;
   description?: string;
   targetConference?: string;
+  year?: string;
+  templateType?: string;
   zipBuffer: Buffer;
 }
 
@@ -25,6 +27,53 @@ export class TemplatesService {
   constructor(
     private readonly templatesRepository: ITemplatesRepository = new PrismaTemplatesRepository()
   ) {}
+
+  /**
+   * Constrói o slug canônico [ANO]-[CONGRESSO]-[FORMATO] conforme a governança do ADR-017.
+   * Elimina caracteres especiais, acentos e espaços para compatibilidade total com S3 e TeXLive.
+   */
+  private generateSemanticSlug(data: {
+    name?: string;
+    targetConference?: string;
+    year?: string;
+    templateType?: string;
+  }): string {
+    const yearMatch = (data.year || data.name || data.targetConference || '').match(
+      /\b(20\d{2})\b/
+    );
+    const year = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
+
+    let conf = data.targetConference?.trim() || '';
+    if (!conf && data.name) {
+      conf = data.name.replace(/\b20\d{2}\b/g, '').trim();
+    }
+    if (!conf) conf = 'conference';
+
+    let format = data.templateType?.trim() || '';
+    if (!format && data.name) {
+      const lower = data.name.toLowerCase();
+      if (lower.includes('resumo')) format = 'resumo';
+      else if (lower.includes('conference')) format = 'conference';
+      else if (lower.includes('transactions')) format = 'transactions';
+      else if (lower.includes('periodico') || lower.includes('journal')) format = 'journal';
+      else format = 'artigo';
+    }
+    if (!format) format = 'artigo';
+
+    const sanitize = (s: string) =>
+      s
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+    const cleanConf = sanitize(conf);
+    const cleanFormat = sanitize(format);
+
+    let slug = `${year}-${cleanConf}-${cleanFormat}`.replace(/-+/g, '-');
+    return slug;
+  }
 
   async listTemplates(userId?: string): Promise<LatexTemplate[]> {
     return this.templatesRepository.findAll(userId);
@@ -39,14 +88,23 @@ export class TemplatesService {
     data: CreateCustomTemplateDTO
   ): Promise<LatexTemplate> {
     const parsed = parseLatexZip(data.zipBuffer);
-    const templateId = crypto.randomUUID();
+
+    // Gera slug semântico padronizado [ANO]-[CONGRESSO]-[FORMATO] (ADR-017)
+    const baseSlug = this.generateSemanticSlug(data);
+    let templateId = baseSlug;
+    let counter = 1;
+    while (await this.templatesRepository.findById(templateId)) {
+      counter++;
+      templateId = `${baseSlug}-v${counter}`;
+    }
+
     const storageKey = StoragePathBuilder.templateBundle(templateId, 'bundle.zip');
 
-    // Salva o bundle ZIP diretamente e intacto no MinIO
+    // Salva o bundle ZIP diretamente e intacto no MinIO no catálogo global
     await uploadToMinio(storageKey, data.zipBuffer, 'application/zip');
 
     const templateName =
-      data.name?.trim() || parsed.detectedTitle || 'Template Oficial de Conferência';
+      data.name?.trim() || parsed.detectedTitle || `${data.targetConference || 'Oficial'} Template`;
     const mainEntryPath = parsed.rootDoc.path;
 
     return this.templatesRepository.create({
@@ -75,32 +133,17 @@ export class TemplatesService {
 
   /**
    * Sincroniza a semente mínima (baseline) de templates oficiais reais a partir da pasta 'latex-templates/'.
-   * Expura templates legados com dados mockados/fictícios e garante a persistência no MinIO e PostgreSQL.
+   * e garante a persistência no MinIO e PostgreSQL.
    */
   async seedBaselineTemplates(customTemplatesDir?: string): Promise<LatexTemplate[]> {
-    const legacyFakeIds = [
-      'tpl-system-ieeetran',
-      'tpl-system-sbc',
-      'tpl-system-acm',
-      'tpl-system-springer',
-    ];
-
-    // 1. Limpeza de templates fictícios antigos do banco e storage
-    for (const legacyId of legacyFakeIds) {
-      try {
-        await this.templatesRepository.delete(legacyId);
-        const legacyKey = StoragePathBuilder.templateBundle(legacyId, 'bundle.zip');
-        await deleteFromMinio(legacyKey);
-      } catch {
-        // Ignora se o registro antigo já não existia
-      }
-    }
-
-    // 2. Localiza a pasta oficial de templates
+    // 1. Localiza a pasta oficial de templates baseline
     const possibleDirs = [
       customTemplatesDir,
+      path.resolve(process.cwd(), './src/modules/templates/seed-templates/'),
+      path.resolve(process.cwd(), 'src/modules/templates/seed-templates/'),
       path.resolve(process.cwd(), '../latex-templates'),
       path.resolve(process.cwd(), 'latex-templates'),
+      path.resolve(__dirname, 'seed-templates'),
       path.resolve(__dirname, '../../../../latex-templates'),
     ].filter(Boolean) as string[];
 
@@ -134,7 +177,7 @@ export class TemplatesService {
 
     const seededTemplates: LatexTemplate[] = [];
 
-    // 3. Processa e sobe cada template oficial real
+    // 2. Processa e sobe cada template oficial real
     for (const zipFileName of zipFiles) {
       const fullPath = path.join(targetDir, zipFileName);
       const zipBuffer = await fs.readFile(fullPath);

@@ -50,7 +50,7 @@ export const GanttTimelineView: React.FC<GanttTimelineViewProps> = ({
   isReviewer = false,
 }) => {
   // Estado da escala de tempo (Dias / Semanas / Meses)
-  const [scale, setScale] = useState<TimeScale>('days');
+  const [scale, setScale] = useState<TimeScale>('months');
 
   // Estado da janela do calendário (Data inicial e final do projeto)
   const [rangeStart, setRangeStart] = useState<Date>(() => subDays(startOfDay(new Date()), 5));

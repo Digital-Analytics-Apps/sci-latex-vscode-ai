@@ -112,6 +112,7 @@ export class ProjectsService {
       try {
         const templatesService = new TemplatesService();
         const { buffer: zipBuffer } = await templatesService.getTemplateBundle(targetTemplateId);
+
         const parsed = parseLatexZip(zipBuffer);
 
         const projectFilesData: Prisma.ProjectFileCreateManyInput[] = [];

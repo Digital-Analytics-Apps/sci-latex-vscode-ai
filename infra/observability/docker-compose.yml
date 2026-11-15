@@ -160,7 +160,20 @@ services:
           - mysql
 
   # ============================================================================
-  # 8. LLMOPS: BANCO DE DADOS COLUNAR DO OPIK (CLICKHOUSE)
+  # 8. LLMOPS: COORDENADOR DISTRIBUÍDO DO CLICKHOUSE (ZOOKEEPER)
+  # Coordena DDLs distribuídas e sincronização de réplicas do ClickHouse do Opik.
+  # ============================================================================
+  opik-zookeeper:
+    image: zookeeper:latest
+    container_name: scia_opik_zookeeper
+    restart: unless-stopped
+    networks:
+      scia-network:
+        aliases:
+          - zookeeper
+
+  # ============================================================================
+  # 9. LLMOPS: BANCO DE DADOS COLUNAR DO OPIK (CLICKHOUSE)
   # Armazena spans de alta cardinalidade, tokens, custos e latências das LLMs.
   # ============================================================================
   opik-clickhouse:
@@ -174,13 +187,18 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - opik_ch_data:/var/lib/clickhouse # Volume colunar persistente de alta velocidade
+      - ./opik/clickhouse_config/additional_config.xml:/etc/clickhouse-server/config.d/additional_config.xml:ro
+      - ./opik/clickhouse_config/users.d/enable_time_type.xml:/etc/clickhouse-server/users.d/enable_time_type.xml:ro
+      - ./opik/clickhouse_config/users.d/distributed_insert_queue.xml:/etc/clickhouse-server/users.d/distributed_insert_queue.xml:ro
+    depends_on:
+      - opik-zookeeper
     networks:
       scia-network:
         aliases:
           - clickhouse
 
   # ============================================================================
-  # 9. LLMOPS: BACKEND DA API OPIK (COMET-ML)
+  # 10. LLMOPS: BACKEND DA API OPIK (COMET-ML)
   # API de ingestão que recebe os traces do ai-service e persiste no ClickHouse/MySQL.
   # ============================================================================
   opik-backend:
@@ -198,7 +216,7 @@ services:
       STATE_DB_URL: opik-mysql:3306/${OPIK_MYSQL_DATABASE:-opik}?createDatabaseIfNotExist=true&rewriteBatchedStatements=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
       STATE_DB_USER: ${OPIK_MYSQL_USER:-opik}
       STATE_DB_PASS: ${OPIK_MYSQL_PASSWORD:-opikpassword}
-      ANALYTICS_DB_MIGRATIONS_URL: jdbc:clickhouse://opik-clickhouse:8123/${OPIK_CLICKHOUSE_DATABASE:-opik}
+      ANALYTICS_DB_MIGRATIONS_URL: jdbc:clickhouse://opik-clickhouse:8123?compress=0
       ANALYTICS_DB_MIGRATIONS_USER: ${OPIK_CLICKHOUSE_USER:-opik}
       ANALYTICS_DB_MIGRATIONS_PASS: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
       ANALYTICS_DB_HOST: opik-clickhouse
@@ -206,13 +224,16 @@ services:
       ANALYTICS_DB_DATABASE_NAME: ${OPIK_CLICKHOUSE_DATABASE:-opik}
       ANALYTICS_DB_USERNAME: ${OPIK_CLICKHOUSE_USER:-opik}
       ANALYTICS_DB_PASS: ${OPIK_CLICKHOUSE_PASSWORD:-opikpassword}
+      REDIS_URL: ${OPIK_REDIS_URL:-redis://host.docker.internal:6379/2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       scia-network:
         aliases:
           - backend
 
   # ============================================================================
-  # 10. LLMOPS: FRONTEND DA UI DO OPIK
+  # 11. LLMOPS: FRONTEND DA UI DO OPIK
   # Interface web gráfica para inspeção de grafos LangGraph, prompts e métricas de LLM.
   # ============================================================================
   opik-frontend:
@@ -231,7 +252,7 @@ services:
       - scia-network
 
   # ============================================================================
-  # 11. GESTÃO DE ERROS: GLITCHTIP (COMPATÍVEL COM SENTRY)
+  # 12. GESTÃO DE ERROS: GLITCHTIP (COMPATÍVEL COM SENTRY)
   # Servidor moderno de captura de exceções não tratadas (single-process web + worker).
   # ============================================================================
   glitchtip:
