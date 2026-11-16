@@ -1,18 +1,16 @@
-import { Box, Chip } from "@mui/material";
-import React from "react";
-import { AppHeaderBar } from "../components/common/AppHeaderBar";
+import { Box, Chip } from '@mui/material';
+import React from 'react';
+import { AppHeaderBar } from '../components/common/AppHeaderBar';
 
-export const CoordinatorLayout: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const CoordinatorLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <Box
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        width: "100vw",
-        overflow: "hidden",
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
       }}
     >
       {/* Topbar Padronizada do Coordenador com nome da aplicação */}
@@ -30,8 +28,8 @@ export const CoordinatorLayout: React.FC<{ children: React.ReactNode }> = ({
       <Box
         sx={{
           flexGrow: 1,
-          overflow: "auto",
-          bgcolor: "background.default",
+          overflow: 'auto',
+          bgcolor: 'background.default',
           p: 3,
         }}
       >

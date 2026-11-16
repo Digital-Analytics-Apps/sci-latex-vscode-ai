@@ -1,9 +1,9 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import GroupAddIcon from "@mui/icons-material/GroupAdd";
-import TimelineIcon from "@mui/icons-material/Timeline";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { zodResolver } from '@hookform/resolvers/zod';
+import AddCircleOutlinedIcon from '@mui/icons-material/AddCircleOutlined';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import {
   Alert,
   Box,
@@ -13,7 +13,6 @@ import {
   Chip,
   FormControl,
   FormHelperText,
-
   InputLabel,
   MenuItem,
   Select,
@@ -22,26 +21,19 @@ import {
   StepLabel,
   Stepper,
   TextField,
-
   Typography,
-} from "@mui/material";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
-import { useCreateProjectMutation } from "../../../hooks/useProjectQueries";
-import {
-  useTemplatesQuery,
-  useUploadTemplateMutation,
-} from "../../../hooks/useTemplateQueries";
-import {
-  type CreateProjectFormData,
-  createProjectSchema,
-} from "../../../schemas/project.schema";
-import { type UserMemberItem } from "../../../services/usersService";
-import { showNotification } from "../../../store/slices/notificationSlice";
-import { OFFICIAL_SCIA_STAGES } from "../../../constants/stages.constants";
+} from '@mui/material';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { UserSearchAutocomplete } from '../../../components/common/UserSearchAutocomplete';
+import { useCreateProjectMutation } from '../../../hooks/useProjectQueries';
+import { useTemplatesQuery, useUploadTemplateMutation } from '../../../hooks/useTemplateQueries';
+import { type CreateProjectFormData, createProjectSchema } from '../../../schemas/project.schema';
+import { type UserMemberItem } from '../../../services/usersService';
+import { showNotification } from '../../../store/slices/notificationSlice';
+import { OFFICIAL_SCIA_STAGES } from '../../../constants/stages.constants';
 interface CreateProjectModalProps {
   open: boolean;
   onClose: () => void;
@@ -59,7 +51,7 @@ const DEFAULT_INITIAL_STAGES: StageFormItem[] = OFFICIAL_SCIA_STAGES.map((s) => 
   id: `stage-default-${s.order}`,
   title: s.title,
   description: s.description,
-  plannedCompletionDate: "",
+  plannedCompletionDate: '',
 }));
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
@@ -76,29 +68,27 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [stages, setStages] = useState<StageFormItem[]>(DEFAULT_INITIAL_STAGES);
 
   // Gerente Institucional
-  const [managerSearchText, setManagerSearchText] = useState("");
-  const [selectedManager, setSelectedManager] =
-    useState<UserMemberItem | null>(null);
+  const [managerSearchText, setManagerSearchText] = useState('');
+  const [selectedManager, setSelectedManager] = useState<UserMemberItem | null>(null);
 
   // Coordenador Técnico
-  const [coordinatorSearchText, setCoordinatorSearchText] = useState("");
-  const [selectedCoordinator, setSelectedCoordinator] =
-    useState<UserMemberItem | null>(null);
+  const [coordinatorSearchText, setCoordinatorSearchText] = useState('');
+  const [selectedCoordinator, setSelectedCoordinator] = useState<UserMemberItem | null>(null);
 
   // Autores Adicionais (Criador já é autor automático)
   const [selectedAuthors, setSelectedAuthors] = useState<UserMemberItem[]>([]);
 
   // Revisor do Artigo (Opcional - qualquer membro)
-  const [reviewerSearchText, setReviewerSearchText] = useState("");
-  const [selectedReviewer, setSelectedReviewer] =
-    useState<UserMemberItem | null>(null);
-  const { data: templates = [], isLoading: isLoadingTemplates } =
-    useTemplatesQuery();
+  const [reviewerSearchText, setReviewerSearchText] = useState('');
+  const [selectedReviewer, setSelectedReviewer] = useState<UserMemberItem | null>(null);
+  const { data: templates = [], isLoading: isLoadingTemplates } = useTemplatesQuery();
   const uploadTemplateMutation = useUploadTemplateMutation();
   const [showUploadCustom, setShowUploadCustom] = useState(false);
   const [customFile, setCustomFile] = useState<File | null>(null);
-  const [customName, setCustomName] = useState("");
-  const [customConf, setCustomConf] = useState("");
+  const [customName, setCustomName] = useState('');
+  const [customConf, setCustomConf] = useState('');
+  const [customYear, setCustomYear] = useState(String(new Date().getFullYear()));
+  const [customType, setCustomType] = useState('artigo');
 
   const {
     register,
@@ -111,33 +101,30 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   } = useForm<CreateProjectFormData>({
     resolver: zodResolver(createProjectSchema),
     defaultValues: {
-      name: "",
-      targetConference: "IEEE International Symposium 2027",
-      submissionDeadline: "2027-02-15",
-      templateId: "tpl-system-ieeetran",
+      name: '',
+      targetConference: 'IEEE International Symposium 2027',
+      submissionDeadline: '2027-02-15',
+      templateId: '',
     },
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const selectedTemplateId = watch("templateId");
+  const selectedTemplateId = watch('templateId');
 
   React.useEffect(() => {
     if (templates.length > 0 && !selectedTemplateId) {
-      setValue("templateId", templates[0].id);
+      setValue('templateId', templates[0].id);
     }
   }, [templates, selectedTemplateId, setValue]);
 
-  const selectedTemplateItem = templates.find(
-    (t) => t.id === selectedTemplateId,
-  );
-
+  const selectedTemplateItem = templates.find((t) => t.id === selectedTemplateId);
 
   const handleNextStep0 = async () => {
     const isValidStep0 = await trigger([
-      "name",
-      "targetConference",
-      "submissionDeadline",
-      "templateId",
+      'name',
+      'targetConference',
+      'submissionDeadline',
+      'templateId',
     ]);
     if (isValidStep0) {
       setActiveStep(1);
@@ -149,18 +136,18 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     if (hasEmptyTitle) {
       dispatch(
         showNotification({
-          message: "Todas as etapas de escrita devem possuir um título válido.",
-          severity: "warning",
-        }),
+          message: 'Todas as etapas de escrita devem possuir um título válido.',
+          severity: 'warning',
+        })
       );
       return;
     }
     if (stages.length !== 6) {
       dispatch(
         showNotification({
-          message: "As 6 etapas padronizadas são obrigatórias.",
-          severity: "warning",
-        }),
+          message: 'As 6 etapas padronizadas são obrigatórias.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -171,24 +158,16 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     setActiveStep((prev) => Math.max(0, prev - 1));
   };
 
-
-  const handleUpdateStage = (
-    id: string,
-    field: keyof StageFormItem,
-    value: string,
-  ) => {
-    setStages((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
-    );
+  const handleUpdateStage = (id: string, field: keyof StageFormItem, value: string) => {
+    setStages((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
   };
   const handleUploadCustomTemplate = async () => {
     if (!customFile) {
       dispatch(
         showNotification({
-          message:
-            "Por favor, selecione um arquivo .zip contendo os arquivos TeX.",
-          severity: "warning",
-        }),
+          message: 'Por favor, selecione um arquivo .zip contendo os arquivos TeX.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -198,32 +177,33 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         file: customFile,
         name: customName.trim() || undefined,
         targetConference: customConf.trim() || undefined,
+        year: customYear.trim() || undefined,
+        templateType: customType.trim() || undefined,
       });
 
-      setValue("templateId", uploaded.id);
+      setValue('templateId', uploaded.id);
       dispatch(
         showNotification({
-          message: `Template "${uploaded.name}" enviado com sucesso para o MinIO!`,
-          severity: "success",
-        }),
+          message: `Template oficial "${uploaded.id}" cadastrado no Catálogo Global e selecionado para este artigo!`,
+          severity: 'success',
+        })
       );
       setShowUploadCustom(false);
       setCustomFile(null);
-      setCustomName("");
-      setCustomConf("");
+      setCustomName('');
+      setCustomConf('');
     } catch (err: any) {
       dispatch(
         showNotification({
           message:
             err?.response?.data?.message ||
             err?.message ||
-            "Erro ao fazer upload do template. Certifique-se de que é um .zip válido.",
-          severity: "error",
-        }),
+            'Erro ao fazer upload do template. Certifique-se de que é um .zip válido.',
+          severity: 'error',
+        })
       );
     }
   };
-
 
   const onSubmit = async (data: CreateProjectFormData) => {
     if (activeStep !== 2) {
@@ -233,9 +213,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     if (!selectedManager) {
       dispatch(
         showNotification({
-          message: "Por favor, selecione o Gerente Institucional responsável.",
-          severity: "warning",
-        }),
+          message: 'Por favor, selecione o Gerente Institucional responsável.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -243,9 +223,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     if (!selectedCoordinator) {
       dispatch(
         showNotification({
-          message: "Por favor, selecione o Coordenador responsável.",
-          severity: "warning",
-        }),
+          message: 'Por favor, selecione o Coordenador responsável.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -270,11 +250,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       dispatch(
         showNotification({
           message: `Novo artigo científico "${data.name}" criado com sucesso com ${stages.length} etapas de escrita!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
 
-      const newId = res?.project?.id || "art-1";
+      const newId = res?.project?.id || 'art-1';
       reset();
       setActiveStep(0);
       setStages(DEFAULT_INITIAL_STAGES);
@@ -293,9 +273,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           message:
             err?.response?.data?.message ||
             err?.message ||
-            "Erro ao criar artigo científico. Tente novamente.",
-          severity: "error",
-        }),
+            'Erro ao criar artigo científico. Tente novamente.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -345,20 +325,19 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       }
       confirmText={
         activeStep === 0
-          ? "Próximo: Etapas & Prazos"
+          ? 'Próximo: Etapas & Prazos'
           : activeStep === 1
-            ? "Próximo: Participantes"
-            : "Criar Artigo e Ir para Tarefas"
+            ? 'Próximo: Participantes'
+            : 'Criar Artigo e Ir para Tarefas'
       }
-      confirmColor={activeStep === 2 ? "success" : "primary"}
+      confirmColor={activeStep === 2 ? 'success' : 'primary'}
       isSubmitting={createProjectMutation.isPending}
     >
       {/* PASSO 0: INFORMAÇÕES BÁSICAS */}
       {activeStep === 0 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            Informe os metadados do artigo, a conferência-alvo e o template
-            LaTeX oficial do evento.
+            Informe os metadados do artigo, a conferência-alvo e o template LaTeX oficial do evento.
           </Typography>
 
           <TextField
@@ -366,7 +345,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             size="small"
             label="Título do Artigo Científico"
             placeholder="Ex: Otimização de Compiladores TeX Isolados em Containers"
-            {...register("name")}
+            {...register('name')}
             error={Boolean(errors.name)}
             helperText={errors.name?.message}
             required
@@ -377,7 +356,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             size="small"
             label="Congresso / Periódico Alvo"
             placeholder="Ex: IEEE S&P 2027, ACM SIGCOMM, SBC WebMedia"
-            {...register("targetConference")}
+            {...register('targetConference')}
             error={Boolean(errors.targetConference)}
             helperText={errors.targetConference?.message}
             required
@@ -389,59 +368,48 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             type="date"
             label="Data Limite para Submissão ao Congresso"
             slotProps={{ inputLabel: { shrink: true } }}
-            {...register("submissionDeadline")}
+            {...register('submissionDeadline')}
             error={Boolean(errors.submissionDeadline)}
             helperText={errors.submissionDeadline?.message}
           />
 
-          <FormControl
-            fullWidth
-            size="small"
-            error={Boolean(errors.templateId)}
-          >
-            <InputLabel id="template-select-label">
-              Template LaTeX do Evento
-            </InputLabel>
+          <FormControl fullWidth size="small" error={Boolean(errors.templateId)}>
+            <InputLabel id="template-select-label">Template LaTeX do Evento</InputLabel>
             <Select
               labelId="template-select-label"
-              value={selectedTemplateId || ""}
+              value={selectedTemplateId || ''}
               label="Template LaTeX do Evento"
               disabled={isLoadingTemplates}
               onChange={(e) => {
-                setValue("templateId", e.target.value as string);
+                setValue('templateId', e.target.value as string);
               }}
             >
               {templates.map((tpl) => (
                 <MenuItem key={tpl.id} value={tpl.id}>
                   <Box
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: "100%",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
                       gap: 1,
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: tpl.isSystem ? 600 : 400 }}
-                    >
+                    <Typography variant="body2" sx={{ fontWeight: tpl.isSystem ? 600 : 400 }}>
                       {tpl.name}
                     </Typography>
                     <Chip
                       size="small"
-                      label={tpl.isSystem ? "Oficial" : "Customizado"}
-                      color={tpl.isSystem ? "primary" : "secondary"}
+                      label={tpl.isSystem ? 'Oficial' : 'Customizado'}
+                      color={tpl.isSystem ? 'primary' : 'secondary'}
                       variant="outlined"
-                      sx={{ height: 20, fontSize: "0.68rem" }}
+                      sx={{ height: 20, fontSize: '0.68rem' }}
                     />
                   </Box>
                 </MenuItem>
               ))}
             </Select>
-            {errors.templateId && (
-              <FormHelperText>{errors.templateId.message}</FormHelperText>
-            )}
+            {errors.templateId && <FormHelperText>{errors.templateId.message}</FormHelperText>}
           </FormControl>
 
           {/* Card explicativo do template selecionado */}
@@ -450,11 +418,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               sx={{
                 p: 1.5,
                 borderRadius: 1,
-                bgcolor: "action.hover",
-                border: "1px dashed",
-                borderColor: "divider",
-                display: "flex",
-                flexDirection: "column",
+                bgcolor: 'action.hover',
+                border: '1px dashed',
+                borderColor: 'divider',
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 0.5,
               }}
             >
@@ -470,7 +438,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           )}
 
           {/* Botão de Toggle para Subir Template Customizado */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               size="small"
               variant="text"
@@ -478,8 +446,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               onClick={() => setShowUploadCustom((prev) => !prev)}
             >
               {showUploadCustom
-                ? "Cancelar Envio de Template"
-                : "Ou subir meu próprio template (.zip)"}
+                ? 'Cancelar Envio de Template'
+                : 'Ou subir meu próprio template (.zip)'}
             </Button>
           </Box>
 
@@ -489,49 +457,67 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               variant="outlined"
               sx={{
                 p: 2,
-                bgcolor: "background.paper",
+                bgcolor: 'background.paper',
                 borderRadius: 1.5,
-                borderColor: "primary.light",
-                display: "flex",
-                flexDirection: "column",
+                borderColor: 'primary.light',
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 1.5,
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Upload de Template LaTeX (.zip para o MinIO)
+                Cadastrar Novo Template Oficial no Catálogo Global (.zip)
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Envie um pacote comprimido contendo o arquivo principal (
-                <code>main.tex</code>), classes (<code>.cls</code>), estilos (
-                <code>.sty</code>) ou bibliografia (<code>.bib</code>).
+                Envie o pacote oficial (.zip) fornecido pelo congresso ou revista. Ele será
+                catalogado globalmente sob o padrão <code>[ANO]-[CONGRESSO]-[TIPO]</code> e
+                selecionado para o seu novo artigo.
               </Typography>
+
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  size="small"
+                  label="Sigla do Congresso / Revista"
+                  placeholder="Ex: SBC, IEEE, ACM"
+                  value={customConf}
+                  onChange={(e) => setCustomConf(e.target.value)}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  size="small"
+                  label="Ano"
+                  placeholder="2026"
+                  value={customYear}
+                  onChange={(e) => setCustomYear(e.target.value)}
+                  sx={{ width: 100 }}
+                />
+                <TextField
+                  size="small"
+                  label="Tipo / Formato"
+                  placeholder="artigo, resumo"
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+              </Stack>
 
               <TextField
                 fullWidth
                 size="small"
-                label="Nome do Template (Opcional)"
-                placeholder="Ex: SBC WebMedia 2027 Template"
+                label="Nome Descritivo (Opcional)"
+                placeholder="Ex: SBC 2026 - Artigo Completo"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
               />
 
-              <TextField
-                fullWidth
-                size="small"
-                label="Conferência / Periódico Alvo (Opcional)"
-                placeholder="Ex: WebMedia"
-                value={customConf}
-                onChange={(e) => setCustomConf(e.target.value)}
-              />
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Button
                   variant="outlined"
                   component="label"
                   size="small"
                   startIcon={<CloudUploadIcon />}
                 >
-                  {customFile ? customFile.name : "Selecionar Arquivo .ZIP"}
+                  {customFile ? customFile.name : 'Selecionar Arquivo .ZIP Oficial'}
                   <input
                     type="file"
                     accept=".zip,application/zip,application/x-zip-compressed"
@@ -552,8 +538,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   onClick={handleUploadCustomTemplate}
                 >
                   {uploadTemplateMutation.isPending
-                    ? "Enviando..."
-                    : "Salvar no MinIO"}
+                    ? 'Cadastrando...'
+                    : 'Cadastrar no Catálogo Global'}
                 </Button>
               </Box>
             </Card>
@@ -563,53 +549,49 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
       {/* PASSO 1: ETAPAS DE ESCRITA E CRONOGRAMA */}
       {activeStep === 1 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Alert severity="info" sx={{ py: 0.5, fontSize: 13 }}>
-            Configure as etapas de escrita do seu artigo e defina as datas
-            previstas. É obrigatório manter no mínimo 3 etapas de escrita antes
-            das 2 etapas obrigatórias de gatekeeper.
+            Configure as etapas de escrita do seu artigo e defina as datas previstas. É obrigatório
+            manter no mínimo 3 etapas de escrita antes das 2 etapas obrigatórias de gatekeeper.
           </Alert>
 
           <Typography
             variant="subtitle2"
             sx={{
               fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
               gap: 1,
             }}
           >
-            <TimelineIcon color="primary" fontSize="small" />
-            6 Etapas Padronizadas do Artigo (Ordem Fixa - ADR-008):
+            <TimelineIcon color="primary" fontSize="small" />6 Etapas Padronizadas do Artigo (Ordem
+            Fixa - ADR-008):
           </Typography>
 
-          <Stack
-            spacing={1.5}
-            sx={{ maxHeight: 320, overflowY: "auto", pr: 0.5 }}
-          >
+          <Stack spacing={1.5} sx={{ maxHeight: 320, overflowY: 'auto', pr: 0.5 }}>
             {stages.map((stage, index) => (
               <Card
                 key={stage.id}
                 variant="outlined"
                 sx={{
                   borderRadius: 1.5,
-                  borderColor: "divider",
-                  bgcolor: "background.paper",
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
                 }}
               >
-                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                   <Box
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: 1.5,
                     }}
                   >
                     <Box
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: 1,
                         flex: 1,
                       }}
@@ -626,9 +608,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         fullWidth
                         label="Título da Etapa"
                         value={stage.title}
-                        onChange={(e) =>
-                          handleUpdateStage(stage.id, "title", e.target.value)
-                        }
+                        onChange={(e) => handleUpdateStage(stage.id, 'title', e.target.value)}
                       />
                     </Box>
 
@@ -637,32 +617,25 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       type="date"
                       label="Data Prevista"
                       slotProps={{ inputLabel: { shrink: true } }}
-                      value={stage.plannedCompletionDate || ""}
+                      value={stage.plannedCompletionDate || ''}
                       onChange={(e) =>
-                        handleUpdateStage(
-                          stage.id,
-                          "plannedCompletionDate",
-                          e.target.value,
-                        )
+                        handleUpdateStage(stage.id, 'plannedCompletionDate', e.target.value)
                       }
                       sx={{ width: 170 }}
                     />
-
                   </Box>
                 </CardContent>
               </Card>
             ))}
           </Stack>
-
         </Box>
       )}
 
       {/* PASSO 2: GOVERNANÇA E AUTORES */}
       {activeStep === 2 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <Typography variant="body2" color="text.secondary">
-            Defina a governança institucional e a composição de autores deste
-            artigo científico.
+            Defina a governança institucional e a composição de autores deste artigo científico.
           </Typography>
 
           <Box>
@@ -675,7 +648,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                 setManagerSearchText(email);
                 setSelectedManager(user || null);
               }}
-              allowedRoles={["MANAGER", "ADMIN"]}
+              allowedRoles={['MANAGER', 'ADMIN']}
               size="small"
               label="Pesquisar Gerente Institucional"
               placeholder="Digite nome ou e-mail do gerente..."
@@ -693,7 +666,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                 setCoordinatorSearchText(email);
                 setSelectedCoordinator(user || null);
               }}
-              allowedRoles={["COORDINATOR"]}
+              allowedRoles={['COORDINATOR']}
               size="small"
               label="Pesquisar Coordenador"
               placeholder="Digite nome ou e-mail do coordenador..."
@@ -707,27 +680,23 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               sx={{
                 fontWeight: 700,
                 mb: 0.5,
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 1,
               }}
             >
               <GroupAddIcon color="primary" fontSize="small" />
               Demais Autores do Artigo (Opcional):
             </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 1 }}
-            >
-              Você já está incluído automaticamente como autor. Adicione outros
-              autores agora ou posteriormente.
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Você já está incluído automaticamente como autor. Adicione outros autores agora ou
+              posteriormente.
             </Typography>
             <UserSearchAutocomplete
               multiple
               value={selectedAuthors}
               onChange={(_emails, users) => setSelectedAuthors(users)}
-              allowedRoles={["AUTHOR"]}
+              allowedRoles={['AUTHOR']}
               size="small"
               label="Pesquisar Autores (mín. 3 letras)"
               placeholder="Digite nome ou e-mail..."
@@ -738,13 +707,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
               Revisor do Artigo (Opcional):
             </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 1 }}
-            >
-              Qualquer membro cadastrado pode ser convidado para revisar este
-              artigo.
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Qualquer membro cadastrado pode ser convidado para revisar este artigo.
             </Typography>
             <UserSearchAutocomplete
               value={reviewerSearchText}

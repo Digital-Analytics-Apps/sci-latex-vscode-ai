@@ -1,5 +1,5 @@
-import AddTaskIcon from "@mui/icons-material/AddTask";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import AddTaskIcon from '@mui/icons-material/AddTask';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import {
   Autocomplete,
   Box,
@@ -13,21 +13,18 @@ import {
   Select,
   TextField,
   Typography,
-} from "@mui/material";
-import React, { useMemo, useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import { Role } from "../../../constants/roles";
-import { useDebounce } from "../../../hooks/useDebounce";
-import { useProjectDetails } from "../../../hooks/useProjectQueries";
-import { useCreateTaskMutation } from "../../../hooks/useTaskQueries";
-import { useUserSearchQuery } from "../../../hooks/useUserQueries";
-import {
-  type ProjectMember,
-  type ProjectStage,
-} from "../../../services/projectsService";
-import { type UserMemberItem } from "../../../services/usersService";
-import { showNotification } from "../../../store/slices/notificationSlice";
+} from '@mui/material';
+import React, { useMemo, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { Role } from '../../../constants/roles';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { useProjectDetails } from '../../../hooks/useProjectQueries';
+import { useCreateTaskMutation } from '../../../hooks/useTaskQueries';
+import { useUserSearchQuery } from '../../../hooks/useUserQueries';
+import { type ProjectMember, type ProjectStage } from '../../../services/projectsService';
+import { type UserMemberItem } from '../../../services/usersService';
+import { showNotification } from '../../../store/slices/notificationSlice';
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -44,8 +41,8 @@ export const CreateTaskModal = ({
   onClose,
   projectId,
   members: propMembers,
-  initialTitle = "",
-  initialStageId = "",
+  initialTitle = '',
+  initialStageId = '',
   onTaskCreated,
 }: CreateTaskModalProps) => {
   const dispatch = useDispatch();
@@ -62,19 +59,18 @@ export const CreateTaskModal = ({
 
   const [prevOpen, setPrevOpen] = useState(false);
   const [title, setTitle] = useState(initialTitle);
-  const [dueDate, setDueDate] = useState("");
-  const [stageId, setStageId] = useState<string>("");
-  const [assignedToId, setAssignedToId] = useState<string>("");
+  const [dueDate, setDueDate] = useState('');
+  const [stageId, setStageId] = useState<string>('');
+  const [assignedToId, setAssignedToId] = useState<string>('');
 
   // Sync state when modal transitions to open
   if (open && !prevOpen) {
     setPrevOpen(true);
-    setTitle(initialTitle || "");
-    const defaultStageId =
-      initialStageId || (projectStages.length > 0 ? projectStages[0].id : "");
+    setTitle(initialTitle || '');
+    const defaultStageId = initialStageId || (projectStages.length > 0 ? projectStages[0].id : '');
     setStageId(defaultStageId);
-    setDueDate("");
-    setAssignedToId("");
+    setDueDate('');
+    setAssignedToId('');
   } else if (!open && prevOpen) {
     setPrevOpen(false);
   }
@@ -85,34 +81,32 @@ export const CreateTaskModal = ({
   }, [projectStages, stageId]);
 
   const maxStageDateStr = useMemo(() => {
-    if (!selectedStage) return "";
-    const rawDate =
-      selectedStage.plannedCompletionDate || selectedStage.plannedEndAt;
-    if (!rawDate) return "";
-    return new Date(rawDate).toISOString().split("T")[0];
+    if (!selectedStage) return '';
+    const rawDate = selectedStage.plannedCompletionDate || selectedStage.plannedEndAt;
+    if (!rawDate) return '';
+    return new Date(rawDate).toISOString().split('T')[0];
   }, [selectedStage]);
 
   const maxStageDateFormatted = useMemo(() => {
     if (!maxStageDateStr) return null;
-    const [year, month, day] = maxStageDateStr.split("-");
+    const [year, month, day] = maxStageDateStr.split('-');
     return `${day}/${month}/${year}`;
   }, [maxStageDateStr]);
 
-  const [assigneeSearchText, setAssigneeSearchText] = useState("");
+  const [assigneeSearchText, setAssigneeSearchText] = useState('');
   const debouncedAssigneeSearch = useDebounce(assigneeSearchText, 300);
   const { data: usersList = [], isFetching: isFetchingUsers } =
     useUserSearchQuery(debouncedAssigneeSearch);
-  const [selectedGlobalAssignee, setSelectedGlobalAssignee] =
-    useState<UserMemberItem | null>(null);
+  const [selectedGlobalAssignee, setSelectedGlobalAssignee] = useState<UserMemberItem | null>(null);
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       dispatch(
         showNotification({
-          message: "Informe o título da sub-tarefa.",
-          severity: "warning",
-        }),
+          message: 'Informe o título da sub-tarefa.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -120,33 +114,27 @@ export const CreateTaskModal = ({
     if (!stageId) {
       dispatch(
         showNotification({
-          message:
-            "Selecione obrigatoriamente a etapa de escrita à qual a sub-tarefa pertence.",
-          severity: "warning",
-        }),
+          message: 'Selecione obrigatoriamente a etapa de escrita à qual a sub-tarefa pertence.',
+          severity: 'warning',
+        })
       );
       return;
     }
 
-    if (
-      dueDate &&
-      maxStageDateStr &&
-      new Date(dueDate) > new Date(maxStageDateStr)
-    ) {
+    if (dueDate && maxStageDateStr && new Date(dueDate) > new Date(maxStageDateStr)) {
       dispatch(
         showNotification({
           message: `A data limite da sub-tarefa (${dueDate}) não pode ser maior que a data limite da etapa (${maxStageDateFormatted}).`,
-          severity: "error",
-        }),
+          severity: 'error',
+        })
       );
       return;
     }
 
-    const finalAssignedToId =
-      assignedToId || selectedGlobalAssignee?.id || undefined;
+    const finalAssignedToId = assignedToId || selectedGlobalAssignee?.id || undefined;
 
     try {
-      if (projectId && !projectId.startsWith("demo-")) {
+      if (projectId && !projectId.startsWith('demo-')) {
         await createTaskMutation.mutateAsync({
           title,
           assignedToId: finalAssignedToId,
@@ -157,13 +145,10 @@ export const CreateTaskModal = ({
 
       const assignedMember = finalAssignedToId
         ? articleMembers.find(
-            (m) =>
-              m.userId === finalAssignedToId ||
-              m.user?.id === finalAssignedToId,
+            (m) => m.userId === finalAssignedToId || m.user?.id === finalAssignedToId
           )
         : null;
-      const assignedName =
-        assignedMember?.user?.name || selectedGlobalAssignee?.name;
+      const assignedName = assignedMember?.user?.name || selectedGlobalAssignee?.name;
       const notificationMsg = assignedName
         ? `Nova Sub-tarefa "${title}" atribuída para ${assignedName} com sucesso!`
         : `Nova Sub-tarefa "${title}" criada com sucesso (não atribuída)!`;
@@ -171,23 +156,20 @@ export const CreateTaskModal = ({
       dispatch(
         showNotification({
           message: notificationMsg,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
 
-      setTitle("");
-      setAssignedToId("");
-      setDueDate("");
+      setTitle('');
+      setAssignedToId('');
+      setDueDate('');
       setSelectedGlobalAssignee(null);
-      setAssigneeSearchText("");
+      setAssigneeSearchText('');
       if (onTaskCreated) onTaskCreated();
       onClose();
     } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Erro ao criar sub-tarefa.";
-      dispatch(showNotification({ message: msg, severity: "error" }));
+      const msg = err.response?.data?.message || err.message || 'Erro ao criar sub-tarefa.';
+      dispatch(showNotification({ message: msg, severity: 'error' }));
     }
   };
 
@@ -204,7 +186,7 @@ export const CreateTaskModal = ({
       confirmColor="primary"
       isSubmitting={createTaskMutation.isPending}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           fullWidth
           size="small"
@@ -231,14 +213,12 @@ export const CreateTaskModal = ({
               </MenuItem>
             ))}
           </Select>
-          {Boolean(initialStageId) ? (
-            <FormHelperText sx={{ color: "text.secondary" }}>
+          {initialStageId ? (
+            <FormHelperText sx={{ color: 'text.secondary' }}>
               🔒 Etapa vinculada automaticamente à seção selecionada.
             </FormHelperText>
           ) : !stageId ? (
-            <FormHelperText>
-              A sub-tarefa deve estar vinculada a uma etapa.
-            </FormHelperText>
+            <FormHelperText>A sub-tarefa deve estar vinculada a uma etapa.</FormHelperText>
           ) : null}
         </FormControl>
 
@@ -264,7 +244,7 @@ export const CreateTaskModal = ({
           helperText={
             maxStageDateFormatted
               ? `Data limite máxima da etapa: ${maxStageDateFormatted}`
-              : "Defina o prazo de entrega desta sub-tarefa."
+              : 'Defina o prazo de entrega desta sub-tarefa.'
           }
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
@@ -284,10 +264,9 @@ export const CreateTaskModal = ({
               </MenuItem>
               {articleMembers.map((m) => {
                 const targetUserId = m.userId || m.user?.id || m.id;
-                const userName = m.user?.name || "Membro do Artigo";
-                const userEmail = m.user?.email ? ` (${m.user.email})` : "";
-                const roleLabel =
-                  m.role === Role.REVIEWER ? "Revisor" : "Autor";
+                const userName = m.user?.name || 'Membro do Artigo';
+                const userEmail = m.user?.email ? ` (${m.user.email})` : '';
+                const roleLabel = m.role === Role.REVIEWER ? 'Revisor' : 'Autor';
                 return (
                   <MenuItem key={targetUserId} value={targetUserId}>
                     {userName} [{roleLabel}]{userEmail}
@@ -305,17 +284,14 @@ export const CreateTaskModal = ({
               setSelectedGlobalAssignee(newValue as UserMemberItem | null)
             }
             inputValue={assigneeSearchText}
-            onInputChange={(_e, newInputValue) =>
-              setAssigneeSearchText(newInputValue)
-            }
+            onInputChange={(_e, newInputValue) => setAssigneeSearchText(newInputValue)}
             getOptionLabel={(option) => option.name}
             isOptionEqualToValue={(option, value) => option.id === value.id}
             loading={isFetchingUsers}
             noOptionsText={
-              assigneeSearchText.trim().length > 0 &&
-              assigneeSearchText.trim().length < 3
-                ? "Digite pelo menos 3 letras para pesquisar..."
-                : "Nenhum usuário encontrado."
+              assigneeSearchText.trim().length > 0 && assigneeSearchText.trim().length < 3
+                ? 'Digite pelo menos 3 letras para pesquisar...'
+                : 'Nenhum usuário encontrado.'
             }
             renderInput={(params) => (
               <TextField
@@ -329,9 +305,7 @@ export const CreateTaskModal = ({
                     ...params.slotProps.input,
                     endAdornment: (
                       <>
-                        {isFetchingUsers ? (
-                          <CircularProgress color="inherit" size={18} />
-                        ) : null}
+                        {isFetchingUsers ? <CircularProgress color="inherit" size={18} /> : null}
                         {params.slotProps.input.endAdornment}
                       </>
                     ),
@@ -345,9 +319,9 @@ export const CreateTaskModal = ({
                 {...props}
                 key={option.id}
                 sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  width: '100%',
                   py: 1,
                 }}
               >
@@ -359,12 +333,7 @@ export const CreateTaskModal = ({
                     {option.email}
                   </Typography>
                 </Box>
-                <Chip
-                  label={option.role}
-                  size="small"
-                  variant="outlined"
-                  color="primary"
-                />
+                <Chip label={option.role} size="small" variant="outlined" color="primary" />
               </Box>
             )}
           />

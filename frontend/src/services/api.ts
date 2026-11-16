@@ -1,26 +1,26 @@
-import axios from "axios";
-import { store } from "../store";
-import { logout } from "../store/slices/authSlice";
-import { getRuntimeEnv } from "../constants/api.constants";
+import axios from 'axios';
+import { store } from '../store';
+import { logout } from '../store/slices/authSlice';
+import { getRuntimeEnv } from '../constants/api.constants';
 
 export const api = axios.create({
-  baseURL: getRuntimeEnv("VITE_API_URL"),
+  baseURL: getRuntimeEnv('VITE_API_URL'),
   withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
 
 // Interceptor de Requisição: Adiciona o cabeçalho Authorization se o token existir
 api.interceptors.request.use(
   (config) => {
-    const token = store.getState().auth.token || localStorage.getItem("token");
-    if (token && token !== "undefined" && token !== "null") {
+    const token = store.getState().auth.token || localStorage.getItem('token');
+    if (token && token !== 'undefined' && token !== 'null') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error)
 );
 
 // Interceptor de Resposta: Trata expiração/invalidade de token JWT
@@ -31,5 +31,5 @@ api.interceptors.response.use(
       store.dispatch(logout());
     }
     return Promise.reject(error);
-  },
+  }
 );

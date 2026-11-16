@@ -1,0 +1,8 @@
+<clickhouse>
+    <profiles>
+        <default>
+            <enable_time_time64_type>1</enable_time_time64_type>
+            <enable_http_compression>0</enable_http_compression>
+        </default>
+    </profiles>
+</clickhouse>

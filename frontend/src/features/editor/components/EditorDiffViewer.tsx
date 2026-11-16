@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -10,11 +10,11 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import Chip from '@mui/material/Chip';
-import { Columns, AlignJustify, RotateCcw, X, GitCompare } from 'lucide-react';
+import { AlignJustify, Columns, GitCompare, RotateCcw, X } from 'lucide-react';
 import { MergeView, unifiedMergeView } from '@codemirror/merge';
 import { EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import { StreamLanguage, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { defaultHighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
 import { codeMirrorDarkTheme, codeMirrorLightTheme } from '../extensions/theme/editorThemes';
 import { DocumentSnapshot } from '../types/collab.types';
@@ -210,10 +210,23 @@ export function EditorDiffViewer({
             fontWeight: 600,
           }}
         >
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary' }}>
+          <Typography
+            sx={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'text.secondary',
+            }}
+          >
             📜 Versão {snapshot.version} (Histórico Congelado)
           </Typography>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'primary.main', pl: 1 }}>
+          <Typography
+            sx={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'primary.main',
+              pl: 1,
+            }}
+          >
             ✏️ Versão Atual de Trabalho
           </Typography>
         </Box>

@@ -1,18 +1,18 @@
-import CloseIcon from "@mui/icons-material/Close";
-import CodeIcon from "@mui/icons-material/Code";
-import HowToRegIcon from "@mui/icons-material/HowToReg";
-import LockIcon from "@mui/icons-material/Lock";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import DeleteIcon from "@mui/icons-material/Delete";
-import DownloadIcon from "@mui/icons-material/Download";
-import ImageIcon from "@mui/icons-material/Image";
-import SaveIcon from "@mui/icons-material/Save";
-import LinkIcon from "@mui/icons-material/Link";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import { useMemo, useRef, useState } from "react";
+import CloseIcon from '@mui/icons-material/Close';
+import CodeIcon from '@mui/icons-material/Code';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import LockIcon from '@mui/icons-material/Lock';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
+import ImageIcon from '@mui/icons-material/Image';
+import SaveIcon from '@mui/icons-material/Save';
+import LinkIcon from '@mui/icons-material/Link';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -29,18 +29,18 @@ import {
   Stack,
   TextField,
   Typography,
-} from "@mui/material";
+} from '@mui/material';
 import {
   useAddLinkEvidenceMutation,
   useDeleteTaskEvidenceMutation,
   useTaskEvidencesQuery,
   useUploadTaskEvidenceMutation,
-} from "../../../../hooks/useTaskQueries";
-import { UserAvatar } from "../../../../components/common/UserAvatar";
-import { TaskStatus } from "../../../../constants/status";
-import type { ProjectStage } from "../../../../types/stage.types";
-import type { TaskItem } from "../../../../types/task.types";
-import { getDrawerEntityDetails } from "./ganttUtils";
+} from '../../../../hooks/useTaskQueries';
+import { UserAvatar } from '../../../../components/common/UserAvatar';
+import { TaskStatus } from '../../../../constants/status';
+import type { ProjectStage } from '../../../../types/stage.types';
+import type { TaskItem } from '../../../../types/task.types';
+import { getDrawerEntityDetails } from './ganttUtils';
 
 interface GanttTaskDetailDrawerProps {
   open: boolean;
@@ -83,15 +83,15 @@ export const GanttTaskDetailDrawer = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Fila de itens selecionados aguardando confirmação explícita de salvamento
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
-  const [stagedLinks, setStagedLinks] = useState<
-    Array<{ id: string; title: string; url: string }>
-  >([]);
+  const [stagedLinks, setStagedLinks] = useState<Array<{ id: string; title: string; url: string }>>(
+    []
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [savingStatusText, setSavingStatusText] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
-  const [linkTitle, setLinkTitle] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   /**
    * Identifica a etapa pai da tarefa para validar se pertence às Etapas 1 ou 2
@@ -114,22 +114,22 @@ export const GanttTaskDetailDrawer = ({
     if (!task || Boolean(stage)) return false;
     const order = parentStage?.order;
     if (order === 1 || order === 2) return true;
-    const t = (parentStage?.title || "").toLowerCase();
+    const t = (parentStage?.title || '').toLowerCase();
     return (
-      t.includes("planejamento") ||
-      t.includes("pesquisa") ||
-      t.includes("experimento") ||
-      t.includes("desenvolvimento")
+      t.includes('planejamento') ||
+      t.includes('pesquisa') ||
+      t.includes('experimento') ||
+      t.includes('desenvolvimento')
     );
   }, [task, stage, parentStage]);
 
-  const taskId = task?.id || "";
-  const projectId = task?.projectId || "";
+  const taskId = task?.id || '';
+  const projectId = task?.projectId || '';
 
   // Consulta de evidências ativas
   const { data: evidences = [], isLoading: isLoadingEvidences } = useTaskEvidencesQuery(
     projectId,
-    isEvidenceAllowed ? taskId : null,
+    isEvidenceAllowed ? taskId : null
   );
 
   const uploadEvidenceMutation = useUploadTaskEvidenceMutation(projectId, taskId);
@@ -152,13 +152,10 @@ export const GanttTaskDetailDrawer = ({
   } = details;
 
   const isAssignedToMe = Boolean(
-    task?.assignedToId && currentUserId && task.assignedToId === currentUserId,
+    task?.assignedToId && currentUserId && task.assignedToId === currentUserId
   );
   const isBlockedByPrevious = Boolean(task?.isBlockedByPrevious);
-  const isReadOnly =
-    !isStageNode &&
-    Boolean(task) &&
-    (!isAssignedToMe || isMerged);
+  const isReadOnly = !isStageNode && Boolean(task) && (!isAssignedToMe || isMerged);
 
   /**
    * Adiciona arquivos selecionados à fila de envio (sem disparar upload imediato)
@@ -168,7 +165,7 @@ export const GanttTaskDetailDrawer = ({
     if (files.length === 0) return;
     setEvidenceError(null);
     setStagedFiles((prev) => [...prev, ...files]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   /**
@@ -179,11 +176,11 @@ export const GanttTaskDetailDrawer = ({
     setEvidenceError(null);
     try {
       const parsed = new URL(linkUrl.trim());
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         throw new Error();
       }
     } catch {
-      setEvidenceError("O link deve ser uma URL válida (http:// ou https://).");
+      setEvidenceError('O link deve ser uma URL válida (http:// ou https://).');
       return;
     }
     setStagedLinks((prev) => [
@@ -194,8 +191,8 @@ export const GanttTaskDetailDrawer = ({
         url: linkUrl.trim(),
       },
     ]);
-    setLinkTitle("");
-    setLinkUrl("");
+    setLinkTitle('');
+    setLinkUrl('');
     setIsAddLinkOpen(false);
   };
 
@@ -225,9 +222,7 @@ export const GanttTaskDetailDrawer = ({
       // 1. Upload sequencial dos arquivos binários diretamente para a URL pré-assinada do MinIO
       for (let i = 0; i < stagedFiles.length; i++) {
         const file = stagedFiles[i];
-        setSavingStatusText(
-          `Enviando arquivo ${i + 1} de ${stagedFiles.length}: ${file.name}`,
-        );
+        setSavingStatusText(`Enviando arquivo ${i + 1} de ${stagedFiles.length}: ${file.name}`);
         setUploadProgress(0);
         await uploadEvidenceMutation.mutateAsync({
           file,
@@ -238,9 +233,7 @@ export const GanttTaskDetailDrawer = ({
       // 2. Registro dos links externos no banco relacional
       for (let j = 0; j < stagedLinks.length; j++) {
         const link = stagedLinks[j];
-        setSavingStatusText(
-          `Registrando link ${j + 1} de ${stagedLinks.length}: ${link.title}`,
-        );
+        setSavingStatusText(`Registrando link ${j + 1} de ${stagedLinks.length}: ${link.title}`);
         await addLinkMutation.mutateAsync({
           title: link.title,
           url: link.url,
@@ -252,7 +245,7 @@ export const GanttTaskDetailDrawer = ({
       setStagedLinks([]);
     } catch (err: unknown) {
       const error = err as Error;
-      setEvidenceError(error.message || "Falha ao salvar evidências.");
+      setEvidenceError(error.message || 'Falha ao salvar evidências.');
     } finally {
       setIsSaving(false);
       setSavingStatusText(null);
@@ -267,10 +260,10 @@ export const GanttTaskDetailDrawer = ({
       slotProps={{
         paper: {
           sx: {
-            width: { xs: "100%", sm: 440 },
+            width: { xs: '100%', sm: 440 },
             p: 3,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
             gap: 2,
           },
         },
@@ -279,9 +272,9 @@ export const GanttTaskDetailDrawer = ({
       {/* CABEÇALHO DA GAVETA */}
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
         <Typography
@@ -290,8 +283,8 @@ export const GanttTaskDetailDrawer = ({
           sx={{ fontWeight: 800, letterSpacing: 1 }}
         >
           {isStageNode
-            ? "DETALHES DA ETAPA"
-            : `DETALHES DA SUB-TASK ${isReadOnly ? "(SOMENTE LEITURA)" : ""}`}
+            ? 'DETALHES DA ETAPA'
+            : `DETALHES DA SUB-TASK ${isReadOnly ? '(SOMENTE LEITURA)' : ''}`}
         </Typography>
         <IconButton size="small" onClick={onClose}>
           <CloseIcon fontSize="small" />
@@ -300,63 +293,41 @@ export const GanttTaskDetailDrawer = ({
 
       {/* ALERTAS DE SEGURANÇA, BLOQUEIO E READ-ONLY */}
 
-      {!isStageNode &&
-        !isStageNode &&
-        task?.assignedToId &&
-        !isAssignedToMe && (
-          <Alert severity="info" icon={<LockIcon fontSize="small" />}>
-            <Typography
-              variant="caption"
-              sx={{ fontWeight: 700, display: "block" }}
-            >
-              Tarefa Atribuída a Outro Autor (Somente Leitura)
-            </Typography>
-            Esta sub-tarefa pertence a <strong>{assigneeName}</strong>. Todos os
-            campos estão bloqueados para edição.
-          </Alert>
-        )}
+      {!isStageNode && !isStageNode && task?.assignedToId && !isAssignedToMe && (
+        <Alert severity="info" icon={<LockIcon fontSize="small" />}>
+          <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
+            Tarefa Atribuída a Outro Autor (Somente Leitura)
+          </Typography>
+          Esta sub-tarefa pertence a <strong>{assigneeName}</strong>. Todos os campos estão
+          bloqueados para edição.
+        </Alert>
+      )}
 
       {!isStageNode && !task?.assignedToId && (
         <Alert severity="info" icon={<LockIcon fontSize="small" />}>
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 700, display: "block" }}
-          >
+          <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
             Sub-tarefa Não Atribuída
           </Typography>
-          Assine esta sub-tarefa para habilitar a edição de prazos, status e
-          liberação do workspace.
+          Assine esta sub-tarefa para habilitar a edição de prazos, status e liberação do workspace.
         </Alert>
       )}
 
       {isBlockedByPrevious && !isMerged && (
         <Alert severity="info" icon={<LockIcon fontSize="small" />}>
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 700, display: "block" }}
-          >
+          <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
             Sub-tarefa Bloqueada (Fila Sequencial)
           </Typography>
-          Aguardando a sub-tarefa anterior da mesma etapa ser concluída e
-          mesclada.
+          Aguardando a sub-tarefa anterior da mesma etapa ser concluída e mesclada.
         </Alert>
       )}
 
       {/* TÍTULO E STATUS */}
       <Box>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: 800, lineHeight: 1.3, mb: 1 }}
-        >
+        <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.3, mb: 1 }}>
           {title}
         </Typography>
 
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ alignItems: "center", flexWrap: "wrap" }}
-        >
-
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
           {isMerged ? (
             <Chip
               icon={<CheckCircleIcon fontSize="small" />}
@@ -386,16 +357,16 @@ export const GanttTaskDetailDrawer = ({
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ fontWeight: 700, mb: 0.5, display: "block" }}
+            sx={{ fontWeight: 700, mb: 0.5, display: 'block' }}
           >
-            STATUS ATUAL {isReadOnly && "(SOMENTE LEITURA)"}
+            STATUS ATUAL {isReadOnly && '(SOMENTE LEITURA)'}
           </Typography>
           <Select
             size="small"
             fullWidth
             value={status}
             disabled={isReadOnly}
-            sx={{ fontWeight: 700, fontSize: "0.85rem" }}
+            sx={{ fontWeight: 700, fontSize: '0.85rem' }}
           >
             <MenuItem value={TaskStatus.NOT_STARTED}>Não Iniciada</MenuItem>
             <MenuItem value={TaskStatus.IN_PROGRESS}>Em Andamento</MenuItem>
@@ -412,32 +383,27 @@ export const GanttTaskDetailDrawer = ({
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ fontWeight: 700, mb: 0.5, display: "block" }}
+              sx={{ fontWeight: 700, mb: 0.5, display: 'block' }}
             >
               RESPONSÁVEL / ASSIGNEE
             </Typography>
 
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: 1.5,
                 p: 1.2,
                 borderRadius: 1.5,
-                bgcolor: "action.hover",
+                bgcolor: 'action.hover',
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                <UserAvatar
-                  user={assigneeUser}
-                  name={assigneeName || "Autor"}
-                  size={32}
-                />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <UserAvatar user={assigneeUser} name={assigneeName || 'Autor'} size={32} />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                    {assigneeName || "Não Atribuído"}{" "}
-                    {isAssignedToMe && "(Você)"}
+                    {assigneeName || 'Não Atribuído'} {isAssignedToMe && '(Você)'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     Autor Responsável
@@ -460,7 +426,7 @@ export const GanttTaskDetailDrawer = ({
                     )
                   }
                   onClick={() => onClaimTask(task.id)}
-                  sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                  sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                 >
                   Assinar
                 </Button>
@@ -480,7 +446,7 @@ export const GanttTaskDetailDrawer = ({
                     )
                   }
                   onClick={() => onUnclaimTask(task.id)}
-                  sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                  sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                 >
                   Desassinar
                 </Button>
@@ -490,13 +456,13 @@ export const GanttTaskDetailDrawer = ({
         )}
 
         {/* DATAS (START DATE & DUE DATE) */}
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
           <TextField
             label="Data de Início"
             type="date"
             size="small"
             disabled={isReadOnly}
-            value={startDate ? startDate.split("T")[0] : ""}
+            value={startDate ? startDate.split('T')[0] : ''}
             slotProps={{
               inputLabel: { shrink: true },
               htmlInput: { readOnly: isReadOnly },
@@ -507,7 +473,7 @@ export const GanttTaskDetailDrawer = ({
             type="date"
             size="small"
             disabled={isReadOnly}
-            value={endDate ? endDate.split("T")[0] : ""}
+            value={endDate ? endDate.split('T')[0] : ''}
             slotProps={{
               inputLabel: { shrink: true },
               htmlInput: { readOnly: isReadOnly },
@@ -517,20 +483,11 @@ export const GanttTaskDetailDrawer = ({
 
         {/* PROGRESSO (%) */}
         <Box>
-          <Box
-            sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
-          >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 700 }}
-            >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
               PROGRESSO ESTIMADO
             </Typography>
-            <Typography
-              variant="caption"
-              sx={{ fontWeight: 800, color: "primary.main" }}
-            >
+            <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main' }}>
               {progress}%
             </Typography>
           </Box>
@@ -546,26 +503,22 @@ export const GanttTaskDetailDrawer = ({
           <Box sx={{ mt: 1 }}>
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 mb: 1,
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 700 }}
-              >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
                 EVIDÊNCIAS DA TAREFA ({evidences.length})
               </Typography>
               {!isReadOnly && (
-                <Box sx={{ display: "flex", gap: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
                   <input
                     type="file"
                     ref={fileInputRef}
                     multiple
-                    style={{ display: "none" }}
+                    style={{ display: 'none' }}
                     accept="image/*,application/pdf"
                     onChange={handleFilesSelected}
                   />
@@ -575,7 +528,7 @@ export const GanttTaskDetailDrawer = ({
                     startIcon={<CloudUploadIcon fontSize="small" />}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadEvidenceMutation.isPending}
-                    sx={{ fontSize: "0.75rem", fontWeight: 700, p: 0.5 }}
+                    sx={{ fontSize: '0.75rem', fontWeight: 700, p: 0.5 }}
                   >
                     Anexar
                   </Button>
@@ -584,7 +537,7 @@ export const GanttTaskDetailDrawer = ({
                     variant="text"
                     startIcon={<LinkIcon fontSize="small" />}
                     onClick={() => setIsAddLinkOpen(!isAddLinkOpen)}
-                    sx={{ fontSize: "0.75rem", fontWeight: 700, p: 0.5 }}
+                    sx={{ fontSize: '0.75rem', fontWeight: 700, p: 0.5 }}
                   >
                     Link
                   </Button>
@@ -594,11 +547,7 @@ export const GanttTaskDetailDrawer = ({
 
             {uploadProgress !== null && (
               <Box sx={{ mb: 1.5 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 700 }}
-                >
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
                   Enviando arquivo para o MinIO... {uploadProgress}%
                 </Typography>
                 <LinearProgress
@@ -612,7 +561,7 @@ export const GanttTaskDetailDrawer = ({
             {evidenceError && (
               <Alert
                 severity="error"
-                sx={{ mb: 1, py: 0.5, fontSize: "0.75rem" }}
+                sx={{ mb: 1, py: 0.5, fontSize: '0.75rem' }}
                 onClose={() => setEvidenceError(null)}
               >
                 {evidenceError}
@@ -626,13 +575,10 @@ export const GanttTaskDetailDrawer = ({
                   p: 1.5,
                   mb: 1.5,
                   borderRadius: 2,
-                  bgcolor: "background.default",
+                  bgcolor: 'background.default',
                 }}
               >
-                <Typography
-                  variant="caption"
-                  sx={{ fontWeight: 800, mb: 1, display: "block" }}
-                >
+                <Typography variant="caption" sx={{ fontWeight: 800, mb: 1, display: 'block' }}>
                   Adicionar Link Externo (Colab, GitHub, Dataset)
                 </Typography>
                 <Stack spacing={1}>
@@ -642,7 +588,7 @@ export const GanttTaskDetailDrawer = ({
                     value={linkTitle}
                     onChange={(e) => setLinkTitle(e.target.value)}
                     fullWidth
-                    slotProps={{ htmlInput: { style: { fontSize: "0.8rem" } } }}
+                    slotProps={{ htmlInput: { style: { fontSize: '0.8rem' } } }}
                   />
                   <TextField
                     size="small"
@@ -650,9 +596,9 @@ export const GanttTaskDetailDrawer = ({
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     fullWidth
-                    slotProps={{ htmlInput: { style: { fontSize: "0.8rem" } } }}
+                    slotProps={{ htmlInput: { style: { fontSize: '0.8rem' } } }}
                   />
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                     <Button size="small" onClick={() => setIsAddLinkOpen(false)}>
                       Cancelar
                     </Button>
@@ -660,11 +606,7 @@ export const GanttTaskDetailDrawer = ({
                       size="small"
                       variant="contained"
                       onClick={handleAddLinkToStage}
-                      disabled={
-                        addLinkMutation.isPending ||
-                        !linkTitle.trim() ||
-                        !linkUrl.trim()
-                      }
+                      disabled={addLinkMutation.isPending || !linkTitle.trim() || !linkUrl.trim()}
                     >
                       Adicionar à Fila
                     </Button>
@@ -681,23 +623,20 @@ export const GanttTaskDetailDrawer = ({
                   p: 1.5,
                   mb: 1.5,
                   borderRadius: 2,
-                  bgcolor: "action.hover",
-                  border: "1px dashed",
-                  borderColor: "primary.main",
+                  bgcolor: 'action.hover',
+                  border: '1px dashed',
+                  borderColor: 'primary.main',
                 }}
               >
                 <Box
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     mb: 1,
                   }}
                 >
-                  <Typography
-                    variant="caption"
-                    sx={{ fontWeight: 800, color: "primary.main" }}
-                  >
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main' }}>
                     ITENS PRONTOS PARA SALVAR ({stagedFiles.length + stagedLinks.length})
                   </Typography>
                 </Box>
@@ -707,23 +646,23 @@ export const GanttTaskDetailDrawer = ({
                     <Box
                       key={`${file.name}-${idx}`}
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         p: 0.8,
                         borderRadius: 1,
-                        bgcolor: "background.paper",
+                        bgcolor: 'background.paper',
                       }}
                     >
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: 1,
                           minWidth: 0,
                         }}
                       >
-                        {file.type === "application/pdf" ? (
+                        {file.type === 'application/pdf' ? (
                           <PictureAsPdfIcon fontSize="small" color="error" />
                         ) : (
                           <ImageIcon fontSize="small" color="primary" />
@@ -731,7 +670,7 @@ export const GanttTaskDetailDrawer = ({
                         <Box sx={{ minWidth: 0 }}>
                           <Typography
                             variant="body2"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                            sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                             noWrap
                           >
                             {file.name}
@@ -739,7 +678,7 @@ export const GanttTaskDetailDrawer = ({
                           <Typography
                             variant="caption"
                             color="text.secondary"
-                            sx={{ fontSize: "0.65rem" }}
+                            sx={{ fontSize: '0.65rem' }}
                           >
                             {(file.size / (1024 * 1024)).toFixed(2)} MB
                           </Typography>
@@ -759,18 +698,18 @@ export const GanttTaskDetailDrawer = ({
                     <Box
                       key={link.id}
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         p: 0.8,
                         borderRadius: 1,
-                        bgcolor: "background.paper",
+                        bgcolor: 'background.paper',
                       }}
                     >
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: 1,
                           minWidth: 0,
                         }}
@@ -779,7 +718,7 @@ export const GanttTaskDetailDrawer = ({
                         <Box sx={{ minWidth: 0 }}>
                           <Typography
                             variant="body2"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                            sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                             noWrap
                           >
                             {link.title}
@@ -787,7 +726,7 @@ export const GanttTaskDetailDrawer = ({
                           <Typography
                             variant="caption"
                             color="text.secondary"
-                            sx={{ fontSize: "0.65rem" }}
+                            sx={{ fontSize: '0.65rem' }}
                             noWrap
                           >
                             {link.url}
@@ -807,15 +746,11 @@ export const GanttTaskDetailDrawer = ({
 
                 {isSaving && (
                   <Box sx={{ mb: 1 }}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontWeight: 700 }}
-                    >
-                      {savingStatusText} {uploadProgress !== null ? `(${uploadProgress}%)` : ""}
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                      {savingStatusText} {uploadProgress !== null ? `(${uploadProgress}%)` : ''}
                     </Typography>
                     <LinearProgress
-                      variant={uploadProgress !== null ? "determinate" : "indeterminate"}
+                      variant={uploadProgress !== null ? 'determinate' : 'indeterminate'}
                       value={uploadProgress ?? 0}
                       sx={{ height: 6, borderRadius: 3, mt: 0.5 }}
                     />
@@ -828,33 +763,26 @@ export const GanttTaskDetailDrawer = ({
                   fullWidth
                   size="small"
                   startIcon={
-                    isSaving ? (
-                      <CircularProgress size={16} color="inherit" />
-                    ) : (
-                      <SaveIcon />
-                    )
+                    isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />
                   }
                   onClick={handleSaveAllEvidences}
                   disabled={isSaving}
-                  sx={{ fontWeight: 800, textTransform: "none", py: 0.8 }}
+                  sx={{ fontWeight: 800, textTransform: 'none', py: 0.8 }}
                 >
                   {isSaving
-                    ? "Salvando Evidências..."
+                    ? 'Salvando Evidências...'
                     : `Salvar Evidências (${stagedFiles.length + stagedLinks.length})`}
                 </Button>
               </Paper>
             )}
 
             {isLoadingEvidences ? (
-              <CircularProgress
-                size={20}
-                sx={{ my: 1, display: "block", mx: "auto" }}
-              />
+              <CircularProgress size={20} sx={{ my: 1, display: 'block', mx: 'auto' }} />
             ) : evidences.length === 0 ? (
               <Typography
                 variant="caption"
                 color="text.disabled"
-                sx={{ fontStyle: "italic", display: "block" }}
+                sx={{ fontStyle: 'italic', display: 'block' }}
               >
                 Nenhuma evidência anexada a esta tarefa.
               </Typography>
@@ -867,31 +795,31 @@ export const GanttTaskDetailDrawer = ({
                     sx={{
                       p: 1,
                       borderRadius: 1.5,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: 1,
                     }}
                   >
                     <Box
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: 1,
                         minWidth: 0,
                       }}
                     >
-                      {ev.type === "IMAGE" ? (
+                      {ev.type === 'IMAGE' ? (
                         <ImageIcon fontSize="small" color="primary" />
-                      ) : ev.type === "PDF" ? (
-                         <PictureAsPdfIcon fontSize="small" color="error" />
+                      ) : ev.type === 'PDF' ? (
+                        <PictureAsPdfIcon fontSize="small" color="error" />
                       ) : (
                         <LinkIcon fontSize="small" color="info" />
                       )}
                       <Box sx={{ minWidth: 0 }}>
                         <Typography
                           variant="body2"
-                          sx={{ fontWeight: 700, fontSize: "0.8rem" }}
+                          sx={{ fontWeight: 700, fontSize: '0.8rem' }}
                           noWrap
                         >
                           {ev.title || ev.fileName}
@@ -899,15 +827,21 @@ export const GanttTaskDetailDrawer = ({
                         <Typography
                           variant="caption"
                           color="text.secondary"
-                          sx={{ fontSize: "0.7rem" }}
+                          sx={{ fontSize: '0.7rem' }}
                           noWrap
                         >
-                          {ev.type === "LINK" ? ev.url : ev.fileName}
+                          {ev.type === 'LINK' ? ev.url : ev.fileName}
                         </Typography>
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       {ev.downloadUrl && (
                         <IconButton
                           size="small"
@@ -955,76 +889,86 @@ export const GanttTaskDetailDrawer = ({
       <Divider />
 
       {/* AÇÕES FINAIS (ABRIR NO VS CODE / POD) */}
-      <Box sx={{ mt: "auto", pt: 2 }}>
+      <Box sx={{ mt: 'auto', pt: 2 }}>
         {/* AÇÕES DE BATE E VOLTA DA REVISÃO */}
-        {!isStageNode && task && isReviewer && (task.status === TaskStatus.REVIEW_REQUESTED || task.status === TaskStatus.IN_REVIEW) && (
-          <Stack spacing={1} sx={{ mb: 1.5 }}>
+        {!isStageNode &&
+          task &&
+          isReviewer &&
+          (task.status === TaskStatus.REVIEW_REQUESTED || task.status === TaskStatus.IN_REVIEW) && (
+            <Stack spacing={1} sx={{ mb: 1.5 }}>
+              <Button
+                variant="contained"
+                color="success"
+                fullWidth
+                startIcon={<CheckCircleIcon />}
+                onClick={() => onApproveTask?.(task.id)}
+                sx={{ fontWeight: 700 }}
+              >
+                ✓ Aprovar Tarefa
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                fullWidth
+                onClick={() => onRequestChanges?.(task.id)}
+                sx={{ fontWeight: 700 }}
+              >
+                ⚠️ Solicitar Ajustes
+              </Button>
+            </Stack>
+          )}
+
+        {!isStageNode &&
+          task &&
+          !isReviewer &&
+          isAssignedToMe &&
+          (task.status === TaskStatus.IN_PROGRESS ||
+            task.status === TaskStatus.CHANGES_REQUESTED) && (
             <Button
               variant="contained"
-              color="success"
-              fullWidth
-              startIcon={<CheckCircleIcon />}
-              onClick={() => onApproveTask?.(task.id)}
-              sx={{ fontWeight: 700 }}
-            >
-              ✓ Aprovar Tarefa
-            </Button>
-            <Button
-              variant="outlined"
               color="warning"
               fullWidth
-              onClick={() => onRequestChanges?.(task.id)}
-              sx={{ fontWeight: 700 }}
+              onClick={() => onRequestReview?.(task.id)}
+              sx={{ fontWeight: 700, mb: 1.5 }}
             >
-              ⚠️ Solicitar Ajustes
+              🔍 Solicitar Revisão desta Tarefa
             </Button>
-          </Stack>
-        )}
+          )}
 
-        {!isStageNode && task && !isReviewer && isAssignedToMe && (task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.CHANGES_REQUESTED) && (
-          <Button
-            variant="contained"
-            color="warning"
-            fullWidth
-            onClick={() => onRequestReview?.(task.id)}
-            sx={{ fontWeight: 700, mb: 1.5 }}
-          >
-            🔍 Solicitar Revisão desta Tarefa
-          </Button>
-        )}
-
-
-        {isStageNode && stage && onStartWorkspace && (() => {
-          const isWritingStage =
-            stage.order === 3 || stage.title.toLowerCase().includes("escrita");
-          if (!isWritingStage) return null;
-          const stageTasksCount = stage.tasks?.length || 0;
-          return (
-            <Button
-              variant="contained"
-              color="secondary"
-              fullWidth
-              disabled={stageTasksCount === 0}
-              startIcon={stageTasksCount === 0 ? <LockIcon /> : <CodeIcon />}
-              onClick={() => {
-                const featureTask: TaskItem = {
-                  id: `stage-${stage.id}`,
-                  projectId: stage.projectId,
-                  stageId: stage.id,
-                  title: `Workspace da Etapa: ${stage.title}`,
-                  status: TaskStatus.IN_PROGRESS,
-                  dueDate: new Date().toISOString(),
-                };
-                void onStartWorkspace(featureTask);
-              }}
-              sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
-            >
-              {stageTasksCount === 0
-                ? "🔒 Crie sub-tarefas para abrir o Workspace"
-                : "🚀 Abrir Workspace de Escrita"}
-            </Button>
-          );
-        })()}
+        {isStageNode &&
+          stage &&
+          onStartWorkspace &&
+          (() => {
+            const isWritingStage =
+              stage.order === 3 || stage.title.toLowerCase().includes('escrita');
+            if (!isWritingStage) return null;
+            const stageTasksCount = stage.tasks?.length || 0;
+            return (
+              <Button
+                variant="contained"
+                color="secondary"
+                fullWidth
+                disabled={stageTasksCount === 0}
+                startIcon={stageTasksCount === 0 ? <LockIcon /> : <CodeIcon />}
+                onClick={() => {
+                  const featureTask: TaskItem = {
+                    id: `stage-${stage.id}`,
+                    projectId: stage.projectId,
+                    stageId: stage.id,
+                    title: `Workspace da Etapa: ${stage.title}`,
+                    status: TaskStatus.IN_PROGRESS,
+                    dueDate: new Date().toISOString(),
+                  };
+                  void onStartWorkspace(featureTask);
+                }}
+                sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
+              >
+                {stageTasksCount === 0
+                  ? '🔒 Crie sub-tarefas para abrir o Workspace'
+                  : '🚀 Abrir Workspace de Escrita'}
+              </Button>
+            );
+          })()}
       </Box>
     </Drawer>
   );

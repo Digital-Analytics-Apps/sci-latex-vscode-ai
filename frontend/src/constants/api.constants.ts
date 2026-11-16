@@ -21,7 +21,8 @@ export const API_BASE =
   getRuntimeEnv('VITE_API_URL') || (typeof window !== 'undefined' ? '' : 'http://localhost:3333');
 
 export const MINIO_BASE =
-  getRuntimeEnv('VITE_MINIO_URL') || (typeof window !== 'undefined' ? 'http://localhost:9000' : 'http://localhost:9000');
+  getRuntimeEnv('VITE_MINIO_URL') ||
+  (typeof window !== 'undefined' ? 'http://localhost:9000' : 'http://localhost:9000');
 
 const resolveWsBase = (): string => {
   const wsEnv = getRuntimeEnv('VITE_WS_URL');

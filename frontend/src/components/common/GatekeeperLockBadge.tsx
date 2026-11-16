@@ -1,10 +1,10 @@
-import React from "react";
-import { Chip, Tooltip } from "@mui/material";
-import LockIcon from "@mui/icons-material/Lock";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import { StageStatus } from "../../constants/status";
-import type { GatekeeperType } from "../../types/stage.types";
+import React from 'react';
+import { Chip, Tooltip } from '@mui/material';
+import LockIcon from '@mui/icons-material/Lock';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import { StageStatus } from '../../constants/status';
+import type { GatekeeperType } from '../../types/stage.types';
 
 interface GatekeeperLockBadgeProps {
   isGatekeeper: boolean;
@@ -21,7 +21,7 @@ export const GatekeeperLockBadge: React.FC<GatekeeperLockBadgeProps> = ({
 }) => {
   if (!isGatekeeper) return null;
 
-  const isNit = gatekeeperType === "NIT" || title.toLowerCase().includes("nit");
+  const isNit = gatekeeperType === 'NIT' || title.toLowerCase().includes('nit');
 
   if (isNit) {
     if (status === StageStatus.COMPLETED) {
@@ -33,7 +33,7 @@ export const GatekeeperLockBadge: React.FC<GatekeeperLockBadgeProps> = ({
             color="success"
             variant="filled"
             size="small"
-            sx={{ fontWeight: "bold" }}
+            sx={{ fontWeight: 'bold' }}
           />
         </Tooltip>
       );
@@ -48,7 +48,7 @@ export const GatekeeperLockBadge: React.FC<GatekeeperLockBadgeProps> = ({
             color="warning"
             variant="outlined"
             size="small"
-            sx={{ fontWeight: "bold" }}
+            sx={{ fontWeight: 'bold' }}
           />
         </Tooltip>
       );
@@ -62,7 +62,7 @@ export const GatekeeperLockBadge: React.FC<GatekeeperLockBadgeProps> = ({
           color="error"
           variant="outlined"
           size="small"
-          sx={{ fontWeight: "bold" }}
+          sx={{ fontWeight: 'bold' }}
         />
       </Tooltip>
     );
@@ -78,7 +78,7 @@ export const GatekeeperLockBadge: React.FC<GatekeeperLockBadgeProps> = ({
           color="primary"
           variant="filled"
           size="small"
-          sx={{ fontWeight: "bold" }}
+          sx={{ fontWeight: 'bold' }}
         />
       </Tooltip>
     );
@@ -92,7 +92,7 @@ export const GatekeeperLockBadge: React.FC<GatekeeperLockBadgeProps> = ({
         color="default"
         variant="outlined"
         size="small"
-        sx={{ fontWeight: "bold", opacity: 0.8 }}
+        sx={{ fontWeight: 'bold', opacity: 0.8 }}
       />
     </Tooltip>
   );

@@ -1,14 +1,14 @@
-import { useState, type MouseEvent, type ChangeEvent } from 'react';
+import { type ChangeEvent, type MouseEvent, useState } from 'react';
 import {
-  History,
-  Columns,
-  Code,
-  FileOutput,
-  ChevronDown,
-  UserPlus,
   Check,
+  ChevronDown,
   Clock,
+  Code,
+  Columns,
+  FileOutput,
+  History,
   MessageSquare,
+  UserPlus,
 } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -184,7 +184,10 @@ export function IdeNavbar({
               minWidth: 'auto',
               textTransform: 'none',
               color: 'text.secondary',
-              '&:hover': { color: 'text.primary', backgroundColor: 'action.hover' },
+              '&:hover': {
+                color: 'text.primary',
+                backgroundColor: 'action.hover',
+              },
             }}
           >
             File
@@ -231,7 +234,10 @@ export function IdeNavbar({
               minWidth: 'auto',
               textTransform: 'none',
               color: 'text.secondary',
-              '&:hover': { color: 'text.primary', backgroundColor: 'action.hover' },
+              '&:hover': {
+                color: 'text.primary',
+                backgroundColor: 'action.hover',
+              },
             }}
           >
             Edit
@@ -277,7 +283,10 @@ export function IdeNavbar({
               minWidth: 'auto',
               textTransform: 'none',
               color: 'text.secondary',
-              '&:hover': { color: 'text.primary', backgroundColor: 'action.hover' },
+              '&:hover': {
+                color: 'text.primary',
+                backgroundColor: 'action.hover',
+              },
             }}
           >
             View
@@ -313,7 +322,11 @@ export function IdeNavbar({
               Apenas PDF
             </MenuItem>
           </Menu>
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, height: 16, alignSelf: 'center' }} />
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ mx: 0.5, height: 16, alignSelf: 'center' }}
+          />
           <EditorHistoryControls
             canUndo={canUndo}
             canRedo={canRedo}
@@ -520,7 +533,6 @@ export function IdeNavbar({
             variant="outlined"
           />
         )}
-
 
         {/* Input Apelido */}
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>

@@ -17,6 +17,10 @@ import {
   uploadToMinio,
 } from '../../infra/minio';
 import { parseLatexZip } from '../../utils/latex-zip-parser';
+import {
+  ITemplatesRepository,
+  PrismaTemplatesRepository,
+} from '../../repositories/templates.repository';
 import { ChangeSet, Text } from '@codemirror/state';
 import { rebaseUpdates, Update } from '@codemirror/collab';
 
@@ -27,6 +31,7 @@ export interface ActiveFileCollab {
 }
 
 export interface ActiveDocState {
+  mainEntryPath: string;
   content: string;
   doc: Text;
   version: number;
@@ -46,7 +51,10 @@ export class DocumentsService {
   private activeDocs: Map<string, ActiveDocState> = new Map();
   private commentsMap: Map<string, ReviewComment[]> = new Map();
 
-  constructor(private repository: IDocumentsRepository = defaultDocumentsRepository) {
+  constructor(
+    private repository: IDocumentsRepository = defaultDocumentsRepository,
+    private templatesRepository: ITemplatesRepository = new PrismaTemplatesRepository()
+  ) {
     // Seed de comentários de revisão para o documento padrão 'doc-1'
     this.commentsMap.set('doc-1', [
       {
@@ -117,6 +125,7 @@ export class DocumentsService {
     // Carrega na memória ativa com representação Text do CodeMirror
     const textDoc = Text.of(doc.content.split('\n'));
     this.activeDocs.set(id, {
+      mainEntryPath: doc.mainEntryPath,
       content: doc.content,
       doc: textDoc,
       version: doc.version,
@@ -135,21 +144,22 @@ export class DocumentsService {
     return doc;
   }
 
-  getCollabVersion(documentId: string, file = 'main.tex'): number {
+  getCollabVersion(documentId: string, file?: string): number {
     const active = this.activeDocs.get(documentId);
     if (!active) return 0;
-    if (file === 'main.tex') {
+    const targetFile = file || active.mainEntryPath;
+    if (targetFile === active.mainEntryPath) {
       return active.updates.length;
     }
-    const fileCollab = active.filesCollab.get(file);
+    const fileCollab = active.filesCollab.get(targetFile);
     return fileCollab ? fileCollab.updates.length : 0;
   }
 
   getAllCollabVersions(documentId: string): Record<string, number> {
     const active = this.activeDocs.get(documentId);
-    if (!active) return { 'main.tex': 0 };
+    if (!active) return {};
     const versions: Record<string, number> = {
-      'main.tex': active.updates.length,
+      [active.mainEntryPath]: active.updates.length,
     };
     for (const [path, fileState] of active.filesCollab.entries()) {
       versions[path] = fileState.updates.length;
@@ -170,12 +180,16 @@ export class DocumentsService {
 
   getUpdatesSince(
     documentId: string,
-    file = 'main.tex',
+    file?: string,
     sinceVersion = 0
   ): Array<{ clientID: string; changes: unknown }> {
     const active = this.activeDocs.get(documentId);
     if (!active) return [];
-    const list = file === 'main.tex' ? active.updates : active.filesCollab.get(file)?.updates || [];
+    const targetFile = file || active.mainEntryPath;
+    const list =
+      targetFile === active.mainEntryPath
+        ? active.updates
+        : active.filesCollab.get(targetFile)?.updates || [];
     const clamped = Math.max(0, Math.min(sinceVersion, list.length));
     return list.slice(clamped).map((u: Update) => ({
       clientID: u.clientID,
@@ -195,10 +209,20 @@ export class DocumentsService {
     const id = randomUUID();
     const finalContent = initialContent ?? '';
 
+    let entryPath = 'main.tex';
+    if (templateId) {
+      const tpl = await this.templatesRepository.findById(templateId);
+      if (!tpl) {
+        throw new Error(`[DocumentsService] Template "${templateId}" não encontrado.`);
+      }
+      entryPath = tpl.mainEntryPath;
+    }
+
     const doc: Document = {
       id,
       title,
       content: finalContent,
+      mainEntryPath: entryPath,
       version: 1,
       updatedAt: new Date().toISOString(),
     };
@@ -233,6 +257,7 @@ export class DocumentsService {
       id,
       title: finalTitle,
       content: parsed.rootDoc.content,
+      mainEntryPath: parsed.rootDoc.path,
       version: 1,
       updatedAt: new Date().toISOString(),
     };
@@ -297,7 +322,7 @@ export class DocumentsService {
       active.onSnapshotSaved = onSnapshotSaved;
     }
 
-    const isMain = file === 'main.tex';
+    const isMain = file === active.mainEntryPath;
     let targetDoc: Text;
     let targetUpdates: Update[];
 
@@ -356,16 +381,14 @@ export class DocumentsService {
       }
     }
 
-    let finalContent = '';
+    const finalContent = targetDoc.toString();
     if (isMain) {
       active.doc = targetDoc;
-      finalContent = targetDoc.toString();
       active.content = finalContent;
     } else {
       const fileCollab = active.filesCollab.get(file)!;
       fileCollab.doc = targetDoc;
       fileCollab.version = targetUpdates.length;
-      finalContent = targetDoc.toString();
     }
     if (!active.firstPendingOpTime) {
       active.firstPendingOpTime = Date.now();
@@ -436,7 +459,7 @@ export class DocumentsService {
 
     const result = await this.pushUpdates(
       documentId,
-      'main.tex',
+      active.mainEntryPath,
       active.updates.length,
       [{ clientID: delta.userId, changes: change.toJSON() }],
       delta.userId,
@@ -511,6 +534,7 @@ export class DocumentsService {
           version: active.version,
           expectedOldVersion: oldVersion,
           ownerGeneration: active.ownerGeneration,
+          mainEntryPath: active.mainEntryPath,
           mainContent: content,
           secondaryFiles,
           snapshot,
@@ -731,13 +755,16 @@ export class DocumentsService {
       url?: string;
     }> = [
       {
-        path: 'main.tex',
+        path: doc.mainEntryPath,
         type: 'text',
         content: doc.content,
       },
     ];
 
     for (const file of projectFiles) {
+      if (file.path === doc.mainEntryPath) {
+        continue;
+      }
       if (file.content !== null && file.content !== undefined) {
         // Arquivo de texto (.bib, .tex complementar, .sty)
         filesPayload.push({
@@ -762,7 +789,7 @@ export class DocumentsService {
       },
       body: JSON.stringify({
         documentId,
-        mainEntry: 'main.tex',
+        mainEntry: doc.mainEntryPath,
         files: filesPayload,
       }),
     });

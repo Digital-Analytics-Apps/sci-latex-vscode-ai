@@ -1,22 +1,22 @@
-import { Route, Routes } from "react-router-dom";
-import { NotFoundPage } from "../components/common/NotFoundPage";
-import { ProtectedRoute } from "../components/ProtectedRoute";
-import { Role } from "../constants/roles";
-import { AdminCenterPage } from "../features/admin/AdminCenterPage";
-import { LoginPage } from "../features/auth/LoginPage";
-import { ArticleDetailPage } from "../features/author/ArticleDetailPage";
-import { AuthorArticlesPage } from "../features/author/AuthorArticlesPage";
-import { CoordinatorDashboardPage } from "../features/coordinator/CoordinatorDashboardPage";
+import { Route, Routes } from 'react-router-dom';
+import { NotFoundPage } from '../components/common/NotFoundPage';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { Role } from '../constants/roles';
+import { AdminCenterPage } from '../features/admin/AdminCenterPage';
+import { LoginPage } from '../features/auth/LoginPage';
+import { ArticleDetailPage } from '../features/author/ArticleDetailPage';
+import { AuthorArticlesPage } from '../features/author/AuthorArticlesPage';
+import { CoordinatorDashboardPage } from '../features/coordinator/CoordinatorDashboardPage';
 import {
   AcademicPeriodsView,
   InstitutionalProjectsView,
   ManagerDashboardPage,
   ManagerOverviewView,
-} from "../features/manager/ManagerDashboardPage";
-import { EditorPage } from "../features/editor/pages/EditorPage";
-import { LiteratureMindMapDemoPage } from "../features/literature/pages/LiteratureMindMapDemoPage";
-import { RoleLayoutResolver } from "../layouts/RoleLayoutResolver";
-import { PersonaRootResolver } from "./PersonaRootResolver";
+} from '../features/manager/ManagerDashboardPage';
+import { EditorPage } from '../features/editor/pages/EditorPage';
+import { LiteratureMindMapDemoPage } from '../features/literature/pages/LiteratureMindMapDemoPage';
+import { RoleLayoutResolver } from '../layouts/RoleLayoutResolver';
+import { PersonaRootResolver } from './PersonaRootResolver';
 
 export const AppRoutes = () => {
   return (
@@ -32,14 +32,8 @@ export const AppRoutes = () => {
             <Route path="academic-periods" element={<AcademicPeriodsView />} />
             <Route path="articles" element={<InstitutionalProjectsView />} />
             <Route path="manager" element={<ManagerOverviewView />} />
-            <Route
-              path="manager/academic-periods"
-              element={<AcademicPeriodsView />}
-            />
-            <Route
-              path="manager/articles"
-              element={<InstitutionalProjectsView />}
-            />
+            <Route path="manager/academic-periods" element={<AcademicPeriodsView />} />
+            <Route path="manager/articles" element={<InstitutionalProjectsView />} />
           </Route>
 
           {/* Rotas por Persona */}
@@ -50,10 +44,7 @@ export const AppRoutes = () => {
           <Route path="/coordinator" element={<CoordinatorDashboardPage />} />
           <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route path="/workspace/:projectId" element={<EditorPage />} />
-          <Route
-            path="/workspace/:projectId/task/:taskId"
-            element={<EditorPage />}
-          />
+          <Route path="/workspace/:projectId/task/:taskId" element={<EditorPage />} />
         </Route>
 
         {/* Rota Exclusiva de Administração da Aplicação e Observabilidade */}

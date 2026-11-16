@@ -1,0 +1,61 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// Descoberta de contêineres Docker locais
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Coleta de logs de contêineres Docker
+discovery.relabel "docker_logs" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["container"]
+    regex         = "sci_latex_(.*)"
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_logs.output
+  forward_to = [loki.process.add_structured_metadata.receiver]
+}
+
+// Extração de Structured Metadata (trace_id, user_id, article_id) preservando labels de baixa cardinalidade
+loki.process "add_structured_metadata" {
+  stage.json {
+    expressions = {
+      trace_id   = "trace_id",
+      user_id    = "userId",
+      article_id = "articleId",
+      level      = "level",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      trace_id   = "trace_id",
+      user_id    = "user_id",
+      article_id = "article_id",
+    }
+  }
+
+  forward_to = [loki.write.endpoint.receiver]
+}
+
+// Envio para o Loki
+loki.write "endpoint" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

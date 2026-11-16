@@ -1,14 +1,14 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import CodeIcon from "@mui/icons-material/Code";
-import EditIcon from "@mui/icons-material/Edit";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import LockIcon from "@mui/icons-material/Lock";
-import PeopleIcon from "@mui/icons-material/People";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import PublishIcon from "@mui/icons-material/Publish";
-import SendIcon from "@mui/icons-material/Send";
-import SettingsIcon from "@mui/icons-material/Settings";
-import ViewWeekIcon from "@mui/icons-material/ViewWeek";
+import ArticleIcon from '@mui/icons-material/Article';
+import CodeIcon from '@mui/icons-material/Code';
+import EditIcon from '@mui/icons-material/Edit';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import LockIcon from '@mui/icons-material/Lock';
+import PeopleIcon from '@mui/icons-material/People';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PublishIcon from '@mui/icons-material/Publish';
+import SendIcon from '@mui/icons-material/Send';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import {
   Avatar,
   Box,
@@ -27,23 +27,20 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from "@mui/material";
-import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import { StageStatus } from "../../../constants/status";
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { StageStatus } from '../../../constants/status';
 import {
   useCreateRCMutation,
   usePublishReleaseMutation,
   useReleaseCandidatesQuery,
   useReleasesQuery,
-} from "../../../hooks/useReleaseQueries";
-import {
-  projectsService,
-  type ProjectStage,
-} from "../../../services/projectsService";
-import { showNotification } from "../../../store/slices/notificationSlice";
-import type { ReleaseCandidateItem } from "../../../types/release-candidate.types";
+} from '../../../hooks/useReleaseQueries';
+import { projectsService, type ProjectStage } from '../../../services/projectsService';
+import { showNotification } from '../../../store/slices/notificationSlice';
+import type { ReleaseCandidateItem } from '../../../types/release-candidate.types';
 
 interface ProjectSettingsModalProps {
   open: boolean;
@@ -61,22 +58,21 @@ interface ProjectSettingsModalProps {
 
 function getStagePlannedDateString(stage: ProjectStage): string {
   const rawDate = stage.plannedCompletionDate || stage.plannedEndAt;
-  if (!rawDate) return "";
-  return new Date(rawDate).toISOString().split("T")[0];
+  if (!rawDate) return '';
+  return new Date(rawDate).toISOString().split('T')[0];
 }
-
 
 function getRcStatusChipProps(status: string): {
   label: string;
-  color: "success" | "error" | "warning";
+  color: 'success' | 'error' | 'warning';
 } {
-  if (status === "APPROVED") {
-    return { label: "✓ Aprovada", color: "success" };
+  if (status === 'APPROVED') {
+    return { label: '✓ Aprovada', color: 'success' };
   }
-  if (status === "CHANGES_REQUESTED") {
-    return { label: "Ajustes Solicitados", color: "error" };
+  if (status === 'CHANGES_REQUESTED') {
+    return { label: 'Ajustes Solicitados', color: 'error' };
   }
-  return { label: "Em Avaliação", color: "warning" };
+  return { label: 'Em Avaliação', color: 'warning' };
 }
 
 const EmptyStateCard = ({ message }: { message: string }) => (
@@ -84,8 +80,8 @@ const EmptyStateCard = ({ message }: { message: string }) => (
     variant="outlined"
     sx={{
       p: 2,
-      textAlign: "center",
-      color: "text.secondary",
+      textAlign: 'center',
+      color: 'text.secondary',
       borderRadius: 2,
     }}
   >
@@ -94,7 +90,7 @@ const EmptyStateCard = ({ message }: { message: string }) => (
 );
 
 const LoadingStateSpinner = () => (
-  <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
     <CircularProgress size={24} />
   </Box>
 );
@@ -105,11 +101,7 @@ interface StageRowProps {
   onUpdateStageField?: (stageId: string, field: string, value: unknown) => void;
 }
 
-const StageRow: React.FC<StageRowProps> = ({
-  stage,
-  onUpdateStageStatus,
-  onUpdateStageField,
-}) => {
+const StageRow: React.FC<StageRowProps> = ({ stage, onUpdateStageStatus, onUpdateStageField }) => {
   const [expanded, setExpanded] = useState(false);
   const tasksCount = stage.tasks?.length || 0;
   const plannedDateValue = getStagePlannedDateString(stage);
@@ -120,71 +112,60 @@ const StageRow: React.FC<StageRowProps> = ({
       sx={{
         p: 1.5,
         borderRadius: 2,
-        bgcolor: stage.isGatekeeper ? "action.hover" : "background.paper",
-        borderColor:
-          stage.status === StageStatus.COMPLETED ? "success.main" : "divider",
-        display: "flex",
-        flexDirection: "column",
+        bgcolor: stage.isGatekeeper ? 'action.hover' : 'background.paper',
+        borderColor: stage.status === StageStatus.COMPLETED ? 'success.main' : 'divider',
+        display: 'flex',
+        flexDirection: 'column',
         gap: 1.5,
       }}
     >
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 1.5,
-          flexWrap: "wrap",
-          width: "100%",
+          flexWrap: 'wrap',
+          width: '100%',
         }}
       >
         <Box
           sx={{
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             flex: 1,
             minWidth: 240,
           }}
         >
-          {stage.isGatekeeper && (
-            <LockIcon color="action" fontSize="small" />
-          )}
+          {stage.isGatekeeper && <LockIcon color="action" fontSize="small" />}
 
           <Chip
             label={`Etapa ${stage.order}`}
             size="small"
-            color={stage.isGatekeeper ? "secondary" : "primary"}
+            color={stage.isGatekeeper ? 'secondary' : 'primary'}
             variant="outlined"
             sx={{ fontWeight: 800 }}
           />
 
           <Box sx={{ flex: 1 }}>
-            <Typography
-              variant="subtitle2"
-              sx={{ fontWeight: 700, lineHeight: 1.2 }}
-            >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
               {stage.title}
             </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-            >
+            <Typography variant="caption" color="text.secondary">
               📋 {tasksCount} tarefa(s) vinculada(s)
             </Typography>
           </Box>
         </Box>
 
         {/* STATUS SELECT / CHIP & BOTÃO DE EXPANDIR */}
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           {!stage.isGatekeeper && onUpdateStageStatus ? (
             <Select
               size="small"
               value={stage.status}
-              onChange={(e) =>
-                onUpdateStageStatus(stage.id, e.target.value as StageStatus)
-              }
-              sx={{ height: 32, fontSize: "0.8rem", fontWeight: 700 }}
+              onChange={(e) => onUpdateStageStatus(stage.id, e.target.value as StageStatus)}
+              sx={{ height: 32, fontSize: '0.8rem', fontWeight: 700 }}
             >
               <MenuItem value={StageStatus.NOT_STARTED}>Pendente</MenuItem>
               <MenuItem value={StageStatus.IN_PROGRESS}>Em Andamento</MenuItem>
@@ -194,25 +175,21 @@ const StageRow: React.FC<StageRowProps> = ({
             <Chip
               label={
                 stage.status === StageStatus.COMPLETED
-                  ? "✓ Aprovada"
+                  ? '✓ Aprovada'
                   : stage.status === StageStatus.LOCKED
-                    ? "🔒 Bloqueada"
-                    : "Pendente"
+                    ? '🔒 Bloqueada'
+                    : 'Pendente'
               }
-              color={stage.status === StageStatus.COMPLETED ? "success" : "default"}
+              color={stage.status === StageStatus.COMPLETED ? 'success' : 'default'}
               size="small"
               sx={{ fontWeight: 700 }}
             />
           )}
 
-          <Tooltip
-            title={
-              expanded ? "Ocultar edição" : "Editar prazos e detalhes da etapa"
-            }
-          >
+          <Tooltip title={expanded ? 'Ocultar edição' : 'Editar prazos e detalhes da etapa'}>
             <IconButton
               size="small"
-              color={expanded ? "primary" : "default"}
+              color={expanded ? 'primary' : 'default'}
               onClick={() => setExpanded(!expanded)}
             >
               <EditIcon fontSize="small" />
@@ -222,32 +199,25 @@ const StageRow: React.FC<StageRowProps> = ({
       </Box>
 
       {/* ÁREA EXPANSÍVEL DE EDIÇÃO DO NOME E PRAZO */}
-      <Collapse
-        in={expanded}
-        timeout="auto"
-        unmountOnExit
-        sx={{ width: "100%" }}
-      >
+      <Collapse in={expanded} timeout="auto" unmountOnExit sx={{ width: '100%' }}>
         <Box
           sx={{
             pt: 1.5,
-            borderTop: "1px dashed",
-            borderColor: "divider",
-            display: "flex",
-            flexDirection: "column",
+            borderTop: '1px dashed',
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
             gap: 1.5,
           }}
         >
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
               sx={{ flex: 1, minWidth: 220 }}
               size="small"
               label="Título da Etapa"
               value={stage.title}
               disabled={stage.isGatekeeper}
-              onChange={(e) =>
-                onUpdateStageField?.(stage.id, "title", e.target.value)
-              }
+              onChange={(e) => onUpdateStageField?.(stage.id, 'title', e.target.value)}
             />
 
             <TextField
@@ -262,11 +232,7 @@ const StageRow: React.FC<StageRowProps> = ({
               }}
               value={plannedDateValue}
               onChange={(e) =>
-                onUpdateStageField?.(
-                  stage.id,
-                  "plannedCompletionDate",
-                  e.target.value || null,
-                )
+                onUpdateStageField?.(stage.id, 'plannedCompletionDate', e.target.value || null)
               }
             />
           </Box>
@@ -278,10 +244,8 @@ const StageRow: React.FC<StageRowProps> = ({
             rows={2}
             label="Descrição / Objetivos da Etapa"
             placeholder="Ex: Escrita detalhada das seções de Introdução e Trabalhos Relacionados..."
-            value={stage.description || ""}
-            onChange={(e) =>
-              onUpdateStageField?.(stage.id, "description", e.target.value)
-            }
+            value={stage.description || ''}
+            onChange={(e) => onUpdateStageField?.(stage.id, 'description', e.target.value)}
           />
         </Box>
       </Collapse>
@@ -303,22 +267,19 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
   // Estados rascunho (Draft) de etapas e metadados
   const [localStages, setLocalStages] = useState<ProjectStage[]>([]);
-  const [projectName, setProjectName] = useState("");
-  const [description, setDescription] = useState("");
-  const [targetConferenceName, setTargetConferenceName] = useState("");
-  const [targetConferenceDate, setTargetConferenceDate] = useState("");
+  const [projectName, setProjectName] = useState('');
+  const [description, setDescription] = useState('');
+  const [targetConferenceName, setTargetConferenceName] = useState('');
+  const [targetConferenceDate, setTargetConferenceDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const writingStagesCompleted = localStages
     .filter((s) => !s.isGatekeeper)
     .every((s) => s.status === StageStatus.COMPLETED);
 
-
   // Estado e mutações de Release Candidates & Releases Oficiais
-  const [rcFeedbackNotes, setRcFeedbackNotes] = useState("");
-  const { data: releaseCandidates, isLoading: isLoadingRCs } =
-    useReleaseCandidatesQuery(projectId);
-  const { data: officialReleases, isLoading: isLoadingReleases } =
-    useReleasesQuery(projectId);
+  const [rcFeedbackNotes, setRcFeedbackNotes] = useState('');
+  const { data: releaseCandidates, isLoading: isLoadingRCs } = useReleaseCandidatesQuery(projectId);
+  const { data: officialReleases, isLoading: isLoadingReleases } = useReleasesQuery(projectId);
   const createRCMutation = useCreateRCMutation(projectId);
   const publishReleaseMutation = usePublishReleaseMutation(projectId);
 
@@ -327,40 +288,26 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   // Sincroniza estado rascunho sempre que o modal abre
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalStages(stages || []);
-      setProjectName(projectDetails?.name || "");
-      setDescription(projectDetails?.description || "");
-      setTargetConferenceName(projectDetails?.targetConferenceName || "");
+      setProjectName(projectDetails?.name || '');
+      setDescription(projectDetails?.description || '');
+      setTargetConferenceName(projectDetails?.targetConferenceName || '');
       setTargetConferenceDate(
         projectDetails?.targetConferenceDate
-          ? new Date(projectDetails.targetConferenceDate)
-              .toISOString()
-              .split("T")[0]
-          : "",
+          ? new Date(projectDetails.targetConferenceDate).toISOString().split('T')[0]
+          : ''
       );
     }
   }, [open, stages, projectDetails]);
 
   // Edição local: Status da Etapa
-  const handleLocalUpdateStageStatus = (
-    stageId: string,
-    status: StageStatus,
-  ) => {
-    setLocalStages((prev) =>
-      prev.map((s) => (s.id === stageId ? { ...s, status } : s)),
-    );
+  const handleLocalUpdateStageStatus = (stageId: string, status: StageStatus) => {
+    setLocalStages((prev) => prev.map((s) => (s.id === stageId ? { ...s, status } : s)));
   };
 
   // Edição local: Campos da Etapa (título, descrição, etc)
-  const handleLocalUpdateStageField = (
-    stageId: string,
-    field: string,
-    value: unknown,
-  ) => {
-    setLocalStages((prev) =>
-      prev.map((s) => (s.id === stageId ? { ...s, [field]: value } : s)),
-    );
+  const handleLocalUpdateStageField = (stageId: string, field: string, value: unknown) => {
+    setLocalStages((prev) => prev.map((s) => (s.id === stageId ? { ...s, [field]: value } : s)));
   };
   // HANDLERS PARA RELEASE CANDIDATES
   const handleCreateRC = async () => {
@@ -371,18 +318,17 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
       dispatch(
         showNotification({
-          message:
-            "Nova Release Candidate (RC) gerada e submetida ao Revisor Técnico!",
-          severity: "success",
-        }),
+          message: 'Nova Release Candidate (RC) gerada e submetida ao Revisor Técnico!',
+          severity: 'success',
+        })
       );
-      setRcFeedbackNotes("");
+      setRcFeedbackNotes('');
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao gerar Release Candidate.",
-          severity: "error",
-        }),
+          message: 'Erro ao gerar Release Candidate.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -392,16 +338,16 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       await publishReleaseMutation.mutateAsync();
       dispatch(
         showNotification({
-          message: "Release Oficial publicada com sucesso!",
-          severity: "success",
-        }),
+          message: 'Release Oficial publicada com sucesso!',
+          severity: 'success',
+        })
       );
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao publicar Release Oficial.",
-          severity: "error",
-        }),
+          message: 'Erro ao publicar Release Oficial.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -415,14 +361,13 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       // No futuro, avaliar se esta data também deverá ser estritamente menor/respeitar a data do NIT.
       if (targetConferenceDate) {
         for (const localStage of localStages) {
-          const sDate =
-            localStage.plannedCompletionDate || localStage.plannedEndAt;
+          const sDate = localStage.plannedCompletionDate || localStage.plannedEndAt;
           if (sDate && new Date(sDate) > new Date(targetConferenceDate)) {
             dispatch(
               showNotification({
                 message: `A data limite da etapa "${localStage.title}" não pode ser maior que a data de submissão do artigo.`,
-                severity: "error",
-              }),
+                severity: 'error',
+              })
             );
             setIsSaving(false);
             return;
@@ -445,14 +390,12 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
         .map((localStage) => {
           const orig = stages.find((s) => s.id === localStage.id)!;
           return projectsService.updateProjectStage(projectId, localStage.id, {
-            title:
-              localStage.title !== orig.title ? localStage.title : undefined,
+            title: localStage.title !== orig.title ? localStage.title : undefined,
             description:
               localStage.description !== orig.description
-                ? localStage.description || ""
+                ? localStage.description || ''
                 : undefined,
-            status:
-              localStage.status !== orig.status ? localStage.status : undefined,
+            status: localStage.status !== orig.status ? localStage.status : undefined,
             plannedCompletionDate:
               localStage.plannedCompletionDate !== orig.plannedCompletionDate
                 ? localStage.plannedCompletionDate
@@ -474,19 +417,17 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
       dispatch(
         showNotification({
-          message: "Configurações do artigo salvas com sucesso!",
-          severity: "success",
-        }),
+          message: 'Configurações do artigo salvas com sucesso!',
+          severity: 'success',
+        })
       );
 
       if (onRefetchStages) onRefetchStages();
       onClose();
     } catch (err: any) {
       const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Erro ao salvar configurações do projeto.";
-      dispatch(showNotification({ message: msg, severity: "error" }));
+        err.response?.data?.message || err.message || 'Erro ao salvar configurações do projeto.';
+      dispatch(showNotification({ message: msg, severity: 'error' }));
     } finally {
       setIsSaving(false);
     }
@@ -544,13 +485,14 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
     >
       {/* ABA 0: GERENCIAMENTO DE ETAPAS PADRONIZADAS (ADR-008) */}
       {activeTab === 0 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
               6 Etapas Padronizadas do Artigo ({localStages.length})
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              As 6 etapas sequenciais do fluxo acadêmico são fixas e obrigatórias (ADR-008). Ajuste prazos e metas conforme o cronograma do projeto.
+              As 6 etapas sequenciais do fluxo acadêmico são fixas e obrigatórias (ADR-008). Ajuste
+              prazos e metas conforme o cronograma do projeto.
             </Typography>
           </Box>
 
@@ -569,12 +511,12 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
       {/* ABA 1: GERENCIAMENTO DE MEMBROS E COAUTORES */}
       {activeTab === 1 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
             <Box>
@@ -582,8 +524,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 Membros e Colaboradores do Artigo ({membersList.length})
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Gerencie os Autores e Revisores associados a este artigo
-                científico.
+                Gerencie os Autores e Revisores associados a este artigo científico.
               </Typography>
             </Box>
 
@@ -606,9 +547,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               <EmptyStateCard message="Nenhum membro adicional vinculado. Clique no botão acima para adicionar autores ou revisores." />
             ) : (
               membersList.map((m: any) => {
-                const u = m.user || { name: "Membro", email: "" };
-                const isReviewer =
-                  m.role === "REVIEWER" || m.role === "REVISOR";
+                const u = m.user || { name: 'Membro', email: '' };
+                const isReviewer = m.role === 'REVIEWER' || m.role === 'REVISOR';
                 return (
                   <Paper
                     key={m.id || m.userId}
@@ -616,42 +556,35 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                     sx={{
                       p: 1.5,
                       borderRadius: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                     }}
                   >
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                    >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Avatar
                         sx={{
                           width: 38,
                           height: 38,
                           fontWeight: 700,
-                          bgcolor: isReviewer
-                            ? "secondary.main"
-                            : "primary.main",
+                          bgcolor: isReviewer ? 'secondary.main' : 'primary.main',
                         }}
                       >
-                        {u.name?.[0] || "U"}
+                        {u.name?.[0] || 'U'}
                       </Avatar>
                       <Box>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 700, lineHeight: 1.2 }}
-                        >
-                          {u.name || "Membro sem nome"}
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                          {u.name || 'Membro sem nome'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {u.email || "Email não cadastrado"}
+                          {u.email || 'Email não cadastrado'}
                         </Typography>
                       </Box>
                     </Box>
 
                     <Chip
-                      label={isReviewer ? "Revisor Técnico" : "Coautor / Autor"}
-                      color={isReviewer ? "secondary" : "primary"}
+                      label={isReviewer ? 'Revisor Técnico' : 'Coautor / Autor'}
+                      color={isReviewer ? 'secondary' : 'primary'}
                       size="small"
                       sx={{ fontWeight: 700 }}
                     />
@@ -665,16 +598,16 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
       {/* ABA 2: RELEASE CANDIDATES (RCs) & PUBLICAÇÕES OFICIAIS */}
       {activeTab === 2 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* SEÇÃO 1: RELEASES OFICIAIS PUBLICADAS NA MAIN */}
           <Box>
             <Box
               sx={{
                 mb: 1.5,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
                 gap: 1,
               }}
             >
@@ -690,8 +623,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               <Tooltip
                 title={
                   !writingStagesCompleted
-                    ? "Para publicar uma Release Oficial, 100% das etapas de escrita devem estar concluídas."
-                    : "Publicar versão final oficial"
+                    ? 'Para publicar uma Release Oficial, 100% das etapas de escrita devem estar concluídas.'
+                    : 'Publicar versão final oficial'
                 }
               >
                 <span>
@@ -701,15 +634,12 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                     size="small"
                     startIcon={<PublishIcon />}
                     onClick={handlePublishRelease}
-                    disabled={
-                      !writingStagesCompleted ||
-                      publishReleaseMutation.isPending
-                    }
+                    disabled={!writingStagesCompleted || publishReleaseMutation.isPending}
                     sx={{ fontWeight: 700 }}
                   >
                     {publishReleaseMutation.isPending
-                      ? "Publicando..."
-                      : "Publicar Release Oficial (v1.0 na Main)"}
+                      ? 'Publicando...'
+                      : 'Publicar Release Oficial (v1.0 na Main)'}
                   </Button>
                 </span>
               </Tooltip>
@@ -733,46 +663,36 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                       sx={{
                         p: 1.5,
                         borderRadius: 2,
-                        borderColor: "success.main",
-                        bgcolor: "rgba(46, 125, 50, 0.04)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        borderColor: 'success.main',
+                        bgcolor: 'rgba(46, 125, 50, 0.04)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                      >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Chip
-                          label={rel.versionTag || "v1.0"}
+                          label={rel.versionTag || 'v1.0'}
                           color="success"
                           size="small"
                           sx={{ fontWeight: 800 }}
                         />
                         <Box>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{ fontWeight: 700, lineHeight: 1.2 }}
-                          >
-                            {rel.title || "Release Oficial do Artigo"}
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                            {rel.title || 'Release Oficial do Artigo'}
                           </Typography>
                           <Typography
                             variant="caption"
                             color="text.secondary"
-                            sx={{ fontFamily: "monospace" }}
+                            sx={{ fontFamily: 'monospace' }}
                           >
                             SHA: {rel.commitSha}
                           </Typography>
                         </Box>
                       </Box>
 
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ fontWeight: 600 }}
-                      >
-                        Publicado em:{" "}
-                        {new Date(rel.createdAt).toLocaleDateString("pt-BR")}
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Publicado em: {new Date(rel.createdAt).toLocaleDateString('pt-BR')}
                       </Typography>
                     </Paper>
                   ))}
@@ -790,8 +710,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                 Histórico de Release Candidates (RCs)
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Snapshots consolidados enviados ao Revisor Técnico para
-                avaliação e parecer.
+                Snapshots consolidados enviados ao Revisor Técnico para avaliação e parecer.
               </Typography>
             </Box>
 
@@ -809,34 +728,24 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                   {releaseCandidates.map((rc: ReleaseCandidateItem) => {
                     const rcChipProps = getRcStatusChipProps(rc.status);
                     return (
-                      <Paper
-                        key={rc.id}
-                        variant="outlined"
-                        sx={{ p: 2, borderRadius: 2 }}
-                      >
+                      <Paper key={rc.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                         <Box
                           sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
                             mb: 1,
                           }}
                         >
                           <Box
                             sx={{
-                              display: "flex",
-                              alignItems: "center",
+                              display: 'flex',
+                              alignItems: 'center',
                               gap: 1,
                             }}
                           >
-                            <LocalOfferIcon
-                              color="primary"
-                              sx={{ fontSize: 18 }}
-                            />
-                            <Typography
-                              variant="subtitle2"
-                              sx={{ fontWeight: 800 }}
-                            >
+                            <LocalOfferIcon color="primary" sx={{ fontSize: 18 }} />
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                               {rc.versionTag}
                             </Typography>
                           </Box>
@@ -848,22 +757,15 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                           />
                         </Box>
                         {rc.feedback && (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 1 }}
-                          >
-                            💬 <strong>Parecer do Revisor:</strong>{" "}
-                            {rc.feedback}
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            💬 <strong>Parecer do Revisor:</strong> {rc.feedback}
                           </Typography>
                         )}
                         <Typography variant="caption" color="text.secondary">
-                          Submetido em:{" "}
-                          {new Date(rc.createdAt).toLocaleDateString("pt-BR")}{" "}
-                          às{" "}
-                          {new Date(rc.createdAt).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
+                          Submetido em: {new Date(rc.createdAt).toLocaleDateString('pt-BR')} às{' '}
+                          {new Date(rc.createdAt).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
                           })}
                         </Typography>
                       </Paper>
@@ -877,20 +779,13 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
           <Divider />
 
           {/* SEÇÃO 3: FORMULÁRIO DE NOVA RELEASE CANDIDATE */}
-          <Paper
-            variant="outlined"
-            sx={{ p: 2, borderRadius: 2, bgcolor: "action.hover" }}
-          >
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'action.hover' }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
               🚀 Submeter Nova Release Candidate (RC)
             </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ mb: 1.5, display: "block" }}
-            >
-              Gera um snapshot compilado no Git e notifica o Revisor Técnico
-              para emissão de parecer.
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+              Gera um snapshot compilado no Git e notifica o Revisor Técnico para emissão de
+              parecer.
             </Typography>
             <TextField
               fullWidth
@@ -901,7 +796,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               placeholder="Ex: Versão consolidada contendo a metodologia e a seção de experimentos finalizada."
               value={rcFeedbackNotes}
               onChange={(e) => setRcFeedbackNotes(e.target.value)}
-              sx={{ mb: 1.5, bgcolor: "background.paper" }}
+              sx={{ mb: 1.5, bgcolor: 'background.paper' }}
             />
             <Button
               variant="contained"
@@ -912,9 +807,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               disabled={createRCMutation.isPending}
               sx={{ fontWeight: 700 }}
             >
-              {createRCMutation.isPending
-                ? "Gerando RC..."
-                : "Gerar RC e Enviar ao Revisor"}
+              {createRCMutation.isPending ? 'Gerando RC...' : 'Gerar RC e Enviar ao Revisor'}
             </Button>
           </Paper>
         </Box>
@@ -922,17 +815,17 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
       {/* ABA 3: METADADOS DO PROJETO & CONGRESSO */}
       {activeTab === 3 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* PAINEL DE GOVERNANÇA E METADADOS */}
           <Paper
             variant="outlined"
             sx={{
               p: 1.8,
               borderRadius: 2,
-              bgcolor: "action.hover",
-              borderColor: "divider",
-              display: "flex",
-              flexDirection: "column",
+              bgcolor: 'action.hover',
+              borderColor: 'divider',
+              display: 'flex',
+              flexDirection: 'column',
               gap: 1,
             }}
           >
@@ -940,8 +833,8 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
               variant="subtitle2"
               sx={{
                 fontWeight: 800,
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 1,
               }}
             >
@@ -949,37 +842,23 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             </Typography>
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 1.5,
-                flexWrap: "wrap",
+                flexWrap: 'wrap',
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600 }}
-              >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                 Coordenador:
               </Typography>
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: 700 }}
-              >
-                {projectDetails?.coordinator?.name || "Coordenador Atribuído"}
+              <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                {projectDetails?.coordinator?.name || 'Coordenador Atribuído'}
               </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, ml: 2 }}
-              >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, ml: 2 }}>
                 Gerente:
               </Typography>
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: 700 }}
-              >
-                {projectDetails?.manager?.name || "Gerente Atribuído"}
+              <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                {projectDetails?.manager?.name || 'Gerente Atribuído'}
               </Typography>
             </Box>
           </Paper>
@@ -1003,7 +882,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             onChange={(e) => setDescription(e.target.value)}
           />
 
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
               sx={{ flex: 1, minWidth: 240 }}
               size="small"

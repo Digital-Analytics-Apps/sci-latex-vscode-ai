@@ -1,15 +1,7 @@
 import React from 'react';
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Chip,
-  Button,
-  Tooltip,
-} from '@mui/material';
-import { BookOpen, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { Box, Button, Card, CardContent, Chip, Tooltip, Typography } from '@mui/material';
+import { AlertTriangle, BookOpen, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { ScientificPaperNodeData } from '../types';
 
 export const PaperNode: React.FC<NodeProps<Node<ScientificPaperNodeData>>> = ({
@@ -32,15 +24,35 @@ export const PaperNode: React.FC<NodeProps<Node<ScientificPaperNodeData>>> = ({
   const getRelationColor = () => {
     switch (relationType) {
       case 'evolution':
-        return { bg: 'rgba(2, 119, 189, 0.1)', border: '#0288d1', text: '#0288d1' };
+        return {
+          bg: 'rgba(2, 119, 189, 0.1)',
+          border: '#0288d1',
+          text: '#0288d1',
+        };
       case 'divergent':
-        return { bg: 'rgba(211, 47, 47, 0.1)', border: '#d32f2f', text: '#d32f2f' };
+        return {
+          bg: 'rgba(211, 47, 47, 0.1)',
+          border: '#d32f2f',
+          text: '#d32f2f',
+        };
       case 'complementary':
-        return { bg: 'rgba(46, 125, 50, 0.1)', border: '#2e7d32', text: '#2e7d32' };
+        return {
+          bg: 'rgba(46, 125, 50, 0.1)',
+          border: '#2e7d32',
+          text: '#2e7d32',
+        };
       case 'baseline':
-        return { bg: 'rgba(123, 31, 162, 0.1)', border: '#7b1fa2', text: '#7b1fa2' };
+        return {
+          bg: 'rgba(123, 31, 162, 0.1)',
+          border: '#7b1fa2',
+          text: '#7b1fa2',
+        };
       default:
-        return { bg: 'rgba(21, 101, 192, 0.1)', border: '#1976d2', text: '#1976d2' };
+        return {
+          bg: 'rgba(21, 101, 192, 0.1)',
+          border: '#1976d2',
+          text: '#1976d2',
+        };
     }
   };
 
@@ -167,7 +179,14 @@ export const PaperNode: React.FC<NodeProps<Node<ScientificPaperNodeData>>> = ({
                 borderLeft: '3px solid #2e7d32',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 0.3 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.6,
+                  mb: 0.3,
+                }}
+              >
                 <CheckCircle2 size={14} color="#2e7d32" />
                 <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>
                   Pontos Fortes ({strengths.length})
@@ -197,7 +216,14 @@ export const PaperNode: React.FC<NodeProps<Node<ScientificPaperNodeData>>> = ({
                 borderLeft: '3px solid #d32f2f',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 0.3 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.6,
+                  mb: 0.3,
+                }}
+              >
                 <AlertTriangle size={14} color="#d32f2f" />
                 <Typography variant="caption" sx={{ fontWeight: 700, color: '#d32f2f' }}>
                   Limitações ({declaredLimitations.length})

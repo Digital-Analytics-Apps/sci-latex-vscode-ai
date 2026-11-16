@@ -1,14 +1,14 @@
-import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, Card, CardContent, Typography } from "@mui/material";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { ptBR } from "@mui/x-data-grid/locales";
-import React from "react";
+import AddIcon from '@mui/icons-material/Add';
+import { Box, Button, Card, CardContent, Typography } from '@mui/material';
+import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { ptBR } from '@mui/x-data-grid/locales';
+import React from 'react';
 import {
   createBoldColumn,
   createChipColumn,
   createDateColumn,
-} from "../../../components/common/dataGridColumns";
-import type { ProjectListItem } from "../../../types/project.types";
+} from '../../../components/common/dataGridColumns';
+import type { ProjectListItem } from '../../../types/project.types';
 
 interface InstitutionalProjectsSectionProps {
   allProjects: ProjectListItem[];
@@ -16,12 +16,10 @@ interface InstitutionalProjectsSectionProps {
   onOpenCreateProject: () => void;
 }
 
-function getSubmissionStatusColor(
-  status: string,
-): "success" | "info" | "warning" | "default" {
-  if (status === "COMPLETED_PUBLISHED") return "success";
-  if (status.includes("SUBMITTED")) return "info";
-  return "warning";
+function getSubmissionStatusColor(status: string): 'success' | 'info' | 'warning' | 'default' {
+  if (status === 'COMPLETED_PUBLISHED') return 'success';
+  if (status.includes('SUBMITTED')) return 'info';
+  return 'warning';
 }
 
 export const InstitutionalProjectsSection = ({
@@ -35,9 +33,9 @@ export const InstitutionalProjectsSection = ({
     return allProjects.map((p) => ({
       id: p.id,
       name: p.name,
-      coordinatorName: p.coordinator?.name || "Não atribuído",
-      submissionStatus: p.submissionStatus || "DRAFT",
-      targetConference: p.targetConferenceName || "Não definida",
+      coordinatorName: p.coordinator?.name || 'Não atribuído',
+      submissionStatus: p.submissionStatus || 'DRAFT',
+      targetConference: p.targetConferenceName || 'Não definida',
       targetDate: p.targetConferenceDate || null,
     }));
   }, [allProjects]);
@@ -46,53 +44,53 @@ export const InstitutionalProjectsSection = ({
   const projectColumns = React.useMemo<GridColDef[]>(
     () => [
       createBoldColumn({
-        field: "name",
-        headerName: "Título do Artigo Científico",
+        field: 'name',
+        headerName: 'Título do Artigo Científico',
         flex: 1.8,
         minWidth: 260,
       }),
       {
-        field: "coordinatorName",
-        headerName: "Coordenador",
+        field: 'coordinatorName',
+        headerName: 'Coordenador',
         flex: 1.2,
         minWidth: 180,
       },
       {
-        field: "targetConference",
-        headerName: "Congresso Alvo",
+        field: 'targetConference',
+        headerName: 'Congresso Alvo',
         flex: 1.2,
         minWidth: 160,
       },
       createChipColumn(
         {
-          field: "submissionStatus",
-          headerName: "Status de Governança",
+          field: 'submissionStatus',
+          headerName: 'Status de Governança',
           flex: 1.3,
           minWidth: 180,
         },
         (params) => ({
-          label: String(params.value || ""),
-          color: getSubmissionStatusColor(String(params.value || "")),
-        }),
+          label: String(params.value || ''),
+          color: getSubmissionStatusColor(String(params.value || '')),
+        })
       ),
       createDateColumn({
-        field: "targetDate",
-        headerName: "Data Limite Alvo",
+        field: 'targetDate',
+        headerName: 'Data Limite Alvo',
         flex: 1,
         minWidth: 140,
       }),
     ],
-    [],
+    []
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
           gap: 2,
         }}
       >
@@ -118,7 +116,7 @@ export const InstitutionalProjectsSection = ({
 
       <Card variant="outlined">
         <CardContent sx={{ p: 0 }}>
-          <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+          <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               Listagem Geral de Artigos Institucionais
             </Typography>
@@ -127,7 +125,7 @@ export const InstitutionalProjectsSection = ({
             </Typography>
           </Box>
 
-          <Box sx={{ height: 480, width: "100%" }}>
+          <Box sx={{ height: 480, width: '100%' }}>
             <DataGrid
               rows={projectRows}
               columns={projectColumns}
@@ -138,7 +136,7 @@ export const InstitutionalProjectsSection = ({
               }}
               localeText={ptBR.components.MuiDataGrid.defaultProps.localeText}
               disableRowSelectionOnClick
-              sx={{ border: "none" }}
+              sx={{ border: 'none' }}
             />
           </Box>
         </CardContent>

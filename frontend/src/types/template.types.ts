@@ -21,4 +21,6 @@ export interface UploadTemplateInput {
   name?: string;
   description?: string;
   targetConference?: string;
+  year?: string;
+  templateType?: string;
 }

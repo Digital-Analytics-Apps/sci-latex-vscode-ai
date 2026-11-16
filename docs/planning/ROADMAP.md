@@ -157,4 +157,40 @@
 
 ---
 
+## 🟢 Fase 11: Governança de Templates LaTeX Oficiais, MinIO & Bootstrap Mínimo (ADR-017)
+
+- [x] **11.1 Decisão Arquitetural Aprovada (ADR-017)**
+  - Formalização de governança para templates de conferências e periódicos científicos em [`docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md).
+  - Regra de ouro: preservação incondicional dos nomes de arquivos originais (`.cls`, `.sty`, `.bst`, `.tex` raiz sem forçar `main.tex`).
+  - Padrão semântico de slugs e paths no MinIO: `[ANO]-[CONGRESSO]-[FORMATO]` (ex: `2026-sbc-artigo`, `2027-ieee-conference`).
+  - Política de repositório leve: apenas 1 baseline seed essencial em `latex-templates/` para subir a aplicação pronta para uso, deixando a expansão para uploads pós-deploy pelos pesquisadores.
+- [x] **11.2 Limpeza de Mocks Falsos no Backend & MinIO**
+  - Expurgar o array `SYSTEM_TEMPLATES` e strings TeX hardcoded em `templates.service.ts`.
+  - Remover execução em tempo de execução de `ensureSystemTemplates` em rotas de listagem (`listTemplates`).
+  - Deletar templates fictícios legados no banco de dados e no MinIO.
+- [x] **11.3 Baseline Seed Dinâmico a partir de `latex-templates/`**
+  - Refatorar o `seed.ts` para ler os pacotes `.zip` reais da pasta `latex-templates/`, extrair metadados e persistir intactos no MinIO (`templates/{slug}/bundle.zip`) e PostgreSQL.
+- [x] **11.4 Propagação do `mainEntryPath` no Compilador TeXLive e Editor Colaborativo**
+  - Ajustar `projects.service.ts`, `documents.service.ts`, `documents.websocket.ts` e o frontend para operar dinamicamente com base no `mainEntryPath` original do template sem forçar `main.tex` nem fallbacks mascaradores de erro.
+
+---
+
+## 🟢 Fase 12: AIOps Copilot, Servidores MCP e Diagnóstico de Causa-Raiz (ADR-018)
+
+- [x] **12.1 Decisão Arquitetural e Especificação Técnica (ADR-018 & Spec)**
+  - Formalização do ecossistema AIOps em [`docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md`](adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md) e especificação técnica em [`docs/planning/specs/aiops-copilot-implementation-plan.md`](specs/aiops-copilot-implementation-plan.md).
+- [x] **12.2 Modelagem de Dados no Prisma e PostgreSQL (`Aiops*`)**
+  - Criação das entidades `AiopsIncident`, `AiopsRcaReport`, `AiopsChatMessage` e `AiopsActionAuditLedger` no `backend/prisma/schema.prisma` com migração aplicada no PostgreSQL.
+- [x] **12.3 MCP Gateway Service (`backend/src/infra/mcp/`)**
+  - Implementação do `McpGatewayService` integrando de forma tipada e segura os servidores MCP de Kubernetes, Prometheus, Loki, GlitchTip e Opik (LLMOps).
+- [x] **12.4 Regras de Negócio, Motor RCA e Auditoria Imutável (Fastify BFF)**
+  - Criação do `AiopsService` com matriz determinística de classificação (Infraestrutura vs. Aplicação vs. Mista) e `ActionAuditService` com Allowlist segura e execução Human-in-the-Loop.
+  - Exposição das rotas `/api/v1/admin/aiops/*` protegidas por `Role.ADMIN`.
+- [x] **12.5 Frontend React no SCIA Admin Center (`/admin`)**
+  - Implementação de tipos estritos (`aiops.types.ts`), serviço Axios (`aiopsApi.ts`), custom hooks com TanStack Query (`useAIOps.ts`), card de aprovação (`AIOpsActionCard.tsx`), drawer interativo (`AIOpsChatDrawer.tsx`) e botões de atalho em `InfrastructureTab.tsx` e `AdminCenterPage.tsx`. Estritamente sem `React.FC` e com named exports.
+- [x] **12.6 Testes Automatizados e Homologação**
+  - 4 novos testes unitários do backend aprovados (76/76 total), 1 novo teste de componente no frontend aprovado (6/6 total) e 0 erros de compilação TypeScript/Vite.
+
+---
+
 *Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*

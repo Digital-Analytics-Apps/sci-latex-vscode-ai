@@ -1,7 +1,7 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import HighlightOffIcon from "@mui/icons-material/HighlightOff";
-import SendIcon from "@mui/icons-material/Send";
+import { zodResolver } from '@hookform/resolvers/zod';
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import SendIcon from '@mui/icons-material/Send';
 import {
   Box,
   FormControl,
@@ -14,37 +14,35 @@ import {
   Tabs,
   TextField,
   Typography,
-} from "@mui/material";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../components/common/StandardModal";
+} from '@mui/material';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../components/common/StandardModal';
 import {
   type DOIFormData,
   doiSchema,
   type RejectionDecisionFormData,
   rejectionDecisionSchema,
-} from "../../schemas/post-submission.schema";
-import { showNotification } from "../../store/slices/notificationSlice";
+} from '../../schemas/post-submission.schema';
+import { showNotification } from '../../store/slices/notificationSlice';
 
 interface PostSubmissionModalProps {
   open: boolean;
   onClose: () => void;
   projectId?: string;
   projectTitle?: string;
-  initialStatus?: "ACCEPTED" | "REJECTED";
+  initialStatus?: 'ACCEPTED' | 'REJECTED';
 }
 
 export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
   open,
   onClose,
-  projectTitle = "Artigo Científico",
-  initialStatus = "ACCEPTED",
+  projectTitle = 'Artigo Científico',
+  initialStatus = 'ACCEPTED',
 }) => {
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState<"ACCEPTED" | "REJECTED">(
-    initialStatus,
-  );
+  const [activeTab, setActiveTab] = useState<'ACCEPTED' | 'REJECTED'>(initialStatus);
 
   // Form para Artigo Aceito (DOI / Publicação)
   const {
@@ -55,9 +53,9 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
   } = useForm<DOIFormData>({
     resolver: zodResolver(doiSchema),
     defaultValues: {
-      doi: "10.1109/SCI.2026.98765",
-      publicationUrl: "https://ieeexplore.ieee.org/document/example",
-      datasetUrl: "https://zenodo.org/record/example",
+      doi: '10.1109/SCI.2026.98765',
+      publicationUrl: 'https://ieeexplore.ieee.org/document/example',
+      datasetUrl: 'https://zenodo.org/record/example',
     },
   });
 
@@ -72,21 +70,21 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
   } = useForm<RejectionDecisionFormData>({
     resolver: zodResolver(rejectionDecisionSchema),
     defaultValues: {
-      decisionStrategy: "SUBMIT_BACKUP",
-      newConferenceName: "",
-      newConferenceDate: "",
+      decisionStrategy: 'SUBMIT_BACKUP',
+      newConferenceName: '',
+      newConferenceDate: '',
     },
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const selectedStrategy = watchRejection("decisionStrategy");
+  const selectedStrategy = watchRejection('decisionStrategy');
 
   const onSubmitDoi = (data: DOIFormData) => {
     dispatch(
       showNotification({
         message: `Artigo "${projectTitle}" registrado com DOI ${data.doi} e marca de Publicado com Sucesso!`,
-        severity: "success",
-      }),
+        severity: 'success',
+      })
     );
     resetDoi();
     onClose();
@@ -94,15 +92,15 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
 
   const onSubmitRejection = (data: RejectionDecisionFormData) => {
     const strategyLabel =
-      data.decisionStrategy === "SUBMIT_BACKUP"
-        ? "Submissão ao Congresso Backup Pré-Definido"
-        : `Redirecionamento para ${data.newConferenceName || "Novo Congresso Target"}`;
+      data.decisionStrategy === 'SUBMIT_BACKUP'
+        ? 'Submissão ao Congresso Backup Pré-Definido'
+        : `Redirecionamento para ${data.newConferenceName || 'Novo Congresso Target'}`;
 
     dispatch(
       showNotification({
         message: `Estratégia v2 gravada com sucesso: ${strategyLabel}!`,
-        severity: "info",
-      }),
+        severity: 'info',
+      })
     );
     resetRejection();
     onClose();
@@ -116,7 +114,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
       icon={<CheckCircleOutlinedIcon color="primary" />}
       title="Registro de Pós-Submissão & Resultado Final"
       subheader={
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Projeto: <strong>{projectTitle}</strong>
           </Typography>
@@ -141,15 +139,13 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
           </Tabs>
         </Box>
       }
-      formId={activeTab === "ACCEPTED" ? "doi-form" : "rejection-form"}
+      formId={activeTab === 'ACCEPTED' ? 'doi-form' : 'rejection-form'}
       confirmText={
-        activeTab === "ACCEPTED"
-          ? "Registrar DOI & Finalizar Artigo"
-          : "Confirmar Estratégia v2"
+        activeTab === 'ACCEPTED' ? 'Registrar DOI & Finalizar Artigo' : 'Confirmar Estratégia v2'
       }
-      confirmColor={activeTab === "ACCEPTED" ? "success" : "warning"}
+      confirmColor={activeTab === 'ACCEPTED' ? 'success' : 'warning'}
       confirmIcon={
-        activeTab === "ACCEPTED" ? (
+        activeTab === 'ACCEPTED' ? (
           <CheckCircleOutlinedIcon fontSize="small" />
         ) : (
           <SendIcon fontSize="small" />
@@ -157,17 +153,16 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
       }
       cancelText="Cancelar"
     >
-      {activeTab === "ACCEPTED" ? (
+      {activeTab === 'ACCEPTED' ? (
         <Box
           component="form"
           id="doi-form"
           onSubmit={handleSubmitDoi(onSubmitDoi)}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
         >
           <Typography variant="body2" color="text.secondary">
-            Parabéns! O artigo foi aceito pela banca do evento/periódico.
-            Preencha os identificadores persistentes para catalogação no
-            sistema.
+            Parabéns! O artigo foi aceito pela banca do evento/periódico. Preencha os
+            identificadores persistentes para catalogação no sistema.
           </Typography>
 
           <TextField
@@ -175,7 +170,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
             size="small"
             label="DOI do Artigo"
             placeholder="10.1109/SCI.2026.XXXXX"
-            {...registerDoi("doi")}
+            {...registerDoi('doi')}
             error={Boolean(doiErrors.doi)}
             helperText={doiErrors.doi?.message}
           />
@@ -185,7 +180,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
             size="small"
             label="URL da Publicação (IEEE / Springer / ACM / Evento)"
             placeholder="https://doi.org/..."
-            {...registerDoi("publicationUrl")}
+            {...registerDoi('publicationUrl')}
             error={Boolean(doiErrors.publicationUrl)}
             helperText={doiErrors.publicationUrl?.message}
           />
@@ -195,7 +190,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
             size="small"
             label="URL do Repository / Dataset (Zenodo, Figshare, GitHub)"
             placeholder="https://zenodo.org/..."
-            {...registerDoi("datasetUrl")}
+            {...registerDoi('datasetUrl')}
             error={Boolean(doiErrors.datasetUrl)}
             helperText={doiErrors.datasetUrl?.message}
           />
@@ -205,23 +200,23 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
           component="form"
           id="rejection-form"
           onSubmit={handleSubmitRejection(onSubmitRejection)}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
         >
           <Typography variant="body2" color="text.secondary">
-            Em caso de rejeição no congresso primário, selecione o fluxo de
-            contingência v2 definido pela equipe.
+            Em caso de rejeição no congresso primário, selecione o fluxo de contingência v2 definido
+            pela equipe.
           </Typography>
 
           <FormControl error={Boolean(rejectionErrors.decisionStrategy)}>
-            <FormLabel sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+            <FormLabel sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
               Estratégia de Redirecionamento
             </FormLabel>
             <RadioGroup
               value={selectedStrategy}
               onChange={(e) =>
                 setRejectionValue(
-                  "decisionStrategy",
-                  e.target.value as "SUBMIT_BACKUP" | "SUBMIT_NEW_TARGET",
+                  'decisionStrategy',
+                  e.target.value as 'SUBMIT_BACKUP' | 'SUBMIT_NEW_TARGET'
                 )
               }
             >
@@ -237,22 +232,20 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
               />
             </RadioGroup>
             {rejectionErrors.decisionStrategy && (
-              <FormHelperText>
-                {rejectionErrors.decisionStrategy.message}
-              </FormHelperText>
+              <FormHelperText>{rejectionErrors.decisionStrategy.message}</FormHelperText>
             )}
           </FormControl>
 
-          {selectedStrategy === "SUBMIT_NEW_TARGET" && (
+          {selectedStrategy === 'SUBMIT_NEW_TARGET' && (
             <Box
               sx={{
-                display: "flex",
-                flexDirection: "column",
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 2,
                 pl: 3,
                 pt: 1,
-                borderLeft: "2px solid",
-                borderColor: "primary.main",
+                borderLeft: '2px solid',
+                borderColor: 'primary.main',
               }}
             >
               <TextField
@@ -260,7 +253,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
                 size="small"
                 label="Nome do Novo Congresso / Periódico Target"
                 placeholder="Ex: ACM SIGCOMM 2027"
-                {...registerRejection("newConferenceName")}
+                {...registerRejection('newConferenceName')}
               />
               <TextField
                 fullWidth
@@ -268,7 +261,7 @@ export const PostSubmissionModal: React.FC<PostSubmissionModalProps> = ({
                 type="date"
                 label="Nova Data Limite de Submissão"
                 slotProps={{ inputLabel: { shrink: true } }}
-                {...registerRejection("newConferenceDate")}
+                {...registerRejection('newConferenceDate')}
               />
             </Box>
           )}

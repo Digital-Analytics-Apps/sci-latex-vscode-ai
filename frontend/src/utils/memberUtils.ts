@@ -1,7 +1,7 @@
-import type { UserOption } from "../components/common/ReviewerSelector";
-import { Role } from "../constants/roles";
-import type { ProjectMember } from "../services/projectsService";
-import { colors } from "../theme";
+import type { UserOption } from '../components/common/ReviewerSelector';
+import { Role } from '../constants/roles';
+import type { ProjectMember } from '../services/projectsService';
+import { colors } from '../theme';
 
 export { Role };
 
@@ -39,14 +39,12 @@ const AVATAR_COLOR_PALETTE = [
  * Recebe o ID, email ou nome do usuário.
  * Retorna SEMPRE a mesma cor em qualquer artigo ou tela da aplicação para o mesmo usuário.
  */
-export function getMemberAvatarColor(
-  userOrId?: string | number | null,
-): string {
+export function getMemberAvatarColor(userOrId?: string | number | null): string {
   if (userOrId === undefined || userOrId === null) {
     return AVATAR_COLOR_PALETTE[0];
   }
 
-  if (typeof userOrId === "number") {
+  if (typeof userOrId === 'number') {
     const idx = Math.abs(Math.floor(userOrId)) % AVATAR_COLOR_PALETTE.length;
     return AVATAR_COLOR_PALETTE[idx];
   }
@@ -85,7 +83,7 @@ export function categorizeProjectMembers(members: ProjectMember[] = []): {
 
     allMembers.push(option);
 
-    const role = m.role || m.user?.role || "";
+    const role = m.role || m.user?.role || '';
     if (role === Role.REVIEWER) {
       reviewers.push(option);
     } else {

@@ -13,6 +13,7 @@ export interface CheckpointFlushData {
   version: number;
   expectedOldVersion?: number;
   ownerGeneration?: number;
+  mainEntryPath: string;
   mainContent: string;
   secondaryFiles?: Array<{ path: string; content: string }>;
   snapshot: DocumentSnapshot;
@@ -43,17 +44,32 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
-        files: { where: { path: 'main.tex' } },
+        template: true,
+        files: true,
       },
     });
 
     if (!project) return null;
 
-    const mainFile = project.files[0];
+    const mainEntryPath = project.template?.mainEntryPath;
+    if (!mainEntryPath) {
+      throw new Error(
+        `[DocumentIntegrityError] Projeto "${id}" não possui template associado ou 'mainEntryPath' não foi definido.`
+      );
+    }
+
+    const mainFile = project.files.find((f) => f.path === mainEntryPath);
+    if (!mainFile) {
+      throw new Error(
+        `[DocumentIntegrityError] Arquivo principal "${mainEntryPath}" definido no template "${project.template?.id}" não foi encontrado nos arquivos do projeto "${id}".`
+      );
+    }
+
     return {
       id: project.id,
       title: project.name,
-      content: mainFile?.content || '',
+      content: mainFile.content || '',
+      mainEntryPath,
       version: project.currentVersion,
       ownerGeneration: project.ownerGeneration,
       updatedAt: project.updatedAt.toISOString(),
@@ -64,26 +80,48 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
     const projects = await prisma.project.findMany({
       where: { deletedAt: null },
       include: {
-        files: { where: { path: 'main.tex' } },
+        template: true,
+        files: true,
       },
       orderBy: { updatedAt: 'desc' },
     });
 
-    return projects.map((p) => ({
-      id: p.id,
-      title: p.name,
-      content: p.files[0]?.content || '',
-      version: p.currentVersion,
-      updatedAt: p.updatedAt.toISOString(),
-    }));
+    return projects.map((p) => {
+      const mainEntryPath = p.template?.mainEntryPath;
+      if (!mainEntryPath) {
+        throw new Error(
+          `[DocumentIntegrityError] Projeto "${p.id}" não possui template associado ou 'mainEntryPath' não foi definido.`
+        );
+      }
+      const mainFile = p.files.find((f) => f.path === mainEntryPath);
+      if (!mainFile) {
+        throw new Error(
+          `[DocumentIntegrityError] Arquivo principal "${mainEntryPath}" definido no template "${p.template?.id}" não foi encontrado nos arquivos do projeto "${p.id}".`
+        );
+      }
+      return {
+        id: p.id,
+        title: p.name,
+        content: mainFile.content || '',
+        mainEntryPath,
+        version: p.currentVersion,
+        updatedAt: p.updatedAt.toISOString(),
+      };
+    });
   }
 
   async create(doc: Document): Promise<Document> {
+    if (!doc.mainEntryPath) {
+      throw new Error(
+        `[DocumentIntegrityError] Tentativa de persistir documento "${doc.id}" sem 'mainEntryPath' definido.`
+      );
+    }
+
     await prisma.projectFile.upsert({
-      where: { projectId_path: { projectId: doc.id, path: 'main.tex' } },
+      where: { projectId_path: { projectId: doc.id, path: doc.mainEntryPath } },
       create: {
         projectId: doc.id,
-        path: 'main.tex',
+        path: doc.mainEntryPath,
         fileType: 'text',
         mimeType: 'text/x-tex',
         sizeBytes: BigInt(Buffer.byteLength(doc.content, 'utf-8')),
@@ -99,16 +137,32 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
   }
 
   async updateContent(id: string, content: string, version: number): Promise<Document> {
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: { template: true },
+    });
+
+    if (!project) {
+      throw new Error(`[DocumentIntegrityError] Projeto "${id}" não encontrado para atualização.`);
+    }
+
+    const mainEntryPath = project.template?.mainEntryPath;
+    if (!mainEntryPath) {
+      throw new Error(
+        `[DocumentIntegrityError] Projeto "${id}" não possui template associado ou 'mainEntryPath' não foi definido.`
+      );
+    }
+
     await prisma.$transaction([
       prisma.project.update({
         where: { id },
         data: { currentVersion: version },
       }),
       prisma.projectFile.upsert({
-        where: { projectId_path: { projectId: id, path: 'main.tex' } },
+        where: { projectId_path: { projectId: id, path: mainEntryPath } },
         create: {
           projectId: id,
-          path: 'main.tex',
+          path: mainEntryPath,
           fileType: 'text',
           mimeType: 'text/x-tex',
           sizeBytes: BigInt(Buffer.byteLength(content, 'utf-8')),
@@ -121,13 +175,13 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       }),
     ]);
 
-    const project = await prisma.project.findUnique({ where: { id } });
     return {
       id,
-      title: project?.name || 'Artigo Científico',
+      title: project.name,
       content,
+      mainEntryPath,
       version,
-      updatedAt: project?.updatedAt.toISOString() || new Date().toISOString(),
+      updatedAt: project.updatedAt.toISOString(),
     };
   }
 
@@ -178,12 +232,17 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
             : {}),
         },
       });
-      // 2. Atualiza arquivo principal (main.tex)
+      // 2. Atualiza arquivo principal usando mainEntryPath explícito (sem fallback)
+      if (!data.mainEntryPath) {
+        throw new Error(
+          `[CheckpointIntegrityError] Falha no checkpoint do documento "${documentId}": 'mainEntryPath' não foi fornecido.`
+        );
+      }
       await tx.projectFile.upsert({
-        where: { projectId_path: { projectId: documentId, path: 'main.tex' } },
+        where: { projectId_path: { projectId: documentId, path: data.mainEntryPath } },
         create: {
           projectId: documentId,
-          path: 'main.tex',
+          path: data.mainEntryPath,
           fileType: 'text',
           mimeType: 'text/x-tex',
           sizeBytes: BigInt(Buffer.byteLength(mainContent, 'utf-8')),
@@ -423,7 +482,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       create: {
         id: comment.id,
         projectId: comment.documentId,
-        file: comment.file || 'main.tex',
+        file: comment.file,
         from: comment.from,
         to: comment.to,
         selectedText: comment.selectedText,

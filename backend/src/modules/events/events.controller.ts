@@ -6,17 +6,10 @@ export class EventsController {
 
   async streamEvents(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub;
-    const {
-      projectId,
-      taskId,
-      mode: queryMode,
-    } = request.query as {
+    const { projectId, taskId } = request.query as {
       projectId?: string;
       taskId?: string;
-      mode?: string;
     };
-    const userRole = (request.user as any)?.role;
-    const effectiveMode = queryMode || (userRole === 'REVIEWER' ? 'review' : 'editor');
 
     // Configura cabeçalhos CORS e HTTP padrão para SSE (Server-Sent Events)
     const origin = (request.headers.origin as string) || '*';

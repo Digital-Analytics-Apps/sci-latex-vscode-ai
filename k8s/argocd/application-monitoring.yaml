@@ -1,0 +1,59 @@
+# ==============================================================================
+# MANIFESTO GITOPS: ArgoCD Application (Stack de Observabilidade)
+# Objetivo: Fazer o ArgoCD gerenciar o Chart Helm do Prometheus e Grafana
+# de forma 100% automatizada e declarativa via GitOps.
+# ==============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # Nome da aplicação no painel do ArgoCD
+  name: scia-monitoring-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: scia-monitoring-stack
+    app.kubernetes.io/part-of: sci-latex-stack
+  finalizers:
+    # Garante deleção ordenada em cascata se o recurso for removido
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  # --------------------------------------------------------------------------
+  # MÚLTIPLAS FONTES (Multi-Source Pattern):
+  # Aqui usamos um padrão avançado e elegante do ArgoCD:
+  # Fonte 1: O repositório público oficial do Helm do Prometheus.
+  # Fonte 2: O nosso repositório Git privado, de onde o ArgoCD pega o nosso
+  #          arquivo customizado 'values-kube-prometheus-stack.yaml'!
+  # --------------------------------------------------------------------------
+  sources:
+    # 1. Chart oficial do Prometheus na internet
+    - repoURL: 'https://prometheus-community.github.io/helm-charts'
+      chart: kube-prometheus-stack
+      targetRevision: 61.9.0
+      helm:
+        valueFiles:
+          # Lê o arquivo customizado referenciado pela tag '$values' da Fonte 2 abaixo
+          - '$values/k8s/monitoring/values-kube-prometheus-stack.yaml'
+
+    # 2. Nosso repositório Git local do SCIA contendo os arquivos de configuração
+    - repoURL: 'https://github.com/Digital-Analytics-Apps/sci-latex-vscode-ai.git'
+      targetRevision: dev
+      ref: values # Apelido usado acima em '$values'
+
+  # --------------------------------------------------------------------------
+  # DESTINO: Instala no namespace isolado 'monitoring'
+  # --------------------------------------------------------------------------
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: monitoring
+
+  # Sincronização automática via Git
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

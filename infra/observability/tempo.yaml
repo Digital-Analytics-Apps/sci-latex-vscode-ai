@@ -1,0 +1,26 @@
+# ==============================================================================
+# CONFIGURAÇÃO DO GRAFANA TEMPO (DISTRIBUTED TRACING ON-PREMISE)
+# ==============================================================================
+# O Tempo é um backend de rastreamento distribuído compatível com OpenTelemetry.
+# Ele recebe traces enviados pelo OTel Collector e armazena os blocos no disco local.
+# ==============================================================================
+
+server:
+  http_listen_port: 3200 # Porta HTTP para consultas do Grafana e checagem de saúde
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317 # Endpoint gRPC interno para receber traces do OTel Collector
+        http:
+          endpoint: 0.0.0.0:4318 # Endpoint HTTP interno para receber traces OTLP
+
+storage:
+  trace:
+    backend: local # Modo de persistência em sistema de arquivos local
+    wal:
+      path: /var/tempo/wal # Diretório de Write-Ahead Log para garantir resiliência
+    local:
+      path: /var/tempo/blocks # Diretório onde os blocos finais compactados são persistidos

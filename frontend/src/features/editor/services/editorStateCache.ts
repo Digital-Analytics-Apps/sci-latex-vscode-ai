@@ -14,13 +14,18 @@ class EditorStateCacheService {
   saveFileState(fileKey: string, state: EditorState): void {
     if (!fileKey) return;
     try {
-      const serialized = state.toJSON({ history: historyField }) as SerializedFileEditorState;
+      const serialized = state.toJSON({
+        history: historyField,
+      }) as SerializedFileEditorState;
       this.cache.set(fileKey, serialized);
     } catch {
       // Fallback seguro caso algum campo customizado não suporte toJSON
       this.cache.set(fileKey, {
         doc: state.doc.toString(),
-        selection: { anchor: state.selection.main.anchor, head: state.selection.main.head },
+        selection: {
+          anchor: state.selection.main.anchor,
+          head: state.selection.main.head,
+        },
       });
     }
   }

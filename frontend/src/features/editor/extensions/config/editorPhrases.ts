@@ -25,4 +25,5 @@ export const portuguesePhrases = {
   'No diagnostics': 'Nenhum erro encontrado',
 };
 
-export const editorPortuguesePhrasesExtension: Extension = EditorState.phrases.of(portuguesePhrases);
+export const editorPortuguesePhrasesExtension: Extension =
+  EditorState.phrases.of(portuguesePhrases);

@@ -1,16 +1,32 @@
+# ==============================================================================
+# MANIFESTO KUBERNETES: Backend Fastify Cluster (sci-latex-backend)
+# Este arquivo cria dois objetos fundamentais no Kubernetes:
+# 1. Deployment: Gerencia os pods, réplicas e ciclo de vida da aplicação Node.js.
+# 2. Service: Cria um endereço de rede estável e distribui o tráfego entre os pods.
+# ==============================================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  # Nome do Deployment no cluster
   name: sci-latex-backend
+  # Namespace onde o backend roda
   namespace: default
   labels:
     app: sci-latex-backend
 spec:
+  # Guarda no histórico no máximo 2 versões antigas de ReplicaSet (economiza memória do etcd)
   revisionHistoryLimit: 2
+
+  # Quantidade inicial de pods rodando em paralelo para alta disponibilidade
   replicas: 2
+
+  # Critério para saber quais pods pertencem a este Deployment
   selector:
     matchLabels:
       app: sci-latex-backend
+
+  # Modelo (template) usado para criar cada Pod
   template:
     metadata:
       labels:
@@ -18,11 +34,21 @@ spec:
     spec:
       containers:
         - name: backend
+          # Imagem Docker que contém o código compilado do backend Fastify
           image: sci-latex-backend:latest
+          # Não baixa a imagem da internet se ela já existir no nó local do Docker
           imagePullPolicy: IfNotPresent
+
+          # --------------------------------------------------------------------
+          # VARIÁVEIS SENSÍVEIS (Secrets):
+          # Injeta senhas do banco (DATABASE_URL), chaves JWT (JWT_SECRET)
+          # e credenciais do MinIO vindas do objeto Secret 'sci-latex-secret'.
+          # --------------------------------------------------------------------
           envFrom:
             - secretRef:
                 name: sci-latex-secret
+
+          # Variáveis de ambiente operacionais normais
           env:
             - name: PORT
               value: "3333"
@@ -40,28 +66,52 @@ spec:
               value: "http://localhost:9000"
             - name: COMPILER_URL
               value: "http://compiler:4000"
+
+            # ------------------------------------------------------------------
+            # DOWNWARD API: O pod descobre seu próprio nome no Kubernetes!
+            # O backend usa o nome único do pod (POD_ID) para registrar quem é
+            # o pod dono (Single-Writer Lease) de cada documento no Redis.
+            # ------------------------------------------------------------------
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+
+          # Porta interna exposta pelo container dentro do pod
           ports:
             - containerPort: 3333
               name: http
+
+          # --------------------------------------------------------------------
+          # RECURSOS (Requests e Limits):
+          # - requests: Garante que o pod só será agendado em um nó com essa folga.
+          # - limits: Teto máximo. Se o backend passar de 512Mi de RAM, ele é reiniciado
+          #           antes de derrubar outros serviços do servidor.
+          # --------------------------------------------------------------------
           resources:
             requests:
-              cpu: 100m
-              memory: 200Mi
+              cpu: 100m     # 0.1 núcleo de CPU
+              memory: 200Mi # 200 Megabytes de RAM
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 500m     # 0.5 núcleo de CPU
+              memory: 512Mi # 512 Megabytes de RAM
+
+          # --------------------------------------------------------------------
+          # SONDAS DE SAÚDE (Probes):
+          # --------------------------------------------------------------------
+          # 1. Readiness Probe: O pod está pronto para receber requisições dos usuários?
+          # O Kubernetes só manda tráfego depois que /health responder status 200 OK.
           readinessProbe:
             httpGet:
               path: /health
               port: 3333
-            initialDelaySeconds: 10
-            periodSeconds: 5
+            initialDelaySeconds: 10 # Espera 10s para o Node.js subir antes de testar
+            periodSeconds: 5        # Testa a cada 5 segundos
             timeoutSeconds: 5
-            failureThreshold: 5
+            failureThreshold: 5     # Falha 5 vezes seguidas antes de tirar do ar
+
+          # 2. Liveness Probe: O pod travou em loop infinito ou crashou?
+          # Se /health parar de responder, o Kubernetes MATA e recria o pod automaticamente!
           livenessProbe:
             httpGet:
               path: /health
@@ -71,6 +121,9 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 5
 ---
+# ==============================================================================
+# SERVICE: Ponto de Entrada de Rede do Backend
+# ==============================================================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -79,15 +132,25 @@ metadata:
   labels:
     app: sci-latex-backend
 spec:
+  # NodePort expõe a porta diretamente nos nós do cluster (ótimo para desenvolvimento/Kind)
   type: NodePort
+
+  # --------------------------------------------------------------------------
+  # AFINIDADE DE SESSÃO (Sticky Session para WebSockets):
+  # Garante que um mesmo usuário (mesmo IP) continue conectado no MESMO pod
+  # durante a edição colaborativa, mantendo a conexão WebSocket estável.
+  # --------------------------------------------------------------------------
   sessionAffinity: ClientIP
   sessionAffinityConfig:
     clientIP:
-      timeoutSeconds: 10800
+      timeoutSeconds: 10800 # Mantém afinidade por até 3 horas
+
+  # Redireciona para pods que possuam a label 'app: sci-latex-backend'
   selector:
     app: sci-latex-backend
+
   ports:
-    - port: 3333
-      targetPort: 3333
-      nodePort: 30080
+    - port: 3333        # Porta dentro do cluster Kubernetes
+      targetPort: 3333  # Porta onde o container Fastify escuta
+      nodePort: 30080   # Porta aberta na máquina física do host (localhost:30080)
       name: http-ws

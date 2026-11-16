@@ -1,19 +1,12 @@
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import {
-  Box,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-} from "@mui/material";
-import type { SyntheticEvent } from "react";
-import { useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import { MEMBER_ROLE_LABELS, Role } from "../../../constants/roles";
-import { useCreateUserMutation } from "../../../hooks/useUserQueries";
-import { showNotification } from "../../../store/slices/notificationSlice";
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { Box, FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material';
+import type { SyntheticEvent } from 'react';
+import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { MEMBER_ROLE_LABELS, Role } from '../../../constants/roles';
+import { useCreateUserMutation } from '../../../hooks/useUserQueries';
+import { showNotification } from '../../../store/slices/notificationSlice';
 
 interface CreateUserModalProps {
   open: boolean;
@@ -24,9 +17,9 @@ export const CreateUserModal = ({ open, onClose }: CreateUserModalProps) => {
   const dispatch = useDispatch();
   const createUserMutation = useCreateUserMutation();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<string>(Role.AUTHOR);
 
   const handleSubmit = async (e: SyntheticEvent) => {
@@ -44,21 +37,21 @@ export const CreateUserModal = ({ open, onClose }: CreateUserModalProps) => {
       dispatch(
         showNotification({
           message: `Membro "${name}" cadastrado com sucesso com a função ${MEMBER_ROLE_LABELS[role as keyof typeof MEMBER_ROLE_LABELS] || role}!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
 
-      setName("");
-      setEmail("");
-      setPassword("");
+      setName('');
+      setEmail('');
+      setPassword('');
       setRole(Role.AUTHOR);
       onClose();
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao cadastrar novo integrante.",
-          severity: "error",
-        }),
+          message: 'Erro ao cadastrar novo integrante.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -76,7 +69,7 @@ export const CreateUserModal = ({ open, onClose }: CreateUserModalProps) => {
       confirmColor="primary"
       isSubmitting={createUserMutation.isPending}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
         <TextField
           required
           fullWidth
@@ -114,12 +107,8 @@ export const CreateUserModal = ({ open, onClose }: CreateUserModalProps) => {
             onChange={(e) => setRole(e.target.value)}
           >
             <MenuItem value={Role.AUTHOR}>{MEMBER_ROLE_LABELS.AUTHOR}</MenuItem>
-            <MenuItem value={Role.COORDINATOR}>
-              {MEMBER_ROLE_LABELS.COORDINATOR}
-            </MenuItem>
-            <MenuItem value={Role.MANAGER}>
-              {MEMBER_ROLE_LABELS.MANAGER}
-            </MenuItem>
+            <MenuItem value={Role.COORDINATOR}>{MEMBER_ROLE_LABELS.COORDINATOR}</MenuItem>
+            <MenuItem value={Role.MANAGER}>{MEMBER_ROLE_LABELS.MANAGER}</MenuItem>
           </Select>
         </FormControl>
       </Box>

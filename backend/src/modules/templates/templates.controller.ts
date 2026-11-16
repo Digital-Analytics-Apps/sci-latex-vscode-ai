@@ -50,12 +50,16 @@ export class TemplatesController {
     const name = fields.name?.value || data.filename.replace(/\.zip$/i, '');
     const description = fields.description?.value;
     const targetConference = fields.targetConference?.value;
+    const year = fields.year?.value;
+    const templateType = fields.templateType?.value;
 
     try {
       const template = await this.templatesService.uploadCustomTemplate(userId, {
         name,
         description,
         targetConference,
+        year,
+        templateType,
         zipBuffer: buffer,
       });
 

@@ -62,19 +62,30 @@ flowchart TD
 
 ## 2. Estrutura de Pastas de Infraestrutura
 
+Cada subdiretório possui seu próprio arquivo **`README.md`** detalhado e didático explicando o propósito e funcionamento de cada arquivo:
+
 ```
 k8s/
-├── argocd/
-│   └── application.yaml       # CRD Application do ArgoCD (conecta Git ao Cluster)
-├── kind/
-│   └── kind-config.yaml       # Configuração do nó do cluster KinD e mapeamento de portas
-├── manifests/
-│   ├── backend-cluster.yaml   # Deployment e Service NodePort (porta 30080) da API Fastify
-│   ├── compiler.yaml          # Deployment e Service ClusterIP (porta 4000) do TeX Live
-│   ├── frontend.yaml          # Deployment e Service ClusterIP (porta 80) do Nginx
-│   ├── hpa.yaml               # Autoscaling horizontal dinâmico para Backend e Compiler
-│   └── secret.example.yaml    # Modelo declarativo de segredos (NÃO contém dados reais)
-└── README.md                  # Este guia
+├── argocd/                         # Automação de deploy contínuo GitOps
+│   ├── README.md                   # Guia didático do ArgoCD e GitOps
+│   ├── application.yaml            # Sincronização dos microsserviços de negócio (namespace 'default')
+│   └── application-monitoring.yaml # Sincronização da stack de observabilidade (namespace 'monitoring')
+├── kind/                           # Cluster Kubernetes local simulado no Docker
+│   ├── README.md                   # Guia passo a passo de como criar/destruir o cluster KinD
+│   └── kind-config.yaml            # Configuração do nó e mapeamento de portas (80, 443, 30080)
+├── manifests/                      # Recursos Kubernetes dos microsserviços da aplicação
+│   ├── README.md                   # Guia detalhado de cada serviço e comandos kubectl
+│   ├── backend-cluster.yaml        # Deployment e Service NodePort (:30080) da API Fastify
+│   ├── compiler.yaml               # Deployment e Service ClusterIP (:4000) do Compilador LaTeX
+│   ├── frontend.yaml               # Deployment e Service ClusterIP (:80) do SPA React / Nginx
+│   ├── hpa.yaml                    # Escalonamento automático dinâmico por CPU e RAM
+│   └── secret.example.yaml         # Template de segredos sensíveis fora do Git
+├── monitoring/                     # Governança de observabilidade, métricas e segurança cross-namespace
+│   ├── README.md                   # Guia completo de Helm, ServiceMonitors e NetworkPolicies
+│   ├── values-kube-prometheus-stack.yaml # Customização do Helm Chart do Prometheus + Grafana
+│   ├── service-monitors.yaml       # CRDs ensinando o Prometheus a raspar os serviços do SCIA
+│   └── network-policy-monitoring.yaml    # Firewall Zero-Trust liberando /metrics apenas para o monitoring
+└── README.md                       # Este guia mestre
 ```
 
 ---

@@ -1,14 +1,14 @@
 import { prisma } from '../../db/prisma';
 import { env } from '../../config/env';
-import { redisService, POD_ID } from '../../infra/redis/redis.service';
+import { POD_ID, redisService } from '../../infra/redis/redis.service';
 import { defaultDocumentsService } from '../documents/documents.service';
 import { getLiveWebSocketStats } from '../documents/documents.websocket';
 import {
+  AdminActivityResponse,
+  AdminCollaborationResponse,
+  AdminInfrastructureResponse,
   AdminOverviewResponse,
   AdminWorkflowResponse,
-  AdminInfrastructureResponse,
-  AdminCollaborationResponse,
-  AdminActivityResponse,
 } from './admin.schemas';
 
 export class AdminService {
@@ -48,8 +48,8 @@ export class AdminService {
       // Variação proporcional baseada em atividade real
       hourlyActivity.push({
         hour: hourLabel,
-        requestsCount: 40 + (activeProjectsCount * 3) + ((7 - i) * 8),
-        collaborativeOpsCount: wsStats.connectedSocketsCount * 12 + ((7 - i) * 5),
+        requestsCount: 40 + activeProjectsCount * 3 + (7 - i) * 8,
+        collaborativeOpsCount: wsStats.connectedSocketsCount * 12 + (7 - i) * 5,
       });
     }
 
@@ -165,8 +165,18 @@ export class AdminService {
       compilerStatus = 'DOWN';
     }
 
-    const memUsage = process.memoryUsage();
-    const heapUsedMb = Math.round(memUsage.heapUsed / 1024 / 1024);
+    let postgresConns = 8;
+    let postgresStatus: 'UP' | 'DEGRADED' | 'DOWN' = 'UP';
+    try {
+      const activeRows = await this.db.$queryRaw<Array<{ count: bigint }>>`
+        SELECT count(*) as count FROM pg_stat_activity WHERE state = 'active'
+      `;
+      if (activeRows && activeRows.length > 0) {
+        postgresConns = Number(activeRows[0].count);
+      }
+    } catch {
+      postgresStatus = 'DOWN';
+    }
 
     return {
       services: {
@@ -176,14 +186,14 @@ export class AdminService {
           latencyP95Ms: 14.2,
           errorRate5xx: 0.05,
           eventLoopLagMs: 1.8,
-          grafanaUrl: 'http://localhost:3001/d/grafana-fastify-app',
+          grafanaUrl: `${env.GRAFANA_URL}/d/grafana-fastify-app`,
         },
         aiService: {
           status: aiServiceStatus,
           avgTtftMs: 680,
           activeSseStreams: 3,
           monthlyEstimatedCostUsd: 18.45,
-          opikUrl: 'http://localhost:5174',
+          opikUrl: env.OPIK_UI_URL,
         },
         compiler: {
           status: compilerStatus,
@@ -191,11 +201,11 @@ export class AdminService {
           activeJobs: 1,
           avgDurationMs: 1850,
           timeoutsLast24h: 0,
-          grafanaUrl: 'http://localhost:3001/d/compiler-metrics',
+          grafanaUrl: `${env.GRAFANA_URL}/d/compiler-metrics`,
         },
         postgres: {
-          status: 'UP',
-          activeConnections: 8,
+          status: postgresStatus,
+          activeConnections: postgresConns,
           maxConnections: 100,
           slowQueriesCount: 0,
         },
@@ -224,7 +234,8 @@ export class AdminService {
     return {
       activeDocumentsCount: Math.max(wsStats.activeRoomsCount, memoryStats.activeDocumentsCount),
       connectedUsersCount: wsStats.connectedSocketsCount,
-      otOperationsPerSecond: wsStats.connectedSocketsCount > 0 ? wsStats.connectedSocketsCount * 4.2 : 0,
+      otOperationsPerSecond:
+        wsStats.connectedSocketsCount > 0 ? wsStats.connectedSocketsCount * 4.2 : 0,
       avgMemoryProcessingMs: 1.4, // Latência em RAM (< 2ms)
       pendingCheckpointsCount: memoryStats.pendingCheckpointsCount,
       reconnectsLastHourCount: 2,
@@ -257,13 +268,25 @@ export class AdminService {
       const actionUpper = log.action.toUpperCase();
       if (actionUpper.includes('COMPIL') || actionUpper.includes('LATEX')) {
         category = 'COMPILER';
-      } else if (actionUpper.includes('WS') || actionUpper.includes('COLLAB') || actionUpper.includes('EDIT')) {
+      } else if (
+        actionUpper.includes('WS') ||
+        actionUpper.includes('COLLAB') ||
+        actionUpper.includes('EDIT')
+      ) {
         category = 'COLLABORATION';
-      } else if (actionUpper.includes('AUTH') || actionUpper.includes('LOGIN') || actionUpper.includes('TOKEN')) {
+      } else if (
+        actionUpper.includes('AUTH') ||
+        actionUpper.includes('LOGIN') ||
+        actionUpper.includes('TOKEN')
+      ) {
         category = 'SECURITY';
       }
 
-      if (actionUpper.includes('FAIL') || actionUpper.includes('ERROR') || actionUpper.includes('TIMEOUT')) {
+      if (
+        actionUpper.includes('FAIL') ||
+        actionUpper.includes('ERROR') ||
+        actionUpper.includes('TIMEOUT')
+      ) {
         severity = 'ERROR';
       } else if (actionUpper.includes('WARN') || actionUpper.includes('REJECT')) {
         severity = 'WARNING';

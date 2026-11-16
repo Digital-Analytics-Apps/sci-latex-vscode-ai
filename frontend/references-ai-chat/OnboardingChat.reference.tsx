@@ -1,23 +1,23 @@
-import { Send, AutoAwesome, ArrowBack } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, Send } from '@mui/icons-material';
 import {
   Box,
   Button,
+  Fade,
   IconButton,
   List,
   ListItem,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
-  Select,
-  MenuItem,
-  Fade,
 } from '@mui/material';
 import { TuneRounded } from '@mui/icons-material';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
-import { sendMessage, resumeMessage, type InterruptActionRequest, onboardingApi } from '../onboardingApi';
+import { type InterruptActionRequest, onboardingApi, resumeMessage, sendMessage } from '../onboardingApi';
 
 
 export default function OnboardingChat() {

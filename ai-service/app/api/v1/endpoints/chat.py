@@ -10,6 +10,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from app.agents.sub_agents.supervisor import get_onboarding_supervisor
 from app.streaming.stream_processor import StreamProcessor
 from app.core.config import settings
+from app.core.opik_tracer import get_correlated_opik_tracer
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -34,11 +35,24 @@ class ChatResumeRequest(BaseModel):
 
 
 @router.post("/chat/stream")
-async def chat_stream_endpoint(request: ChatStreamRequest):
+async def chat_stream_endpoint(
+    request: ChatStreamRequest,
+    traceparent: Optional[str] = Header(None),
+):
     """
     Endpoint de streaming SSE para interação conversacional com o Onboarding.
     """
-    config = {"configurable": {"thread_id": request.conversation_id}}
+    article_id = request.context.get("article_id") if request.context else None
+    tracer = get_correlated_opik_tracer(
+        conversation_id=request.conversation_id,
+        article_id=article_id,
+        otel_trace_id=traceparent,
+    )
+    callbacks = [tracer] if tracer else []
+    config = {
+        "configurable": {"thread_id": request.conversation_id},
+        "callbacks": callbacks,
+    }
 
     async def event_generator():
         try:
@@ -62,6 +76,12 @@ async def chat_stream_endpoint(request: ChatStreamRequest):
         except Exception as e:
             logger.exception("Erro no streaming do chat")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            if tracer and hasattr(tracer, "flush"):
+                try:
+                    tracer.flush()
+                except Exception as flush_err:
+                    logger.warning(f"[Opik] Erro ao descarregar buffer (fail-open): {flush_err}")
 
     return StreamingResponse(
         event_generator(),
@@ -75,12 +95,23 @@ async def chat_stream_endpoint(request: ChatStreamRequest):
 
 
 @router.post("/chat/resume")
-async def chat_resume_endpoint(request: ChatResumeRequest):
+async def chat_resume_endpoint(
+    request: ChatResumeRequest,
+    traceparent: Optional[str] = Header(None),
+):
     """
     Retoma o grafo a partir de uma interrupção (Human-in-the-Loop),
     passando as escolhas do autor (ex: artigos selecionados, aprovação do cronograma).
     """
-    config = {"configurable": {"thread_id": request.conversation_id}}
+    tracer = get_correlated_opik_tracer(
+        conversation_id=request.conversation_id,
+        otel_trace_id=traceparent,
+    )
+    callbacks = [tracer] if tracer else []
+    config = {
+        "configurable": {"thread_id": request.conversation_id},
+        "callbacks": callbacks,
+    }
 
     async def resume_generator():
         try:
@@ -98,6 +129,12 @@ async def chat_resume_endpoint(request: ChatResumeRequest):
         except Exception as e:
             logger.exception("Erro na retomada do grafo")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            if tracer and hasattr(tracer, "flush"):
+                try:
+                    tracer.flush()
+                except Exception as flush_err:
+                    logger.warning(f"[Opik] Erro ao descarregar buffer (fail-open): {flush_err}")
 
     return StreamingResponse(
         resume_generator(),

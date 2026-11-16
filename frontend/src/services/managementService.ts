@@ -2,18 +2,18 @@ import type {
   AcademicPeriod,
   ManagerDashboardData,
   ManagerMetrics,
-} from "../types/academic-period.types";
-import { api } from "./api";
+} from '../types/academic-period.types';
+import { api } from './api';
 
 export type {
   AcademicPeriod,
   ManagerDashboardData,
   ManagerMetrics,
-} from "../types/academic-period.types";
+} from '../types/academic-period.types';
 
-const ACADEMIC_PERIODS_URL = "/academic-periods";
-const DASHBOARD_MANAGER_URL = "/dashboard/manager";
-const TASKS_URL = "/tasks";
+const ACADEMIC_PERIODS_URL = '/academic-periods';
+const DASHBOARD_MANAGER_URL = '/dashboard/manager';
+const TASKS_URL = '/tasks';
 
 export const managementService = {
   // Buscar a lista de Períodos Acadêmicos (ex: Ciclo 2026/2027)
@@ -35,7 +35,6 @@ export const managementService = {
     const response = await api.post(ACADEMIC_PERIODS_URL, data);
     return response.data.academicPeriod || response.data;
   },
-
 
   // Buscar o dashboard consolidado do Gerente no backend (Prisma)
   async getManagerDashboard(filters?: {

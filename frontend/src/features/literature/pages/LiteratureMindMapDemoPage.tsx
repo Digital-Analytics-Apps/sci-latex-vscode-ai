@@ -1,9 +1,9 @@
 import React from 'react';
-import { Box, Container, Typography, Button, Breadcrumbs, Link, Chip } from '@mui/material';
+import { Box, Breadcrumbs, Button, Chip, Container, Link, Typography } from '@mui/material';
 import { ArrowLeft, Brain } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LiteratureMindMap } from '../components/LiteratureMindMap';
-import type { LiteratureNode, LiteratureEdge } from '../types';
+import type { LiteratureEdge, LiteratureNode } from '../types';
 
 export const LiteratureMindMapDemoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -269,7 +269,15 @@ export const LiteratureMindMapDemoPage: React.FC = () => {
           <Typography color="text.primary">Literature Intelligence</Typography>
         </Breadcrumbs>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
               <Brain size={30} color="#1976d2" />
@@ -285,7 +293,8 @@ export const LiteratureMindMapDemoPage: React.FC = () => {
               />
             </Box>
             <Typography variant="body2" color="text.secondary">
-              Visualização interativa de relações conceituais, pontos fortes, limitações e cobertura do seu artigo LaTeX.
+              Visualização interativa de relações conceituais, pontos fortes, limitações e cobertura
+              do seu artigo LaTeX.
             </Typography>
           </Box>
 

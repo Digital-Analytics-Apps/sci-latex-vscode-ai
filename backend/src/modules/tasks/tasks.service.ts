@@ -1,14 +1,7 @@
-import { exec } from 'node:child_process';
-import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { promisify } from 'node:util';
 import { TaskStatus } from '@prisma/client';
-import { env } from '../../config/env';
 import { prisma } from '../../db/prisma';
 import { ITasksRepository, PrismaTasksRepository } from '../../repositories/tasks.repository';
 import { eventsManager } from '../events/events.manager';
-const execAsync = promisify(exec);
 
 export interface CreateTaskDTO {
   projectId: string;

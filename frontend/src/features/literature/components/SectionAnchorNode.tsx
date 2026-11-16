@@ -1,6 +1,6 @@
 import React from 'react';
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
+import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { Box, Card, CardContent, Chip, Typography } from '@mui/material';
 import { FileText } from 'lucide-react';
 import type { SectionAnchorNodeData } from '../types';
 
@@ -13,11 +13,23 @@ export const SectionAnchorNode: React.FC<NodeProps<Node<SectionAnchorNodeData>>>
   const getStatusConfig = () => {
     switch (coverageStatus) {
       case 'well_covered':
-        return { label: 'Bem Coberta', color: '#2e7d32', bg: 'rgba(46, 125, 50, 0.1)' };
+        return {
+          label: 'Bem Coberta',
+          color: '#2e7d32',
+          bg: 'rgba(46, 125, 50, 0.1)',
+        };
       case 'partial':
-        return { label: 'Parcial', color: '#ed6c02', bg: 'rgba(237, 108, 2, 0.1)' };
+        return {
+          label: 'Parcial',
+          color: '#ed6c02',
+          bg: 'rgba(237, 108, 2, 0.1)',
+        };
       case 'insufficient':
-        return { label: 'Evidência Insuficiente', color: '#d32f2f', bg: 'rgba(211, 47, 47, 0.1)' };
+        return {
+          label: 'Evidência Insuficiente',
+          color: '#d32f2f',
+          bg: 'rgba(211, 47, 47, 0.1)',
+        };
     }
   };
 
@@ -68,7 +80,13 @@ export const SectionAnchorNode: React.FC<NodeProps<Node<SectionAnchorNodeData>>>
             {sectionTitle}
           </Typography>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             <Chip
               label={status.label}
               size="small"

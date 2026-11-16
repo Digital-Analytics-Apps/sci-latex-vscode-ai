@@ -14,6 +14,7 @@ export interface CreateTemplateData {
 
 export interface ITemplatesRepository {
   create(data: CreateTemplateData): Promise<LatexTemplate>;
+  upsert(data: CreateTemplateData & { id: string }): Promise<LatexTemplate>;
   findAll(userId?: string): Promise<LatexTemplate[]>;
   findById(id: string): Promise<LatexTemplate | null>;
   findByName(name: string): Promise<LatexTemplate | null>;
@@ -21,6 +22,30 @@ export interface ITemplatesRepository {
 }
 
 export class PrismaTemplatesRepository implements ITemplatesRepository {
+  async upsert(data: CreateTemplateData & { id: string }): Promise<LatexTemplate> {
+    return prisma.latexTemplate.upsert({
+      where: { id: data.id },
+      create: {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        targetConference: data.targetConference,
+        storageKey: data.storageKey,
+        mainEntryPath: data.mainEntryPath ?? 'main.tex',
+        isSystem: data.isSystem ?? false,
+        uploadedById: data.uploadedById,
+      },
+      update: {
+        name: data.name,
+        description: data.description,
+        targetConference: data.targetConference,
+        storageKey: data.storageKey,
+        mainEntryPath: data.mainEntryPath ?? 'main.tex',
+        isSystem: data.isSystem ?? false,
+      },
+    });
+  }
+
   async create(data: CreateTemplateData): Promise<LatexTemplate> {
     return prisma.latexTemplate.create({
       data: {

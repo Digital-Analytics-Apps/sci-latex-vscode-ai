@@ -1,8 +1,27 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 13 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **SCIA Literature Intelligence, Paper Analysis e ADR-016 Formalizados e Integrados.** Skill científica importada, subagente `methodology-reviewer` com saída estruturada Pydantic implementado no `ai-service`, endpoints FastAPI operacionais com 10/10 testes passando, homologação jurídica do React Flow (`@xyflow/react`) sob licença MIT livre e documentação arquitetural consolidada (ADR-016 e `literature-intelligence-spec.md`).
+**Última Atualização:** 15 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **AIOps Copilot com Multi-Agent Hierárquico (SRE Supervisor + 6 Especialistas MCP), Autenticação M2M JWT (ADR-012) e Skills Modulares de Kubernetes & PostgreSQL (ADR-015/018) Concluídos.**
+- **Evolução Arquitetural Aprovada e Implementada (ADR-018 & ADR-012 & ADR-015):** 
+  1. **Separação Estrita de Domínios:** O domínio SRE/AIOps está 100% isolado do domínio científico da plataforma (Belisa e agentes acadêmicos). Código hospedado em `ai-service/app/agents/aiops/` com ferramentas e especialistas dedicados.
+  2. **Topologia Hierárquica de Especialistas (Substituição de Regex por Tool Calling):** 
+     - SRE Supervisor Agent orquestrando 6 Especialistas Operacionais: Kubernetes/Containers, Loki (Logs), Prometheus (Métricas), GlitchTip (Exceções), Opik (LLMOps) e PostgreSQL/PgBouncer.
+     - **Provisionamento e Telemetria do PgBouncer (ADR-015):** Contêiner `sci_latex_pgbouncer` provisionado na porta `6543` em modo `transaction pooling` com monitoramento via console administrativa (`SHOW POOLS;`, `SHOW STATS;`).
+     - **Ferramentas MCP de Banco:** `postgres_inspect_health`, `postgres_check_slow_queries_and_locks` e `pgbouncer_inspect_pools`.
+     - **Skill Modular Oficial PostgreSQL & PgBouncer:** 25 arquivos modulares estruturados em `references/`, `diagnostics/`, `workflows/`, `sql/` e `schemas/` com limiares de SLA (Cache Hit Ratio >= 99%, `cl_waiting == 0`, detecção de `idle in transaction`, contenção de locks).
+     - Integração com o Servidor MCP oficial do Opik (`mcp==2.3.0`, `opik-mcp`) e as Skills oficiais (`.agents/skills/opik*`).
+     - **Skills de Runtime Autocontidas com Lazy Loading:** Estruturadas em `ai-service/app/agents/aiops/skills/` com carregador `loader.py` memoizado (`@lru_cache`) que suporta carregamento pontual por subtópico (`read_operational_skill(skill_name, topic)`), prevenindo sobrecarga de contexto na LLM.
+     - **Skill Modular Oficial de Operações Kubernetes:** 19 arquivos modulares com base na documentação oficial (`kubernetes.io/docs/home/`), com playbooks de `crashloopbackoff.md`, `oomkilled.md`, `pending-and-scheduling.md`, `probe-failures.md`, `node-pressure-and-eviction.md` e `image-pull-errors.md`.
+  3. **Autenticação Machine-to-Machine Criptográfica via JWT (ADR-012):**
+     - O Fastify emite tokens JWT assinados (`type: 'SERVICE'`, `sub: 'service:aiops'`, `scopes: ['aiops:chat', 'observability:read']`, `actor: { userId, email }`, `exp: 15m`).
+     - O `ai-service` valida a assinatura criptográfica via `verify_m2m_token` (`app/core/m2m_auth.py`), garantindo o princípio do menor privilégio, rejeitando acessos não autorizados com 401 e eliminando o risco de *Prompt Injection* como administrador.
+  4. **Isolamento de Banco de Dados (`sci_aiops_db`):** Base `sci_aiops_db` provisionada no PostgreSQL para isolamento de carga operacional, logs de auditoria e retenção segregada (60 dias), garantindo blast radius zero sobre `sci_latex_db`.
+  5. **Frontend Otimizado com Zero Lag de Digitação & Quick Actions:**
+     - Digitação no chat drawer isolada no componente memoizado `ChatInputBar` e renderizador Markdown (`ChatMarkdownRenderer`) com `React.memo` (elimina reparsing contínuo da AST).
+     - Botão "Nova Conversa" para reinicialização limpa de sessão.
+     - 6 Quick Action Chips para guiar o operador humano sem tela cega.
+- **Métricas Atuais de Testes:** 85/85 testes de backend aprovados, 6/6 testes de frontend aprovados e build de produção concluído com 0 erros.
 
 ---
 
@@ -12,7 +31,76 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Branch Ativa:** `dev`
+  * **Branch Ativa:** `feature/observability-stack-adr-013`
+  * **AIOps Copilot com MCP e Diagnóstico de Causa-Raiz (ADR-018 Concluída com Sucesso):**
+    * **Decisão Arquitetural Formalizada:** Documentada em [`ADR-018`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md).
+    * **Manual Operacional de Perguntas:** Catálogo com mais de 30 perguntas operacionais estruturadas em 6 categorias documentado em [`GUIA_PERGUNTAS_AIOPS_COPILOT.md`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/GUIA_PERGUNTAS_AIOPS_COPILOT.md).
+    * **Roteamento Dinâmico de Prompts:** `chatWithAgent` em `backend/src/modules/admin/aiops/aiops.service.ts` inspeciona a intenção da mensagem e consulta as ferramentas MCP em tempo real:
+      * `K8S_INSPECTION`: Inspeciona pods, nós, exit codes (`OOMKilled 137`) e condições de pressão.
+      * `PROMETHEUS_METRICS`: Executa consultas instantâneas de uso de heap, pools de conexão do Postgres e RPS.
+      * `LOKI_LOGS`: Executa buscas de logs de erro (`{service_name=~".+"} |= "error"`), extraindo amostras recentes e distribuição de níveis.
+      * `GLITCHTIP_ISSUES`: Rastreia exceções não resolvidas e culprits de código.
+      * `OPIK_TRACES`: Monitora traces e spans de grafos LangGraph no `ai-service`.
+      * `REMEDIATION_ACTION`: Gera card interativo `AiopsRcaSuggestedAction` para execução com Human-in-the-Loop.
+      * `SYSTEM_OVERVIEW`: Matriz consolidada de saúde com cross-telemetria dos 5 pilares de observabilidade.
+    * **Testes e Compilação:**
+      * Backend: 83/83 testes aprovados no Vitest (`npm test`).
+      * Frontend: 6/6 testes aprovados no Vitest (`npm test`), build de produção concluído com sucesso (`npm run build`).
+  * **Governança de Templates LaTeX Oficiais e Storage Architecture (ADR-017 Concluída):**
+    * **Decisão Arquitetural Aprovada:** Documentada em [`ADR-017`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md) com a convenção semântica de diretórios `[ANO]-[NOME_DO_CONGRESSO]-[TIPO]` (ex: `2026-ieee-conference`) e o princípio inegociável de *Fail-Fast* (zero fallbacks para `main.tex`).
+    * **Expurgo de Templates Fakes e Seed de Baseline Real:**
+      * Removidas ~250 linhas de strings e arquivos simulados em `backend/src/modules/templates/templates.service.ts`.
+      * Mantido apenas o template oficial real em `latex-templates/2026-ieee-conference.zip` (com `IEEEtran.cls`, `IEEE-conference-template-062824.tex` e `fig1.png`).
+      * Método `seedBaselineTemplates()` executado com sucesso: uploads para o bucket MinIO `collab-assets` e upsert na tabela `LatexTemplate` via Prisma.
+    * **Descompactação Overleaf-Style & Detecção de Arquivo Raiz:**
+      * `latex-zip-parser.ts` aprimorado para despir pasta-mãe única de ZIPs oficiais e detectar o arquivo que contém `\documentclass` preservando seu nome de origem intacto.
+    * **Suporte Dinâmico na Colaboração em Tempo Real (Backend & Frontend):**
+      * `backend/src/modules/documents/documents.schema.ts`: `DocumentSchema` exige `mainEntryPath: z.string().min(1)`.
+      * `backend/src/modules/documents/documents.repository.ts`: Consultas e checkpoints salvam o arquivo apontado por `mainEntryPath`, lançando `DocumentIntegrityError` se faltar no banco.
+      * `backend/src/modules/documents/documents.service.ts` & `documents.websocket.ts`: OT, broadcast, versionamento e snapshots atrelados dinamicamente ao `mainEntryPath`.
+      * `compiler/src/server.ts`: Compilador TeXLive exige que `mainEntry` conste explicitamente na lista de arquivos recebidos (*fail-fast* 400).
+      * `frontend`: `EditorWorkspace.tsx`, `FileTreeSidebar.tsx` e `CollabEditorContext.tsx` renderizam a árvore fiel aos arquivos do evento e vinculam a digitação e compilação ao arquivo principal original.
+  * **Stack de Observabilidade On-Premise Integral (ADR-013 Finalizada):**
+    * **Visualização no Grafana:**
+      * Criado dashboard pré-moldado oficial em [`scia-overview-dashboard.json`](file:///home/gilson-russo/development/professional/sci-latex-vscode/infra/observability/grafana/provisioning/dashboards/scia-overview-dashboard.json) contendo: RPS do backend, Latência P95, Conexões WebSocket ativas, Checkpoints pendentes (RAM -> PostgreSQL), Salas ativas de edição, Taxa de compilações TeX por status e tempo médio.
+    * **Propagação W3C Trace Context (`traceparent` / `x-trace-id`):**
+      * `backend/src/infra/tracing/tracing.plugin.ts`: Plugin Fastify com geração/propagação de cabeçalhos W3C `traceparent` (`00-{traceId}-{spanId}-01`), com 2/2 testes unitários aprovados.
+      * `ai-service/app/main.py`: Middleware ASGI injetando e propagando `traceparent` e `x-trace-id` nas respostas HTTP.
+    * **Rate-Limiting Distribuído do arXiv no Redis:**
+      * `ai-service/app/agents/tools/arxiv.py`: Implementada coordenação atômica de 3.1s via lock no Redis (`rate_limit:arxiv:global_lock`) compartilhada entre múltiplos pods no Kubernetes, com fail-open automático para throttle local em RAM.
+    * **LLMOps com Opik & Gestão de Exceções com GlitchTip:**
+      * `infra/observability/docker-compose.yml`: Adicionados serviços `opik` (Comet Opik UI na porta 5174 e API na 8081), `opik-mysql`, `opik-clickhouse`, `opik-server`, `glitchtip-web` (:8005) e `glitchtip-worker`.
+      * `infra/observability/.env.example`: Template de variáveis de ambiente sem dados sensíveis hardcoded.
+      * `ai-service/app/core/opik_tracer.py`: Helper assíncrono `get_correlated_opik_tracer` correlacionado com o W3C Trace Context e fail-open estrito, com testes aprovados.
+    * **Governança Kubernetes & Helm (`k8s/`):**
+      * Todos os arquivos YAML comentados linha a linha com explicações didáticas em português.
+      * Criados arquivos `README.md` dedicados em cada subpasta (`k8s/manifests/`, `k8s/monitoring/`, `k8s/argocd/`, `k8s/kind/`, `scripts/`).
+      * Helper local `scripts/argocd-ui.sh` atualizado para abrir túneis dinâmicos de Frontend, Backend, ArgoCD, Grafana (:3001) e Prometheus (:9090) com um comando.
+  * **Stack de Observabilidade On-Premise Operacionalizada (ADR-013 Integrada):**
+    * **Infraestrutura Declarativa de Observabilidade (`infra/observability/`):**
+      * `docker-compose.yml`: Orquestração completa de 6 serviços de observabilidade isolados na rede `scia-network`: Grafana (porta 3001), Prometheus (porta 9090), Loki (porta 3100), Grafana Alloy (porta 12345), OpenTelemetry Collector (portas 4317 gRPC, 4318 HTTP, 8889 metrics) e Grafana Tempo (porta 3200).
+      * `prometheus.yml`: Configuração de scraping periódico (10s-15s) nos 3 serviços principais (`scia-backend:3333/metrics`, `scia-ai-service:8000/metrics`, `scia-compiler:4000/metrics`) e no próprio coletor OTel.
+      * `otelcol-config.yaml`: Processador de *tail-sampling* configurado com retenção a 100% para erros HTTP $\ge 500$, spans com status de erro nativo, latência $> 2000$ms e microsserviços críticos (`ai-service` e `compiler`), com amostragem probabilística de 10% nas rotas de rotina.
+      * `config.alloy`: Agente moderno Grafana Alloy para descoberta de contêineres Docker e encaminhamento para o Loki com *Structured Metadata* (`trace_id`, `user_id`, `article_id`), evitando explosão de cardinalidade em streams.
+      * `loki-config.yaml`: Modo TSDB v13 com retenção de 15 dias e suporte nativo a metadados estruturados.
+      * `tempo.yaml`: Armazenamento local de traces com WAL e receptores OTLP gRPC/HTTP ativos.
+      * `grafana/provisioning/`: Data Sources provisionados automaticamente (Prometheus default, Loki, Tempo com Data Link bidirecional entre traces e logs).
+      * `README.md`: Guia de inicialização local com `docker compose up -d`, mapa de portas e descrição das métricas.
+    * **Instrumentação de Telemetria no Backend Fastify (`backend/`):**
+      * Migração para o pacote oficial e moderno `@prometheus-io/client` (eliminando o aviso de deprecation do antigo `prom-client`).
+      * `backend/src/infra/metrics/metrics.plugin.ts`: Plugin de métricas ativado com coleta padrão de runtime (`scia_backend_*`), métricas HTTP com normalização de rotas (`scia_backend_http_requests_total`, `scia_backend_http_request_duration_seconds`) e métricas de colaboração (`scia_backend_collab_active_rooms`, `scia_backend_collab_connected_sockets`, `scia_backend_collab_pending_checkpoints`).
+      * Endpoint `/metrics` exposto e coberto por testes unitários (`src/infra/metrics/__tests__/metrics.plugin.test.ts`).
+    * **Instrumentação de Telemetria no AI Service (`ai-service/`):**
+      * Instalação de `prometheus-fastapi-instrumentator>=8.1.0` via `uv`.
+      * Instrumentação global no `app/main.py` com métricas HTTP e indicador de concorrência (`scia_ai_requests_inprogress`), expondo `/metrics`.
+      * Suíte de testes criada em `tests/test_metrics.py` com 100% de aprovação.
+    * **Instrumentação de Telemetria no Compilador LaTeX (`compiler/`):**
+      * Instalação de `@prometheus-io/client` e instrumentação do Fastify worker em `compiler/src/server.ts`.
+      * Métricas expostas: `scia_compiler_jobs_total{status="success|compilation_error|internal_error"}`, `scia_compiler_duration_seconds`, `scia_compiler_active_jobs` e `/metrics`.
+    * **Qualidade, Compilação e Testes Automatizados:**
+      * Backend Vitest: 15/15 suítes passando (70/70 testes unitários).
+      * AI Service Pytest: 11/11 testes passando.
+      * Monorepo Build: 0 erros no TypeScript do backend (`tsc`), frontend (`tsc -b && vite build`) e compilador (`tsc --noEmit`).
   * **SCIA Literature Intelligence & Ficha Científica (ADR-016 Integrada):**
     * **Decisão Arquitetural e Especificações Formais:**
       * Registrada a [`ADR-016`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md) cobrindo os 4 pilares: Skill de auditoria em 6 etapas, subagente em quarentena de contexto (`methodology-reviewer`), mapa mental com `@xyflow/react` sob licença MIT livre e cache relacional com deduplicação por DOI.
@@ -133,6 +221,7 @@
 | **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |
 | **Fase VII**| Painel Admin em Tempo Real & Observabilidade Live SSE | 🟢 **Concluído** | [`ADR-014`](adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md) |
 | **Fase VIII**| Arquitetura de Evidências de Tarefas & Upload Direto MinIO | 🟢 Concluído | [`ADR-011`](adrs/adr-011-task-evidences-storage-architecture.md) |
+| **Fase IX** | Governança de Templates LaTeX, Catálogo Global e Extração Direta | 🟢 **Aprovado** | [`ADR-017`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md) |
 ---
 
 ## 🔄 3. Protocolo de Pausa e Atualização de Status

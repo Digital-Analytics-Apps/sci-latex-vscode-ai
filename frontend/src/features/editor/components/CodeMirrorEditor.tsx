@@ -1,70 +1,59 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChangeSet, EditorState } from '@codemirror/state';
+import { collab, getSyncedVersion, receiveUpdates, sendableUpdates } from '@codemirror/collab';
 import {
-  EditorState,
-  ChangeSet,
-} from '@codemirror/state';
-import {
-  collab,
-  sendableUpdates,
-  receiveUpdates,
-  getSyncedVersion,
-} from '@codemirror/collab';
-import {
+  crosshairCursor,
+  dropCursor,
   EditorView,
-  lineNumbers,
   highlightActiveLine,
   highlightActiveLineGutter,
-  dropCursor,
-  rectangularSelection,
-  crosshairCursor,
+  lineNumbers,
   placeholder,
+  rectangularSelection,
   scrollPastEnd,
 } from '@codemirror/view';
 import {
+  bracketMatching,
+  codeFolding,
+  defaultHighlightStyle,
+  foldGutter,
+  indentOnInput,
   StreamLanguage,
   syntaxHighlighting,
-  defaultHighlightStyle,
-  bracketMatching,
-  foldGutter,
-  codeFolding,
-  indentOnInput,
 } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
-import {
-  autocompletion,
-  closeBrackets,
-} from '@codemirror/autocomplete';
-import { search, highlightSelectionMatches } from '@codemirror/search';
-import { lintGutter, linter, Diagnostic, forceLinting } from '@codemirror/lint';
+import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
+import { highlightSelectionMatches, search } from '@codemirror/search';
+import { Diagnostic, forceLinting, linter, lintGutter } from '@codemirror/lint';
 
 // Extensões Modulares e Serviços
 import {
   createHistoryExtension,
   getHistoryStatus,
-  triggerUndo,
-  triggerRedo,
   historyField,
   type HistoryStatus,
+  triggerRedo,
+  triggerUndo,
 } from '../extensions/history/historyExtension';
 import { editorStateCache } from '../services/editorStateCache';
 import {
-  themeCompart,
-  spellcheckCompart,
-  editorConfigCompart,
-  wordWrapCompart,
   autoCloseBracketsCompart,
   autocompleteCompart,
-  linterCompart,
-  grammarLinterCompart,
-  readOnlyCompart,
-  getSpellcheckExtension,
+  editorConfigCompart,
   getEditorConfigExtension,
+  getSpellcheckExtension,
+  grammarLinterCompart,
+  linterCompart,
+  readOnlyCompart,
+  spellcheckCompart,
+  themeCompart,
+  wordWrapCompart,
 } from '../extensions/config/editorCompartments';
 import { codeMirrorDarkTheme, codeMirrorLightTheme } from '../extensions/theme/editorThemes';
 import { latexFoldService } from '../extensions/latex/latexFolding';
 import {
-  createLatexCompletionSource,
   createBibHoverTooltip,
+  createLatexCompletionSource,
 } from '../extensions/latex/latexAutocomplete';
 import {
   createLatexLinterSource,
@@ -72,28 +61,28 @@ import {
   validateLatexStructure,
 } from '../extensions/latex/latexLinter';
 import {
+  buildCursorDecorations,
+  CursorWidget,
   remoteCursorsField,
   setRemoteCursorsEffect,
-  CursorWidget,
-  buildCursorDecorations,
 } from '../extensions/cursors/remoteCursorsExtension';
 import {
   commentsField,
-  setCommentsEffect,
-  setActiveCommentEffect,
-  selectionCommentTooltipField,
   onRequestAddCommentCallbackRef,
+  selectionCommentTooltipField,
+  setActiveCommentEffect,
+  setCommentsEffect,
 } from '../extensions/comments/commentsExtension';
-import { collabSyncFacet, collabPushPlugin } from '../extensions/collab/collabExtension';
+import { collabPushPlugin, collabSyncFacet } from '../extensions/collab/collabExtension';
 import { editorPortuguesePhrasesExtension } from '../extensions/config/editorPhrases';
 import {
   highPriorityKeymap,
-  standardKeymap,
   lowPriorityKeymap,
+  standardKeymap,
 } from '../extensions/config/editorKeymaps';
 
 // Utilitários e Componentes Menores Reutilizáveis
-import { parseBibEntries, extractBibKeys } from '../utils/bibtexParser';
+import { extractBibKeys, parseBibEntries } from '../utils/bibtexParser';
 import { checkGrammarAndSpelling } from '../services/languagetool.service';
 import { EditorStatusBar } from './EditorStatusBar';
 import { EditorCommentDialog, SelectionPopupData } from './EditorCommentDialog';
@@ -101,10 +90,10 @@ import {
   CollabUpdateJSON,
   DeltaOperation,
   RemoteCursor,
-  SaveStatus,
   ReviewComment,
+  SaveStatus,
 } from '../types/collab.types';
-import { EditorSettings, DEFAULT_SETTINGS } from '../../../types/settings';
+import { DEFAULT_SETTINGS, EditorSettings } from '../../../types/settings';
 import Box from '@mui/material/Box';
 
 // Re-exportações para retrocompatibilidade com testes e outros módulos
@@ -159,7 +148,11 @@ export interface CodeMirrorEditorProps {
   settings?: EditorSettings;
   comments?: ReviewComment[];
   activeCommentId?: string | null;
-  pendingCommentSelection?: { from: number; to: number; selectedText: string } | null;
+  pendingCommentSelection?: {
+    from: number;
+    to: number;
+    selectedText: string;
+  } | null;
   onLinePositionsChange?: (info: EditorLineLayoutInfo) => void;
   externalScrollTop?: number;
   onSelectComment?: (commentId: string | null) => void;
@@ -170,7 +163,12 @@ export interface CodeMirrorEditorProps {
   activeFile?: string;
   collabVersion?: number;
   onPushCollabUpdates?: (file: string, version: number, updates: CollabUpdateJSON[]) => void;
-  incomingCollabUpdates?: { file: string; version: number; updates: CollabUpdateJSON[]; timestamp: number } | null;
+  incomingCollabUpdates?: {
+    file: string;
+    version: number;
+    updates: CollabUpdateJSON[];
+    timestamp: number;
+  } | null;
   onDocContentChange?: (content: string) => void;
   onHistoryChange?: (status: HistoryStatus) => void;
   onRegisterActions?: (actions: { undo: () => boolean; redo: () => boolean } | null) => void;
@@ -337,7 +335,10 @@ export function CodeMirrorEditor({
       const coords = view.coordsAtPos(line.from);
       if (coords) {
         const relativeTop = coords.top - scrollerRect.top + scroller.scrollTop;
-        tops[comment.id] = { lineNumber: line.number, top: Math.max(0, relativeTop) };
+        tops[comment.id] = {
+          lineNumber: line.number,
+          top: Math.max(0, relativeTop),
+        };
       }
     }
 
@@ -436,11 +437,7 @@ export function CodeMirrorEditor({
         getSpellcheckExtension(settings.spellcheck, settings.spellcheckLanguage)
       ),
       editorConfigCompart.of(
-        getEditorConfigExtension(
-          settings.fontSize,
-          settings.lineHeight,
-          settings.nonBlinkingCursor
-        )
+        getEditorConfigExtension(settings.fontSize, settings.lineHeight, settings.nonBlinkingCursor)
       ),
       readOnlyCompart.of(EditorState.readOnly.of(Boolean(readOnly))),
       collab({
@@ -626,12 +623,13 @@ export function CodeMirrorEditor({
       viewRef.current.dispatch({
         effects: [
           wordWrapCompart.reconfigure(settings.wordWrap ? EditorView.lineWrapping : []),
-          autoCloseBracketsCompart.reconfigure(
-            settings.autoCloseBrackets ? closeBrackets() : []
-          ),
+          autoCloseBracketsCompart.reconfigure(settings.autoCloseBrackets ? closeBrackets() : []),
           autocompleteCompart.reconfigure(
             settings.autoComplete
-              ? autocompletion({ override: [latexCompletionSource], defaultKeymap: true })
+              ? autocompletion({
+                  override: [latexCompletionSource],
+                  defaultKeymap: true,
+                })
               : []
           ),
           linterCompart.reconfigure(
@@ -642,9 +640,7 @@ export function CodeMirrorEditor({
                 : []
           ),
           grammarLinterCompart.reconfigure(
-            settings.spellcheck
-              ? [linter(grammarLinterSource, { delay: 800 })]
-              : []
+            settings.spellcheck ? [linter(grammarLinterSource, { delay: 800 })] : []
           ),
           spellcheckCompart.reconfigure(
             getSpellcheckExtension(settings.spellcheck, settings.spellcheckLanguage)
@@ -676,7 +672,6 @@ export function CodeMirrorEditor({
       effects: readOnlyCompart.reconfigure(EditorState.readOnly.of(Boolean(readOnly))),
     });
   }, [readOnly]);
-
 
   // Atualiza cursores remotos
   useEffect(() => {

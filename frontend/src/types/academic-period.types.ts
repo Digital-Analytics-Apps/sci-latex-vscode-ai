@@ -1,5 +1,5 @@
-import type { PeriodStatus } from "../constants/status";
-import type { UserSimple } from "./user.types";
+import type { PeriodStatus } from '../constants/status';
+import type { UserSimple } from './user.types';
 
 export interface AcademicPeriod {
   id: string;

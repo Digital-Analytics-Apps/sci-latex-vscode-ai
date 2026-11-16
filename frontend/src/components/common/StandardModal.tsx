@@ -1,4 +1,4 @@
-import CloseIcon from "@mui/icons-material/Close";
+import CloseIcon from '@mui/icons-material/Close';
 import {
   Box,
   Button,
@@ -10,16 +10,16 @@ import {
   IconButton,
   Stack,
   Typography,
-} from "@mui/material";
-import React from "react";
+} from '@mui/material';
+import React from 'react';
 
-export type ModalSize = "sm" | "md" | "lg" | "xl";
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
 const SIZE_PRESETS: Record<ModalSize, { width: string; height: string }> = {
-  sm: { width: "560px", height: "560px" },
-  md: { width: "740px", height: "640px" },
-  lg: { width: "920px", height: "720px" },
-  xl: { width: "1140px", height: "780px" },
+  sm: { width: '560px', height: '560px' },
+  md: { width: '740px', height: '640px' },
+  lg: { width: '920px', height: '720px' },
+  xl: { width: '1140px', height: '780px' },
 };
 
 export interface StandardModalProps {
@@ -50,9 +50,8 @@ export interface StandardModalProps {
 
   showConfirm?: boolean;
   confirmText?: string;
-  confirmColor?:
-    "primary" | "secondary" | "warning" | "error" | "info" | "success";
-  confirmVariant?: "contained" | "outlined" | "text";
+  confirmColor?: 'primary' | 'secondary' | 'warning' | 'error' | 'info' | 'success';
+  confirmVariant?: 'contained' | 'outlined' | 'text';
   confirmIcon?: React.ReactNode;
   confirmDisabled?: boolean;
   isSubmitting?: boolean;
@@ -68,7 +67,7 @@ export const StandardModal: React.FC<StandardModalProps> = ({
   title,
   icon,
   subtitle,
-  size = "md",
+  size = 'md',
   width,
   height,
   subheader,
@@ -77,12 +76,12 @@ export const StandardModal: React.FC<StandardModalProps> = ({
   formId,
   hideFooter = false,
   showCancel = true,
-  cancelText = "Cancelar",
+  cancelText = 'Cancelar',
   onCancel,
   showConfirm = true,
-  confirmText = "Salvar",
-  confirmColor = "primary",
-  confirmVariant = "contained",
+  confirmText = 'Salvar',
+  confirmColor = 'primary',
+  confirmVariant = 'contained',
   confirmIcon,
   confirmDisabled = false,
   isSubmitting = false,
@@ -93,8 +92,7 @@ export const StandardModal: React.FC<StandardModalProps> = ({
   const modalWidth = width || preset.width;
   const modalHeight = height || preset.height;
 
-  const confirmButtonType: "submit" | "button" =
-    formId || onSubmit ? "submit" : "button";
+  const confirmButtonType: 'submit' | 'button' = formId || onSubmit ? 'submit' : 'button';
 
   let confirmStartIcon: React.ReactNode = null;
   if (isSubmitting) {
@@ -112,10 +110,10 @@ export const StandardModal: React.FC<StandardModalProps> = ({
   const dialogInnerContent = (
     <Stack
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
         gap: 4,
       }}
     >
@@ -125,40 +123,30 @@ export const StandardModal: React.FC<StandardModalProps> = ({
           py: 2,
           px: 3,
           fontWeight: 700,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: subheader ? "none" : 1,
-          borderColor: "divider",
-          bgcolor: "background.paper",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: subheader ? 'none' : 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
         }}
       >
         <Box
           sx={{
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             flex: 1,
             pr: 2,
           }}
         >
-          {icon && (
-            <Box sx={{ display: "flex", alignItems: "center" }}>{icon}</Box>
-          )}
-          <Box sx={{ display: "flex", flexDirection: "column" }}>
-            <Typography
-              variant="h6"
-              component="span"
-              sx={{ fontWeight: 700, lineHeight: 1.3 }}
-            >
+          {icon && <Box sx={{ display: 'flex', alignItems: 'center' }}>{icon}</Box>}
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6" component="span" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
               {title}
             </Typography>
             {subtitle && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.25 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                 {subtitle}
               </Typography>
             )}
@@ -169,7 +157,7 @@ export const StandardModal: React.FC<StandardModalProps> = ({
           aria-label="Fechar modal"
           onClick={onClose}
           size="small"
-          sx={{ color: "text.secondary" }}
+          sx={{ color: 'text.secondary' }}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
@@ -180,9 +168,9 @@ export const StandardModal: React.FC<StandardModalProps> = ({
         <Box
           sx={{
             borderBottom: 1,
-            borderColor: "divider",
+            borderColor: 'divider',
             px: 3,
-            bgcolor: "background.paper",
+            bgcolor: 'background.paper',
           }}
         >
           {subheader}
@@ -194,10 +182,10 @@ export const StandardModal: React.FC<StandardModalProps> = ({
         dividers={Boolean(subheader)}
         sx={{
           flex: 1,
-          overflowY: "auto",
+          overflowY: 'auto',
           p: 3,
-          display: "flex",
-          flexDirection: "column",
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {children}
@@ -210,18 +198,16 @@ export const StandardModal: React.FC<StandardModalProps> = ({
             px: 3,
             py: 2,
             borderTop: 1,
-            borderColor: "divider",
-            bgcolor: "background.paper",
-            justifyContent: "space-between",
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            justifyContent: 'space-between',
           }}
         >
           {/* Lado Esquerdo: Ações Extras (ex: Botão Excluir) */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {extraFooterActions}
-          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>{extraFooterActions}</Box>
 
           {/* Lado Direito: Ações Padrão (Cancelar & Salvar) */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {showCancel && (
               <Button
                 type="button"
@@ -243,7 +229,7 @@ export const StandardModal: React.FC<StandardModalProps> = ({
                 disabled={confirmDisabled || isSubmitting}
                 startIcon={confirmStartIcon}
               >
-                {isSubmitting ? "Processando..." : confirmText}
+                {isSubmitting ? 'Processando...' : confirmText}
               </Button>
             )}
           </Box>
@@ -261,10 +247,10 @@ export const StandardModal: React.FC<StandardModalProps> = ({
           sx: {
             width: modalWidth,
             height: modalHeight,
-            maxWidth: "95vw",
-            maxHeight: "95vh",
+            maxWidth: '95vw',
+            maxHeight: '95vh',
             borderRadius: 3,
-            overflow: "hidden",
+            overflow: 'hidden',
             m: 1,
           },
         },
@@ -275,10 +261,10 @@ export const StandardModal: React.FC<StandardModalProps> = ({
           component="form"
           onSubmit={handleFormSubmit}
           sx={{
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }}
         >
           {dialogInnerContent}

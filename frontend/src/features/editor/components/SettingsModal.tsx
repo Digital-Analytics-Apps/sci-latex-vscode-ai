@@ -10,7 +10,7 @@ import Switch from '@mui/material/Switch';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
-import { X, Code2, Languages, FileCode, Palette } from 'lucide-react';
+import { Code2, FileCode, Languages, Palette, X } from 'lucide-react';
 import { EditorSettings } from '../../../types/settings';
 import { getTranslations } from '../../../utils/i18n';
 
@@ -219,7 +219,9 @@ export function SettingsModal({ open, onClose, settings, onUpdateSettings }: Set
                     size="small"
                     value={settings.uiLanguage}
                     onChange={(e) =>
-                      onUpdateSettings({ uiLanguage: e.target.value as 'pt-BR' | 'en' })
+                      onUpdateSettings({
+                        uiLanguage: e.target.value as 'pt-BR' | 'en',
+                      })
                     }
                     sx={{ minWidth: 170, fontSize: '0.85rem' }}
                   >
@@ -254,7 +256,9 @@ export function SettingsModal({ open, onClose, settings, onUpdateSettings }: Set
                     value={settings.spellcheckLanguage}
                     disabled={!settings.spellcheck}
                     onChange={(e) =>
-                      onUpdateSettings({ spellcheckLanguage: e.target.value as 'pt-BR' | 'en-US' })
+                      onUpdateSettings({
+                        spellcheckLanguage: e.target.value as 'pt-BR' | 'en-US',
+                      })
                     }
                     sx={{ minWidth: 170, fontSize: '0.85rem' }}
                   >

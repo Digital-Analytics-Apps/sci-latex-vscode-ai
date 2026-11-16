@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SCIA PostgreSQL Specialist Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "incident_scope",
+    "facts",
+    "interpretations",
+    "hypotheses",
+    "unknowns",
+    "cross_specialist_requests",
+    "risk",
+    "recommended_human_review",
+    "confidence"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "incident_scope": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "statement",
+          "source",
+          "observed_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "interpretations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "statement",
+          "fact_ids"
+        ],
+        "properties": {
+          "statement": {
+            "type": "string"
+          },
+          "fact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "statement",
+          "confidence",
+          "validation"
+        ],
+        "properties": {
+          "statement": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "validation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cross_specialist_requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "specialist",
+          "request"
+        ],
+        "properties": {
+          "specialist": {
+            "enum": [
+              "kubernetes",
+              "prometheus",
+              "loki"
+            ]
+          },
+          "request": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "recommended_human_review": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    }
+  }
+}

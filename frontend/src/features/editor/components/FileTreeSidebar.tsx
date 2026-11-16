@@ -1,17 +1,17 @@
-import { useState, useRef, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
-  FileCode,
-  FileText,
   BookMarked,
-  Image as ImageIcon,
-  Folder,
+  Check,
+  Copy,
+  FileCode,
   FilePlus,
-  Upload,
-  X,
+  FileText,
+  Folder,
+  Image as ImageIcon,
   ListTree,
   Trash2,
-  Copy,
-  Check,
+  Upload,
+  X,
 } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -29,8 +29,8 @@ import { ProjectFile } from '../types/files.types';
 import { useProjectFilesQuery } from '../hooks/useProjectFilesQuery';
 import {
   useCreateProjectFileMutation,
-  useUploadProjectFileMutation,
   useDeleteProjectFileMutation,
+  useUploadProjectFileMutation,
 } from '../hooks/useProjectFilesMutations';
 
 export type { ProjectFile };
@@ -39,6 +39,7 @@ export interface FileTreeSidebarProps {
   documentId?: string;
   apiBase?: string;
   activeFile: string;
+  mainEntryPath?: string;
   onSelectFile: (fileName: string) => void;
   onOpenFile?: (file: ProjectFile) => void;
   onClose: () => void;
@@ -50,6 +51,7 @@ export function FileTreeSidebar({
   documentId = 'doc-1',
   apiBase = '',
   activeFile,
+  mainEntryPath,
   onSelectFile,
   onOpenFile,
   onClose,
@@ -70,16 +72,21 @@ export function FileTreeSidebar({
   const [newFileName, setNewFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Lista combinada: main.tex (documento ativo) + arquivos persistidos
+  // Lista combinada: documento principal (mainEntryPath) + arquivos persistidos
   const allFiles: ProjectFile[] = useMemo(() => {
+    const rootName = mainEntryPath || 'main.tex';
+    const foundMain = projectFiles.find((f) => f.name === rootName || f.id === rootName);
+    if (foundMain) {
+      return projectFiles.map((f) => (f.id === foundMain.id ? { ...f, isMain: true } : f));
+    }
     const mainEntry: ProjectFile = {
       id: 'main',
-      name: 'main.tex',
+      name: rootName,
       type: 'tex',
       isMain: true,
     };
     return [mainEntry, ...projectFiles];
-  }, [projectFiles]);
+  }, [projectFiles, mainEntryPath]);
 
   // Criação de novo arquivo de texto
   const handleCreateFile = async () => {
@@ -400,7 +407,11 @@ export function FileTreeSidebar({
           <ListTree size={14} style={{ color: 'var(--text-secondary)' }} />
           <Typography
             variant="caption"
-            sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary' }}
+            sx={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: 'text.secondary',
+            }}
           >
             Outline
           </Typography>

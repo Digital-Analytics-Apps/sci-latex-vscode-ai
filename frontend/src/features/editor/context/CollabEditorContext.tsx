@@ -1,12 +1,12 @@
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
   ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import {
   Collaborator,
@@ -20,7 +20,7 @@ import {
 } from '../types/collab.types';
 import { EditorTab } from '../components/EditorTabBar';
 import { ProjectFile } from '../components/FileTreeSidebar';
-import { EditorSettings, DEFAULT_SETTINGS } from '../../../types/settings';
+import { DEFAULT_SETTINGS, EditorSettings } from '../../../types/settings';
 import { useCollabWebSocket } from '../hooks/useCollabWebSocket';
 import { useLatexCompiler } from '../hooks/useLatexCompiler';
 import { useDocumentHistoryQuery } from '../hooks/useDocumentHistoryQuery';
@@ -159,7 +159,10 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     canUndoSelection: false,
     canRedoSelection: false,
   });
-  const editorActionsRef = useRef<{ undo: () => boolean; redo: () => boolean } | null>(null);
+  const editorActionsRef = useRef<{
+    undo: () => boolean;
+    redo: () => boolean;
+  } | null>(null);
 
   const handleUndo = useCallback(() => {
     editorActionsRef.current?.undo();
@@ -184,8 +187,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     if (projectDetails?.members) {
       return projectDetails.members.some(
         (m) =>
-          m.role === 'REVIEWER' &&
-          (m.userId === currentUser.id || m.user?.id === currentUser.id)
+          m.role === 'REVIEWER' && (m.userId === currentUser.id || m.user?.id === currentUser.id)
       );
     }
     return false;
@@ -250,6 +252,17 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
   // Compilador TeX Live
   const { pdfBlobUrl, isCompiling, compileError, lastCompiledAt, recompile } =
     useLatexCompiler(documentId);
+
+  // Sincroniza abas e arquivo ativo quando o mainEntryPath do documento chega
+  useEffect(() => {
+    if (documentData?.mainEntryPath) {
+      const rootPath = documentData.mainEntryPath;
+      setActiveFile((prev) => (prev === 'main.tex' ? rootPath : prev));
+      setOpenTabs((prev) =>
+        prev.map((tab) => (tab.isMain ? { ...tab, name: rootPath, id: rootPath } : tab))
+      );
+    }
+  }, [documentData?.mainEntryPath]);
 
   // Sincroniza histórico inicial quando os dados do TanStack Query chegam
   useEffect(() => {
@@ -322,7 +335,8 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
         timestamp: Date.now(),
       });
       setFileCollabVersions((prev) => ({ ...prev, [targetFile]: version }));
-      if (targetFile === 'main.tex') {
+      const rootPath = documentData?.mainEntryPath || 'main.tex';
+      if (targetFile === rootPath) {
         setCollabVersion(version);
       } else {
         editorStateCache.removeFileState(targetFile);
@@ -330,7 +344,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       }
       setSaveStatus('pending_debounce');
     },
-    []
+    [documentData?.mainEntryPath]
   );
 
   const handleSnapshotSaved = useCallback((snapshot: DocumentSnapshot, time: string) => {
@@ -438,7 +452,10 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
 
       fileContentsRef.current[activeFile] = updated;
       setFileContents((prev) => ({ ...prev, [activeFile]: updated }));
-      setSecondarySaveStatus((prev) => ({ ...prev, [activeFile]: 'pending_debounce' }));
+      setSecondarySaveStatus((prev) => ({
+        ...prev,
+        [activeFile]: 'pending_debounce',
+      }));
 
       sendDelta(activeFile, delta);
 
@@ -458,10 +475,16 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
             fileId: tab.id,
             content: finalContent,
           });
-          setSecondarySaveStatus((prev) => ({ ...prev, [activeFile]: 'synced' }));
+          setSecondarySaveStatus((prev) => ({
+            ...prev,
+            [activeFile]: 'synced',
+          }));
         } catch (err) {
           console.error('[Editor] Erro ao salvar arquivo secundário:', err);
-          setSecondarySaveStatus((prev) => ({ ...prev, [activeFile]: 'synced' }));
+          setSecondarySaveStatus((prev) => ({
+            ...prev,
+            [activeFile]: 'synced',
+          }));
         }
       }, 1000);
     },
@@ -477,16 +500,16 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
 
   const handleDocContentChange = useCallback(
     (newContent: string) => {
-      if (activeFile === 'main.tex') {
+      const rootPath = documentData?.mainEntryPath || 'main.tex';
+      if (activeFile === rootPath) {
         setDocumentData((prev) => (prev ? { ...prev, content: newContent } : prev));
       } else {
         fileContentsRef.current[activeFile] = newContent;
         setFileContents((prev) => ({ ...prev, [activeFile]: newContent }));
       }
     },
-    [activeFile]
+    [activeFile, documentData?.mainEntryPath]
   );
-
 
   const handleCursorMove = useCallback(
     (position: number, selectionStart?: number, selectionEnd?: number) => {
@@ -512,7 +535,15 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     async (file: ProjectFile) => {
       setOpenTabs((prev) => {
         if (prev.some((t) => t.name === file.name)) return prev;
-        return [...prev, { id: file.id, name: file.name, type: file.type, isMain: file.isMain }];
+        return [
+          ...prev,
+          {
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            isMain: file.isMain,
+          },
+        ];
       });
 
       if (!file.isMain) {
@@ -527,7 +558,10 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
           console.error('[Editor] Erro ao buscar conteúdo do arquivo:', err);
           if (file.content !== undefined && file.content !== null) {
             fileContentsRef.current[file.name] = file.content;
-            setFileContents((prev) => ({ ...prev, [file.name]: file.content! }));
+            setFileContents((prev) => ({
+              ...prev,
+              [file.name]: file.content!,
+            }));
           }
         }
       }
@@ -541,13 +575,14 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       setOpenTabs((prev) => {
         const filtered = prev.filter((t) => t.name !== fileName);
         if (activeFile === fileName) {
-          const next = filtered[filtered.length - 1] || { name: 'main.tex' };
+          const rootName = documentData?.mainEntryPath || 'main.tex';
+          const next = filtered[filtered.length - 1] || { name: rootName };
           setActiveFile(next.name);
         }
         return filtered;
       });
     },
-    [activeFile]
+    [activeFile, documentData?.mainEntryPath]
   );
 
   const handleInsertSnippet = useCallback(
@@ -665,7 +700,9 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     lastCompiledAt,
     recompile,
     isSynced,
-    collabVersion: fileCollabVersions[activeFile] ?? (activeFile === 'main.tex' ? collabVersion : 0),
+    collabVersion:
+      fileCollabVersions[activeFile] ??
+      (activeFile === (documentData?.mainEntryPath || 'main.tex') ? collabVersion : 0),
     incomingCollabUpdates,
     handlePushCollabUpdates,
     handleDocContentChange,

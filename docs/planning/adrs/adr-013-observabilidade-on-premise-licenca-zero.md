@@ -1,6 +1,6 @@
 # ADR 013: Arquitetura de Observabilidade Open Source, Self-Hosted e Soberania Institucional (OpenTelemetry, Prometheus, Loki, Tempo, Opik e GlitchTip)
 
-- **Status:** APROVADO (Consolidado com Especificação de Engenharia de Confiabilidade — 10/11/2026)
+- **Status:** APROVADO (Consolidado com Especificação de Engenharia de Confiabilidade — 10/11/2026; Estendido pela ADR-018 para AIOps Copilot via MCP)
 - **Data Original:** 10 de Novembro de 2026
 - **Data de Consolidação Final:** 10 de Novembro de 2026
 - **Autor(es):** Equipe de Arquitetura, Engenharia e Segurança SCIA
@@ -137,6 +137,11 @@ Para garantir que traces multi-serviços não sejam fragmentados em Kubernetes:
 Para manter a complexidade operacional controlada na implantação inicial:
 * Os workers do compilador TeX operam com dimensionamento estático provisionado (réplicas dedicadas com quotas estritas de CPU/RAM em cgroups).
 * A integração com **KEDA** (Kubernetes Event-driven Autoscaling) lendo `min_over_time(compiler_queue_size[30s]) > 3` permanece documentada como caminho evolutivo aprovado, mas **postergada para uma fase futura**, sendo ativada apenas se os testes de carga e a volumetria de produção demonstrarem filas persistentes.
+
+### 3.7 Integração de Métricas com o AIOps Copilot e Rota para o Prometheus MCP Oficial (ADR-018)
+Conforme detalhado na [ADR-018](adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md):
+* **Fase Atual (Consumo Direto via Tools):** O microsserviço `ai-service` consome métricas do Prometheus via chamadas HTTP REST diretas (`/api/v1/query`, `/api/v1/query_range`, `/api/v1/targets`, `/api/v1/alerts`), disponibilizadas ao SRE Supervisor e Prometheus Specialist como tools de inspeção nativas com latência mínima e sem sobrecarga de contêineres adicionais.
+* **Evolução para o Servidor Oficial (`prometheus/prometheus-mcp`):** Caso o ecossistema demande conexão padronizada com clientes de IA externos (como Cursor ou Claude Desktop via protocolo MCP JSON-RPC padronizado), a imagem oficial de contêiner `quay.io/prometheus/prometheus-mcp` poderá ser adicionada ao `docker-compose.yml` e K8s operando com transporte `--transport sse` na porta 8080 conectada ao `scia_prometheus:9090`.
 
 ### 3.7 Sanitização Universal em Todos os Emissores
 

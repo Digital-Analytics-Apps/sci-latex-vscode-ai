@@ -1,11 +1,7 @@
-import type { Node, Edge } from '@xyflow/react';
+import type { Edge, Node } from '@xyflow/react';
 
 export type LiteratureRelationType =
-  | 'convergent'
-  | 'divergent'
-  | 'complementary'
-  | 'evolution'
-  | 'baseline';
+  'convergent' | 'divergent' | 'complementary' | 'evolution' | 'baseline';
 
 export interface ScientificPaperNodeData extends Record<string, unknown> {
   id: string;

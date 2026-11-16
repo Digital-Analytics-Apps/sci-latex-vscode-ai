@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WS_BASE } from '../../../constants/api.constants';
 import {
   Collaborator,
@@ -104,121 +104,131 @@ export function useCollabWebSocket({
           }
         }
       };
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        switch (msg.type) {
-          case 'SYNC_INIT':
-            setCollaborators(msg.collaborators);
-            callbacksRef.current.onSyncInit(msg.document, msg.collaborators, msg.comments, msg.version, msg.fileVersions);
-            break;
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          switch (msg.type) {
+            case 'SYNC_INIT':
+              setCollaborators(msg.collaborators);
+              callbacksRef.current.onSyncInit(
+                msg.document,
+                msg.collaborators,
+                msg.comments,
+                msg.version,
+                msg.fileVersions
+              );
+              break;
 
-          case 'PULL_UPDATES_RESPONSE': {
-            const targetFile: string = msg.file || 'main.tex';
-            const updates: CollabUpdateJSON[] = msg.updates || [];
-            callbacksRef.current.onRemoteCollabUpdates?.(targetFile, msg.version, updates);
-            if (msg.author && msg.author.userId !== userId && targetFile === activeFileRef.current) {
-              setActiveEditor({
-                userName: msg.author.userName,
-                color: msg.author.color,
-                action: `digitou em ${targetFile}`,
-              });
-              clearTimeout(activeEditorTimeoutRef.current ?? undefined);
-              activeEditorTimeoutRef.current = setTimeout(() => {
-                setActiveEditor(null);
-              }, 2500);
-            }
-            break;
-          }
-
-          case 'COLLABORATOR_JOINED':
-          case 'COLLABORATOR_LEFT':
-            setCollaborators(msg.collaborators);
-            if (msg.type === 'COLLABORATOR_LEFT') {
-              setRemoteCursors((prev) => {
-                const map = new Map(prev);
-                map.delete(msg.userId);
-                return map;
-              });
-            }
-            break;
-
-          case 'CURSOR_UPDATE': {
-            if (msg.user.userId !== userId) {
-              setRemoteCursors((prev) => {
-                const map = new Map(prev);
-                map.set(msg.user.userId, {
-                  userId: msg.user.userId,
-                  userName: msg.user.userName,
-                  color: msg.user.color,
-                  position: msg.user.position,
-                  selectionStart: msg.user.selectionStart,
-                  selectionEnd: msg.user.selectionEnd,
-                  file: msg.user.file || 'main.tex',
-                  lastActive: Date.now(),
-                });
-                return map;
-              });
-            }
-            break;
-          }
-
-          case 'DELTA_BROADCAST': {
-            const op: DeltaOperation = msg.operation;
-            const targetFile: string = msg.file || 'main.tex';
-            callbacksRef.current.onRemoteDelta(op, targetFile, msg.version);
-            if (msg.author && msg.author.userId !== userId) {
-              const newPos = op.position + (op.text ? op.text.length : 0);
-              setRemoteCursors((prev) => {
-                const map = new Map(prev);
-                map.set(msg.author.userId, {
-                  userId: msg.author.userId,
-                  userName: msg.author.userName,
-                  color: msg.author.color,
-                  position: newPos,
-                  file: targetFile,
-                  lastActive: Date.now(),
-                });
-                return map;
-              });
-
-              if (targetFile === activeFileRef.current) {
+            case 'PULL_UPDATES_RESPONSE': {
+              const targetFile: string = msg.file || 'main.tex';
+              const updates: CollabUpdateJSON[] = msg.updates || [];
+              callbacksRef.current.onRemoteCollabUpdates?.(targetFile, msg.version, updates);
+              if (
+                msg.author &&
+                msg.author.userId !== userId &&
+                targetFile === activeFileRef.current
+              ) {
                 setActiveEditor({
                   userName: msg.author.userName,
                   color: msg.author.color,
-                  action:
-                    op.type === 'insert' ? `digitou em ${targetFile}` : `apagou em ${targetFile}`,
+                  action: `digitou em ${targetFile}`,
                 });
                 clearTimeout(activeEditorTimeoutRef.current ?? undefined);
                 activeEditorTimeoutRef.current = setTimeout(() => {
                   setActiveEditor(null);
                 }, 2500);
               }
+              break;
             }
-            break;
+
+            case 'COLLABORATOR_JOINED':
+            case 'COLLABORATOR_LEFT':
+              setCollaborators(msg.collaborators);
+              if (msg.type === 'COLLABORATOR_LEFT') {
+                setRemoteCursors((prev) => {
+                  const map = new Map(prev);
+                  map.delete(msg.userId);
+                  return map;
+                });
+              }
+              break;
+
+            case 'CURSOR_UPDATE': {
+              if (msg.user.userId !== userId) {
+                setRemoteCursors((prev) => {
+                  const map = new Map(prev);
+                  map.set(msg.user.userId, {
+                    userId: msg.user.userId,
+                    userName: msg.user.userName,
+                    color: msg.user.color,
+                    position: msg.user.position,
+                    selectionStart: msg.user.selectionStart,
+                    selectionEnd: msg.user.selectionEnd,
+                    file: msg.user.file || 'main.tex',
+                    lastActive: Date.now(),
+                  });
+                  return map;
+                });
+              }
+              break;
+            }
+
+            case 'DELTA_BROADCAST': {
+              const op: DeltaOperation = msg.operation;
+              const targetFile: string = msg.file || 'main.tex';
+              callbacksRef.current.onRemoteDelta(op, targetFile, msg.version);
+              if (msg.author && msg.author.userId !== userId) {
+                const newPos = op.position + (op.text ? op.text.length : 0);
+                setRemoteCursors((prev) => {
+                  const map = new Map(prev);
+                  map.set(msg.author.userId, {
+                    userId: msg.author.userId,
+                    userName: msg.author.userName,
+                    color: msg.author.color,
+                    position: newPos,
+                    file: targetFile,
+                    lastActive: Date.now(),
+                  });
+                  return map;
+                });
+
+                if (targetFile === activeFileRef.current) {
+                  setActiveEditor({
+                    userName: msg.author.userName,
+                    color: msg.author.color,
+                    action:
+                      op.type === 'insert' ? `digitou em ${targetFile}` : `apagou em ${targetFile}`,
+                  });
+                  clearTimeout(activeEditorTimeoutRef.current ?? undefined);
+                  activeEditorTimeoutRef.current = setTimeout(() => {
+                    setActiveEditor(null);
+                  }, 2500);
+                }
+              }
+              break;
+            }
+
+            case 'SNAPSHOT_SAVED':
+              callbacksRef.current.onSnapshotSaved(msg.snapshot, msg.time);
+              break;
+
+            case 'COMMENT_ADDED':
+              callbacksRef.current.onCommentAdded?.(msg.comment);
+              break;
+
+            case 'COMMENT_REPLIED':
+            case 'COMMENT_RESOLVED':
+              callbacksRef.current.onCommentRepliedOrResolved?.(msg.comment);
+              break;
+
+            case 'COMMENT_DELETED':
+              callbacksRef.current.onCommentDeleted?.(msg.commentId);
+              break;
           }
-
-          case 'SNAPSHOT_SAVED':
-            callbacksRef.current.onSnapshotSaved(msg.snapshot, msg.time);
-            break;
-
-          case 'COMMENT_ADDED':
-            callbacksRef.current.onCommentAdded?.(msg.comment);
-            break;
-
-          case 'COMMENT_REPLIED':
-          case 'COMMENT_RESOLVED':
-            callbacksRef.current.onCommentRepliedOrResolved?.(msg.comment);
-            break;
-
-          case 'COMMENT_DELETED':
-            callbacksRef.current.onCommentDeleted?.(msg.commentId);
-            break;
+        } catch (err) {
+          console.error('[Collab WS] Erro ao processar mensagem:', err);
         }
-      } catch (err) {
-        console.error('[Collab WS] Erro ao processar mensagem:', err);
-      }
-    };
+      };
 
       ws.onclose = () => {
         setIsConnected(false);

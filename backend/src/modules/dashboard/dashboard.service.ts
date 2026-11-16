@@ -1,4 +1,4 @@
-import { NITStatus, Prisma, Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { deadlineService } from '../../utils/deadlines';
 

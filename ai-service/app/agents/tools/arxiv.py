@@ -5,7 +5,9 @@ import time
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional, Union
 import httpx
+import redis.asyncio as aioredis
 from langchain_core.tools import tool
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,49 @@ logger = logging.getLogger(__name__)
 # 2. Apenas 1 conexão concorrente por vez.
 ARXIV_SEMAPHORE = asyncio.Semaphore(1)
 _LAST_REQUEST_TIME: float = 0.0
+
+# Cliente Redis assíncrono para lock distribuído entre pods
+_redis_client: Optional[aioredis.Redis] = None
+
+
+def get_redis_client() -> Optional[aioredis.Redis]:
+    """Retorna cliente Redis assíncrono para rate-limiting distribuído."""
+    global _redis_client
+    if _redis_client is None:
+        try:
+            _redis_client = aioredis.from_url(
+                settings.REDIS_URL,
+                socket_timeout=1.0,
+                socket_connect_timeout=1.0,
+                decode_responses=True,
+            )
+        except Exception as e:
+            logger.warning(f"[arXiv] Falha ao inicializar cliente Redis: {e}")
+            _redis_client = None
+    return _redis_client
+
+
+async def acquire_arxiv_distributed_slot(timeout: float = 10.0) -> bool:
+    """
+    Garante intervalo de 3s entre chamadas ao arXiv compartilhadas entre múltiplos pods no Kubernetes.
+    Adquire chave de lock atômica 'rate_limit:arxiv:global_lock' com TTL de 3.1 segundos.
+    Caso o Redis esteja offline, faz fail-open para não interromper a pesquisa do usuário.
+    """
+    client_redis = get_redis_client()
+    if client_redis is None:
+        return True
+
+    start_time = asyncio.get_event_loop().time()
+    while (asyncio.get_event_loop().time() - start_time) < timeout:
+        try:
+            acquired = await client_redis.set("rate_limit:arxiv:global_lock", "locked", nx=True, px=3100)
+            if acquired:
+                return True
+        except Exception as exc:
+            logger.debug(f"[arXiv] Redis lock fallback: {exc}")
+            return True
+        await asyncio.sleep(0.2)
+    return False
 
 # Cliente HTTP Singleton para reaproveitar conexões TCP (Connection Pooling)
 _http_client: Optional[httpx.AsyncClient] = None
@@ -115,13 +160,16 @@ async def search_academic_papers_arxiv(
     async with ARXIV_SEMAPHORE:
         logger.info(f"[arXiv] Iniciando busca: '{query}' (limit={limit})")
 
-        # Respeita o intervalo mandatório de 3 segundos entre requisições consecutivas
+        # 1. Respeita o intervalo mandatório de 3 segundos no pod local (throttle em RAM)
         now = time.time()
         elapsed = now - _LAST_REQUEST_TIME
         if elapsed < 3.0:
             sleep_duration = 3.0 - elapsed
-            logger.debug(f"[arXiv] Throttle ativo: aguardando {sleep_duration:.2f}s antes da requisição.")
+            logger.debug(f"[arXiv] Throttle local ativo: aguardando {sleep_duration:.2f}s antes da requisição.")
             await asyncio.sleep(sleep_duration)
+
+        # 2. Respeita o intervalo distribuído entre múltiplos pods via Redis (ADR-013)
+        await acquire_arxiv_distributed_slot(timeout=10.0)
 
         formatted_query = build_arxiv_query(query)
         url = "https://export.arxiv.org/api/query"

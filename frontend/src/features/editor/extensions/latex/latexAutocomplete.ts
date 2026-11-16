@@ -1,4 +1,4 @@
-import { snippetCompletion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { CompletionContext, CompletionResult, snippetCompletion } from '@codemirror/autocomplete';
 import { hoverTooltip } from '@codemirror/view';
 import { extractBibKeys, parseBibEntries } from '../../utils/bibtexParser';
 
@@ -54,7 +54,11 @@ export const BASE_LATEX_COMPLETIONS = [
   }),
   snippetCompletion(
     '\\begin{figure}[htbp]\n\t\\centering\n\t\\includegraphics[width=0.8\\linewidth]{${path}}\n\t\\caption{${caption}}\n\t\\label{fig:${label}}\n\\end{figure}',
-    { label: '\\begin{figure}', detail: 'Figura com caption/label', type: 'type' }
+    {
+      label: '\\begin{figure}',
+      detail: 'Figura com caption/label',
+      type: 'type',
+    }
   ),
   snippetCompletion(
     '\\begin{table}[htbp]\n\t\\centering\n\t\\caption{${caption}}\n\t\\label{tab:${label}}\n\t\\begin{tabular}{${cols}}\n\t\t${}\n\t\\end{tabular}\n\\end{table}',
@@ -75,7 +79,11 @@ export const BASE_LATEX_COMPLETIONS = [
     detail: 'Resumo / Abstract',
     type: 'type',
   }),
-  snippetCompletion('\\item ${}', { label: '\\item', detail: 'Item de lista', type: 'keyword' }),
+  snippetCompletion('\\item ${}', {
+    label: '\\item',
+    detail: 'Item de lista',
+    type: 'keyword',
+  }),
 
   // Formatação e Tipografia
   snippetCompletion('\\textbf{${text}}', {
@@ -93,7 +101,11 @@ export const BASE_LATEX_COMPLETIONS = [
     detail: 'Texto Sublinhado',
     type: 'text',
   }),
-  snippetCompletion('\\emph{${text}}', { label: '\\emph', detail: 'Ênfase', type: 'text' }),
+  snippetCompletion('\\emph{${text}}', {
+    label: '\\emph',
+    detail: 'Ênfase',
+    type: 'text',
+  }),
   snippetCompletion('\\texttt{${code}}', {
     label: '\\texttt',
     detail: 'Texto monoespaçado',

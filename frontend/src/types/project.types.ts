@@ -1,7 +1,7 @@
-import type { SubmissionStatus } from "../constants/status";
-import type { ProjectStage } from "./stage.types";
-import type { TaskItem, TaskSummary } from "./task.types";
-import type { ProjectMember } from "./user.types";
+import type { SubmissionStatus } from '../constants/status';
+import type { ProjectStage } from './stage.types';
+import type { TaskItem, TaskSummary } from './task.types';
+import type { ProjectMember } from './user.types';
 
 export interface ProjectDetails {
   id: string;
@@ -66,7 +66,7 @@ export interface ArticleItem {
   title: string;
   conference: string;
   repo: string;
-  role: "Autor" | "Revisor Oficial" | "Revisor de Par";
+  role: 'Autor' | 'Revisor Oficial' | 'Revisor de Par';
   status: string;
   progress: number;
   tasks: TaskItem[];

@@ -1,10 +1,10 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PublicIcon from "@mui/icons-material/Public";
-import { Box, Grid, Typography } from "@mui/material";
-import { MetricCard } from "../../../components/common/MetricCard";
-import type { AcademicPeriod } from "../../../types/academic-period.types";
+import ArticleIcon from '@mui/icons-material/Article';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PublicIcon from '@mui/icons-material/Public';
+import { Box, Grid, Typography } from '@mui/material';
+import { MetricCard } from '../../../components/common/MetricCard';
+import type { AcademicPeriod } from '../../../types/academic-period.types';
 
 interface OverviewSectionProps {
   overview: {
@@ -26,14 +26,13 @@ export const OverviewSection = ({
   totalMembersCount,
 }: OverviewSectionProps) => {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
           Visão Geral Institucional
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Painel consolidado com os principais indicadores de produção e
-          governança científica.
+          Painel consolidado com os principais indicadores de produção e governança científica.
         </Typography>
       </Box>
 
@@ -48,7 +47,7 @@ export const OverviewSection = ({
             subtitle={
               activePeriod
                 ? `Meta Global: ${activePeriod.targetArticlesCount} artigos`
-                : "Meta Consolidada do Período"
+                : 'Meta Consolidada do Período'
             }
           />
         </Grid>

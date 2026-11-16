@@ -90,46 +90,8 @@ Extraia todos os campos da Ficha Científica Estruturada, identificando pontos f
             analysis.metadata.pdf_url = request.pdf_url
         return analysis
     except Exception as e:
-        logger.error(f"Erro ao executar structured output com LLM: {e}. Gerando fallback estruturado.")
-        # Fallback resiliente com parsing estruturado básico
-        return ScientificPaperAnalysis(
-            metadata=PaperMetadata(
-                title=request.title,
-                authors=request.authors or [],
-                year=request.year,
-                venue=request.venue,
-                doi=request.doi,
-                arxiv_url=request.arxiv_url,
-                pdf_url=request.pdf_url,
-            ),
-            executive_summary=request.abstract[:400] + "...",
-            problem_and_objectives=PaperProblemAndObjectives(
-                research_question=f"Investigação sobre {request.title}",
-                objectives=["Avaliar as abordagens descritas no artigo"],
-            ),
-            methodology=PaperMethodology(
-                study_type="Estudo Acadêmico",
-                dataset_sample="Descrito na publicação original",
-            ),
-            findings=PaperFindings(
-                main_results=["Resultados preliminares extraídos do resumo"],
-            ),
-            critique=PaperCritique(
-                strengths=["Relevância para o tema de pesquisa"],
-                declared_limitations=["Necessária análise completa do PDF na íntegra"],
-                internal_validity_threats=["Verificar desenho experimental no texto completo"],
-                external_validity_threats=["Aplicabilidade dependente do contexto estudado"],
-            ),
-            contributions=PaperContributions(
-                theoretical_advance="Contribuição para o avanço do estado da arte",
-                future_work=["Consultar seções finais do documento original"],
-            ),
-            alignment=AuthorAlignment(
-                relation_type="complementary",
-                suggested_sections=["Trabalhos Relacionados", "Introdução"],
-                synthesis_note=f"Recomendada leitura comparativa com foco em {request.author_topic or 'pesquisa atual'}",
-            ),
-        )
+        logger.error(f"[MethodologyReviewer] Falha crítica na análise estruturada com LLM: {e}")
+        raise RuntimeError(f"Falha na análise estruturada do artigo científico pelo LLM: {str(e)}") from e
 
 
 @tool

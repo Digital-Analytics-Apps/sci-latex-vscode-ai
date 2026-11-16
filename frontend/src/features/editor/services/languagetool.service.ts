@@ -46,32 +46,22 @@ export function prepareLatexForLint(text: string): string {
   masked = masked.replace(/%[^\r\n]*/g, (match) => ' '.repeat(match.length));
 
   // 2. Mascara blocos de matemática display ($$...$$ ou \[...\])
-  masked = masked.replace(/\$\$[\s\S]*?\$\$/g, (match) =>
-    match.replace(/[^\r\n]/g, ' ')
-  );
-  masked = masked.replace(/\\\[[\s\S]*?\\\]/g, (match) =>
-    match.replace(/[^\r\n]/g, ' ')
-  );
+  masked = masked.replace(/\$\$[\s\S]*?\$\$/g, (match) => match.replace(/[^\r\n]/g, ' '));
+  masked = masked.replace(/\\\[[\s\S]*?\\\]/g, (match) => match.replace(/[^\r\n]/g, ' '));
 
   // 3. Mascara matemática inline ($...$ ou \(...\))
   masked = masked.replace(/\$[^$\r\n]+\$/g, (match) => ' '.repeat(match.length));
-  masked = masked.replace(/\\\([\s\S]*?\\\)/g, (match) =>
-    match.replace(/[^\r\n]/g, ' ')
-  );
+  masked = masked.replace(/\\\([\s\S]*?\\\)/g, (match) => match.replace(/[^\r\n]/g, ' '));
 
   // 4. Mascara comandos técnicos com seus argumentos (identificadores não são texto natural)
   // Ex: \documentclass[...]{...}, \usepackage{...}, \begin{...}, \end{...}, \cite{...}, \ref{...}, \label{...}
   const technicalCommandRegex =
     /\\(?:documentclass|usepackage|begin|end|cite|citep|citet|ref|pageref|label|input|include|bibliography|bibliographystyle)\*?(?:\[[^\]]*\])?(?:\{[^}]*\})?/g;
-  masked = masked.replace(technicalCommandRegex, (match) =>
-    match.replace(/[^\r\n]/g, ' ')
-  );
+  masked = masked.replace(technicalCommandRegex, (match) => match.replace(/[^\r\n]/g, ' '));
 
   // 5. Mascara outros comandos LaTeX iniciados por barra (ex: \textbf, \section, \item, etc.),
   // preservando o texto interno dentro das chaves para que seja devidamente corrigido
-  masked = masked.replace(/\\[a-zA-Z]+\*?(?:\[[^\]]*\])?/g, (match) =>
-    ' '.repeat(match.length)
-  );
+  masked = masked.replace(/\\[a-zA-Z]+\*?(?:\[[^\]]*\])?/g, (match) => ' '.repeat(match.length));
 
   return masked;
 }
@@ -136,7 +126,9 @@ export async function checkGrammarAndSpelling(
       });
 
       if (directRes.ok) {
-        const json = (await directRes.json()) as { matches?: LanguageToolMatch[] };
+        const json = (await directRes.json()) as {
+          matches?: LanguageToolMatch[];
+        };
         if (Array.isArray(json.matches)) {
           return json.matches;
         }

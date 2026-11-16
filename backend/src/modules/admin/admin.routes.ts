@@ -3,11 +3,11 @@ import { verifyJwt } from '../../middlewares/auth.middleware';
 import { requireAdmin } from '../../middlewares/rbac.middleware';
 import { AdminController } from './admin.controller';
 import {
+  AdminActivityResponseSchema,
+  AdminCollaborationResponseSchema,
+  AdminInfrastructureResponseSchema,
   AdminOverviewResponseSchema,
   AdminWorkflowResponseSchema,
-  AdminInfrastructureResponseSchema,
-  AdminCollaborationResponseSchema,
-  AdminActivityResponseSchema,
 } from './admin.schemas';
 
 export async function adminRoutes(app: FastifyInstance) {
@@ -24,7 +24,8 @@ export async function adminRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Admin Center'],
         summary: 'Obter Visão Geral da Plataforma',
-        description: 'Retorna status operacional, usuários ativos, WebSockets, contagem de erros e atividade por hora.',
+        description:
+          'Retorna status operacional, usuários ativos, WebSockets, contagem de erros e atividade por hora.',
         security: [{ bearerAuth: [] }],
         response: {
           200: AdminOverviewResponseSchema,
@@ -41,7 +42,8 @@ export async function adminRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Admin Center'],
         summary: 'Obter Funil de Produção Científica e Gargalos',
-        description: 'Retorna a distribuição dos artigos nas 6 etapas canônicas, projetos atrasados e pendências do NIT.',
+        description:
+          'Retorna a distribuição dos artigos nas 6 etapas canônicas, projetos atrasados e pendências do NIT.',
         security: [{ bearerAuth: [] }],
         response: {
           200: AdminWorkflowResponseSchema,
@@ -58,7 +60,8 @@ export async function adminRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Admin Center'],
         summary: 'Obter Saúde e Telemetria dos Microsserviços',
-        description: 'Retorna a matriz de conectividade dos 5 serviços, latências, custos/tokens Opik e status do banco.',
+        description:
+          'Retorna a matriz de conectividade dos 5 serviços, latências, custos/tokens Opik e status do banco.',
         security: [{ bearerAuth: [] }],
         response: {
           200: AdminInfrastructureResponseSchema,
@@ -75,7 +78,8 @@ export async function adminRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Admin Center'],
         summary: 'Obter Métricas do Motor de Colaboração em Tempo Real',
-        description: 'Retorna documentos ativos em memória, distribuição por Pod dono, taxa OT/s e checkpoints pendentes.',
+        description:
+          'Retorna documentos ativos em memória, distribuição por Pod dono, taxa OT/s e checkpoints pendentes.',
         security: [{ bearerAuth: [] }],
         response: {
           200: AdminCollaborationResponseSchema,
@@ -109,7 +113,8 @@ export async function adminRoutes(app: FastifyInstance) {
       schema: {
         tags: ['Admin Center'],
         summary: 'Canal SSE de Eventos Administrativos em Tempo Real',
-        description: 'Transmite atualizações periódicas e eventos do sistema sem necessidade de polling.',
+        description:
+          'Transmite atualizações periódicas e eventos do sistema sem necessidade de polling.',
         security: [{ bearerAuth: [] }],
       },
     },

@@ -1,22 +1,19 @@
-import { Box } from "@mui/material";
-import React, { useState } from "react";
-import { Outlet, useOutletContext } from "react-router-dom";
-import { AutoSizer } from "react-virtualized-auto-sizer";
-import {
-  useAcademicPeriods,
-  useManagerDashboardQuery,
-} from "../../hooks/useManagementQueries";
-import { useProjectsList } from "../../hooks/useProjectQueries";
-import { useUsersListQuery } from "../../hooks/useUserQueries";
-import type { AcademicPeriod } from "../../types/academic-period.types";
-import type { ProjectListItem } from "../../types/project.types";
-import { CreateProjectModal } from "../author/modals/CreateProjectModal";
-import { AcademicPeriodsSection } from "./components/AcademicPeriodsSection";
-import { CreateAcademicPeriodModal } from "./components/CreateAcademicPeriodModal";
-import { CreateUserModal } from "./components/CreateUserModal";
-import { InstitutionalProjectsSection } from "./components/InstitutionalProjectsSection";
-import { ManagerSidebar } from "./components/ManagerSidebar";
-import { OverviewSection } from "./components/OverviewSection";
+import { Box } from '@mui/material';
+import React, { useState } from 'react';
+import { Outlet, useOutletContext } from 'react-router-dom';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
+import { useAcademicPeriods, useManagerDashboardQuery } from '../../hooks/useManagementQueries';
+import { useProjectsList } from '../../hooks/useProjectQueries';
+import { useUsersListQuery } from '../../hooks/useUserQueries';
+import type { AcademicPeriod } from '../../types/academic-period.types';
+import type { ProjectListItem } from '../../types/project.types';
+import { CreateProjectModal } from '../author/modals/CreateProjectModal';
+import { AcademicPeriodsSection } from './components/AcademicPeriodsSection';
+import { CreateAcademicPeriodModal } from './components/CreateAcademicPeriodModal';
+import { CreateUserModal } from './components/CreateUserModal';
+import { InstitutionalProjectsSection } from './components/InstitutionalProjectsSection';
+import { ManagerSidebar } from './components/ManagerSidebar';
+import { OverviewSection } from './components/OverviewSection';
 
 export interface ManagerDashboardContext {
   overview: {
@@ -76,33 +73,27 @@ export const InstitutionalProjectsView = () => {
   );
 };
 
-
 export const ManagerDashboardPage = () => {
-  const [selectedPeriod] = useState<string>("");
+  const [selectedPeriod] = useState<string>('');
 
   // Modais de Criação e Gestão CRUD
   const [isCreatePeriodOpen, setIsCreatePeriodOpen] = useState(false);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
-  const { data: rawPeriods, isLoading: isLoadingPeriods } =
-    useAcademicPeriods();
+  const { data: rawPeriods, isLoading: isLoadingPeriods } = useAcademicPeriods();
   const { data: rawProjects, isLoading: isLoadingProjects } = useProjectsList();
   const { data: rawUsers } = useUsersListQuery();
 
-  const periods = React.useMemo(
-    () => (Array.isArray(rawPeriods) ? rawPeriods : []),
-    [rawPeriods],
-  );
+  const periods = React.useMemo(() => (Array.isArray(rawPeriods) ? rawPeriods : []), [rawPeriods]);
   const allProjects = React.useMemo(
     () => (Array.isArray(rawProjects) ? rawProjects : []),
-    [rawProjects],
+    [rawProjects]
   );
 
-  const { data: dashboard, isLoading: isLoadingDashboard } =
-    useManagerDashboardQuery({
-      academicPeriodId: selectedPeriod || undefined,
-    });
+  const { data: dashboard, isLoading: isLoadingDashboard } = useManagerDashboardQuery({
+    academicPeriodId: selectedPeriod || undefined,
+  });
 
   const overview = dashboard?.overview || {
     totalProjects: 0,
@@ -131,12 +122,10 @@ export const ManagerDashboardPage = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", gap: 3, minHeight: "calc(100vh - 120px)" }}>
+    <Box sx={{ display: 'flex', gap: 3, minHeight: 'calc(100vh - 120px)' }}>
       {/* SIDEBAR LATERAL NATIVA DO GERENTE */}
       <AutoSizer
-        renderProp={({ height = 600 }) => (
-          <ManagerSidebar height={height - 80} width={250} />
-        )}
+        renderProp={({ height = 600 }) => <ManagerSidebar height={height - 80} width={250} />}
       />
 
       {/* ÁREA DE CONTEÚDO PRINCIPAL COM ROTA FILHA (OUTLET) */}
@@ -150,16 +139,12 @@ export const ManagerDashboardPage = () => {
         onClose={() => setIsCreatePeriodOpen(false)}
       />
 
-      <CreateUserModal
-        open={isCreateUserOpen}
-        onClose={() => setIsCreateUserOpen(false)}
-      />
+      <CreateUserModal open={isCreateUserOpen} onClose={() => setIsCreateUserOpen(false)} />
 
       <CreateProjectModal
         open={isCreateProjectOpen}
         onClose={() => setIsCreateProjectOpen(false)}
       />
-
     </Box>
   );
 };

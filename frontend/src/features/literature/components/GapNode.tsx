@@ -1,6 +1,6 @@
 import React from 'react';
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
+import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { Box, Card, CardContent, Chip, Typography } from '@mui/material';
 import { Sparkles } from 'lucide-react';
 import type { GapNodeData } from '../types';
 
@@ -69,7 +69,15 @@ export const GapNode: React.FC<NodeProps<Node<GapNodeData>>> = ({ data, selected
           </Typography>
 
           {scope && (
-            <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', fontStyle: 'italic', mb: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: 'text.disabled',
+                fontStyle: 'italic',
+                mb: 1,
+              }}
+            >
               Escopo identificado: {scope}
             </Typography>
           )}
@@ -86,7 +94,14 @@ export const GapNode: React.FC<NodeProps<Node<GapNodeData>>> = ({ data, selected
               <Typography variant="caption" sx={{ fontWeight: 600, color: '#bf360c' }}>
                 💡 Oportunidade para seu artigo:
               </Typography>
-              <Typography variant="caption" sx={{ display: 'block', color: 'text.primary', fontSize: '0.72rem' }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  color: 'text.primary',
+                  fontSize: '0.72rem',
+                }}
+              >
                 {recommendedAction}
               </Typography>
             </Box>

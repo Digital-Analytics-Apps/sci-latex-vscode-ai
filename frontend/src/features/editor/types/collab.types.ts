@@ -52,6 +52,7 @@ export interface DocumentData {
   id: string;
   title: string;
   content: string;
+  mainEntryPath?: string;
   version: number;
   updatedAt: string;
 }

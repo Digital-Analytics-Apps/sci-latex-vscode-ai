@@ -1,5 +1,5 @@
 import { DeltaOperation, DocumentSnapshot } from '../types/collab.types';
-import { History, HardDriveDownload, Clock, CheckCircle2, GitCompare } from 'lucide-react';
+import { CheckCircle2, Clock, GitCompare, HardDriveDownload, History } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -140,7 +140,8 @@ export function HistorySidebar({
               Nenhuma versão registrada
             </Typography>
             <Typography sx={{ fontSize: '0.74rem' }}>
-              As versões são criadas automaticamente ao pausar a digitação ou clicando em "Salvar Versão".
+              As versões são criadas automaticamente ao pausar a digitação ou clicando em "Salvar
+              Versão".
             </Typography>
           </Box>
         ) : (
@@ -186,7 +187,11 @@ export function HistorySidebar({
                         size="small"
                         color="primary"
                         variant="outlined"
-                        sx={{ height: 18, fontSize: '0.65rem', fontWeight: 600 }}
+                        sx={{
+                          height: 18,
+                          fontSize: '0.65rem',
+                          fontWeight: 600,
+                        }}
                       />
                     )}
                   </Stack>
@@ -201,7 +206,11 @@ export function HistorySidebar({
                   </Typography>
                   <Typography
                     component="span"
-                    sx={{ fontSize: '0.72rem', fontWeight: 600, color: 'text.primary' }}
+                    sx={{
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      color: 'text.primary',
+                    }}
                   >
                     {s.savedBy || 'Sistema'}
                   </Typography>
@@ -210,7 +219,14 @@ export function HistorySidebar({
                     {formatReason(s.reason)}
                   </Typography>
                 </Stack>
-                <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
+                <Box
+                  sx={{
+                    mt: 1,
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: 0.8,
+                  }}
+                >
                   <Button
                     size="small"
                     variant="outlined"

@@ -1,40 +1,27 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Typography,
-} from "@mui/material";
-import type { CardProps } from "@mui/material";
-import React from "react";
+import { Box, Card, CardContent, Chip, CircularProgress, Typography } from '@mui/material';
+import type { CardProps } from '@mui/material';
+import React from 'react';
 
-export type DeadlineStatusKey = "ON_TIME" | "WARNING" | "OVERDUE";
+export type DeadlineStatusKey = 'ON_TIME' | 'WARNING' | 'OVERDUE';
 
 const getDeadlineStatusConfig = (
   type: DeadlineStatusKey,
-  count: number,
-): { color: "success" | "warning" | "error"; label: string } => {
+  count: number
+): { color: 'success' | 'warning' | 'error'; label: string } => {
   switch (type) {
-    case "ON_TIME":
-      return { color: "success", label: `${count} no prazo` };
-    case "WARNING":
-      return { color: "warning", label: `${count} atenção` };
-    case "OVERDUE":
-      return { color: "error", label: `${count} atrasado` };
+    case 'ON_TIME':
+      return { color: 'success', label: `${count} no prazo` };
+    case 'WARNING':
+      return { color: 'warning', label: `${count} atenção` };
+    case 'OVERDUE':
+      return { color: 'error', label: `${count} atrasado` };
   }
 };
 
 /**
  * Chip para Exibição de Status de Prazos (No prazo, Atenção, Atrasado).
  */
-export const DeadlineStatusChip = ({
-  type,
-  count,
-}: {
-  type: DeadlineStatusKey;
-  count: number;
-}) => {
+export const DeadlineStatusChip = ({ type, count }: { type: DeadlineStatusKey; count: number }) => {
   const { color, label } = getDeadlineStatusConfig(type, count);
   return (
     <Chip
@@ -65,23 +52,23 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   value,
   icon,
   subtitle,
-  color = "primary.main",
+  color = 'primary.main',
   isLoading = false,
   onClick,
   sx,
-  variant = "outlined",
+  variant = 'outlined',
   ...restCardProps
 }) => {
   return (
     <Card
       variant={variant}
       sx={{
-        height: "100%",
-        cursor: onClick ? "pointer" : "default",
-        transition: "transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out",
-        "&:hover": onClick
+        height: '100%',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
+        '&:hover': onClick
           ? {
-              transform: "translateY(-2px)",
+              transform: 'translateY(-2px)',
               boxShadow: 2,
             }
           : undefined,
@@ -91,13 +78,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {...restCardProps}
     >
       <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {icon}
-          <Typography
-            variant="subtitle2"
-            color="text.secondary"
-            sx={{ fontWeight: 600 }}
-          >
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
         </Box>
@@ -107,11 +90,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </Typography>
 
         {subtitle && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: "block" }}
-          >
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
             {subtitle}
           </Typography>
         )}

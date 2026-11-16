@@ -1,0 +1,103 @@
+# ==============================================================================
+# PIPELINE CENTRAL DO OPENTELEMETRY COLLECTOR (OTEL-COLLECTOR-CONTRIB)
+# ==============================================================================
+# Responsável por:
+# 1. Receber spans via OTLP (gRPC porta 4317 e HTTP porta 4318)
+# 2. Controlar pressão de memória com memory_limiter
+# 3. Aplicar amostragem inteligente baseada em cauda (Tail-Sampling)
+# 4. Exportar traces para o Grafana Tempo e métricas para o Prometheus
+# ==============================================================================
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317 # Porta padrão para recepção de dados via gRPC
+      http:
+        endpoint: 0.0.0.0:4318 # Porta padrão para recepção de dados via HTTP/Protobuf/JSON
+
+processors:
+  # Agrupa telemetrias em lotes para otimizar throughput de rede
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  # Evita estouro de memória derrubando spans em momentos de saturação severa
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+  # Amostragem baseada em cauda (Tail-Based Sampling):
+  # Avalia a requisição inteira ANTES de decidir se deve descartar ou reter
+  tail_sampling:
+    decision_wait: 10s # Espera até 10s pela conclusão de todos os spans da transação
+    num_traces: 10000 # Capacidade máxima da tabela de traces em espera na memória
+    expected_new_traces_per_sec: 2000 # Taxa estimada para alocação eficiente de hash maps
+    policies:
+      # Regra 1: 100% de retenção para qualquer span que retorne status de erro (ERROR)
+      - name: span-error-policy
+        type: status_code
+        status_code: { status_codes: [ ERROR ] }
+
+      # Regra 2: 100% de retenção para erros HTTP no intervalo 500-599
+      - name: http-server-error-policy
+        type: numeric_attribute
+        numeric_attribute:
+          key: "http.response.status_code"
+          min_value: 500
+          max_value: 599
+
+      # Regra 3: 100% de retenção para requisições com latência superior a 2 segundos
+      - name: latency-policy
+        type: latency
+        latency: { threshold_ms: 2000 }
+
+      # Regra 4: 100% de retenção para serviços de alta criticidade (AI Service e Compilador TeX)
+      - name: critical-services-policy
+        type: string_attribute
+        string_attribute:
+          key: "service.name"
+          values: [ "ai-service", "scia-ai-service", "compiler", "scia-compiler" ]
+
+      # Regra 5: Amostragem probabilística de 10% para as demais requisições rotineiras
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic: { sampling_percentage: 10.0 }
+
+exporters:
+  # Exportador OTLP direcionado ao Grafana Tempo
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Exportador de métricas para scraping do Prometheus
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: scia
+
+  # Exportador de depuração em logs do coletor
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [otlp/tempo, debug]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus, debug]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]
+
+  telemetry:
+    logs:
+      level: info

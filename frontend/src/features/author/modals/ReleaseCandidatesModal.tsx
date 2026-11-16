@@ -1,5 +1,5 @@
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import SendIcon from "@mui/icons-material/Send";
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import SendIcon from '@mui/icons-material/Send';
 import {
   Box,
   Button,
@@ -9,17 +9,17 @@ import {
   Paper,
   TextField,
   Typography,
-} from "@mui/material";
-import React, { useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
+} from '@mui/material';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
 import {
   useCreateRCMutation,
   usePublishReleaseMutation,
   useReleaseCandidatesQuery,
-} from "../../../hooks/useReleaseQueries";
-import { showNotification } from "../../../store/slices/notificationSlice";
-import type { ReleaseCandidateItem } from "../../../types/release-candidate.types";
+} from '../../../hooks/useReleaseQueries';
+import { showNotification } from '../../../store/slices/notificationSlice';
+import type { ReleaseCandidateItem } from '../../../types/release-candidate.types';
 
 interface ReleaseCandidatesModalProps {
   open: boolean;
@@ -33,10 +33,9 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
   projectId,
 }) => {
   const dispatch = useDispatch();
-  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [feedbackNotes, setFeedbackNotes] = useState('');
 
-  const { data: releaseCandidates, isLoading } =
-    useReleaseCandidatesQuery(projectId);
+  const { data: releaseCandidates, isLoading } = useReleaseCandidatesQuery(projectId);
   const createRCMutation = useCreateRCMutation(projectId);
   const publishReleaseMutation = usePublishReleaseMutation(projectId);
 
@@ -48,18 +47,17 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
 
       dispatch(
         showNotification({
-          message:
-            "Nova Release Candidate (RC) gerada e submetida ao Revisor Técnico!",
-          severity: "success",
-        }),
+          message: 'Nova Release Candidate (RC) gerada e submetida ao Revisor Técnico!',
+          severity: 'success',
+        })
       );
-      setFeedbackNotes("");
+      setFeedbackNotes('');
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao gerar Release Candidate.",
-          severity: "error",
-        }),
+          message: 'Erro ao gerar Release Candidate.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -69,17 +67,17 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
       await publishReleaseMutation.mutateAsync();
       dispatch(
         showNotification({
-          message: "Release Oficial publicada com sucesso!",
-          severity: "success",
-        }),
+          message: 'Release Oficial publicada com sucesso!',
+          severity: 'success',
+        })
       );
       onClose();
     } catch {
       dispatch(
         showNotification({
-          message: "Erro ao publicar Release Oficial.",
-          severity: "error",
-        }),
+          message: 'Erro ao publicar Release Oficial.',
+          severity: 'error',
+        })
       );
     }
   };
@@ -87,7 +85,7 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
   const renderRCList = () => {
     if (isLoading) {
       return (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
           <CircularProgress size={28} />
         </Box>
       );
@@ -102,14 +100,14 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
     }
 
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {releaseCandidates.map((rc: ReleaseCandidateItem) => (
           <Paper key={rc.id} variant="outlined" sx={{ p: 2 }}>
             <Box
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 mb: 1,
               }}
             >
@@ -119,7 +117,7 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
               <Chip
                 label={rc.status}
                 size="small"
-                color={rc.status === "APPROVED" ? "success" : "warning"}
+                color={rc.status === 'APPROVED' ? 'success' : 'warning'}
                 sx={{ fontWeight: 600 }}
               />
             </Box>
@@ -129,7 +127,7 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
               </Typography>
             )}
             <Typography variant="caption" color="text.secondary">
-              Submetido em: {new Date(rc.createdAt).toLocaleDateString("pt-BR")}
+              Submetido em: {new Date(rc.createdAt).toLocaleDateString('pt-BR')}
             </Typography>
           </Paper>
         ))}
@@ -151,7 +149,7 @@ export const ReleaseCandidatesModal: React.FC<ReleaseCandidatesModalProps> = ({
       onConfirm={handlePublishRelease}
       isSubmitting={publishReleaseMutation.isPending}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Box>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
             Histórico de Release Candidates (RCs)

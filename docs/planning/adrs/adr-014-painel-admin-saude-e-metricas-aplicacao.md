@@ -1,6 +1,6 @@
 # ADR 014: SCIA Admin Center — Painel Administrativo de Observabilidade, Operação de Plataforma e Governança Científica
 
-- **Status:** APROVADO
+- **Status:** APROVADO (Estendido pela ADR-018 com o AIOps Copilot Drawer e Diagnóstico Ativo via MCP)
 - **Data:** 12 de Novembro de 2026
 - **Autor(es):** Equipe de Arquitetura, Engenharia e Segurança SCIA
 - **Domínio:** Administração de Sistema, Inteligência Operacional, Saúde de Microsserviços, Monitoramento de Colaboração em Tempo Real e Auditoria

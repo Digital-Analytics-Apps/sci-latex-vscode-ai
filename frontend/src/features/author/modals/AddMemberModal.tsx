@@ -1,13 +1,13 @@
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
-import { useState } from "react";
-import { useDispatch } from "react-redux";
-import { StandardModal } from "../../../components/common/StandardModal";
-import { UserSearchAutocomplete } from "../../../components/common/UserSearchAutocomplete";
-import { Role } from "../../../constants/roles";
-import { useAddProjectMemberMutation } from "../../../hooks/useProjectQueries";
-import { type UserMemberItem } from "../../../services/usersService";
-import { showNotification } from "../../../store/slices/notificationSlice";
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { StandardModal } from '../../../components/common/StandardModal';
+import { UserSearchAutocomplete } from '../../../components/common/UserSearchAutocomplete';
+import { Role } from '../../../constants/roles';
+import { useAddProjectMemberMutation } from '../../../hooks/useProjectQueries';
+import { type UserMemberItem } from '../../../services/usersService';
+import { showNotification } from '../../../store/slices/notificationSlice';
 
 interface AddMemberModalProps {
   open: boolean;
@@ -28,7 +28,7 @@ export const AddMemberModal = ({
   const [role, setRole] = useState<Role>(Role.AUTHOR);
 
   // Busca de Usuários via UserSearchAutocomplete
-  const [selectedUserEmail, setSelectedUserEmail] = useState("");
+  const [selectedUserEmail, setSelectedUserEmail] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserMemberItem | null>(null);
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
@@ -36,9 +36,9 @@ export const AddMemberModal = ({
     if (!selectedUser) {
       dispatch(
         showNotification({
-          message: "Selecione um usuário para adicionar ao artigo.",
-          severity: "warning",
-        }),
+          message: 'Selecione um usuário para adicionar ao artigo.',
+          severity: 'warning',
+        })
       );
       return;
     }
@@ -46,9 +46,9 @@ export const AddMemberModal = ({
     if (!projectId) {
       dispatch(
         showNotification({
-          message: "Nenhum artigo selecionado.",
-          severity: "error",
-        }),
+          message: 'Nenhum artigo selecionado.',
+          severity: 'error',
+        })
       );
       return;
     }
@@ -62,22 +62,20 @@ export const AddMemberModal = ({
       dispatch(
         showNotification({
           message: `${selectedUser.name} foi adicionado como ${
-            role === Role.REVIEWER ? "Revisor" : "Co-Autor"
+            role === Role.REVIEWER ? 'Revisor' : 'Co-Autor'
           } com sucesso!`,
-          severity: "success",
-        }),
+          severity: 'success',
+        })
       );
 
       setSelectedUser(null);
-      setSelectedUserEmail("");
+      setSelectedUserEmail('');
       if (onMemberAdded) onMemberAdded();
       onClose();
     } catch (err: any) {
       const errorMsg =
-        err.response?.data?.message ||
-        err.message ||
-        "Erro ao adicionar membro ao artigo.";
-      dispatch(showNotification({ message: errorMsg, severity: "error" }));
+        err.response?.data?.message || err.message || 'Erro ao adicionar membro ao artigo.';
+      dispatch(showNotification({ message: errorMsg, severity: 'error' }));
     }
   };
 
@@ -95,7 +93,7 @@ export const AddMemberModal = ({
       confirmDisabled={!selectedUser}
       isSubmitting={addMemberMutation.isPending}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         {/* Componente Reutilizável de Busca de Usuários */}
         <UserSearchAutocomplete
           value={selectedUserEmail}

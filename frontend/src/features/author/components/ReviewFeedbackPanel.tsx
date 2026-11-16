@@ -1,6 +1,6 @@
-import AddTaskIcon from "@mui/icons-material/AddTask";
-import CommentIcon from "@mui/icons-material/Comment";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AddTaskIcon from '@mui/icons-material/AddTask';
+import CommentIcon from '@mui/icons-material/Comment';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   Accordion,
   AccordionDetails,
@@ -14,13 +14,13 @@ import {
   Stack,
   Tooltip,
   Typography,
-} from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import type { ProjectStage } from "../../../services/projectsService";
-import { projectsService } from "../../../services/projectsService";
-import { colors } from "../../../theme/tokens";
-import { formatDate } from "../../../utils/dateUtils";
+} from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import type { ProjectStage } from '../../../services/projectsService';
+import { projectsService } from '../../../services/projectsService';
+import { colors } from '../../../theme/tokens';
+import { formatDate } from '../../../utils/dateUtils';
 
 export interface ReviewCommentItem {
   id: string;
@@ -50,7 +50,7 @@ export const ReviewFeedbackPanel = ({
   onOpenCreateCorrectionTask,
 }: ReviewFeedbackPanelProps) => {
   const { data: fetchedComments } = useQuery({
-    queryKey: ["review-comments-by-stage", projectId],
+    queryKey: ['review-comments-by-stage', projectId],
     queryFn: async () => {
       if (!projectId) return [];
       const res = await projectsService.getReviewCommentsByStage?.(projectId);
@@ -62,11 +62,7 @@ export const ReviewFeedbackPanel = ({
   // Agrupa os comentários por Etapa de forma defensiva
   const commentsByStage = useMemo(() => {
     // Caso 1: Backend retornou comentários já agrupados por etapa
-    if (
-      fetchedComments &&
-      Array.isArray(fetchedComments) &&
-      fetchedComments.length > 0
-    ) {
+    if (fetchedComments && Array.isArray(fetchedComments) && fetchedComments.length > 0) {
       return fetchedComments.map((item: any, idx: number) => ({
         stage: {
           id: item.stageId || `stage-${idx}`,
@@ -75,8 +71,8 @@ export const ReviewFeedbackPanel = ({
         },
         comments: (item.comments || []).map((c: any) => ({
           ...c,
-          filePath: c.filePath || c.prTitle || c.taskTitle || "Seção do Artigo",
-          authorName: c.userName || c.authorName || "Revisor Técnico",
+          filePath: c.filePath || c.prTitle || c.taskTitle || 'Seção do Artigo',
+          authorName: c.userName || c.authorName || 'Revisor Técnico',
           lineNumber: c.lineNumber ?? c.lineNumer ?? null,
         })),
       }));
@@ -87,39 +83,25 @@ export const ReviewFeedbackPanel = ({
     const commentsList = propComments || [];
 
     return stagesList.map((stage) => {
-      const stageSlug = (stage.title || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
+      const stageSlug = (stage.title || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .trim();
 
       const matchedComments = commentsList.filter((c) => {
-        const fileLower = (
-          c.filePath ||
-          c.prTitle ||
-          c.taskTitle ||
-          c.comment ||
-          ""
-        ).toLowerCase();
+        const fileLower = (c.filePath || c.prTitle || c.taskTitle || c.comment || '').toLowerCase();
 
-        if (
-          stageSlug.includes("introducao") ||
-          stageSlug.includes("planejamento")
-        ) {
-          return fileLower.includes("intro") || fileLower.includes("01");
+        if (stageSlug.includes('introducao') || stageSlug.includes('planejamento')) {
+          return fileLower.includes('intro') || fileLower.includes('01');
         }
-        if (
-          stageSlug.includes("desenvolvimento") ||
-          stageSlug.includes("experimento")
-        ) {
+        if (stageSlug.includes('desenvolvimento') || stageSlug.includes('experimento')) {
           return (
-            fileLower.includes("method") ||
-            fileLower.includes("exp") ||
-            fileLower.includes("02")
+            fileLower.includes('method') || fileLower.includes('exp') || fileLower.includes('02')
           );
         }
-        if (stageSlug.includes("rascunho") || stageSlug.includes("escrita")) {
-          return fileLower.includes("draft") || fileLower.includes("03");
+        if (stageSlug.includes('rascunho') || stageSlug.includes('escrita')) {
+          return fileLower.includes('draft') || fileLower.includes('03');
         }
         return true;
       });
@@ -133,7 +115,7 @@ export const ReviewFeedbackPanel = ({
 
   const totalComments = commentsByStage.reduce(
     (acc, curr) => acc + (curr.comments?.length || 0),
-    0,
+    0
   );
 
   if (totalComments === 0) {
@@ -142,8 +124,8 @@ export const ReviewFeedbackPanel = ({
         variant="outlined"
         sx={{
           p: 3,
-          textAlign: "center",
-          bgcolor: "background.paper",
+          textAlign: 'center',
+          bgcolor: 'background.paper',
           borderRadius: 2,
         }}
       >
@@ -155,24 +137,24 @@ export const ReviewFeedbackPanel = ({
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
       <Paper
         variant="outlined"
         sx={{
           p: 2,
-          bgcolor: "rgba(239, 68, 68, 0.05)",
-          borderColor: "error.main",
+          bgcolor: 'rgba(239, 68, 68, 0.05)',
+          borderColor: 'error.main',
           borderRadius: 2,
         }}
       >
         <Box
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <CommentIcon color="error" />
             <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
               Apontamentos do Revisor — Correções Solicitadas
@@ -185,8 +167,8 @@ export const ReviewFeedbackPanel = ({
             />
           </Box>
           <Typography variant="caption" color="text.secondary">
-            Clique no botão lateral ao lado de cada comentário para gerar a
-            sub-tarefa na etapa correspondente.
+            Clique no botão lateral ao lado de cada comentário para gerar a sub-tarefa na etapa
+            correspondente.
           </Typography>
         </Box>
       </Paper>
@@ -199,22 +181,22 @@ export const ReviewFeedbackPanel = ({
             key={stage.id}
             defaultExpanded
             sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: "8px !important",
-              overflow: "hidden",
-              "&:before": { display: "none" },
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: '8px !important',
+              overflow: 'hidden',
+              '&:before': { display: 'none' },
             }}
           >
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
-              sx={{ bgcolor: "action.hover", px: 2, py: 0.5 }}
+              sx={{ bgcolor: 'action.hover', px: 2, py: 0.5 }}
             >
               <Box
                 sx={{
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   gap: 1.5,
                 }}
               >
@@ -232,10 +214,10 @@ export const ReviewFeedbackPanel = ({
                   label={`${stageComments.length} apontamentos`}
                   size="small"
                   sx={{
-                    bgcolor: "rgba(239, 68, 68, 0.12)",
+                    bgcolor: 'rgba(239, 68, 68, 0.12)',
                     color: colors.rose[600],
                     fontWeight: 700,
-                    fontSize: "0.7rem",
+                    fontSize: '0.7rem',
                   }}
                 />
               </Box>
@@ -244,10 +226,8 @@ export const ReviewFeedbackPanel = ({
             <AccordionDetails sx={{ p: 2 }}>
               <Stack spacing={1.5}>
                 {stageComments.map((c: ReviewCommentItem, idx: number) => {
-                  const author =
-                    c.userName || c.authorName || "Revisor Técnico";
-                  const labelPath =
-                    c.filePath || c.prTitle || c.taskTitle || "Seção do Artigo";
+                  const author = c.userName || c.authorName || 'Revisor Técnico';
+                  const labelPath = c.filePath || c.prTitle || c.taskTitle || 'Seção do Artigo';
                   const line = c.lineNumber ?? c.lineNumer ?? null;
 
                   return (
@@ -256,19 +236,19 @@ export const ReviewFeedbackPanel = ({
                       variant="outlined"
                       sx={{
                         p: 1.5,
-                        borderColor: "divider",
-                        bgcolor: "background.paper",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        borderColor: 'divider',
+                        bgcolor: 'background.paper',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         gap: 2,
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
                         <Box
                           sx={{
-                            display: "flex",
-                            alignItems: "center",
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: 1,
                             mb: 0.5,
                           }}
@@ -277,7 +257,7 @@ export const ReviewFeedbackPanel = ({
                             sx={{
                               width: 22,
                               height: 22,
-                              fontSize: "0.75rem",
+                              fontSize: '0.75rem',
                               bgcolor: colors.purple[600],
                             }}
                           >
@@ -285,7 +265,7 @@ export const ReviewFeedbackPanel = ({
                           </Avatar>
                           <Typography
                             variant="caption"
-                            sx={{ fontWeight: 700, color: "text.primary" }}
+                            sx={{ fontWeight: 700, color: 'text.primary' }}
                           >
                             {author}
                           </Typography>
@@ -295,8 +275,8 @@ export const ReviewFeedbackPanel = ({
                             variant="outlined"
                             sx={{
                               height: 18,
-                              fontSize: "0.65rem",
-                              fontFamily: "monospace",
+                              fontSize: '0.65rem',
+                              fontFamily: 'monospace',
                             }}
                           />
                           {line !== null && line !== undefined && (
@@ -305,23 +285,16 @@ export const ReviewFeedbackPanel = ({
                               size="small"
                               sx={{
                                 height: 18,
-                                fontSize: "0.65rem",
-                                bgcolor: "action.hover",
+                                fontSize: '0.65rem',
+                                bgcolor: 'action.hover',
                               }}
                             />
                           )}
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ ml: "auto" }}
-                          >
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                             {formatDate(c.createdAt)}
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="body2"
-                          sx={{ color: "text.primary", pl: 3.5 }}
-                        >
+                        <Typography variant="body2" sx={{ color: 'text.primary', pl: 3.5 }}>
                           {c.comment}
                         </Typography>
                       </Box>
@@ -336,16 +309,17 @@ export const ReviewFeedbackPanel = ({
                           startIcon={<AddTaskIcon fontSize="small" />}
                           onClick={() =>
                             onOpenCreateCorrectionTask(
-                              `[Correção R${c.reviewRoundNumber || 1}] ${(
-                                c.comment || ""
-                              ).slice(0, 45)}...`,
-                              stage.id,
+                              `[Correção R${c.reviewRoundNumber || 1}] ${(c.comment || '').slice(
+                                0,
+                                45
+                              )}...`,
+                              stage.id
                             )
                           }
                           sx={{
-                            whiteSpace: "nowrap",
+                            whiteSpace: 'nowrap',
                             fontWeight: 700,
-                            fontSize: "0.75rem",
+                            fontSize: '0.75rem',
                             px: 1.5,
                             height: 32,
                           }}

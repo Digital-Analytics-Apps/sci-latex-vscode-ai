@@ -1,7 +1,7 @@
-import type { StageStatus } from "../constants/status";
-import type { TaskSummary } from "./task.types";
+import type { StageStatus } from '../constants/status';
+import type { TaskSummary } from './task.types';
 
-export type GatekeeperType = "NIT" | "TARGET_CONFERENCE";
+export type GatekeeperType = 'NIT' | 'TARGET_CONFERENCE';
 
 export interface ProjectStage {
   id: string;

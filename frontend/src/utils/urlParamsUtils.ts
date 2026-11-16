@@ -9,7 +9,7 @@
  */
 export function parseUrlParams<T extends Record<string, any>>(
   searchParams: URLSearchParams,
-  defaultValues: T,
+  defaultValues: T
 ): T {
   const result = { ...defaultValues };
 
@@ -19,13 +19,13 @@ export function parseUrlParams<T extends Record<string, any>>(
 
     const defaultValue = defaultValues[key];
 
-    if (typeof defaultValue === "number") {
+    if (typeof defaultValue === 'number') {
       const num = Number(rawValue);
       if (!Number.isNaN(num)) {
         (result as any)[key] = num;
       }
-    } else if (typeof defaultValue === "boolean") {
-      (result as any)[key] = rawValue === "true";
+    } else if (typeof defaultValue === 'boolean') {
+      (result as any)[key] = rawValue === 'true';
     } else {
       (result as any)[key] = rawValue;
     }
@@ -40,27 +40,20 @@ export function parseUrlParams<T extends Record<string, any>>(
  */
 export function buildCleanApiParams<T extends Record<string, any>>(
   filters: T,
-  defaultValues?: Partial<T>,
+  defaultValues?: Partial<T>
 ): Record<string, string> {
   const clean: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(filters)) {
-    if (value === null || value === undefined || value === "") continue;
+    if (value === null || value === undefined || value === '') continue;
 
     // Skip wildcard 'all' or 'ALL' strings
-    if (
-      typeof value === "string" &&
-      (value.toLowerCase() === "all" || value === "ALL")
-    ) {
+    if (typeof value === 'string' && (value.toLowerCase() === 'all' || value === 'ALL')) {
       continue;
     }
 
     // Skip values matching default values
-    if (
-      defaultValues &&
-      defaultValues[key] !== undefined &&
-      defaultValues[key] === value
-    ) {
+    if (defaultValues && defaultValues[key] !== undefined && defaultValues[key] === value) {
       continue;
     }
 
@@ -78,22 +71,17 @@ export function buildCleanApiParams<T extends Record<string, any>>(
 export function serializeToSearchParams<T extends Record<string, any>>(
   filters: T,
   defaultValues?: T,
-  baseParams?: URLSearchParams,
+  baseParams?: URLSearchParams
 ): URLSearchParams {
-  const searchParams = baseParams
-    ? new URLSearchParams(baseParams)
-    : new URLSearchParams();
+  const searchParams = baseParams ? new URLSearchParams(baseParams) : new URLSearchParams();
 
   for (const [key, value] of Object.entries(filters)) {
     if (
       value === null ||
       value === undefined ||
-      value === "" ||
-      (typeof value === "string" &&
-        (value.toLowerCase() === "all" || value === "ALL")) ||
-      (defaultValues &&
-        defaultValues[key] !== undefined &&
-        defaultValues[key] === value)
+      value === '' ||
+      (typeof value === 'string' && (value.toLowerCase() === 'all' || value === 'ALL')) ||
+      (defaultValues && defaultValues[key] !== undefined && defaultValues[key] === value)
     ) {
       searchParams.delete(key);
     } else {

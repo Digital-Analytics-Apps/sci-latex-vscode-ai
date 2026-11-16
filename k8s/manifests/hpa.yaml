@@ -1,22 +1,103 @@
+# ==============================================================================
+# ESCALONAMENTO AUTOMÁTICO DE PODS: HorizontalPodAutoscaler (HPA)
+# O que é o HPA?
+# O HPA funciona como um termostato inteligente: ele monitora o consumo de CPU
+# e memória dos pods em tempo real. Se o tráfego subir (ex: muitos pesquisadores
+# digitando ao mesmo tempo), ele cria novos pods automaticamente.
+# Quando o tráfego diminuir, ele destrói os pods extras para economizar recursos.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. HPA DO BACKEND FASTIFY (sci-latex-backend)
+# ------------------------------------------------------------------------------
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: sci-latex-backend-hpa
   namespace: default
 spec:
+  # Alvo: qual Deployment o HPA deve vigiar e escalar
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: sci-latex-backend
+
+  # Limites de pods:
+  # - minReplicas: Nunca desce abaixo de 2 pods (garante alta disponibilidade)
+  # - maxReplicas: Não cria mais de 6 pods (evita esgotar o pool de conexões do PostgreSQL)
   minReplicas: 2
   maxReplicas: 6
+
+  # Métricas que disparam o aumento de pods:
   metrics:
+    # 1. Escala se a CPU média passar de 70% do 'requests' configurado
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
           averageUtilization: 70
+
+    # 2. Escala se a Memória média passar de 80% do 'requests'
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+  # --------------------------------------------------------------------------
+  # COMPORTAMENTO DE ESCALONAMENTO (Behavior):
+  # --------------------------------------------------------------------------
+  behavior:
+    # Escala para CIMA (Scale Up) de forma RÁPIDA e AGRESSIVA:
+    # Em caso de pico de tráfego, cria pods novos quase que instantaneamente (15s)
+    scaleUp:
+      stabilizationWindowSeconds: 0 # Sem espera: reage imediatamente ao pico
+      selectPolicy: Max
+      policies:
+        - type: Percent
+          value: 100        # Pode dobrar a quantidade de pods
+          periodSeconds: 15
+        - type: Pods
+          value: 4          # Ou criar até 4 pods de uma vez a cada 15 segundos
+          periodSeconds: 15
+
+    # Escala para BAIXO (Scale Down) de forma SUAVE e CONSERVADORA:
+    # Evita o efeito "ioiô" (matar pod rápido demais e ter que recriar 1 minuto depois)
+    scaleDown:
+      # Janela de estabilização de 5 minutos (300 segundos):
+      # A CPU precisa ficar baixa por 5 minutos inteiros antes do Kubernetes apagar um pod
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 20         # Reduz no máximo 20% dos pods por minuto
+          periodSeconds: 60
+---
+# ------------------------------------------------------------------------------
+# 2. HPA DO COMPILADOR LATEX (sci-latex-compiler)
+# ------------------------------------------------------------------------------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sci-latex-compiler-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sci-latex-compiler
+  # Mantém 1 pod em repouso e escala até 4 workers quando houver fila de compilação
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    # Compilação consome muita CPU: se passar de 75%, sobe mais um worker de compilação
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
     - type: Resource
       resource:
         name: memory
@@ -32,44 +113,11 @@ spec:
           value: 100
           periodSeconds: 15
         - type: Pods
-          value: 4
+          value: 2
           periodSeconds: 15
     scaleDown:
       stabilizationWindowSeconds: 300
       policies:
         - type: Percent
-          value: 20
-          periodSeconds: 60
----
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: sci-latex-compiler-hpa
-  namespace: default
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: sci-latex-compiler
-  minReplicas: 1
-  maxReplicas: 4
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 80
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 0
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 15
-    scaleDown:
-      stabilizationWindowSeconds: 180
-      policies:
-        - type: Pods
-          value: 1
+          value: 25
           periodSeconds: 60

@@ -1,67 +1,64 @@
 export const TaskStatus = {
-  NOT_STARTED: "NOT_STARTED",
-  IN_PROGRESS: "IN_PROGRESS",
-  REVIEW_REQUESTED: "REVIEW_REQUESTED",
-  IN_REVIEW: "IN_REVIEW",
-  CHANGES_REQUESTED: "CHANGES_REQUESTED",
-  COMPLETED: "COMPLETED",
+  NOT_STARTED: 'NOT_STARTED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  REVIEW_REQUESTED: 'REVIEW_REQUESTED',
+  IN_REVIEW: 'IN_REVIEW',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED',
+  COMPLETED: 'COMPLETED',
 } as const;
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
 
 export const RCStatus = {
-  SUBMITTED: "SUBMITTED",
-  UNDER_REVIEW: "UNDER_REVIEW",
-  CHANGES_REQUESTED: "CHANGES_REQUESTED",
-  APPROVED: "APPROVED",
+  SUBMITTED: 'SUBMITTED',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED',
+  APPROVED: 'APPROVED',
 } as const;
 
 export type RCStatus = (typeof RCStatus)[keyof typeof RCStatus];
 
-
 export const NITStatus = {
-  NOT_REQUIRED: "NOT_REQUIRED",
-  WAITING_NIT: "WAITING_NIT",
-  APPROVED_NIT: "APPROVED_NIT",
-  REJECTED_NIT: "REJECTED_NIT",
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  WAITING_NIT: 'WAITING_NIT',
+  APPROVED_NIT: 'APPROVED_NIT',
+  REJECTED_NIT: 'REJECTED_NIT',
 } as const;
 
 export type NITStatus = (typeof NITStatus)[keyof typeof NITStatus];
 
 export const DeadlineStatus = {
-  ON_TIME: "ON_TIME",
-  WARNING_SOON: "WARNING_SOON",
-  OVERDUE: "OVERDUE",
+  ON_TIME: 'ON_TIME',
+  WARNING_SOON: 'WARNING_SOON',
+  OVERDUE: 'OVERDUE',
 } as const;
 
-export type DeadlineStatus =
-  (typeof DeadlineStatus)[keyof typeof DeadlineStatus];
+export type DeadlineStatus = (typeof DeadlineStatus)[keyof typeof DeadlineStatus];
 
 export const StageStatus = {
-  NOT_STARTED: "NOT_STARTED",
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "COMPLETED",
-  LOCKED: "LOCKED",
+  NOT_STARTED: 'NOT_STARTED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  LOCKED: 'LOCKED',
 } as const;
 
 export type StageStatus = (typeof StageStatus)[keyof typeof StageStatus];
 
 export const PeriodStatus = {
-  ACTIVE: "ACTIVE",
-  ARCHIVED: "ARCHIVED",
-  COMPLETED: "COMPLETED",
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED',
+  COMPLETED: 'COMPLETED',
 } as const;
 
 export type PeriodStatus = (typeof PeriodStatus)[keyof typeof PeriodStatus];
 
 export const SubmissionStatus = {
-  DRAFT: "DRAFT",
-  NIT_PENDING: "NIT_PENDING",
-  NIT_APPROVED: "NIT_APPROVED",
-  SUBMITTED: "SUBMITTED",
-  ACCEPTED: "ACCEPTED",
-  REJECTED: "REJECTED",
+  DRAFT: 'DRAFT',
+  NIT_PENDING: 'NIT_PENDING',
+  NIT_APPROVED: 'NIT_APPROVED',
+  SUBMITTED: 'SUBMITTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
 } as const;
 
-export type SubmissionStatus =
-  (typeof SubmissionStatus)[keyof typeof SubmissionStatus];
+export type SubmissionStatus = (typeof SubmissionStatus)[keyof typeof SubmissionStatus];

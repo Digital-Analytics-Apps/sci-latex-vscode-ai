@@ -1,10 +1,10 @@
-import { useSelector } from "react-redux";
-import { Role } from "../constants/roles";
-import { AdminCenterPage } from "../features/admin/AdminCenterPage";
-import { AuthorArticlesPage } from "../features/author/AuthorArticlesPage";
-import { CoordinatorDashboardPage } from "../features/coordinator/CoordinatorDashboardPage";
-import { ManagerDashboardPage } from "../features/manager/ManagerDashboardPage";
-import type { RootState } from "../store";
+import { useSelector } from 'react-redux';
+import { Role } from '../constants/roles';
+import { AdminCenterPage } from '../features/admin/AdminCenterPage';
+import { AuthorArticlesPage } from '../features/author/AuthorArticlesPage';
+import { CoordinatorDashboardPage } from '../features/coordinator/CoordinatorDashboardPage';
+import { ManagerDashboardPage } from '../features/manager/ManagerDashboardPage';
+import type { RootState } from '../store';
 
 export const PersonaRootResolver = () => {
   const user = useSelector((state: RootState) => state.auth.user);

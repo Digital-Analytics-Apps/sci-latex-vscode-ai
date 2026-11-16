@@ -75,11 +75,34 @@
       ]
     },
     {
+      "name": "🌱 Backend: Debug Seed (prisma/seed.ts)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--import",
+        "tsx",
+        "prisma/seed.ts"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "sourceMaps": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ]
+    },
+    {
       "name": "🔗 Backend: Attach (Porta 9229)",
       "type": "node",
       "request": "attach",
+      "address": "localhost",
       "port": 9229,
+      "localRoot": "${workspaceFolder}/backend",
+      "remoteRoot": "/app",
       "restart": true,
+      "sourceMaps": true,
       "skipFiles": [
         "<node_internals>/**",
         "node_modules/**"
@@ -92,6 +115,23 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/frontend",
       "sourceMaps": true
+    },
+    {
+      "name": "🧠 AI Service: FastAPI (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload"
+      ],
+      "cwd": "${workspaceFolder}/ai-service",
+      "jinja": true,
+      "justMyCode": true
     }
   ]
 }

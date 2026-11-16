@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography';
 import { useColorMode } from '../../../theme';
 import { useCollabEditor } from '../context/CollabEditorContext';
 import { DeltaOperation } from '../types/collab.types';
-import { ActivityRail, ActiveSidebarPanel } from './ActivityRail';
+import { ActiveSidebarPanel, ActivityRail } from './ActivityRail';
 import { FileTreeSidebar } from './FileTreeSidebar';
 import { EditorTabBar } from './EditorTabBar';
 import { CodeMirrorEditor, EditorLineLayoutInfo } from './CodeMirrorEditor';
@@ -159,6 +159,7 @@ export function EditorWorkspace() {
           documentId={documentId}
           apiBase={API_BASE}
           activeFile={activeFile}
+          mainEntryPath={documentData.mainEntryPath}
           onSelectFile={setActiveFile}
           onOpenFile={handleOpenFile}
           onClose={() => setActiveSidebarPanel(null)}
@@ -178,12 +179,16 @@ export function EditorWorkspace() {
         }}
       >
         <ResizableSplitLayout
-          mode={layoutMode === 'split' ? 'split' : layoutMode === 'editor' ? 'primary' : 'secondary'}
+          mode={
+            layoutMode === 'split' ? 'split' : layoutMode === 'editor' ? 'primary' : 'secondary'
+          }
           storageKey="overleaf-editor-pdf-split-ratio"
           defaultRatio={50}
           minPrimaryRatio={20}
           minSecondaryRatio={20}
-          toggleTooltip={layoutMode === 'split' ? 'Ocultar visualizador PDF' : 'Expandir para tela cheia'}
+          toggleTooltip={
+            layoutMode === 'split' ? 'Ocultar visualizador PDF' : 'Expandir para tela cheia'
+          }
           onToggleSecondary={() => {
             if (layoutMode === 'split') {
               setLayoutMode('editor');

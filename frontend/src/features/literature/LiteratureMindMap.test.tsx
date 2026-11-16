@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { PaperNode } from './components/PaperNode';
 import { GapNode } from './components/GapNode';
 import { SectionAnchorNode } from './components/SectionAnchorNode';
-import type { ScientificPaperNodeData, GapNodeData, SectionAnchorNodeData } from './types';
+import type { GapNodeData, ScientificPaperNodeData, SectionAnchorNodeData } from './types';
 
 // Mock do Handle do React Flow para testes em ambiente JSDOM
 vi.mock('@xyflow/react', async () => {
@@ -42,14 +42,7 @@ describe('Literature Mind Map Components', () => {
       onSelectPaper: handleSelect,
     };
 
-    render(
-      <PaperNode
-        id="paper-1"
-        data={paperData}
-        type="paperNode"
-        {...defaultNodeProps}
-      />
-    );
+    render(<PaperNode id="paper-1" data={paperData} type="paperNode" {...defaultNodeProps} />);
 
     expect(screen.getByText('Attention Is All You Need')).toBeDefined();
     expect(screen.getByText(/Paralelização massiva/)).toBeDefined();
@@ -71,14 +64,7 @@ describe('Literature Mind Map Components', () => {
       recommendedAction: 'Explorar Transformers em hardware de borda.',
     };
 
-    render(
-      <GapNode
-        id="gap-1"
-        data={gapData}
-        type="gapNode"
-        {...defaultNodeProps}
-      />
-    );
+    render(<GapNode id="gap-1" data={gapData} type="gapNode" {...defaultNodeProps} />);
 
     expect(screen.getByText('Atenção Eficiente sob Dados Ruidosos em IoT')).toBeDefined();
     expect(screen.getByText('Lacuna de Pesquisa (SciAI)')).toBeDefined();
@@ -96,12 +82,7 @@ describe('Literature Mind Map Components', () => {
     };
 
     render(
-      <SectionAnchorNode
-        id="sec-1"
-        data={sectionData}
-        type="sectionNode"
-        {...defaultNodeProps}
-      />
+      <SectionAnchorNode id="sec-1" data={sectionData} type="sectionNode" {...defaultNodeProps} />
     );
 
     expect(screen.getByText('Fundamentação Teórica')).toBeDefined();

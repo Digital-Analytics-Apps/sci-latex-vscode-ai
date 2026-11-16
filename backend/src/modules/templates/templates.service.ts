@@ -1,12 +1,7 @@
-import AdmZip from 'adm-zip';
-import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { LatexTemplate } from '@prisma/client';
-import {
-  getFromMinio,
-  objectExistsInMinio,
-  StoragePathBuilder,
-  uploadToMinio,
-} from '../../infra/minio';
+import { getFromMinio, StoragePathBuilder, uploadToMinio } from '../../infra/minio';
 import {
   ITemplatesRepository,
   PrismaTemplatesRepository,
@@ -14,267 +9,71 @@ import {
 import { parseLatexZip } from '../../utils/latex-zip-parser';
 
 export interface CreateCustomTemplateDTO {
-  name: string;
+  name?: string;
   description?: string;
   targetConference?: string;
+  year?: string;
+  templateType?: string;
   zipBuffer: Buffer;
 }
-
-export interface SystemTemplateDefinition {
-  id: string;
-  name: string;
-  description: string;
-  targetConference: string;
-  mainTex: string;
-  referencesBib: string;
-  extraFiles?: Record<string, string>;
-}
-export const SYSTEM_TEMPLATES: SystemTemplateDefinition[] = [
-  {
-    id: 'tpl-system-ieeetran',
-    name: 'IEEEtran (IEEE Conference & Transactions)',
-    description:
-      'Template oficial padrão para artigos IEEE e conferências internacionais de engenharia e computação.',
-    targetConference: 'IEEE',
-    mainTex: `\\documentclass[conference]{IEEEtran}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-\\usepackage{graphicx}
-
-\\title{Artigo Científico IEEE}
-\\author{\\IEEEauthorblockN{Autores do Artigo}}
-
-\\begin{document}
-\\maketitle
-
-\\begin{abstract}
-Resumo do artigo científico no formato oficial IEEE.
-\\end{abstract}
-
-\\section{Introdução}
-Escreva a introdução e motivação do trabalho aqui.
-
-\\section{Metodologia}
-Descreva o modelo, hipóteses e procedimentos experimentais.
-
-\\section{Resultados}
-Apresente os dados obtidos e análise comparativa.
-
-\\section{Conclusão}
-Síntese das contribuições e direcionamentos futuros.
-
-\\bibliographystyle{IEEEtran}
-\\bibliography{references}
-\\end{document}`,
-    referencesBib: `@article{ref_ieee_sample,
-  author = {Silva, A. and Santos, B.},
-  title = {Arquitetura de Sistemas TeX Distribuídos},
-  journal = {IEEE Transactions on Cloud Computing},
-  year = {2026}
-}`,
-  },
-  {
-    id: 'tpl-system-sbc',
-    name: 'SBC (Sociedade Brasileira de Computação)',
-    description:
-      'Template oficial para submissões em simpósios e congressos da SBC (CSBC, SBSEG, SBRC, WebMedia).',
-    targetConference: 'SBC',
-    mainTex: `\\documentclass[12pt]{article}
-
-\\usepackage{sbc-template}
-\\usepackage{graphicx,url}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-
-\\title{Artigo no Padrão da SBC}
-
-\\author{Primeiro Autor\\inst{1}, Segundo Autor\\inst{2}}
-
-\\address{Departamento de Ciência da Computação -- Universidade Exemplo (UE)\\\\
-  Caixa Postal 15.064 -- 91.501-970 -- Porto Alegre -- RS -- Brasil
-  \\nextinstitute
-  Instituto de Informática -- Universidade Federal Exemplo (UFE)\\\\
-  Brasília -- DF -- Brasil
-  \\email{\\{autor1, autor2\\}@exemplo.edu.br}
-}
-
-\\begin{document}
-
-\\maketitle
-
-\\begin{abstract}
-Resumo do artigo em inglês (Abstract).
-\\end{abstract}
-
-\\begin{resumo}
-Resumo do artigo em português no padrão da Sociedade Brasileira de Computação.
-\\end{resumo}
-
-\\section{Introdução}
-Introdução e contexto da pesquisa.
-
-\\section{Metodologia}
-Metodologia, materiais e métodos utilizados.
-
-\\section{Resultados e Discussão}
-Resultados experimentais obtidos e comparativos.
-
-\\section{Conclusão}
-Considerações finais e trabalhos futuros.
-
-\\bibliographystyle{plain}
-\\bibliography{references}
-
-\\end{document}`,
-    referencesBib: `@inproceedings{sbc_sample_2026,
-  author = {Oliveira, C. and Souza, D.},
-  title = {Pesquisa e Inovação em Ciência da Computação},
-  booktitle = {Anais do CSBC},
-  year = {2026}
-}`,
-    extraFiles: {
-      'sbc-template.sty': `\\NeedsTeXFormat{LaTeX2e}
-\\ProvidesPackage{sbc-template}[2003/03/21]
-
-\\RequirePackage[a4paper,top=3.5cm,left=3cm,right=3cm,bottom=2.5cm]{geometry}
-\\RequirePackage{times}
-\\RequirePackage{indentfirst}
-
-\\def\\address#1{\\gdef\\@address{#1}}
-\\def\\email#1{\\gdef\\@email{#1}}
-\\def\\inst#1{\\unskip$^{#1}$}
-\\def\\nextinstitute{\\\\\and}
-
-\\renewcommand{\\maketitle}{%
-  \\begin{center}%
-    {\\Large\\bfseries \\@title \\par}%
-    \\vskip 1.5em%
-    {\\large \\@author \\par}%
-    \\vskip 0.5em%
-    {\\small \\@address \\par}%
-  \\end{center}%
-  \\par\\vskip 1.5em%
-}
-
-\\renewenvironment{abstract}{%
-  \\begin{center}%
-    {\\bfseries Abstract}\\vspace{-.5em}\\vspace{0pt}%
-  \\end{center}%
-  \\quotation\\small\\noindent\\ignorespaces%
-}{%
-  \\endquotation\\par\\vskip 1em%
-}
-
-\\newenvironment{resumo}{%
-  \\begin{center}%
-    {\\bfseries Resumo}\\vspace{-.5em}\\vspace{0pt}%
-  \\end{center}%
-  \\quotation\\small\\noindent\\ignorespaces%
-}{%
-  \\endquotation\\par\\vskip 1em%
-}
-
-\\endinput`,
-    },
-  },
-  {
-    id: 'tpl-system-acm',
-    name: 'ACM sigconf (ACM Conference Format)',
-    description: 'Template oficial para conferências da ACM (SIGCOMM, SIGMOD, CHI, CCS).',
-    targetConference: 'ACM',
-    mainTex: `\\documentclass[sigconf]{acmart}
-\\usepackage[utf8]{inputenc}
-
-\\title{ACM Conference Research Paper}
-\\author{Author Names}
-
-\\begin{document}
-
-\\begin{abstract}
-This is the abstract of the ACM research paper.
-\\end{abstract}
-
-\\maketitle
-
-\\section{Introduction}
-Introduction and motivation.
-
-\\section{System Design}
-Architecture and detailed methodology.
-
-\\section{Evaluation}
-Experimental evaluation and benchmarks.
-
-\\section{Conclusion}
-Summary of findings and future work.
-
-\\bibliographystyle{ACM-Reference-Format}
-\\bibliography{references}
-\\end{document}`,
-    referencesBib: `@inproceedings{acm_sample_2026,
-  author = {Johnson, E. and Lee, F.},
-  title = {Scalable Distributed Systems},
-  booktitle = {Proceedings of the ACM Conference},
-  year = {2026}
-}`,
-  },
-  {
-    id: 'tpl-system-springer',
-    name: 'Springer LNCS (Lecture Notes in Computer Science)',
-    description:
-      'Template oficial para livros e anais publicados pela editora Springer (LNCS/LNAI/CCIS).',
-    targetConference: 'Springer',
-    mainTex: `\\documentclass[runningheads]{llncs}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-\\usepackage{graphicx}
-
-\\title{Springer LNCS Scientific Contribution}
-\\author{Contributing Authors}
-
-\\begin{document}
-\\maketitle
-
-\\begin{abstract}
-The abstract should summarize the contents of the paper in short terms.
-\\end{abstract}
-
-\\section{Introduction}
-Background and research challenge.
-
-\\section{Methodology}
-Proposed algorithms and theoretical framework.
-
-\\section{Experiments and Results}
-Empirical results and validation.
-
-\\section{Conclusion}
-Concluding remarks.
-
-\\bibliographystyle{plain}
-\\bibliography{references}
-\\end{document}`,
-    referencesBib: `@article{springer_sample_2026,
-  author = {Schmidt, H. and Muller, K.},
-  title = {Advances in Computer Science},
-  journal = {Lecture Notes in Computer Science},
-  year = {2026}
-}`,
-  },
-];
 
 export class TemplatesService {
   constructor(
     private readonly templatesRepository: ITemplatesRepository = new PrismaTemplatesRepository()
   ) {}
 
+  /**
+   * Constrói o slug canônico [ANO]-[CONGRESSO]-[FORMATO] conforme a governança do ADR-017.
+   * Elimina caracteres especiais, acentos e espaços para compatibilidade total com S3 e TeXLive.
+   */
+  private generateSemanticSlug(data: {
+    name?: string;
+    targetConference?: string;
+    year?: string;
+    templateType?: string;
+  }): string {
+    const yearMatch = (data.year || data.name || data.targetConference || '').match(
+      /\b(20\d{2})\b/
+    );
+    const year = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
+
+    let conf = data.targetConference?.trim() || '';
+    if (!conf && data.name) {
+      conf = data.name.replace(/\b20\d{2}\b/g, '').trim();
+    }
+    if (!conf) conf = 'conference';
+
+    let format = data.templateType?.trim() || '';
+    if (!format && data.name) {
+      const lower = data.name.toLowerCase();
+      if (lower.includes('resumo')) format = 'resumo';
+      else if (lower.includes('conference')) format = 'conference';
+      else if (lower.includes('transactions')) format = 'transactions';
+      else if (lower.includes('periodico') || lower.includes('journal')) format = 'journal';
+      else format = 'artigo';
+    }
+    if (!format) format = 'artigo';
+
+    const sanitize = (s: string) =>
+      s
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+    const cleanConf = sanitize(conf);
+    const cleanFormat = sanitize(format);
+
+    const slug = `${year}-${cleanConf}-${cleanFormat}`.replace(/-+/g, '-');
+    return slug;
+  }
+
   async listTemplates(userId?: string): Promise<LatexTemplate[]> {
-    await this.ensureSystemTemplates();
     return this.templatesRepository.findAll(userId);
   }
 
   async getTemplateById(id: string): Promise<LatexTemplate | null> {
-    await this.ensureSystemTemplates();
     return this.templatesRepository.findById(id);
   }
 
@@ -283,14 +82,24 @@ export class TemplatesService {
     data: CreateCustomTemplateDTO
   ): Promise<LatexTemplate> {
     const parsed = parseLatexZip(data.zipBuffer);
-    const templateId = crypto.randomUUID();
+
+    // Gera slug semântico padronizado [ANO]-[CONGRESSO]-[FORMATO] (ADR-017)
+    const baseSlug = this.generateSemanticSlug(data);
+    let templateId = baseSlug;
+    let counter = 1;
+    while (await this.templatesRepository.findById(templateId)) {
+      counter++;
+      templateId = `${baseSlug}-v${counter}`;
+    }
+
     const storageKey = StoragePathBuilder.templateBundle(templateId, 'bundle.zip');
 
-    // Salva o bundle ZIP diretamente no MinIO
+    // Salva o bundle ZIP diretamente e intacto no MinIO no catálogo global
     await uploadToMinio(storageKey, data.zipBuffer, 'application/zip');
 
-    const templateName = data.name?.trim() || parsed.detectedTitle || 'Template Customizado LaTeX';
-    const mainEntryPath = parsed.rootDoc?.path || 'main.tex';
+    const templateName =
+      data.name?.trim() || parsed.detectedTitle || `${data.targetConference || 'Oficial'} Template`;
+    const mainEntryPath = parsed.rootDoc.path;
 
     return this.templatesRepository.create({
       id: templateId,
@@ -309,7 +118,7 @@ export class TemplatesService {
   ): Promise<{ buffer: Buffer; template: LatexTemplate }> {
     const template = await this.getTemplateById(templateId);
     if (!template) {
-      throw new Error('TEMPLATE_NOT_FOUND');
+      throw new Error(`[TemplatesService] Template "${templateId}" não encontrado.`);
     }
 
     const { buffer } = await getFromMinio(template.storageKey);
@@ -317,57 +126,89 @@ export class TemplatesService {
   }
 
   /**
-   * Garante que os templates canônicos do sistema (IEEEtran, SBC, ACM, Springer)
-   * estejam devidamente gravados no MinIO e cadastrados no banco relacional.
+   * Sincroniza a semente mínima (baseline) de templates oficiais reais a partir da pasta 'latex-templates/'.
+   * e garante a persistência no MinIO e PostgreSQL.
    */
-  async ensureSystemTemplates(): Promise<void> {
-    for (const sysTpl of SYSTEM_TEMPLATES) {
-      const existing = await this.templatesRepository.findById(sysTpl.id);
-      const storageKey = StoragePathBuilder.templateBundle(sysTpl.id, 'bundle.zip');
+  async seedBaselineTemplates(customTemplatesDir?: string): Promise<LatexTemplate[]> {
+    // 1. Localiza a pasta oficial de templates baseline
+    const possibleDirs = [
+      customTemplatesDir,
+      path.resolve(process.cwd(), './src/modules/templates/seed-templates/'),
+      path.resolve(process.cwd(), 'src/modules/templates/seed-templates/'),
+      path.resolve(process.cwd(), '../latex-templates'),
+      path.resolve(process.cwd(), 'latex-templates'),
+      path.resolve(__dirname, 'seed-templates'),
+      path.resolve(__dirname, '../../../../latex-templates'),
+    ].filter(Boolean) as string[];
 
-      let existsInMinio = false;
+    let targetDir = '';
+    for (const dir of possibleDirs) {
       try {
-        existsInMinio = await objectExistsInMinio(storageKey);
+        const stat = await fs.stat(dir);
+        if (stat.isDirectory()) {
+          targetDir = dir;
+          break;
+        }
       } catch {
-        existsInMinio = false;
-      }
-
-      const zip = new AdmZip();
-      zip.addFile('main.tex', Buffer.from(sysTpl.mainTex, 'utf-8'));
-      zip.addFile('references.bib', Buffer.from(sysTpl.referencesBib, 'utf-8'));
-      if (sysTpl.extraFiles) {
-        for (const [filename, content] of Object.entries(sysTpl.extraFiles)) {
-          zip.addFile(filename, Buffer.from(content, 'utf-8'));
-        }
-      }
-      const bundleBuffer = zip.toBuffer();
-
-      // Garante que o MinIO tenha o bundle atualizado contendo os arquivos de estilo (.sty, .cls)
-      try {
-        await uploadToMinio(storageKey, bundleBuffer, 'application/zip');
-      } catch (err) {
-        console.warn(`[TemplatesService] Falha ao enviar bundle ${sysTpl.id} para o MinIO:`, err);
-      }
-
-      if (!existing) {
-        try {
-          await this.templatesRepository.create({
-            id: sysTpl.id,
-            name: sysTpl.name,
-            description: sysTpl.description,
-            targetConference: sysTpl.targetConference,
-            storageKey,
-            mainEntryPath: 'main.tex',
-            isSystem: true,
-          });
-        } catch (err) {
-          // Em caso de concorrência ou registro já existente
-          console.warn(
-            `[TemplatesService] Registro do template ${sysTpl.id} já existente ou ignorado:`,
-            err
-          );
-        }
+        // Continua procurando
       }
     }
+
+    if (!targetDir) {
+      throw new Error(
+        `[TemplatesService] Diretório de templates oficiais não encontrado. Locais verificados: ${possibleDirs.join(', ')}`
+      );
+    }
+
+    const dirEntries = await fs.readdir(targetDir);
+    const zipFiles = dirEntries.filter((file) => file.toLowerCase().endsWith('.zip'));
+
+    if (zipFiles.length === 0) {
+      throw new Error(
+        `[TemplatesService] Nenhum pacote .zip de template oficial encontrado em "${targetDir}". A aplicação requer ao menos um template baseline para inicialização.`
+      );
+    }
+
+    const seededTemplates: LatexTemplate[] = [];
+
+    // 2. Processa e sobe cada template oficial real
+    for (const zipFileName of zipFiles) {
+      const fullPath = path.join(targetDir, zipFileName);
+      const zipBuffer = await fs.readFile(fullPath);
+      const parsed = parseLatexZip(zipBuffer);
+
+      // Slug semântico canônico [ANO]-[CONGRESSO]-[TIPO] a partir do nome do arquivo
+      const slug = zipFileName
+        .replace(/\.zip$/i, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-');
+      const storageKey = StoragePathBuilder.templateBundle(slug, 'bundle.zip');
+
+      // Faz upload do binário oficial integral para o MinIO
+      await uploadToMinio(storageKey, zipBuffer, 'application/zip');
+
+      const template = await this.templatesRepository.upsert({
+        id: slug,
+        name: parsed.detectedTitle || `Template Oficial ${slug.toUpperCase()}`,
+        description: `Template oficial homologado para submissões acadêmicas (${slug}).`,
+        targetConference: slug.includes('ieee')
+          ? 'IEEE'
+          : slug.includes('sbc')
+            ? 'SBC'
+            : slug.includes('acm')
+              ? 'ACM'
+              : 'OFICIAL',
+        storageKey,
+        mainEntryPath: parsed.rootDoc.path,
+        isSystem: true,
+      });
+
+      seededTemplates.push(template);
+      console.log(
+        `   - Template oficial "${template.id}" sincronizado no MinIO e banco (mainEntry: ${template.mainEntryPath})`
+      );
+    }
+
+    return seededTemplates;
   }
 }

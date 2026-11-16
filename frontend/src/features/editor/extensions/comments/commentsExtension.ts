@@ -1,5 +1,5 @@
-import { StateField, StateEffect, RangeSetBuilder, Text } from '@codemirror/state';
-import { EditorView, Decoration, DecorationSet, showTooltip, Tooltip } from '@codemirror/view';
+import { RangeSetBuilder, StateEffect, StateField, Text } from '@codemirror/state';
+import { Decoration, DecorationSet, EditorView, showTooltip, Tooltip } from '@codemirror/view';
 import { ReviewComment } from '../../types/collab.types';
 
 // Efeitos e Campo de Estado para Comentários de Revisão Inline (Estilo Overleaf)
@@ -83,7 +83,12 @@ export function buildCommentDecorations(
 
 export const commentsField = StateField.define<CommentsFieldState>({
   create() {
-    return { comments: [], activeId: null, pendingSelection: null, decorations: Decoration.none };
+    return {
+      comments: [],
+      activeId: null,
+      pendingSelection: null,
+      decorations: Decoration.none,
+    };
   },
   update(state, tr) {
     let comments = state.comments;

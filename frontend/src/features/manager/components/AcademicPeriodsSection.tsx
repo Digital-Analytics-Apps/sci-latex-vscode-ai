@@ -1,4 +1,4 @@
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import {
   Box,
   Button,
@@ -9,8 +9,8 @@ import {
   Grid,
   Paper,
   Typography,
-} from "@mui/material";
-import type { AcademicPeriod } from "../../../types/academic-period.types";
+} from '@mui/material';
+import type { AcademicPeriod } from '../../../types/academic-period.types';
 
 interface AcademicPeriodsSectionProps {
   periods: AcademicPeriod[];
@@ -29,9 +29,9 @@ export const AcademicPeriodsSection = ({
         <Box
           sx={{
             p: 4,
-            display: "flex",
-            justifyContent: "center",
-            width: "100%",
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
           }}
         >
           <CircularProgress size={32} />
@@ -42,7 +42,7 @@ export const AcademicPeriodsSection = ({
     if (periods.length === 0) {
       return (
         <Grid size={{ xs: 12 }}>
-          <Paper sx={{ p: 4, textAlign: "center" }} variant="outlined">
+          <Paper sx={{ p: 4, textAlign: 'center' }} variant="outlined">
             <Typography variant="body1" color="text.secondary">
               Nenhum ciclo acadêmico cadastrado até o momento.
             </Typography>
@@ -57,8 +57,8 @@ export const AcademicPeriodsSection = ({
           <CardContent sx={{ p: 3 }}>
             <Box
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
+                display: 'flex',
+                justifyContent: 'space-between',
                 mb: 1.5,
               }}
             >
@@ -66,38 +66,30 @@ export const AcademicPeriodsSection = ({
                 {p.name}
               </Typography>
               <Chip
-                label={p.status || "ATIVO"}
+                label={p.status || 'ATIVO'}
                 color="success"
                 size="small"
                 sx={{ fontWeight: 700 }}
               />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Período: {new Date(p.startDate).toLocaleDateString("pt-BR")} até{" "}
-              {new Date(p.endDate).toLocaleDateString("pt-BR")}
+              Período: {new Date(p.startDate).toLocaleDateString('pt-BR')} até{' '}
+              {new Date(p.endDate).toLocaleDateString('pt-BR')}
             </Typography>
             <Box
               sx={{
                 p: 2,
-                bgcolor: "background.default",
+                bgcolor: 'background.default',
                 borderRadius: 1,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 700 }}
-              >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
                 META GLOBAL DE ARTIGOS
               </Typography>
-              <Typography
-                variant="h6"
-                color="warning.main"
-                sx={{ fontWeight: 800 }}
-              >
+              <Typography variant="h6" color="warning.main" sx={{ fontWeight: 800 }}>
                 {p.targetArticlesCount} Artigos Concluídos
               </Typography>
             </Box>
@@ -108,13 +100,13 @@ export const AcademicPeriodsSection = ({
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
           gap: 2,
         }}
       >
@@ -123,8 +115,7 @@ export const AcademicPeriodsSection = ({
             Gestão dos Ciclos Acadêmicos
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Cadastre novos ciclos e acompanhe as metas institucionais de
-            publicação.
+            Cadastre novos ciclos e acompanhe as metas institucionais de publicação.
           </Typography>
         </Box>
 

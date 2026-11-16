@@ -1,5 +1,5 @@
-import FilterListOffIcon from "@mui/icons-material/FilterListOff";
-import SearchIcon from "@mui/icons-material/Search";
+import FilterListOffIcon from '@mui/icons-material/FilterListOff';
+import SearchIcon from '@mui/icons-material/Search';
 import {
   Box,
   Button,
@@ -10,7 +10,7 @@ import {
   Paper,
   Select,
   TextField,
-} from "@mui/material";
+} from '@mui/material';
 import type {
   BoxProps,
   ButtonProps,
@@ -18,16 +18,13 @@ import type {
   PaperProps,
   SelectProps,
   TextFieldProps,
-} from "@mui/material";
-import React, { useMemo } from "react";
+} from '@mui/material';
+import React, { useMemo } from 'react';
 
 /**
  * Campo de Busca Textual para Tabelas (extende TextFieldProps).
  */
-export interface TableSearchInputProps extends Omit<
-  TextFieldProps,
-  "onChange"
-> {
+export interface TableSearchInputProps extends Omit<TextFieldProps, 'onChange'> {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -36,9 +33,9 @@ export interface TableSearchInputProps extends Omit<
 export const TableSearchInput = ({
   value,
   onChange,
-  placeholder = "Buscar...",
+  placeholder = 'Buscar...',
   fullWidth = true,
-  size = "small",
+  size = 'small',
   slotProps,
   ...restProps
 }: TableSearchInputProps) => {
@@ -76,10 +73,7 @@ export interface TableSelectOption {
 /**
  * Dropdown de Seleção/Filtro por Categoria, Papel ou Status (extende SelectProps).
  */
-export interface TableSelectFilterProps extends Omit<
-  SelectProps<string>,
-  "onChange"
-> {
+export interface TableSelectFilterProps extends Omit<SelectProps<string>, 'onChange'> {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -94,8 +88,8 @@ export const TableSelectFilter = ({
   onChange,
   options,
   fullWidth = true,
-  size = "small",
-  variant = "outlined",
+  size = 'small',
+  variant = 'outlined',
   minWidth = 140,
   formControlProps,
   ...restSelectProps
@@ -137,10 +131,10 @@ export interface ClearFiltersButtonProps extends ButtonProps {
 export const ClearFiltersButton = ({
   onClick,
   visible = true,
-  label = "Limpar Filtros",
-  variant = "outlined",
-  color = "secondary",
-  size = "small",
+  label = 'Limpar Filtros',
+  variant = 'outlined',
+  color = 'secondary',
+  size = 'small',
   startIcon = <FilterListOffIcon fontSize="small" />,
   sx,
   ...restButtonProps
@@ -154,7 +148,7 @@ export const ClearFiltersButton = ({
       size={size}
       startIcon={startIcon}
       onClick={onClick}
-      sx={{ whiteSpace: "nowrap", height: 40, fontWeight: 600, ...sx }}
+      sx={{ whiteSpace: 'nowrap', height: 40, fontWeight: 600, ...sx }}
       {...restButtonProps}
     >
       {label}
@@ -165,10 +159,7 @@ export const ClearFiltersButton = ({
 /**
  * Configuração genérica declarativa de um filtro de seleção em dropdown.
  */
-export interface TableSelectFilterConfig<
-  V = string,
-  TFilterState = Record<string, any>,
-> {
+export interface TableSelectFilterConfig<V = string, TFilterState = Record<string, any>> {
   id: keyof TFilterState | string;
   label: string;
   value: V;
@@ -217,7 +208,7 @@ export interface TableHeaderFilterToolbarProps<
         lg?: string;
       }
     | string;
-  sx?: BoxProps["sx"];
+  sx?: BoxProps['sx'];
 }
 
 export const TableHeaderFilterToolbar = <
@@ -239,38 +230,32 @@ export const TableHeaderFilterToolbar = <
   const defaultMdColumns = useMemo(() => {
     if (gridTemplateColumns) return undefined;
     const parts: string[] = [];
-    if (activeSearch) parts.push("2fr");
+    if (activeSearch) parts.push('2fr');
     if (selectFilters && selectFilters.length > 0) {
-      selectFilters.forEach(() => parts.push("1.2fr"));
+      selectFilters.forEach(() => parts.push('1.2fr'));
     }
-    if (actions) parts.push("auto");
-    if (activeClearFilters) parts.push("auto");
-    return parts.length > 0 ? parts.join(" ") : undefined;
-  }, [
-    gridTemplateColumns,
-    activeSearch,
-    selectFilters,
-    actions,
-    activeClearFilters,
-  ]);
+    if (actions) parts.push('auto');
+    if (activeClearFilters) parts.push('auto');
+    return parts.length > 0 ? parts.join(' ') : undefined;
+  }, [gridTemplateColumns, activeSearch, selectFilters, actions, activeClearFilters]);
 
   const computedGridTemplateColumns = gridTemplateColumns ?? {
-    xs: "1fr",
-    sm: selectFilters && selectFilters.length > 1 ? "1fr 1fr" : "1fr auto",
-    md: defaultMdColumns ?? "2fr 1.5fr auto auto",
+    xs: '1fr',
+    sm: selectFilters && selectFilters.length > 1 ? '1fr 1fr' : '1fr auto',
+    md: defaultMdColumns ?? '2fr 1.5fr auto auto',
   };
 
   return (
     <Box
       sx={{
         p: 2,
-        bgcolor: "background.paper",
-        borderBottom: "1px solid",
-        borderColor: "divider",
-        display: "grid",
+        bgcolor: 'background.paper',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        display: 'grid',
         gridTemplateColumns: computedGridTemplateColumns,
         gap: 2,
-        alignItems: "center",
+        alignItems: 'center',
         ...sx,
       }}
     >
@@ -326,12 +311,12 @@ export interface TableFilterBarProps extends PaperProps {
 export const TableFilterBar: React.FC<TableFilterBarProps> = ({
   children,
   gridTemplateColumns = {
-    xs: "1fr",
-    sm: "1fr 1fr",
-    md: "2fr 1fr auto auto",
+    xs: '1fr',
+    sm: '1fr 1fr',
+    md: '2fr 1fr auto auto',
   },
   sx,
-  variant = "outlined",
+  variant = 'outlined',
   containerProps,
   ...restPaperProps
 }) => {
@@ -341,17 +326,17 @@ export const TableFilterBar: React.FC<TableFilterBarProps> = ({
       sx={{
         p: 2,
         mb: 2.5,
-        bgcolor: "background.paper",
+        bgcolor: 'background.paper',
         ...sx,
       }}
       {...restPaperProps}
     >
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gridTemplateColumns,
           gap: 2,
-          alignItems: "center",
+          alignItems: 'center',
           ...containerProps?.sx,
         }}
         {...containerProps}

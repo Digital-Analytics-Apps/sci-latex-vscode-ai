@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { aiChatService } from '../services/aiChatService';
 import type {
   AgentName,
@@ -22,9 +22,7 @@ function extractActionRequest(event: StreamEvent): InterruptActionRequest | null
       for (const item of rawData) {
         if (item && typeof item === 'object') {
           const target =
-            'value' in item && item.value && typeof item.value === 'object'
-              ? item.value
-              : item;
+            'value' in item && item.value && typeof item.value === 'object' ? item.value : item;
           if (
             'action_requests' in target &&
             Array.isArray(target.action_requests) &&
@@ -85,16 +83,14 @@ function extractActionRequest(event: StreamEvent): InterruptActionRequest | null
         tasks: [],
         articles: [],
       },
-      description: 'Revise o título, resumo e a distribuição de datas nas 6 etapas fixas do projeto.',
+      description:
+        'Revise o título, resumo e a distribuição de datas nas 6 etapas fixas do projeto.',
     };
   }
 
   return null;
 }
-export function useAiChatStream({
-  conversationId,
-  initialContext,
-}: UseAiChatStreamOptions) {
+export function useAiChatStream({ conversationId, initialContext }: UseAiChatStreamOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [currentAgent, setCurrentAgent] = useState<AgentName>('supervisor');
@@ -125,7 +121,11 @@ export function useAiChatStream({
   const handleStreamEvent = useCallback(
     (
       event: StreamEvent,
-      accumulatedRef: { text: string; agent: AgentName; interrupt: InterruptActionRequest | null }
+      accumulatedRef: {
+        text: string;
+        agent: AgentName;
+        interrupt: InterruptActionRequest | null;
+      }
     ) => {
       switch (event.type) {
         case 'token':

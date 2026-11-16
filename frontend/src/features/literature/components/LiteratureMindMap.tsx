@@ -1,26 +1,19 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ReactFlow,
   Background,
-  Controls,
-  MiniMap,
-  Panel,
   BackgroundVariant,
-  useNodesState,
-  useEdgesState,
-  type NodeTypes,
+  Controls,
   type EdgeTypes,
+  MiniMap,
+  type NodeTypes,
+  Panel,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import {
-  Box,
-  Paper,
-  Typography,
-  Chip,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
+import { Box, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import { Filter, RotateCcw } from 'lucide-react';
 
 import { PaperNode } from './PaperNode';
@@ -28,7 +21,7 @@ import { GapNode } from './GapNode';
 import { SectionAnchorNode } from './SectionAnchorNode';
 import { RelationshipEdge } from './RelationshipEdge';
 import { PaperAnalysisDrawer } from './PaperAnalysisDrawer';
-import type { LiteratureNode, LiteratureEdge, ScientificPaperNodeData } from '../types';
+import type { LiteratureEdge, LiteratureNode, ScientificPaperNodeData } from '../types';
 
 interface LiteratureMindMapProps {
   initialNodes: LiteratureNode[];
@@ -90,7 +83,17 @@ export const LiteratureMindMap: React.FC<LiteratureMindMapProps> = ({
   }, [nodes, filterType]);
 
   return (
-    <Box sx={{ width: '100%', height, position: 'relative', bgcolor: 'background.default', borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+    <Box
+      sx={{
+        width: '100%',
+        height,
+        position: 'relative',
+        bgcolor: 'background.default',
+        borderRadius: 3,
+        overflow: 'hidden',
+        border: '1px solid rgba(0,0,0,0.1)',
+      }}
+    >
       <ReactFlow
         nodes={filteredNodes}
         edges={edges}
