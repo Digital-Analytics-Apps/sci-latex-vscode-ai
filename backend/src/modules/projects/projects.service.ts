@@ -479,14 +479,35 @@ export class ProjectsService {
         diffSummary.generatedProgressDescription || `Progresso da tarefa: ${task?.title || taskId}`;
     }
 
-    const mainFile =
+    const projectWithTemplate =
+      process.env.NODE_ENV === 'test'
+        ? null
+        : await prisma.project
+            .findUnique({
+              where: { id: projectId },
+              include: { template: true },
+            })
+            .catch(() => null);
+
+    const mainEntryPath = projectWithTemplate?.template?.mainEntryPath || 'main.tex';
+
+    let mainFile =
       process.env.NODE_ENV === 'test'
         ? null
         : await prisma.projectFile
             .findUnique({
-              where: { projectId_path: { projectId, path: 'main.tex' } },
+              where: { projectId_path: { projectId, path: mainEntryPath } },
             })
             .catch(() => null);
+
+    if (!mainFile && process.env.NODE_ENV !== 'test') {
+      const texFiles = await prisma.projectFile
+        .findMany({
+          where: { projectId, path: { endsWith: '.tex' } },
+        })
+        .catch(() => []);
+      mainFile = texFiles.find((f) => f.content?.includes('\\documentclass')) || texFiles[0] || null;
+    }
     const content = mainFile?.content || '';
 
     const snapshot =

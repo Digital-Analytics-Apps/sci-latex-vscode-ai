@@ -198,7 +198,7 @@ export function CodeMirrorEditor({
   onApplyLocalDelta,
   onCursorMove,
   currentUserId,
-  activeFile = 'main.tex',
+  activeFile = '',
   collabVersion = 0,
   onPushCollabUpdates,
   incomingCollabUpdates,
@@ -249,7 +249,7 @@ export function CodeMirrorEditor({
       changes: u.changes.toJSON(),
     }));
 
-    onPushCollabUpdatesRef.current?.(activeFileRef.current || 'main.tex', ver, jsonUpdates);
+    onPushCollabUpdatesRef.current?.(activeFileRef.current, ver, jsonUpdates);
 
     clearTimeout(pushTimeoutRef.current ?? undefined);
     pushTimeoutRef.current = window.setTimeout(() => {

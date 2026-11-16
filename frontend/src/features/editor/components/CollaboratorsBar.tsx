@@ -26,7 +26,7 @@ export function CollaboratorsBar({
   collaborators,
   currentUserId,
   remoteCursors,
-  activeFile = 'main.tex',
+  activeFile,
 }: CollaboratorsBarProps) {
   return (
     <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
@@ -53,11 +53,11 @@ export function CollaboratorsBar({
         {collaborators.map((c, idx) => {
           const isMe = c.userId === currentUserId;
           const remoteCursor = remoteCursors?.get(c.userId);
-          const currentFile = isMe ? activeFile : remoteCursor?.file || 'main.tex';
+          const currentFile = isMe ? activeFile : (remoteCursor?.file || activeFile);
           return (
             <Tooltip
               key={c.userId}
-              title={`${c.userName}${isMe ? ' (Você)' : ''} • em ${currentFile}`}
+              title={`${c.userName}${isMe ? ' (Você)' : ''}${currentFile ? ` • em ${currentFile}` : ''}`}
               arrow
             >
               <Avatar

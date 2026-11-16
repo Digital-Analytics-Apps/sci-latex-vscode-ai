@@ -301,7 +301,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                     position: message.position,
                     selectionStart: message.selectionStart,
                     selectionEnd: message.selectionEnd,
-                    file: message.file || 'main.tex',
+                    file: message.file || activeDoc.mainEntryPath,
                   },
                 },
                 socket
@@ -314,7 +314,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
               const newComment = service.addComment(documentId, {
                 id: (message.comment && message.comment.id) || randomUUID(),
                 documentId,
-                file: (message.comment && message.comment.file) || 'main.tex',
+                file: (message.comment && message.comment.file) || activeDoc.mainEntryPath,
                 from: message.comment.from,
                 to: message.comment.to,
                 selectedText: message.comment.selectedText || '',

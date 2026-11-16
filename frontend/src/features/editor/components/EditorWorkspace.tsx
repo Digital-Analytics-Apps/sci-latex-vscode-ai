@@ -101,7 +101,8 @@ export function EditorWorkspace() {
     );
   }
 
-  const isMainFile = activeFile === 'main.tex';
+  const rootEntry = documentData.mainEntryPath || 'main.tex';
+  const isMainFile = activeFile === rootEntry;
   const currentEditorContent = isMainFile ? documentData.content : (fileContents[activeFile] ?? '');
   const currentUserColor = collaborators.find((c) => c.userId === userId)?.color;
   const currentSaveStatus: 'synced' | 'saving' | 'offline' = !isConnected

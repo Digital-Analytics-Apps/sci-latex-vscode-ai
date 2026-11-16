@@ -146,6 +146,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
   };
 
   const [documentData, setDocumentData] = useState<DocumentData | null>(null);
+  const documentDataRef = useRef<DocumentData | null>(null);
   const [operations, setOperations] = useState<DeltaOperation[]>([]);
   const [snapshots, setSnapshots] = useState<DocumentSnapshot[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('synced');
@@ -199,18 +200,14 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
   const isFlushing = flushMutation.isPending;
 
   // Arquivos e Abas
-  const [activeFile, setActiveFile] = useState<string>('main.tex');
-  const [openTabs, setOpenTabs] = useState<EditorTab[]>([
-    { id: 'main', name: 'main.tex', type: 'tex', isMain: true },
-  ]);
+  const [activeFile, setActiveFile] = useState<string>('');
+  const [openTabs, setOpenTabs] = useState<EditorTab[]>([]);
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
   const fileContentsRef = useRef<Record<string, string>>({});
   const [secondarySaveStatus, setSecondarySaveStatus] = useState<Record<string, SaveStatus>>({});
   const fileSaveDebounceRef = useRef<Record<string, number>>({});
   const [collabVersion, setCollabVersion] = useState<number>(0);
-  const [fileCollabVersions, setFileCollabVersions] = useState<Record<string, number>>({
-    'main.tex': 0,
-  });
+  const [fileCollabVersions, setFileCollabVersions] = useState<Record<string, number>>({});
   const [isSynced, setIsSynced] = useState<boolean>(false);
   const [incomingCollabUpdates, setIncomingCollabUpdates] = useState<{
     file: string;
@@ -255,14 +252,19 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
 
   // Sincroniza abas e arquivo ativo quando o mainEntryPath do documento chega
   useEffect(() => {
+    documentDataRef.current = documentData;
     if (documentData?.mainEntryPath) {
       const rootPath = documentData.mainEntryPath;
-      setActiveFile((prev) => (prev === 'main.tex' ? rootPath : prev));
-      setOpenTabs((prev) =>
-        prev.map((tab) => (tab.isMain ? { ...tab, name: rootPath, id: rootPath } : tab))
-      );
+      setActiveFile((prev) => (!prev || prev === 'main.tex' ? rootPath : prev));
+      setOpenTabs((prev) => {
+        const hasMain = prev.some((tab) => tab.isMain);
+        if (!hasMain) {
+          return [{ id: rootPath, name: rootPath, type: 'tex', isMain: true }, ...prev];
+        }
+        return prev.map((tab) => (tab.isMain ? { ...tab, name: rootPath, id: rootPath } : tab));
+      });
     }
-  }, [documentData?.mainEntryPath]);
+  }, [documentData]);
 
   // Sincroniza histórico inicial quando os dados do TanStack Query chegam
   useEffect(() => {
@@ -275,7 +277,8 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
   // Handlers de WebSocket
   const handleRemoteDelta = useCallback(
     (op: DeltaOperation, targetFile: string, _version: number) => {
-      if (targetFile === 'main.tex') {
+      const rootPath = documentDataRef.current?.mainEntryPath || 'main.tex';
+      if (targetFile === rootPath) {
         setDocumentData((prev) => {
           if (!prev) return prev;
           let content = prev.content;
@@ -314,13 +317,23 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       initCollabVersion?: number,
       initFileVersions?: Record<string, number>
     ) => {
+      documentDataRef.current = doc;
       setDocumentData(doc);
       if (initialComments) setComments(initialComments);
+      const rootPath = doc.mainEntryPath || 'main.tex';
       const ver = typeof initCollabVersion === 'number' ? initCollabVersion : doc.version;
       setCollabVersion(ver);
       setFileCollabVersions({
-        'main.tex': ver,
+        [rootPath]: ver,
         ...(initFileVersions || {}),
+      });
+      setActiveFile((prev) => (prev && prev !== 'main.tex' ? prev : rootPath));
+      setOpenTabs((prev) => {
+        const hasMain = prev.some((tab) => tab.isMain);
+        if (!hasMain) {
+          return [{ id: rootPath, name: rootPath, type: 'tex', isMain: true }, ...prev];
+        }
+        return prev.map((tab) => (tab.isMain ? { ...tab, name: rootPath, id: rootPath } : tab));
       });
       setIsSynced(true);
     },
@@ -433,9 +446,11 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       };
       setOperations((prev) => [fullDelta, ...prev.slice(0, 49)]);
 
-      sendDelta('main.tex', delta);
+      const rootPath =
+        documentDataRef.current?.mainEntryPath || documentData?.mainEntryPath || 'main.tex';
+      sendDelta(rootPath, delta);
     },
-    [userId, userName, sendDelta]
+    [userId, userName, sendDelta, documentData?.mainEntryPath]
   );
 
   // Delta em arquivos secundários
@@ -590,7 +605,9 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       if (documentData) {
         const insertPos = documentData.content.indexOf('\\end{document}');
         const pos = insertPos !== -1 ? insertPos : documentData.content.length;
+        const rootPath = documentData.mainEntryPath || 'main.tex';
         const delta = {
+          file: rootPath,
           type: 'insert' as const,
           position: pos,
           text: `\n${snippet}\n`,
@@ -600,6 +617,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
         };
         sendRawMessage({
           type: 'APPLY_DELTA',
+          file: rootPath,
           delta,
         });
       }

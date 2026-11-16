@@ -120,7 +120,7 @@ export function useCollabWebSocket({
               break;
 
             case 'PULL_UPDATES_RESPONSE': {
-              const targetFile: string = msg.file || 'main.tex';
+              const targetFile: string = msg.file || activeFileRef.current;
               const updates: CollabUpdateJSON[] = msg.updates || [];
               callbacksRef.current.onRemoteCollabUpdates?.(targetFile, msg.version, updates);
               if (
@@ -164,7 +164,7 @@ export function useCollabWebSocket({
                     position: msg.user.position,
                     selectionStart: msg.user.selectionStart,
                     selectionEnd: msg.user.selectionEnd,
-                    file: msg.user.file || 'main.tex',
+                    file: msg.user.file || '',
                     lastActive: Date.now(),
                   });
                   return map;
@@ -175,7 +175,7 @@ export function useCollabWebSocket({
 
             case 'DELTA_BROADCAST': {
               const op: DeltaOperation = msg.operation;
-              const targetFile: string = msg.file || 'main.tex';
+              const targetFile: string = msg.file || activeFileRef.current;
               callbacksRef.current.onRemoteDelta(op, targetFile, msg.version);
               if (msg.author && msg.author.userId !== userId) {
                 const newPos = op.position + (op.text ? op.text.length : 0);

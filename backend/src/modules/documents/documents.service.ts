@@ -587,7 +587,7 @@ export class DocumentsService {
     if (!active) return dbFiles;
 
     return dbFiles.map((file) => {
-      if (file.path === 'main.tex') {
+      if (file.path === active.mainEntryPath) {
         const mainContent = active.doc.toString();
         return {
           ...file,
