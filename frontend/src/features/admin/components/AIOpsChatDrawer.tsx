@@ -8,11 +8,22 @@ import {
   Paper,
   Skeleton,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Bot, PlusCircle, RefreshCw, Send, X } from 'lucide-react';
+import {
+  Bot,
+  History,
+  MessageSquare,
+  PlusCircle,
+  RefreshCw,
+  RotateCcw,
+  Send,
+  X,
+} from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChatMarkdownRenderer } from '../../../components/chat/ChatMarkdownRenderer';
 import {
@@ -21,7 +32,11 @@ import {
   useAiopsDiagnosisMutation,
   useAiopsIncidentDetails,
 } from '../hooks/useAIOps';
-import { AiopsRcaSuggestedAction, RcaClassification } from '../types/aiops.types';
+import {
+  AiopsChatMessage,
+  AiopsRcaSuggestedAction,
+  RcaClassification,
+} from '../types/aiops.types';
 import { AIOpsActionCard } from './AIOpsActionCard';
 
 export interface AIOpsChatDrawerProps {
@@ -164,6 +179,7 @@ export const AIOpsChatDrawer = ({
   targetIncidentId,
   targetServiceContext,
 }: AIOpsChatDrawerProps) => {
+  const [activeTab, setActiveTab] = useState<'chat' | 'history'>('chat');
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -171,67 +187,92 @@ export const AIOpsChatDrawer = ({
     targetIncidentId ?? undefined
   );
 
-  const { data: chatHistory, isLoading: isLoadingHistory } = useAiopsChatHistory(
-    { incidentId: targetIncidentId ?? undefined },
-    open
-  );
+  const {
+    data: chatHistory,
+    isLoading: isLoadingHistory,
+    refetch: refetchHistory,
+  } = useAiopsChatHistory({ incidentId: targetIncidentId ?? undefined }, open);
 
   const diagnosisMutation = useAiopsDiagnosisMutation();
   const chatMutation = useAiopsChatMutation();
 
-  const handleNewConversation = useCallback(() => {
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
+  const getInitialWelcomeMessage = useCallback((): ChatMessageItem => {
+    if (incidentDetail?.rcaReports?.[0]) {
+      const latestRca = incidentDetail.rcaReports[0];
+      return {
+        id: `init-rca-${Date.now()}`,
         role: 'assistant',
-        content:
-          'Olá! Sou o **AIOps Copilot**. Iniciei uma nova sessão limpa de atendimento.\n\nSelecione um dos **atalhos rápidos abaixo** ou pergunte diretamente sobre a infraestrutura e aplicações:',
-      },
-    ]);
-  }, []);
+        content: latestRca.fullMarkdownReport,
+        suggestedActions: latestRca.suggestedActions,
+      };
+    }
+    if (targetServiceContext) {
+      return {
+        id: `init-context-${Date.now()}`,
+        role: 'assistant',
+        content: `Olá! Estou monitorando o componente **\`${targetServiceContext}\`**. Posso consultar métricas no Prometheus, logs de erro no Loki, pods no Kubernetes e traces no Opik. O que deseja investigar?`,
+      };
+    }
+    return {
+      id: `init-general-${Date.now()}`,
+      role: 'assistant',
+      content:
+        'Olá! Sou o **AIOps Copilot**. Iniciei uma nova sessão limpa de atendimento.\n\nEstou conectado aos servidores MCP do cluster (Kubernetes, Prometheus, Loki, GlitchTip e Opik).\n\nSelecione um dos **atalhos rápidos abaixo** ou faça uma pergunta sobre a infraestrutura e aplicações:',
+    };
+  }, [incidentDetail, targetServiceContext]);
 
+  // Sempre que o drawer é aberto, inicia uma nova conversa limpa (sem histórico gigante)
   useEffect(() => {
     if (open) {
-      if (chatHistory && chatHistory.length > 0) {
-        setMessages(
-          chatHistory.map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            suggestedActions: (m.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)
-              ?.actions,
-          }))
-        );
-      } else if (incidentDetail?.rcaReports?.[0]) {
-        const latestRca = incidentDetail.rcaReports[0];
-        setMessages([
-          {
-            id: 'init-rca',
-            role: 'assistant',
-            content: latestRca.fullMarkdownReport,
-            suggestedActions: latestRca.suggestedActions,
-          },
-        ]);
-      } else if (targetServiceContext) {
-        setMessages([
-          {
-            id: 'init-context',
-            role: 'assistant',
-            content: `Olá! Estou monitorando o componente **\`${targetServiceContext}\`**. Posso consultar métricas no Prometheus, logs de erro no Loki, pods no Kubernetes e traces no Opik. O que deseja investigar?`,
-          },
-        ]);
-      } else {
-        setMessages([
-          {
-            id: 'init-general',
-            role: 'assistant',
-            content:
-              'Olá! Sou o **AIOps Copilot**. Estou conectado aos servidores MCP do cluster (Kubernetes, Prometheus, Loki, GlitchTip e Opik).\n\nSelecione um dos **atalhos rápidos abaixo** ou pergunte diretamente sobre a infraestrutura e aplicações:',
-          },
-        ]);
-      }
+      setActiveTab('chat');
+      setMessages([getInitialWelcomeMessage()]);
     }
-  }, [open, chatHistory, incidentDetail, targetServiceContext]);
+  }, [open, getInitialWelcomeMessage]);
+
+  const handleNewConversation = useCallback(() => {
+    setActiveTab('chat');
+    setMessages([getInitialWelcomeMessage()]);
+  }, [getInitialWelcomeMessage]);
+
+  // Carrega todas as mensagens do banco para a conversa ativa
+  const handleLoadAllHistory = () => {
+    if (!chatHistory || chatHistory.length === 0) return;
+    setMessages(
+      chatHistory.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        suggestedActions: (m.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)?.actions,
+      }))
+    );
+    setActiveTab('chat');
+  };
+
+  // Carrega a conversa a partir de uma mensagem específica do histórico
+  const handleRestoreFromMessage = (selectedMsg: AiopsChatMessage) => {
+    const targetIdx = chatHistory?.findIndex((m) => m.id === selectedMsg.id) ?? -1;
+    if (targetIdx >= 0 && chatHistory) {
+      const slice = chatHistory.slice(targetIdx);
+      setMessages(
+        slice.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          suggestedActions: (m.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)?.actions,
+        }))
+      );
+    } else {
+      setMessages([
+        {
+          id: selectedMsg.id,
+          role: selectedMsg.role,
+          content: selectedMsg.content,
+          suggestedActions: (selectedMsg.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)?.actions,
+        },
+      ]);
+    }
+    setActiveTab('chat');
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -361,10 +402,16 @@ export const AIOpsChatDrawer = ({
         </Stack>
 
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          <Tooltip title="Iniciar nova conversa">
-            <IconButton onClick={handleNewConversation} size="small" aria-label="Nova conversa">
-              <PlusCircle size={18} />
-            </IconButton>
+          <Tooltip title="Iniciar nova conversa limpa">
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<PlusCircle size={15} />}
+              onClick={handleNewConversation}
+              sx={{ textTransform: 'none', fontSize: '0.75rem', fontWeight: 600, mr: 0.5 }}
+            >
+              Novo Chat
+            </Button>
           </Tooltip>
           <IconButton onClick={onClose} size="small" aria-label="Fechar">
             <X size={20} />
@@ -372,132 +419,336 @@ export const AIOpsChatDrawer = ({
         </Stack>
       </Box>
 
-      {/* Barra de Contexto do Incidente */}
-      {targetIncidentId && (
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            bgcolor: 'action.hover',
-            borderBottom: 1,
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
+      {/* Abas de Navegação: Conversa Atual vs Histórico */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', px: 2 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, val) => setActiveTab(val)}
+          textColor="primary"
+          indicatorColor="primary"
+          sx={{ minHeight: 44 }}
         >
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Incidente: #{targetIncidentId.slice(0, 8)}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Serviço: {incidentDetail?.serviceName ?? 'Buscando...'}
-            </Typography>
-          </Box>
-
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            {incidentDetail?.rcaReports?.[0] &&
-              renderClassificationBadge(incidentDetail.rcaReports[0].classification)}
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={handleTriggerDiagnosis}
-              disabled={diagnosisMutation.isPending}
-              startIcon={
-                diagnosisMutation.isPending ? (
-                  <CircularProgress size={14} />
-                ) : (
-                  <RefreshCw size={14} />
-                )
-              }
-              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-            >
-              Reanalisar
-            </Button>
-          </Stack>
-        </Box>
-      )}
-
-      {/* Lista de Mensagens */}
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-        <Stack spacing={2}>
-          {(isLoadingIncident || isLoadingHistory) && (
-            <Box sx={{ p: 1 }}>
-              <Skeleton variant="text" width="50%" height={24} sx={{ mb: 1 }} />
-              <Skeleton variant="rounded" width="90%" height={75} sx={{ mb: 2 }} />
-              <Skeleton variant="rounded" width="70%" height={50} sx={{ mb: 2, ml: 'auto' }} />
-              <Skeleton variant="rounded" width="85%" height={85} sx={{ mb: 1 }} />
-            </Box>
-          )}
-
-          {messages.map((msg) => (
-            <Box
-              key={msg.id}
-              sx={{
-                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: msg.role === 'user' ? '85%' : '98%',
-                width: msg.role === 'assistant' ? '100%' : 'auto',
-              }}
-            >
-              <Paper
-                elevation={msg.role === 'user' ? 2 : 1}
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: msg.role === 'user' ? 'primary.main' : 'background.paper',
-                  color: msg.role === 'user' ? 'primary.contrastText' : 'text.primary',
-                  border: msg.role === 'user' ? 'none' : '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                }}
-              >
-                <ChatMarkdownRenderer content={msg.content} isUser={msg.role === 'user'} />
-
-                {/* Propostas de Ações Human-in-the-Loop */}
-                {msg.role === 'assistant' &&
-                  msg.suggestedActions &&
-                  msg.suggestedActions.length > 0 && (
-                    <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontWeight: 700,
-                          color: 'text.secondary',
-                          letterSpacing: 0.5,
-                          display: 'block',
-                          mb: 1.5,
-                        }}
-                      >
-                        ⚡ AÇÕES RECOMENDADAS PELO AIOPS (HUMAN-IN-THE-LOOP):
-                      </Typography>
-                      {msg.suggestedActions.map((action) => (
-                        <AIOpsActionCard
-                          key={action.actionId}
-                          action={action}
-                          incidentId={targetIncidentId ?? undefined}
-                        />
-                      ))}
-                    </Box>
-                  )}
-              </Paper>
-            </Box>
-          ))}
-
-          {chatMutation.isPending && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
-              <CircularProgress size={16} />
-              <Typography variant="caption" color="text.secondary">
-                AIOps Copilot investigando servidores MCP...
-              </Typography>
-            </Box>
-          )}
-
-          <div ref={messagesEndRef} />
-        </Stack>
+          <Tab
+            value="chat"
+            label="Conversa Atual"
+            icon={<Bot size={16} />}
+            iconPosition="start"
+            sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600, fontSize: '0.85rem' }}
+          />
+          <Tab
+            value="history"
+            label={`Histórico (${chatHistory?.length || 0})`}
+            icon={<History size={16} />}
+            iconPosition="start"
+            sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600, fontSize: '0.85rem' }}
+          />
+        </Tabs>
       </Box>
 
-      {/* Input e Ações Isolados com Zero Re-render no Histórico */}
-      <ChatInputBar onSendMessage={sendChatMessage} disabled={chatMutation.isPending} />
+      {activeTab === 'chat' ? (
+        <>
+          {/* Barra de Contexto do Incidente */}
+          {targetIncidentId && (
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                bgcolor: 'action.hover',
+                borderBottom: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Incidente: #{targetIncidentId.slice(0, 8)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Serviço: {incidentDetail?.serviceName ?? 'Buscando...'}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                {incidentDetail?.rcaReports?.[0] &&
+                  renderClassificationBadge(incidentDetail.rcaReports[0].classification)}
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleTriggerDiagnosis}
+                  disabled={diagnosisMutation.isPending}
+                  startIcon={
+                    diagnosisMutation.isPending ? (
+                      <CircularProgress size={14} />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )
+                  }
+                  sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                >
+                  Reanalisar
+                </Button>
+              </Stack>
+            </Box>
+          )}
+
+          {/* Lista de Mensagens */}
+          <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+            <Stack spacing={2}>
+              {isLoadingIncident && (
+                <Box sx={{ p: 1 }}>
+                  <Skeleton variant="text" width="50%" height={24} sx={{ mb: 1 }} />
+                  <Skeleton variant="rounded" width="90%" height={75} sx={{ mb: 2 }} />
+                  <Skeleton variant="rounded" width="70%" height={50} sx={{ mb: 2, ml: 'auto' }} />
+                  <Skeleton variant="rounded" width="85%" height={85} sx={{ mb: 1 }} />
+                </Box>
+              )}
+
+              {messages.map((msg) => (
+                <Box
+                  key={msg.id}
+                  sx={{
+                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: msg.role === 'user' ? '85%' : '98%',
+                    width: msg.role === 'assistant' ? '100%' : 'auto',
+                  }}
+                >
+                  <Paper
+                    elevation={msg.role === 'user' ? 2 : 1}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: msg.role === 'user' ? 'primary.main' : 'background.paper',
+                      color: msg.role === 'user' ? 'primary.contrastText' : 'text.primary',
+                      border: msg.role === 'user' ? 'none' : '1px solid',
+                      borderColor: 'divider',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <ChatMarkdownRenderer content={msg.content} isUser={msg.role === 'user'} />
+
+                    {/* Propostas de Ações Human-in-the-Loop */}
+                    {msg.role === 'assistant' &&
+                      msg.suggestedActions &&
+                      msg.suggestedActions.length > 0 && (
+                        <Box
+                          sx={{ mt: 2.5, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontWeight: 700,
+                              color: 'text.secondary',
+                              letterSpacing: 0.5,
+                              display: 'block',
+                              mb: 1.5,
+                            }}
+                          >
+                            ⚡ AÇÕES RECOMENDADAS PELO AIOPS (HUMAN-IN-THE-LOOP):
+                          </Typography>
+                          {msg.suggestedActions.map((action) => (
+                            <AIOpsActionCard
+                              key={action.actionId}
+                              action={action}
+                              incidentId={targetIncidentId ?? undefined}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                  </Paper>
+                </Box>
+              ))}
+
+              {chatMutation.isPending && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
+                  <CircularProgress size={16} />
+                  <Typography variant="caption" color="text.secondary">
+                    AIOps Copilot investigando servidores MCP...
+                  </Typography>
+                </Box>
+              )}
+
+              <div ref={messagesEndRef} />
+            </Stack>
+          </Box>
+
+          {/* Input e Ações Isolados com Zero Re-render no Histórico */}
+          <ChatInputBar onSendMessage={sendChatMessage} disabled={chatMutation.isPending} />
+        </>
+      ) : (
+        /* Aba de Histórico de Conversas Gravadas no Banco */
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Barra de Ações do Histórico */}
+          <Box
+            sx={{
+              p: 1.5,
+              px: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              bgcolor: 'background.paper',
+              borderBottom: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 700, color: 'text.secondary', letterSpacing: 0.5 }}
+            >
+              REGISTROS SALVOS ({chatHistory?.length || 0})
+            </Typography>
+
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              {chatHistory && chatHistory.length > 0 && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<RotateCcw size={14} />}
+                  onClick={handleLoadAllHistory}
+                  sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                >
+                  Restaurar Tudo no Chat
+                </Button>
+              )}
+              <Tooltip title="Atualizar histórico do banco">
+                <IconButton
+                  size="small"
+                  onClick={() => refetchHistory()}
+                  disabled={isLoadingHistory}
+                  aria-label="Atualizar histórico"
+                >
+                  <RefreshCw size={15} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Box>
+
+          {/* Lista de Registros do Histórico */}
+          <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+            <Stack spacing={2}>
+              {isLoadingHistory && (
+                <Box sx={{ p: 1 }}>
+                  <Skeleton variant="rounded" width="100%" height={75} sx={{ mb: 1.5 }} />
+                  <Skeleton variant="rounded" width="100%" height={75} sx={{ mb: 1.5 }} />
+                  <Skeleton variant="rounded" width="100%" height={75} />
+                </Box>
+              )}
+
+              {!isLoadingHistory && (!chatHistory || chatHistory.length === 0) && (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 4,
+                    textAlign: 'center',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                    borderStyle: 'dashed',
+                  }}
+                >
+                  <History size={36} style={{ margin: '0 auto 12px auto', opacity: 0.4 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Nenhum histórico registrado ainda
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 0.5 }}
+                  >
+                    As interações com o AIOps Copilot são salvas automaticamente no banco de dados e
+                    ficarão disponíveis nesta aba.
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<Bot size={14} />}
+                    onClick={() => setActiveTab('chat')}
+                    sx={{ mt: 2, textTransform: 'none' }}
+                  >
+                    Ir para Conversa Atual
+                  </Button>
+                </Paper>
+              )}
+
+              {chatHistory &&
+                chatHistory.map((item) => (
+                  <Paper
+                    key={item.id}
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      transition: 'border-color 0.2s',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      sx={{
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: 1.5,
+                        flexWrap: 'wrap',
+                        gap: 1,
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Chip
+                          size="small"
+                          label={item.role === 'user' ? '👤 Administrador' : '🤖 AIOps Copilot'}
+                          color={item.role === 'user' ? 'default' : 'primary'}
+                          variant={item.role === 'user' ? 'outlined' : 'filled'}
+                          sx={{ fontWeight: 600, fontSize: '0.72rem', height: 22 }}
+                        />
+                        {item.incidentId && (
+                          <Chip
+                            size="small"
+                            label={`#${item.incidentId.slice(0, 8)}`}
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem', height: 22 }}
+                          />
+                        )}
+                      </Stack>
+
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(item.createdAt).toLocaleString()}
+                      </Typography>
+                    </Stack>
+
+                    <Box sx={{ maxHeight: 200, overflowY: 'auto', pr: 0.5 }}>
+                      <ChatMarkdownRenderer content={item.content} isUser={false} />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        mt: 1.5,
+                        pt: 1,
+                        borderTop: 1,
+                        borderColor: 'divider',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="primary"
+                        startIcon={<MessageSquare size={14} />}
+                        onClick={() => handleRestoreFromMessage(item)}
+                        sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                      >
+                        Carregar no Chat
+                      </Button>
+                    </Box>
+                  </Paper>
+                ))}
+            </Stack>
+          </Box>
+        </Box>
+      )}
     </Drawer>
   );
 };
