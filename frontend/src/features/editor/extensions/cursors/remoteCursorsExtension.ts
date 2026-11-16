@@ -1,5 +1,5 @@
-import { StateField, StateEffect, RangeSetBuilder, Text } from '@codemirror/state';
-import { EditorView, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
+import { RangeSetBuilder, StateEffect, StateField, Text } from '@codemirror/state';
+import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { RemoteCursor } from '../../types/collab.types';
 import { getContrastColor, hexToRgba } from '../../../../utils/color';
 

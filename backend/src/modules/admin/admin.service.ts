@@ -165,8 +165,18 @@ export class AdminService {
       compilerStatus = 'DOWN';
     }
 
-    const memUsage = process.memoryUsage();
-    const heapUsedMb = Math.round(memUsage.heapUsed / 1024 / 1024);
+    let postgresConns = 8;
+    let postgresStatus: 'UP' | 'DEGRADED' | 'DOWN' = 'UP';
+    try {
+      const activeRows = await this.db.$queryRaw<Array<{ count: bigint }>>`
+        SELECT count(*) as count FROM pg_stat_activity WHERE state = 'active'
+      `;
+      if (activeRows && activeRows.length > 0) {
+        postgresConns = Number(activeRows[0].count);
+      }
+    } catch {
+      postgresStatus = 'DOWN';
+    }
 
     return {
       services: {
@@ -176,14 +186,14 @@ export class AdminService {
           latencyP95Ms: 14.2,
           errorRate5xx: 0.05,
           eventLoopLagMs: 1.8,
-          grafanaUrl: 'http://localhost:3001/d/grafana-fastify-app',
+          grafanaUrl: `${env.GRAFANA_URL}/d/grafana-fastify-app`,
         },
         aiService: {
           status: aiServiceStatus,
           avgTtftMs: 680,
           activeSseStreams: 3,
           monthlyEstimatedCostUsd: 18.45,
-          opikUrl: 'http://localhost:5174',
+          opikUrl: env.OPIK_UI_URL,
         },
         compiler: {
           status: compilerStatus,
@@ -191,11 +201,11 @@ export class AdminService {
           activeJobs: 1,
           avgDurationMs: 1850,
           timeoutsLast24h: 0,
-          grafanaUrl: 'http://localhost:3001/d/compiler-metrics',
+          grafanaUrl: `${env.GRAFANA_URL}/d/compiler-metrics`,
         },
         postgres: {
-          status: 'UP',
-          activeConnections: 8,
+          status: postgresStatus,
+          activeConnections: postgresConns,
           maxConnections: 100,
           slowQueriesCount: 0,
         },

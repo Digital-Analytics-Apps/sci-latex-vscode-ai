@@ -10,15 +10,15 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { Bot, Cpu, Database, ExternalLink, HardDrive, Server, Zap } from 'lucide-react';
-import React from 'react';
+import { Bot, Cpu, Database, ExternalLink, HardDrive, Server, Sparkles, Zap } from 'lucide-react';
 import { useAdminInfrastructure } from '../hooks/useAdminCenterQueries';
 
-interface InfrastructureTabProps {
+export interface InfrastructureTabProps {
   autoRefresh: boolean;
+  onInvestigate?: (serviceName: string) => void;
 }
 
-export const InfrastructureTab: React.FC<InfrastructureTabProps> = ({ autoRefresh }) => {
+export const InfrastructureTab = ({ autoRefresh, onInvestigate }: InfrastructureTabProps) => {
   const { data, isLoading, isError } = useAdminInfrastructure(autoRefresh);
 
   if (isLoading) {
@@ -111,15 +111,28 @@ export const InfrastructureTab: React.FC<InfrastructureTabProps> = ({ autoRefres
                   </Typography>
                 </Grid>
               </Grid>
-              <Button
-                variant="outlined"
-                size="small"
-                endIcon={<ExternalLink size={14} />}
-                href={services.backendFastify.grafanaUrl}
-                target="_blank"
-              >
-                Abrir no Grafana
-              </Button>
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<ExternalLink size={14} />}
+                  href={services.backendFastify.grafanaUrl}
+                  target="_blank"
+                  sx={{ textTransform: 'none' }}
+                >
+                  Abrir no Grafana
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="primary"
+                  startIcon={<Sparkles size={14} />}
+                  onClick={() => onInvestigate?.('backend-fastify')}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Investigar com AIOps
+                </Button>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
@@ -170,16 +183,29 @@ export const InfrastructureTab: React.FC<InfrastructureTabProps> = ({ autoRefres
                   </Typography>
                 </Grid>
               </Grid>
-              <Button
-                variant="outlined"
-                size="small"
-                color="secondary"
-                endIcon={<ExternalLink size={14} />}
-                href={services.aiService.opikUrl}
-                target="_blank"
-              >
-                Abrir no Opik LLMOps
-              </Button>
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="secondary"
+                  endIcon={<ExternalLink size={14} />}
+                  href={services.aiService.opikUrl}
+                  target="_blank"
+                  sx={{ textTransform: 'none' }}
+                >
+                  Abrir no Opik LLMOps
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="secondary"
+                  startIcon={<Sparkles size={14} />}
+                  onClick={() => onInvestigate?.('ai-service')}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Investigar com AIOps
+                </Button>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
@@ -238,15 +264,28 @@ export const InfrastructureTab: React.FC<InfrastructureTabProps> = ({ autoRefres
                   </Typography>
                 </Grid>
               </Grid>
-              <Button
-                variant="outlined"
-                size="small"
-                endIcon={<ExternalLink size={14} />}
-                href={services.compiler.grafanaUrl}
-                target="_blank"
-              >
-                Métricas de Compilação
-              </Button>
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<ExternalLink size={14} />}
+                  href={services.compiler.grafanaUrl}
+                  target="_blank"
+                  sx={{ textTransform: 'none' }}
+                >
+                  Métricas de Compilação
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="warning"
+                  startIcon={<Sparkles size={14} />}
+                  onClick={() => onInvestigate?.('compiler')}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Investigar com AIOps
+                </Button>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
@@ -305,19 +344,29 @@ export const InfrastructureTab: React.FC<InfrastructureTabProps> = ({ autoRefres
                   </Typography>
                 </Grid>
               </Grid>
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                 <Chip
                   icon={<Zap size={14} />}
-                  label="Fencing Tokens Ativos"
+                  label="Fencing Tokens"
                   size="small"
                   variant="outlined"
                 />
                 <Chip
                   icon={<HardDrive size={14} />}
-                  label="ACID Checkpoints"
+                  label="Checkpoints"
                   size="small"
                   variant="outlined"
                 />
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="success"
+                  startIcon={<Sparkles size={14} />}
+                  onClick={() => onInvestigate?.('postgres')}
+                  sx={{ textTransform: 'none', fontWeight: 600, ml: 'auto' }}
+                >
+                  Investigar com AIOps
+                </Button>
               </Stack>
             </CardContent>
           </Card>

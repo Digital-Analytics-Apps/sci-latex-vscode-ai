@@ -271,6 +271,7 @@ services:
       REDIS_URL: ${GLITCHTIP_REDIS_URL:-redis://host.docker.internal:6379/1} # Fila assíncrona Valkey/Redis
       SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-scia-glitchtip-secret-change-in-production} # Chave de sessão via env
       GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8005} # Domínio base para links e alertas
+      GLITCHTIP_ENABLE_MCP: "True" # Habilita o servidor MCP nativo do GlitchTip no endpoint /mcp
     extra_hosts:
       - "host.docker.internal:host-gateway" # Permite conectar ao PostgreSQL do desenvolvedor
     networks:

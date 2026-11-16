@@ -1,5 +1,5 @@
 import { DeltaOperation, DocumentSnapshot } from '../types/collab.types';
-import { History, HardDriveDownload, Clock, CheckCircle2, GitCompare } from 'lucide-react';
+import { CheckCircle2, Clock, GitCompare, HardDriveDownload, History } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';

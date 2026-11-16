@@ -27,6 +27,7 @@ import { usersRoutes } from './modules/users/users.routes';
 import { templatesRoutes } from './modules/templates/templates.routes';
 import { aiRoutes } from './modules/ai/ai.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
+import { aiopsRoutes } from './modules/admin/aiops/aiops.routes';
 import { metricsPlugin } from './infra/metrics/metrics.plugin';
 import { tracingPlugin } from './infra/tracing/tracing.plugin';
 export async function buildApp() {
@@ -144,6 +145,8 @@ export async function buildApp() {
   await app.register(aiRoutes, { prefix: '/api/v1/ai' });
   await app.register(adminRoutes, { prefix: '/api/v1/admin' });
   await app.register(adminRoutes, { prefix: '/admin' });
+  await app.register(aiopsRoutes, { prefix: '/api/v1/admin/aiops' });
+  await app.register(aiopsRoutes, { prefix: '/admin/aiops' });
   // Fallback para LanguageTool
   app.post('/api/v1/languagetool/check', async () => ({ matches: [] }));
   app.post('/api/languagetool/check', async () => ({ matches: [] }));

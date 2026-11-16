@@ -1,6 +1,6 @@
 import { Facet } from '@codemirror/state';
 import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
-import { sendableUpdates, getSyncedVersion } from '@codemirror/collab';
+import { getSyncedVersion, sendableUpdates } from '@codemirror/collab';
 import { CollabUpdateJSON } from '../../types/collab.types';
 
 export interface CollabSyncConfig {

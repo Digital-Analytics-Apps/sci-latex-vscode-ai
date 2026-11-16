@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { httpClient, getErrorMessage } from '../../../api/httpClient';
-import { DocumentSnapshot, DeltaOperation } from '../types/collab.types';
+import { getErrorMessage, httpClient } from '../../../api/httpClient';
+import { DeltaOperation, DocumentSnapshot } from '../types/collab.types';
 import { ProjectFile, RawProjectFile } from '../types/files.types';
 
 // Tipagens Request / Response estritas com suporte a AbortSignal
@@ -102,7 +102,7 @@ export const EditorService: EditorServiceType = {
       return response.data;
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao carregar histórico do documento'));
+      throw new Error(getErrorMessage(error, 'Falha ao carregar histórico do documento'), { cause: error });
     }
   },
 
@@ -117,7 +117,7 @@ export const EditorService: EditorServiceType = {
       return response.data.snapshot || null;
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao gravar snapshot'));
+      throw new Error(getErrorMessage(error, 'Falha ao gravar snapshot'), { cause: error });
     }
   },
 
@@ -145,10 +145,10 @@ export const EditorService: EditorServiceType = {
           // Resposta não é JSON
         }
         if (errorDetails) {
-          throw new Error(errorDetails);
+          throw new Error(errorDetails, { cause: error });
         }
       }
-      throw new Error(getErrorMessage(error, 'Erro na compilação do LaTeX'));
+      throw new Error(getErrorMessage(error, 'Erro na compilação do LaTeX'), { cause: error });
     }
   },
 
@@ -162,7 +162,7 @@ export const EditorService: EditorServiceType = {
       return response.data.content || '';
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao carregar conteúdo do arquivo'));
+      throw new Error(getErrorMessage(error, 'Falha ao carregar conteúdo do arquivo'), { cause: error });
     }
   },
 
@@ -176,7 +176,7 @@ export const EditorService: EditorServiceType = {
       );
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao atualizar arquivo'));
+      throw new Error(getErrorMessage(error, 'Falha ao atualizar arquivo'), { cause: error });
     }
   },
 
@@ -204,7 +204,7 @@ export const EditorService: EditorServiceType = {
       }));
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao listar arquivos do projeto'));
+      throw new Error(getErrorMessage(error, 'Falha ao listar arquivos do projeto'), { cause: error });
     }
   },
 
@@ -228,7 +228,7 @@ export const EditorService: EditorServiceType = {
       };
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao criar arquivo no projeto'));
+      throw new Error(getErrorMessage(error, 'Falha ao criar arquivo no projeto'), { cause: error });
     }
   },
 
@@ -267,7 +267,7 @@ export const EditorService: EditorServiceType = {
       };
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha no upload do arquivo'));
+      throw new Error(getErrorMessage(error, 'Falha no upload do arquivo'), { cause: error });
     }
   },
 
@@ -279,7 +279,7 @@ export const EditorService: EditorServiceType = {
       });
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao deletar arquivo'));
+      throw new Error(getErrorMessage(error, 'Falha ao deletar arquivo'), { cause: error });
     }
   },
 };

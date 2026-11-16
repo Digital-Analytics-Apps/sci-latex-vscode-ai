@@ -10,7 +10,7 @@ import Switch from '@mui/material/Switch';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
-import { X, Code2, Languages, FileCode, Palette } from 'lucide-react';
+import { Code2, FileCode, Languages, Palette, X } from 'lucide-react';
 import { EditorSettings } from '../../../types/settings';
 import { getTranslations } from '../../../utils/i18n';
 

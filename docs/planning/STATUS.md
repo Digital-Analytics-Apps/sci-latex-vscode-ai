@@ -1,8 +1,27 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 14 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Governança Estrita de Templates LaTeX Oficiais (ADR-017) 100% Implementada e Validada.** Expurgados todos os templates fakes hardcoded do backend. Integrado o template real IEEE (`latex-templates/2026-ieee-conference.zip`) sincronizado automaticamente no MinIO S3 (`collab-assets/templates/2026-ieee-conference/bundle.zip`) e PostgreSQL (`LatexTemplate`). Heurística estilo Overleaf para remoção automática de diretório-mãe de ZIPs sem renomeação forçada para `main.tex`. Backend, WebSocket colaborativo, compilação TeXLive e editor frontend operando dinamicamente com base no `mainEntryPath` real do documento sem fallbacks mascaradores de erro (*Fail-Fast* estrito). 72/72 testes do backend e 5/5 testes do frontend aprovados com 0 erros de compilação TypeScript/Vite.
+**Última Atualização:** 15 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **AIOps Copilot com Multi-Agent Hierárquico (SRE Supervisor + 6 Especialistas MCP), Autenticação M2M JWT (ADR-012) e Skills Modulares de Kubernetes & PostgreSQL (ADR-015/018) Concluídos.**
+- **Evolução Arquitetural Aprovada e Implementada (ADR-018 & ADR-012 & ADR-015):** 
+  1. **Separação Estrita de Domínios:** O domínio SRE/AIOps está 100% isolado do domínio científico da plataforma (Belisa e agentes acadêmicos). Código hospedado em `ai-service/app/agents/aiops/` com ferramentas e especialistas dedicados.
+  2. **Topologia Hierárquica de Especialistas (Substituição de Regex por Tool Calling):** 
+     - SRE Supervisor Agent orquestrando 6 Especialistas Operacionais: Kubernetes/Containers, Loki (Logs), Prometheus (Métricas), GlitchTip (Exceções), Opik (LLMOps) e PostgreSQL/PgBouncer.
+     - **Provisionamento e Telemetria do PgBouncer (ADR-015):** Contêiner `sci_latex_pgbouncer` provisionado na porta `6543` em modo `transaction pooling` com monitoramento via console administrativa (`SHOW POOLS;`, `SHOW STATS;`).
+     - **Ferramentas MCP de Banco:** `postgres_inspect_health`, `postgres_check_slow_queries_and_locks` e `pgbouncer_inspect_pools`.
+     - **Skill Modular Oficial PostgreSQL & PgBouncer:** 25 arquivos modulares estruturados em `references/`, `diagnostics/`, `workflows/`, `sql/` e `schemas/` com limiares de SLA (Cache Hit Ratio >= 99%, `cl_waiting == 0`, detecção de `idle in transaction`, contenção de locks).
+     - Integração com o Servidor MCP oficial do Opik (`mcp==2.3.0`, `opik-mcp`) e as Skills oficiais (`.agents/skills/opik*`).
+     - **Skills de Runtime Autocontidas com Lazy Loading:** Estruturadas em `ai-service/app/agents/aiops/skills/` com carregador `loader.py` memoizado (`@lru_cache`) que suporta carregamento pontual por subtópico (`read_operational_skill(skill_name, topic)`), prevenindo sobrecarga de contexto na LLM.
+     - **Skill Modular Oficial de Operações Kubernetes:** 19 arquivos modulares com base na documentação oficial (`kubernetes.io/docs/home/`), com playbooks de `crashloopbackoff.md`, `oomkilled.md`, `pending-and-scheduling.md`, `probe-failures.md`, `node-pressure-and-eviction.md` e `image-pull-errors.md`.
+  3. **Autenticação Machine-to-Machine Criptográfica via JWT (ADR-012):**
+     - O Fastify emite tokens JWT assinados (`type: 'SERVICE'`, `sub: 'service:aiops'`, `scopes: ['aiops:chat', 'observability:read']`, `actor: { userId, email }`, `exp: 15m`).
+     - O `ai-service` valida a assinatura criptográfica via `verify_m2m_token` (`app/core/m2m_auth.py`), garantindo o princípio do menor privilégio, rejeitando acessos não autorizados com 401 e eliminando o risco de *Prompt Injection* como administrador.
+  4. **Isolamento de Banco de Dados (`sci_aiops_db`):** Base `sci_aiops_db` provisionada no PostgreSQL para isolamento de carga operacional, logs de auditoria e retenção segregada (60 dias), garantindo blast radius zero sobre `sci_latex_db`.
+  5. **Frontend Otimizado com Zero Lag de Digitação & Quick Actions:**
+     - Digitação no chat drawer isolada no componente memoizado `ChatInputBar` e renderizador Markdown (`ChatMarkdownRenderer`) com `React.memo` (elimina reparsing contínuo da AST).
+     - Botão "Nova Conversa" para reinicialização limpa de sessão.
+     - 6 Quick Action Chips para guiar o operador humano sem tela cega.
+- **Métricas Atuais de Testes:** 85/85 testes de backend aprovados, 6/6 testes de frontend aprovados e build de produção concluído com 0 erros.
 
 ---
 
@@ -13,6 +32,20 @@
 
 ### 🔍 Estado Atual da Aplicação
   * **Branch Ativa:** `feature/observability-stack-adr-013`
+  * **AIOps Copilot com MCP e Diagnóstico de Causa-Raiz (ADR-018 Concluída com Sucesso):**
+    * **Decisão Arquitetural Formalizada:** Documentada em [`ADR-018`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md).
+    * **Manual Operacional de Perguntas:** Catálogo com mais de 30 perguntas operacionais estruturadas em 6 categorias documentado em [`GUIA_PERGUNTAS_AIOPS_COPILOT.md`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/GUIA_PERGUNTAS_AIOPS_COPILOT.md).
+    * **Roteamento Dinâmico de Prompts:** `chatWithAgent` em `backend/src/modules/admin/aiops/aiops.service.ts` inspeciona a intenção da mensagem e consulta as ferramentas MCP em tempo real:
+      * `K8S_INSPECTION`: Inspeciona pods, nós, exit codes (`OOMKilled 137`) e condições de pressão.
+      * `PROMETHEUS_METRICS`: Executa consultas instantâneas de uso de heap, pools de conexão do Postgres e RPS.
+      * `LOKI_LOGS`: Executa buscas de logs de erro (`{service_name=~".+"} |= "error"`), extraindo amostras recentes e distribuição de níveis.
+      * `GLITCHTIP_ISSUES`: Rastreia exceções não resolvidas e culprits de código.
+      * `OPIK_TRACES`: Monitora traces e spans de grafos LangGraph no `ai-service`.
+      * `REMEDIATION_ACTION`: Gera card interativo `AiopsRcaSuggestedAction` para execução com Human-in-the-Loop.
+      * `SYSTEM_OVERVIEW`: Matriz consolidada de saúde com cross-telemetria dos 5 pilares de observabilidade.
+    * **Testes e Compilação:**
+      * Backend: 83/83 testes aprovados no Vitest (`npm test`).
+      * Frontend: 6/6 testes aprovados no Vitest (`npm test`), build de produção concluído com sucesso (`npm run build`).
   * **Governança de Templates LaTeX Oficiais e Storage Architecture (ADR-017 Concluída):**
     * **Decisão Arquitetural Aprovada:** Documentada em [`ADR-017`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md) com a convenção semântica de diretórios `[ANO]-[NOME_DO_CONGRESSO]-[TIPO]` (ex: `2026-ieee-conference`) e o princípio inegociável de *Fail-Fast* (zero fallbacks para `main.tex`).
     * **Expurgo de Templates Fakes e Seed de Baseline Real:**

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { EditorService, CompileLatexResponse } from '../services/editor.service';
+import { CompileLatexResponse, EditorService } from '../services/editor.service';
 
 export function useLatexCompiler(documentId: string) {
   const [lastCompiledAt, setLastCompiledAt] = useState<string | null>(null);

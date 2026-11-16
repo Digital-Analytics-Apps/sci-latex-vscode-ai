@@ -1,4 +1,4 @@
-import { snippetCompletion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { CompletionContext, CompletionResult, snippetCompletion } from '@codemirror/autocomplete';
 import { hoverTooltip } from '@codemirror/view';
 import { extractBibKeys, parseBibEntries } from '../../utils/bibtexParser';
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
+import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { Box, Card, CardContent, Chip, Typography } from '@mui/material';
 import { Sparkles } from 'lucide-react';
 import type { GapNodeData } from '../types';
 

@@ -1,6 +1,8 @@
 import { Box, Button, Chip, Container, Paper, Stack, Tab, Tabs, Typography } from '@mui/material';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
+  Bot,
   Cpu,
   Layers,
   LayoutDashboard,
@@ -8,25 +10,37 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { AIOpsChatDrawer } from './components/AIOpsChatDrawer';
 import { ADMIN_CENTER_KEYS } from './hooks/useAdminCenterQueries';
+import { ActivityTab } from './tabs/ActivityTab';
+import { CollaborationTab } from './tabs/CollaborationTab';
+import { InfrastructureTab } from './tabs/InfrastructureTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { WorkflowTab } from './tabs/WorkflowTab';
-import { InfrastructureTab } from './tabs/InfrastructureTab';
-import { CollaborationTab } from './tabs/CollaborationTab';
-import { ActivityTab } from './tabs/ActivityTab';
 
-export const AdminCenterPage: React.FC = () => {
+export const AdminCenterPage = () => {
   const [currentTab, setCurrentTab] = useState<number>(0);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  // Estados do AIOps Copilot Drawer
+  const [aiopsOpen, setAiopsOpen] = useState<boolean>(false);
+  const [aiopsServiceContext, setAiopsServiceContext] = useState<string | null>(null);
+  const [aiopsIncidentId, setAiopsIncidentId] = useState<string | null>(null);
+
   const queryClient = useQueryClient();
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: ADMIN_CENTER_KEYS.all });
     setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  const handleOpenAiopsForService = (serviceName: string) => {
+    setAiopsServiceContext(serviceName);
+    setAiopsIncidentId(null);
+    setAiopsOpen(true);
   };
 
   return (
@@ -60,6 +74,21 @@ export const AdminCenterPage: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<Bot size={16} />}
+              onClick={() => {
+                setAiopsServiceContext(null);
+                setAiopsIncidentId(null);
+                setAiopsOpen(true);
+              }}
+              sx={{ fontWeight: 700, textTransform: 'none', px: 2 }}
+            >
+              AIOps Copilot
+            </Button>
+
             <Chip
               label={autoRefresh ? 'Auto-Refresh: 15s' : 'Auto-Refresh: Pausado'}
               color={autoRefresh ? 'success' : 'default'}
@@ -68,11 +97,12 @@ export const AdminCenterPage: React.FC = () => {
               sx={{ cursor: 'pointer', fontWeight: 600 }}
             />
             <Button
-              variant="contained"
+              variant="outlined"
               size="small"
               startIcon={<RefreshCw size={16} />}
               onClick={handleManualRefresh}
               disabled={isRefreshing}
+              sx={{ textTransform: 'none' }}
             >
               Atualizar
             </Button>
@@ -108,10 +138,20 @@ export const AdminCenterPage: React.FC = () => {
       <Box sx={{ mt: 2 }}>
         {currentTab === 0 && <OverviewTab autoRefresh={autoRefresh} />}
         {currentTab === 1 && <WorkflowTab autoRefresh={autoRefresh} />}
-        {currentTab === 2 && <InfrastructureTab autoRefresh={autoRefresh} />}
+        {currentTab === 2 && (
+          <InfrastructureTab autoRefresh={autoRefresh} onInvestigate={handleOpenAiopsForService} />
+        )}
         {currentTab === 3 && <CollaborationTab autoRefresh={autoRefresh} />}
         {currentTab === 4 && <ActivityTab autoRefresh={autoRefresh} />}
       </Box>
+
+      {/* AIOps Copilot Interactive Drawer */}
+      <AIOpsChatDrawer
+        open={aiopsOpen}
+        onClose={() => setAiopsOpen(false)}
+        targetIncidentId={aiopsIncidentId}
+        targetServiceContext={aiopsServiceContext}
+      />
     </Container>
   );
 };

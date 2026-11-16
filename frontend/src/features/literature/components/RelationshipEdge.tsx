@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
 import { Box, Chip } from '@mui/material';
 import type { LiteratureEdge } from '../types';
 

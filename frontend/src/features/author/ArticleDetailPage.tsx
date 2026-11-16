@@ -178,7 +178,7 @@ export const ArticleDetailPage = () => {
         setProvisioningTaskId(null);
       }
     },
-    [activateWorkspaceMutation, dispatch, navigate]
+    [activateWorkspaceMutation, dispatch, navigate, projectId]
   );
 
   const handleOpenCreateTask = useCallback((stageId?: string, initialTitle?: string) => {

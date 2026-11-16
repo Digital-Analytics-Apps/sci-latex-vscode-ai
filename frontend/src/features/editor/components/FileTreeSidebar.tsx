@@ -1,17 +1,17 @@
-import { useState, useRef, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
-  FileCode,
-  FileText,
   BookMarked,
-  Image as ImageIcon,
-  Folder,
+  Check,
+  Copy,
+  FileCode,
   FilePlus,
-  Upload,
-  X,
+  FileText,
+  Folder,
+  Image as ImageIcon,
   ListTree,
   Trash2,
-  Copy,
-  Check,
+  Upload,
+  X,
 } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -29,8 +29,8 @@ import { ProjectFile } from '../types/files.types';
 import { useProjectFilesQuery } from '../hooks/useProjectFilesQuery';
 import {
   useCreateProjectFileMutation,
-  useUploadProjectFileMutation,
   useDeleteProjectFileMutation,
+  useUploadProjectFileMutation,
 } from '../hooks/useProjectFilesMutations';
 
 export type { ProjectFile };

@@ -381,16 +381,14 @@ export class DocumentsService {
       }
     }
 
-    let finalContent = '';
+    const finalContent = targetDoc.toString();
     if (isMain) {
       active.doc = targetDoc;
-      finalContent = targetDoc.toString();
       active.content = finalContent;
     } else {
       const fileCollab = active.filesCollab.get(file)!;
       fileCollab.doc = targetDoc;
       fileCollab.version = targetUpdates.length;
-      finalContent = targetDoc.toString();
     }
     if (!active.firstPendingOpTime) {
       active.firstPendingOpTime = Date.now();

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Card, CardContent, Typography, Box, Chip, Button, Tooltip } from '@mui/material';
-import { BookOpen, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { Box, Button, Card, CardContent, Chip, Tooltip, Typography } from '@mui/material';
+import { AlertTriangle, BookOpen, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { ScientificPaperNodeData } from '../types';
 
 export const PaperNode: React.FC<NodeProps<Node<ScientificPaperNodeData>>> = ({

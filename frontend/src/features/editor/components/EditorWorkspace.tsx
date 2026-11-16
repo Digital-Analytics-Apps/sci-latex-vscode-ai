@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography';
 import { useColorMode } from '../../../theme';
 import { useCollabEditor } from '../context/CollabEditorContext';
 import { DeltaOperation } from '../types/collab.types';
-import { ActivityRail, ActiveSidebarPanel } from './ActivityRail';
+import { ActiveSidebarPanel, ActivityRail } from './ActivityRail';
 import { FileTreeSidebar } from './FileTreeSidebar';
 import { EditorTabBar } from './EditorTabBar';
 import { CodeMirrorEditor, EditorLineLayoutInfo } from './CodeMirrorEditor';

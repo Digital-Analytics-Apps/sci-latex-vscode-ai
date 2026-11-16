@@ -1,7 +1,7 @@
-import { Box, Chip, Button } from '@mui/material';
+import { Box, Button, Chip } from '@mui/material';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShieldCheck, BarChart3 } from 'lucide-react';
+import { BarChart3, ShieldCheck } from 'lucide-react';
 import { AppHeaderBar } from '../components/common/AppHeaderBar';
 
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {

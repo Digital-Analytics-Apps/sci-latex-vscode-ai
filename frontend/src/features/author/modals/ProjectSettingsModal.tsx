@@ -288,7 +288,6 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   // Sincroniza estado rascunho sempre que o modal abre
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalStages(stages || []);
       setProjectName(projectDetails?.name || '');
       setDescription(projectDetails?.description || '');

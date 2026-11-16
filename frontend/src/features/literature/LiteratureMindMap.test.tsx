@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { PaperNode } from './components/PaperNode';
 import { GapNode } from './components/GapNode';
 import { SectionAnchorNode } from './components/SectionAnchorNode';
-import type { ScientificPaperNodeData, GapNodeData, SectionAnchorNodeData } from './types';
+import type { GapNodeData, ScientificPaperNodeData, SectionAnchorNodeData } from './types';
 
 // Mock do Handle do React Flow para testes em ambiente JSDOM
 vi.mock('@xyflow/react', async () => {

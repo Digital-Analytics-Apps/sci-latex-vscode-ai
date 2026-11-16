@@ -229,7 +229,7 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
 
               if (targetFile === activeDoc.mainEntryPath) {
                 // Aplica no serviço e obtém o novo estado consolidado
-                const { operation, newContent, newVersion } = await service.applyDelta(
+                const { operation, newVersion } = await service.applyDelta(
                   documentId,
                   delta,
                   (snapshot: DocumentSnapshot) => {

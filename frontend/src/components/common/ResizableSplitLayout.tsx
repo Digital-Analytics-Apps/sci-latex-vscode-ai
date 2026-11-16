@@ -1,16 +1,16 @@
 import {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
   ReactNode,
   PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import { alpha, useTheme } from '@mui/material/styles';
-import { ChevronRight, ChevronDown, GripVertical, GripHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripHorizontal, GripVertical } from 'lucide-react';
 
 export type SplitDirection = 'horizontal' | 'vertical';
 export type SplitMode = 'split' | 'primary' | 'secondary';

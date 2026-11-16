@@ -1,13 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { LatexTemplate } from '@prisma/client';
-import {
-  deleteFromMinio,
-  getFromMinio,
-  StoragePathBuilder,
-  uploadToMinio,
-} from '../../infra/minio';
+import { getFromMinio, StoragePathBuilder, uploadToMinio } from '../../infra/minio';
 import {
   ITemplatesRepository,
   PrismaTemplatesRepository,
@@ -71,7 +65,7 @@ export class TemplatesService {
     const cleanConf = sanitize(conf);
     const cleanFormat = sanitize(format);
 
-    let slug = `${year}-${cleanConf}-${cleanFormat}`.replace(/-+/g, '-');
+    const slug = `${year}-${cleanConf}-${cleanFormat}`.replace(/-+/g, '-');
     return slug;
   }
 

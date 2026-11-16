@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import {
-  Drawer,
-  Box,
-  Typography,
-  IconButton,
-  Divider,
-  Button,
   Alert,
+  Box,
+  Button,
+  Divider,
+  Drawer,
+  IconButton,
   Snackbar,
+  Typography,
 } from '@mui/material';
-import { X, Copy, CheckCircle2, AlertTriangle, ExternalLink, GraduationCap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, ExternalLink, GraduationCap, X } from 'lucide-react';
 import type { ScientificPaperNodeData } from '../types';
 
 interface PaperAnalysisDrawerProps {

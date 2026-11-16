@@ -1,7 +1,7 @@
 import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Undo2, Redo2 } from 'lucide-react';
+import { Redo2, Undo2 } from 'lucide-react';
 
 export interface EditorHistoryControlsProps {
   canUndo: boolean;

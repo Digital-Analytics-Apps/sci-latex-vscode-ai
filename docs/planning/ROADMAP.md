@@ -175,4 +175,22 @@
 
 ---
 
+## 🟢 Fase 12: AIOps Copilot, Servidores MCP e Diagnóstico de Causa-Raiz (ADR-018)
+
+- [x] **12.1 Decisão Arquitetural e Especificação Técnica (ADR-018 & Spec)**
+  - Formalização do ecossistema AIOps em [`docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md`](adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md) e especificação técnica em [`docs/planning/specs/aiops-copilot-implementation-plan.md`](specs/aiops-copilot-implementation-plan.md).
+- [x] **12.2 Modelagem de Dados no Prisma e PostgreSQL (`Aiops*`)**
+  - Criação das entidades `AiopsIncident`, `AiopsRcaReport`, `AiopsChatMessage` e `AiopsActionAuditLedger` no `backend/prisma/schema.prisma` com migração aplicada no PostgreSQL.
+- [x] **12.3 MCP Gateway Service (`backend/src/infra/mcp/`)**
+  - Implementação do `McpGatewayService` integrando de forma tipada e segura os servidores MCP de Kubernetes, Prometheus, Loki, GlitchTip e Opik (LLMOps).
+- [x] **12.4 Regras de Negócio, Motor RCA e Auditoria Imutável (Fastify BFF)**
+  - Criação do `AiopsService` com matriz determinística de classificação (Infraestrutura vs. Aplicação vs. Mista) e `ActionAuditService` com Allowlist segura e execução Human-in-the-Loop.
+  - Exposição das rotas `/api/v1/admin/aiops/*` protegidas por `Role.ADMIN`.
+- [x] **12.5 Frontend React no SCIA Admin Center (`/admin`)**
+  - Implementação de tipos estritos (`aiops.types.ts`), serviço Axios (`aiopsApi.ts`), custom hooks com TanStack Query (`useAIOps.ts`), card de aprovação (`AIOpsActionCard.tsx`), drawer interativo (`AIOpsChatDrawer.tsx`) e botões de atalho em `InfrastructureTab.tsx` e `AdminCenterPage.tsx`. Estritamente sem `React.FC` e com named exports.
+- [x] **12.6 Testes Automatizados e Homologação**
+  - 4 novos testes unitários do backend aprovados (76/76 total), 1 novo teste de componente no frontend aprovado (6/6 total) e 0 erros de compilação TypeScript/Vite.
+
+---
+
 *Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*

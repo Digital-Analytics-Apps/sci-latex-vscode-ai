@@ -213,7 +213,7 @@ export const CreateTaskModal = ({
               </MenuItem>
             ))}
           </Select>
-          {Boolean(initialStageId) ? (
+          {initialStageId ? (
             <FormHelperText sx={{ color: 'text.secondary' }}>
               🔒 Etapa vinculada automaticamente à seção selecionada.
             </FormHelperText>

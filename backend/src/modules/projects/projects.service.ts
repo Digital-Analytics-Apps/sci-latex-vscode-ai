@@ -185,7 +185,8 @@ export class ProjectsService {
         }
       } catch (err) {
         throw new Error(
-          `[ProjectsService] Falha ao extrair e provisionar template "${targetTemplateId}" do MinIO: ${(err as Error).message}`
+          `[ProjectsService] Falha ao extrair e provisionar template "${targetTemplateId}" do MinIO: ${(err as Error).message}`,
+          { cause: err }
         );
       }
     }

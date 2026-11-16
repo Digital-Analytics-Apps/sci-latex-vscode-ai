@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useChatAutoScroll<T>(dependency: T) {
   const containerRef = useRef<HTMLDivElement>(null);

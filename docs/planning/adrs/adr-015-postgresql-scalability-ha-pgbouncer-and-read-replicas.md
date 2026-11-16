@@ -1,7 +1,7 @@
 # ADR 015: Estratégia de Persistência Relacional, Alta Disponibilidade (CloudNativePG), Pooler de Conexões (PgBouncer) e Adiamento de Réplicas de Leitura no PostgreSQL 16
 
-- **Status:** APROVADO / REVISÃO TÉCNICA RIGOROSA CONSOLIDADA
-- **Data:** 10 de Novembro de 2026
+- **Status:** APROVADO / EM OPERAÇÃO (PgBouncer Provisionado :6543 e Integrado ao AIOps Copilot)
+- **Data:** 10 de Novembro de 2026 (Atualizado em 15 de Novembro de 2026)
 - **Autor(es):** Equipe de Arquitetura, Engenharia de Dados e Infraestrutura SCIA
 - **Domínio:** Persistência Relacional ACID, Alta Disponibilidade (HA), Gestão de Conexões (PgBouncer), Adiamento de Read Replicas, Fencing Monotônico, Recuperação do Editor e Disaster Recovery (RPO/RTO)
 - **Componentes Relacionados:** 
@@ -136,6 +136,36 @@ flowchart TD
   * **Alta Disponibilidade do PgBouncer:** Para eliminar o pooler como Ponto Único de Falha (SPOF), o PgBouncer será provisionado com **no mínimo 2 réplicas** sob um Service Kubernetes estável com probes de liveness/readiness.
   * **Compatibilidade Prisma 7:** Homologação do PgBouncer 1.21+ com `max_prepared_statements > 0` e configuração do driver `@prisma/adapter-pg`.
 
+#### 2.4.1. Implementação Concreta, Roteamento Wildcard e Observabilidade Ativa (AIOps Copilot / ADR-018)
+A partir de 15 de Novembro de 2026, a gestão de conexões com o PgBouncer foi implementada e ativada em ambiente de desenvolvimento/staging e integrada à observabilidade autônoma do SCIA:
+
+1. **Provisionamento no Docker Compose (`sci_latex_pgbouncer`):**
+   - Imagem oficial de produção: `edoburu/pgbouncer:latest`.
+   - Porta de exposição de tráfego: `6543:5432`.
+   - **Roteamento Dinâmico por Wildcard (`DB_NAME: "*"`):** Em vez de listas estáticas no `pgbouncer.ini` (que geravam erro sintático em templates ini), foi estabelecido o caractere curinga `*`. Essa configuração permite ao PgBouncer multiplexar conexões tanto para o banco transacional principal (`sci_latex_db`) quanto para a base isolada de SRE ([`sci_aiops_db` definida na ADR-018](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md)) no host alvo `sci_latex_postgres:5432`.
+   - Parâmetros operacionais ativos:
+     - `POOL_MODE: transaction` (liberação imediata do backend Postgres no commit/rollback).
+     - `AUTH_TYPE: scram-sha-256` (criptografia segura de credenciais).
+     - `DEFAULT_POOL_SIZE: 25` (limite controlado de conexões físicas mantidas com o PostgreSQL por base).
+     - `MAX_CLIENT_CONN: 200` (capacidade de absorver picos de conexões de clientes Fastify).
+
+2. **Observabilidade em Tempo Real no Backend Fastify ([`admin.service.ts`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/backend/src/modules/admin/admin.service.ts)):**
+   - O indicador de PostgreSQL da aba de Infraestrutura do Admin Center consulta ativamente a contagem de conexões via `prisma.$queryRaw`:
+     ```sql
+     SELECT count(*)::int AS count 
+     FROM pg_stat_activity 
+     WHERE datname = 'sci_latex_db' AND state = 'active';
+     ```
+   - Elimina valores simulados ou estáticos, refletindo imediatamente a multiplexação em vigor.
+
+3. **Diagnóstico Autônomo com Agente Especialista e MCP ([ADR-018](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md)):**
+   - Criação do agente **`PostgresSpecialist`** e da runtime skill autocontida **`postgresql-operations`** (`ai-service/app/agents/aiops/skills/postgresql-operations/SKILL.md`).
+   - Disponibilização de 3 ferramentas especializadas de inspeção (100% Read-Only):
+     - `postgres_inspect_health`: Inspeciona versão, conexões totais/ativas/idle/idle-in-tx, Cache Hit Ratio (alvo > 99%) e tamanho em disco das bases `sci_latex_db` e `sci_aiops_db`.
+     - `postgres_check_slow_queries_and_locks`: Identifica consultas ativas superiores a 2s, transações ociosas superiores a 10s (`idle in transaction`) e contenção de travas não concedidas (`pg_locks`).
+     - `pgbouncer_inspect_pools`: Coleta métricas de `SHOW POOLS;` e `SHOW STATS;` via console administrativo (`psql -h localhost -p 6543 -U postgres -d pgbouncer --csv`), superando a restrição técnica do PgBouncer que não suporta *extended query protocol* (prepared statements) no console de controle.
+
+
 ---
 
 ### 2.5. Protocolo Rigoroso de Fencing Monotônico (`ownerGeneration`)
@@ -189,6 +219,7 @@ Para evitar confusão entre disponibilidade local e recuperação de desastres c
 | **Topologia de Banco** | **1 Primário + 2 Standbys** | Nó único / CockroachDB | Resiliência a falhas de hardware locais com custo operacional viável para ambiente on-premises. |
 | **Distribuição de Leitura** | **Adiada (Nó Único para Leitura)** | Read Replicas ativas prematuramente | Evita inconsistências de *Replication Lag* (*Read-Your-Writes*). Gatilho condicionado a métricas compostas. |
 | **Pooler de Conexões** | **PgBouncer (HA :6543 em Transaction Mode)** | Conexões diretas de cada Pod | Impede esgotamento de `max_connections` no Postgres quando o HPA escalar pods Fastify. |
+| **Observabilidade de Banco e Pool** | **AIOps Copilot + MCP (`postgresql-operations`)** | Monitoramento passivo / Logs manuais | Diagnóstico autônomo de saturação de pools PgBouncer, Cache Hit Ratio <99%, queries lentas e contenção de locks ([ADR-018](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md)). |
 | **Migrações de Esquema** | **Porta Direta 5432 (`DIRECT_URL`)** | Migrações através do PgBouncer | DDLs e transações com lock exclusivo do Prisma não são suportadas em Transaction Pooling. |
 | **Proteção de Fencing** | **Validação Monotônica Atômica (`ownerGeneration`)** | Confiança em leases puras de rede | PostgreSQL atua como autoridade final, abortando transações de pods destronados. |
 

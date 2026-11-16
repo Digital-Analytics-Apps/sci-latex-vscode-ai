@@ -1,18 +1,18 @@
-import { Prec, Extension } from '@codemirror/state';
+import { Extension, Prec } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
 import {
-  defaultKeymap,
-  indentWithTab,
-  toggleComment,
-  moveLineUp,
-  moveLineDown,
-  copyLineUp,
   copyLineDown,
-  deleteLine,
+  copyLineUp,
   cursorMatchingBracket,
+  defaultKeymap,
+  deleteLine,
+  indentWithTab,
+  moveLineDown,
+  moveLineUp,
+  toggleComment,
 } from '@codemirror/commands';
 import { foldKeymap } from '@codemirror/language';
-import { searchKeymap, selectNextOccurrence, gotoLine } from '@codemirror/search';
+import { gotoLine, searchKeymap, selectNextOccurrence } from '@codemirror/search';
 import { closeBracketsKeymap } from '@codemirror/autocomplete';
 import { lintKeymap } from '@codemirror/lint';
 

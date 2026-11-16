@@ -24,8 +24,9 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # Segurança Machine-to-Machine (M2M) - Obrigatória via variável de ambiente
+    # Segurança Machine-to-Machine (M2M) e JWT (ADR-012)
     INTERNAL_SERVICE_KEY: str
+    JWT_SECRET: str = "super-secret-jwt-key-change-in-production"
 
     # URL base da API do Backend Principal (Fastify) - Obrigatória via variável de ambiente
     # Em Dev: http://localhost:3333 | Em Docker: http://sci_latex_backend:3333 | Em K8s: http://sci-latex-backend:3333
@@ -76,6 +77,12 @@ class Settings(BaseSettings):
     OPIK_URL_OVERRIDE: str | None = None
     OPIK_PROJECT_NAME: str = "scia-academic-copilot"
     OPIK_WORKSPACE: str = "default"
+
+    # AIOps Observability MCP Gateways & Database
+    PROMETHEUS_URL: str = "http://localhost:9090"
+    LOKI_URL: str = "http://localhost:3100"
+    GLITCHTIP_URL: str = "http://localhost:8005"
+    AIOPS_DATABASE_URL: str | None = None
 
     @model_validator(mode="after")
     def validate_strict_configuration(self) -> "Settings":

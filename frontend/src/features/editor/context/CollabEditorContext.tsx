@@ -1,12 +1,12 @@
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
   ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import {
   Collaborator,
@@ -20,7 +20,7 @@ import {
 } from '../types/collab.types';
 import { EditorTab } from '../components/EditorTabBar';
 import { ProjectFile } from '../components/FileTreeSidebar';
-import { EditorSettings, DEFAULT_SETTINGS } from '../../../types/settings';
+import { DEFAULT_SETTINGS, EditorSettings } from '../../../types/settings';
 import { useCollabWebSocket } from '../hooks/useCollabWebSocket';
 import { useLatexCompiler } from '../hooks/useLatexCompiler';
 import { useDocumentHistoryQuery } from '../hooks/useDocumentHistoryQuery';

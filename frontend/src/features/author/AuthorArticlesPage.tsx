@@ -241,7 +241,7 @@ export const AuthorArticlesPage = () => {
         }}
       />
     ),
-    [searchArticleQuery, roleFilter]
+    [searchArticleQuery, roleFilter, articlesWithRoles.length, authorCount, reviewerCount]
   );
 
   return (

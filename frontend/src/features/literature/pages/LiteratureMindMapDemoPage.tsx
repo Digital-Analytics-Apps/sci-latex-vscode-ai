@@ -1,9 +1,9 @@
 import React from 'react';
-import { Box, Container, Typography, Button, Breadcrumbs, Link, Chip } from '@mui/material';
+import { Box, Breadcrumbs, Button, Chip, Container, Link, Typography } from '@mui/material';
 import { ArrowLeft, Brain } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LiteratureMindMap } from '../components/LiteratureMindMap';
-import type { LiteratureNode, LiteratureEdge } from '../types';
+import type { LiteratureEdge, LiteratureNode } from '../types';
 
 export const LiteratureMindMapDemoPage: React.FC = () => {
   const navigate = useNavigate();

@@ -1,4 +1,4 @@
-import { Search, History, Settings, Sun, Moon, FolderTree, MessageSquare } from 'lucide-react';
+import { FolderTree, History, MessageSquare, Moon, Search, Settings, Sun } from 'lucide-react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -10,17 +10,17 @@ import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import {
-  MessageSquare,
   CheckCircle2,
-  RotateCcw,
-  Trash2,
-  Send,
-  X,
+  MessageCircle,
+  MessageSquare,
   Plus,
   Quote,
-  MessageCircle,
+  RotateCcw,
+  Send,
+  Trash2,
+  X,
 } from 'lucide-react';
-import { ReviewComment, CommentReply } from '../types/collab.types';
+import { CommentReply, ReviewComment } from '../types/collab.types';
 import { EditorLineLayoutInfo } from './CodeMirrorEditor';
 
 export interface ReviewSidebarProps {
@@ -64,15 +64,16 @@ export function ReviewSidebar({
   const [replyOpen, setReplyOpen] = useState<Record<string, boolean>>({});
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const editorScrollTop = lineLayoutInfo?.scrollTop;
 
   // Sincroniza a rolagem da lista com o scroll do editor CodeMirror 6
   useEffect(() => {
-    if (scrollContainerRef.current && lineLayoutInfo && filterFileOnly) {
-      if (Math.abs(scrollContainerRef.current.scrollTop - lineLayoutInfo.scrollTop) > 2) {
-        scrollContainerRef.current.scrollTop = lineLayoutInfo.scrollTop;
+    if (scrollContainerRef.current && editorScrollTop !== undefined && filterFileOnly) {
+      if (Math.abs(scrollContainerRef.current.scrollTop - editorScrollTop) > 2) {
+        scrollContainerRef.current.scrollTop = editorScrollTop;
       }
     }
-  }, [lineLayoutInfo?.scrollTop, filterFileOnly]);
+  }, [editorScrollTop, filterFileOnly]);
 
   // Filtragem dos comentários
   const filteredComments = comments.filter((c) => {

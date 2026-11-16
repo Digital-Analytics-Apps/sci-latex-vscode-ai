@@ -41,23 +41,24 @@ ai-service/
 │   ├── api/v1/
 │   │   ├── endpoints/
 │   │   │   ├── chat.py             # Streaming SSE para Onboarding & Copilot (/chat/stream, /chat/resume)
-│   │   │   └── runs.py             # Contratos M2M assíncronos (/runs, /resume, /cancel)
+│   │   │   ├── runs.py             # Contratos M2M assíncronos (/runs, /resume, /cancel)
+│   │   │   └── aiops.py            # Chat e diagnóstico de SRE (/aiops/chat com M2M JWT)
 │   │   └── router.py               # Roteador central da API v1
+│   ├── core/
+│   │   ├── config.py               # Configurações Pydantic com suporte a .env
+│   │   ├── llm.py                  # Fábrica multi-provedor (Gemini, OpenAI, Ollama)
+│   │   ├── m2m_auth.py             # Autenticação M2M criptográfica via JWT (ADR-012)
+│   │   └── opik_tracer.py          # LLMOps & rastreabilidade de traces com Opik
 │   ├── agents/
 │   │   ├── state.py                # OnboardingState e schemas tipados do LangGraph
 │   │   ├── writer.py               # Redator especializado em LaTeX
-│   │   ├── sub_agents/
-│   │   │   ├── supervisor.py       # Supervisor geral do fluxo de criação
-│   │   │   ├── search_specialist.py# Especialista de Busca (arXiv/S2/OpenAlex + interrupt)
-│   │   │   └── curation.py         # Curadoria de artigos e cronograma das 6 etapas fixas
-│   │   └── tools/
-│   │       ├── academic_search.py  # Facade de busca com fallback resiliente (arXiv -> S2 -> OpenAlex)
-│   │       ├── arxiv.py            # Conector arXiv oficial (Atom XML, semáforo 1, throttle 3s)
-│   │       ├── openalex.py         # Conector OpenAlex com semáforo e connection pooling
-│   │       ├── semantic_scholar.py # Conector Semantic Scholar com retry
-│   │       └── tavily_search.py    # Busca web Tavily
-│   │   ├── config.py               # Configurações Pydantic com suporte a .env
-│   │   └── llm.py                  # Fábrica multi-provedor (Gemini, OpenAI, Ollama)
+│   │   ├── sub_agents/             # Domínio Acadêmico (Supervisor, Busca, Curadoria)
+│   │   ├── tools/                  # Ferramentas científicas (arXiv, OpenAlex, Semantic Scholar)
+│   │   └── aiops/                  # Domínio SRE / AIOps Copilot (ADR-018)
+│   │       ├── sre_supervisor.py   # Supervisor geral de confiabilidade e síntese de RCA
+│   │       ├── specialists/        # Especialistas K8s, PostgreSQL/PgBouncer, Loki, Prometheus
+│   │       ├── tools/              # Clientes MCP nativos (Postgres, PgBouncer, K8s)
+│   │       └── skills/             # Skills operacionais de runtime (loader.py, k8s, postgresql)
 │   ├── streaming/
 │   │   └── stream_processor.py     # Formatador de eventos Server-Sent Events (SSE)
 │   └── main.py                     # Entrypoint FastAPI com probes de saúde (/health)
@@ -107,3 +108,25 @@ uv run python scripts/test_chat_cli.py
 * **Disparo M2M:** `POST /internal/v1/runs` (Header `X-Internal-Service-Key` obrigatório)
 * **Retomada de Run:** `POST /internal/v1/runs/{run_id}/resume`
 * **Cancelamento de Run:** `POST /internal/v1/runs/{run_id}/cancel`
+* **AIOps SRE Copilot Chat (ADR-018):** `POST /internal/v1/aiops/chat` (Header `Authorization: Bearer <m2m_jwt>` obrigatório)
+
+---
+
+## 🛡️ Núcleo de Inteligência Operacional & SRE (ADR-018 & ADR-015)
+
+Além do fluxo científico acadêmico, o `ai-service` hospeda o **AIOps Copilot**, um sistema multi-agente hierárquico voltado ao diagnóstico autônomo de causa-raiz (RCA), auditoria de telemetria e operação resiliente de infraestrutura.
+
+### Arquitetura Multi-Agente de SRE (`app/agents/aiops/`):
+- **SRE Supervisor Agent (`sre_supervisor.py`):** Triagem de incidentes, correlação cross-telemetria e síntese de laudos de RCA padronizados.
+- **Especialistas de Ferramentas (Tool Calling nativo, sem regex):**
+  - **K8s & Container Specialist (`specialists/k8s_specialist.py`):** Inspeciona pods, nós, exit codes (OOMKilled 137, CrashLoopBackOff), KinD e Docker Compose fallback.
+  - **PostgreSQL 16 & PgBouncer Specialist (`specialists/postgres_specialist.py`):** Monitora pools na porta 6543 (`cl_waiting == 0`), cache hit ratio (>99%), queries lentas (>2s) e travas (`pg_locks`) conforme a [ADR-015](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md).
+- **Ferramentas MCP Read-Only (`app/agents/aiops/tools/`):**
+  - `postgres_inspect_health`, `postgres_check_slow_queries_and_locks`, `pgbouncer_inspect_pools`.
+  - `k8s_inspect_environment`, `k8s_get_node_status`.
+- **Skills de Runtime Autocontidas com Lazy Loading (`app/agents/aiops/skills/`):**
+  - `loader.py`: Carregador em memória com cache (`@lru_cache`) e suporte a leitura pontual por subtópico (`read_operational_skill(skill_name, topic=...)`), prevenindo sobrecarga de contexto na LLM.
+  - `kubernetes-operations/`: 19 arquivos modulares (`knowledge/`, `diagnostics/`, `workflows/`, `references/`).
+  - `postgresql-operations/`: 25 arquivos modulares (`references/`, `diagnostics/`, `workflows/`, `sql/`, `schemas/`).
+- **Segurança M2M Criptográfica (`app/core/m2m_auth.py` — ADR-012):**
+  - Validação estrita de tokens JWT assinados com HS256 (`type: 'SERVICE'`, `sub: 'service:aiops'`, `scopes: ['aiops:chat']`, `actor: { userId, email }`). Chamadas sem token válido são rejeitadas com HTTP 401.

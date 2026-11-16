@@ -1,21 +1,21 @@
-import { Compartment, Extension, EditorState } from '@codemirror/state';
+import { Compartment, EditorState, Extension } from '@codemirror/state';
 import {
-  history,
-  historyKeymap,
-  historyField,
-  undo,
-  redo,
-  undoSelection,
-  redoSelection,
-  undoDepth,
-  redoDepth,
-  canUndoSelection,
   canRedoSelection,
-  isolateHistory,
+  canUndoSelection,
+  history,
+  historyField,
+  historyKeymap,
   invertedEffects,
+  isolateHistory,
+  redo,
+  redoDepth,
+  redoSelection,
+  undo,
+  undoDepth,
+  undoSelection,
 } from '@codemirror/commands';
 import { Prec } from '@codemirror/state';
-import { keymap, EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 
 export { isolateHistory, invertedEffects, historyField };
 
