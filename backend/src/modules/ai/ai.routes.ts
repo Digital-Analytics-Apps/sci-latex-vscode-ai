@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { env } from '../../config/env';
+import { telemetryBus } from '../../infra/telemetry-bus';
 import { verifyJwt } from '../../middlewares/auth.middleware';
 
 const chatStreamSchema = z.object({
@@ -39,6 +40,49 @@ export const aiRoutes: FastifyPluginAsyncZod = async (app) => {
         }
       });
 
+      // 1. Notifica a telemetria: Frontend -> Fastify
+      telemetryBus.publishTrafficEvent({
+        flowType: 'AI_CHAT',
+        edgeId: 'e-frontend-backend',
+        sourceNodeId: 'client-frontend',
+        targetNodeId: 'backend-fastify',
+        direction: 'forward',
+        description: `Autor enviou mensagem para a Agente Belisa (Conv: ${conversationId.slice(0, 8)}...)`,
+        durationMs: 1200,
+        particleColor: '#a855f7',
+        processingNodeIds: ['backend-fastify'],
+      });
+
+      // 2. Fastify -> SciAI Engine (ativa e mantém sciai-engine aceso durante toda a geração de tokens)
+      setTimeout(() => {
+        telemetryBus.publishTrafficEvent({
+          flowType: 'AI_CHAT',
+          edgeId: 'e-backend-sciai',
+          sourceNodeId: 'backend-fastify',
+          targetNodeId: 'sciai-engine',
+          direction: 'forward',
+          description: 'Fastify despachando prompt para LangGraph no ai-service',
+          durationMs: 1400,
+          particleColor: '#8b5cf6',
+          processingNodeIds: ['sciai-engine'],
+        });
+      }, 350);
+
+      // 3. SciAI Engine -> Opik LLMOps (registra spans e mantém sciai-engine em processamento)
+      setTimeout(() => {
+        telemetryBus.publishTrafficEvent({
+          flowType: 'AI_CHAT',
+          edgeId: 'e-sciai-opik',
+          sourceNodeId: 'sciai-engine',
+          targetNodeId: 'opik-llmops',
+          direction: 'forward',
+          description: 'Spans da Agente Belisa registrados no Opik LLMOps',
+          durationMs: 1200,
+          particleColor: '#d946ef',
+          processingNodeIds: ['sciai-engine'],
+        });
+      }, 800);
+
       try {
         const upstreamUrl = `${env.AI_SERVICE_URL}/internal/v1/chat/stream`;
         const upstreamResponse = await fetch(upstreamUrl, {
@@ -62,6 +106,19 @@ export const aiRoutes: FastifyPluginAsyncZod = async (app) => {
             { status: upstreamResponse.status, err: errText },
             '[AI Proxy] Upstream error from ai-service'
           );
+
+          telemetryBus.publishTrafficEvent({
+            flowType: 'AI_CHAT',
+            edgeId: 'e-backend-sciai',
+            sourceNodeId: 'sciai-engine',
+            targetNodeId: 'backend-fastify',
+            direction: 'backward',
+            description: `Falha no motor de IA (${upstreamResponse.status})`,
+            durationMs: 1400,
+            particleColor: '#ef4444',
+            processingNodeIds: [],
+          });
+
           return reply.status(upstreamResponse.status).send({
             statusCode: upstreamResponse.status,
             error: 'AI_SERVICE_ERROR',
@@ -90,7 +147,46 @@ export const aiRoutes: FastifyPluginAsyncZod = async (app) => {
           reply.raw.write(value);
         }
         reply.raw.end();
+
+        // 2. Notifica a conclusão do streaming de tokens
+        telemetryBus.publishTrafficEvent({
+          flowType: 'AI_CHAT',
+          edgeId: 'e-backend-sciai',
+          sourceNodeId: 'sciai-engine',
+          targetNodeId: 'backend-fastify',
+          direction: 'backward',
+          description: 'SciAI concluiu geração de tokens (stream finalizado)',
+          durationMs: 1200,
+          particleColor: '#8b5cf6',
+          processingNodeIds: ['sciai-engine'],
+        });
+
+        setTimeout(() => {
+          telemetryBus.publishTrafficEvent({
+            flowType: 'AI_CHAT',
+            edgeId: 'e-frontend-backend',
+            sourceNodeId: 'backend-fastify',
+            targetNodeId: 'client-frontend',
+            direction: 'backward',
+            description: 'Fastify transmitiu resposta de Belisa para a interface',
+            durationMs: 1200,
+            particleColor: '#a855f7',
+            processingNodeIds: [],
+          });
+        }, 600);
       } catch (err: unknown) {
+        telemetryBus.publishTrafficEvent({
+          flowType: 'AI_CHAT',
+          edgeId: 'e-backend-sciai',
+          sourceNodeId: 'sciai-engine',
+          targetNodeId: 'backend-fastify',
+          direction: 'backward',
+          description: 'Exceção ou abort no streaming do SciAI',
+          durationMs: 1400,
+          particleColor: '#ef4444',
+          processingNodeIds: [],
+        });
+
         const isAbort = err instanceof Error && err.name === 'AbortError';
         if (isAbort) {
           request.log.info('[AI Proxy] Cliente encerrou a conexão de streaming.');
@@ -130,6 +226,18 @@ export const aiRoutes: FastifyPluginAsyncZod = async (app) => {
         }
       });
 
+      telemetryBus.publishTrafficEvent({
+        flowType: 'AI_CHAT',
+        edgeId: 'e-backend-sciai',
+        sourceNodeId: 'backend-fastify',
+        targetNodeId: 'sciai-engine',
+        direction: 'forward',
+        description: 'Decisão Human-in-the-Loop enviada para retomar fluxo no SciAI',
+        durationMs: 1200,
+        particleColor: '#8b5cf6',
+        processingNodeIds: ['sciai-engine'],
+      });
+
       try {
         const upstreamUrl = `${env.AI_SERVICE_URL}/internal/v1/chat/resume`;
         const upstreamResponse = await fetch(upstreamUrl, {
@@ -147,6 +255,17 @@ export const aiRoutes: FastifyPluginAsyncZod = async (app) => {
 
         if (!upstreamResponse.ok) {
           const errText = await upstreamResponse.text().catch(() => '');
+          telemetryBus.publishTrafficEvent({
+            flowType: 'AI_CHAT',
+            edgeId: 'e-backend-sciai',
+            sourceNodeId: 'sciai-engine',
+            targetNodeId: 'backend-fastify',
+            direction: 'backward',
+            description: `Erro ao retomar IA (${upstreamResponse.status})`,
+            durationMs: 1400,
+            particleColor: '#ef4444',
+            processingNodeIds: [],
+          });
           return reply.status(upstreamResponse.status).send({
             statusCode: upstreamResponse.status,
             error: 'AI_SERVICE_RESUME_ERROR',
@@ -173,7 +292,44 @@ export const aiRoutes: FastifyPluginAsyncZod = async (app) => {
           reply.raw.write(value);
         }
         reply.raw.end();
+
+        telemetryBus.publishTrafficEvent({
+          flowType: 'AI_CHAT',
+          edgeId: 'e-backend-sciai',
+          sourceNodeId: 'sciai-engine',
+          targetNodeId: 'backend-fastify',
+          direction: 'backward',
+          description: 'SciAI retomou e concluiu execução com sucesso',
+          durationMs: 1200,
+          particleColor: '#8b5cf6',
+          processingNodeIds: ['sciai-engine', 'backend-fastify'],
+        });
+
+        setTimeout(() => {
+          telemetryBus.publishTrafficEvent({
+            flowType: 'AI_CHAT',
+            edgeId: 'e-frontend-backend',
+            sourceNodeId: 'backend-fastify',
+            targetNodeId: 'client-frontend',
+            direction: 'backward',
+            description: 'Resposta de Belisa entregue ao autor',
+            durationMs: 1200,
+            particleColor: '#a855f7',
+            processingNodeIds: [],
+          });
+        }, 700);
       } catch (err: unknown) {
+        telemetryBus.publishTrafficEvent({
+          flowType: 'AI_CHAT',
+          edgeId: 'e-backend-sciai',
+          sourceNodeId: 'sciai-engine',
+          targetNodeId: 'backend-fastify',
+          direction: 'backward',
+          description: 'Erro na retomada do SciAI',
+          durationMs: 1400,
+          particleColor: '#ef4444',
+          processingNodeIds: [],
+        });
         const isAbort = err instanceof Error && err.name === 'AbortError';
         if (isAbort) return;
         request.log.error({ err }, '[AI Proxy] Falha ao retomar SSE');

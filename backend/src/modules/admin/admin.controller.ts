@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { telemetryBus, TrafficTelemetryEvent } from '../../infra/telemetry-bus';
 import { AdminService } from './admin.service';
 
 export class AdminController {
@@ -44,6 +45,16 @@ export class AdminController {
       // Ignora erro no evento inicial caso conexão feche rápido
     }
 
+    // Listener para eventos de tráfego inter-serviços em tempo real
+    const onTraffic = (event: TrafficTelemetryEvent) => {
+      try {
+        reply.raw.write(`event: TRAFFIC_EVENT\ndata: ${JSON.stringify(event)}\n\n`);
+      } catch {
+        telemetryBus.off('traffic', onTraffic);
+      }
+    };
+    telemetryBus.on('traffic', onTraffic);
+
     // Heartbeat e atualização periódica a cada 10 segundos
     const interval = setInterval(async () => {
       try {
@@ -56,6 +67,7 @@ export class AdminController {
 
     reply.raw.on('close', () => {
       clearInterval(interval);
+      telemetryBus.off('traffic', onTraffic);
     });
   }
 }

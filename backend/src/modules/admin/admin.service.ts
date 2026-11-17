@@ -168,7 +168,7 @@ export class AdminService {
     let postgresConns = 8;
     let postgresStatus: 'UP' | 'DEGRADED' | 'DOWN' = 'UP';
     try {
-      const activeRows = await this.db.$queryRaw<Array<{ count: bigint }>>`
+      const activeRows = await prisma.$queryRaw<Array<{ count: bigint }>>`
         SELECT count(*) as count FROM pg_stat_activity WHERE state = 'active'
       `;
       if (activeRows && activeRows.length > 0) {

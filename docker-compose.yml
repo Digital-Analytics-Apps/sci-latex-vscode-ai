@@ -77,6 +77,41 @@ services:
       PORT: 4000
       HOST: "0.0.0.0"
 
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: sci_latex_ai_service
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./ai-service/.env
+    environment:
+      ENVIRONMENT: development
+      HOST: "0.0.0.0"
+      PORT: 8000
+      BACKEND_API_URL: http://backend:3333
+      REDIS_URL: redis://redis:6379
+      INTERNAL_SERVICE_KEY: scia-internal-secret-change-in-production
+      JWT_SECRET: super-secret-jwt-key-change-in-production
+      OPIK_URL_OVERRIDE: http://host.docker.internal:5174/api
+    volumes:
+      - ./ai-service:/app
+      - /app/.venv
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   backend:
     build:
       context: ./backend
@@ -97,7 +132,7 @@ services:
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: collab-assets
       COMPILER_URL: http://compiler:4000
-      AI_SERVICE_URL: http://host.docker.internal:8000
+      AI_SERVICE_URL: http://ai-service:8000
       PROMETHEUS_URL: http://host.docker.internal:9090
       LOKI_URL: http://host.docker.internal:3100
       OPIK_URL: http://host.docker.internal:8081
@@ -118,6 +153,8 @@ services:
       minio:
         condition: service_started
       compiler:
+        condition: service_started
+      ai-service:
         condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
