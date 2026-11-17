@@ -193,4 +193,21 @@
 
 ---
 
+## 🟢 Fase 13: Topologia de Microsserviços e Comunicação em Tempo Real no Admin Center (ADR-019)
+
+- [x] **13.1 Decisão Arquitetural e Especificação Técnica (ADR-019 & Spec)**
+  - Formalização da arquitetura em [`docs/planning/adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md`](adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md) e especificação técnica em [`docs/planning/specs/service-topology-visualizer-spec.md`](specs/service-topology-visualizer-spec.md).
+- [x] **13.2 Barramento de Telemetria Inter-Serviços no Backend (`telemetryBus`)**
+  - Implementação de `backend/src/infra/telemetry-bus.ts` com transmissão via SSE em `/api/v1/admin/dashboard/events`.
+  - Instrumentação real de compilação TeX Live e chat com Agente Belisa.
+- [x] **13.3 Frontend React Flow & AutoSizer (Aba 6 do Admin Center)**
+  - Implementação de `src/features/admin/tabs/ServiceTopologyTab.tsx` e componentes em `src/features/admin/components/topology/` sem alterar as 5 abas pré-existentes.
+  - Arestas dinâmicas SVG vibrantes com partículas animadas sob demanda (`LiveCommunicationEdge.tsx`) e nós informativos limpos (`ServiceTopologyNode.tsx`).
+- [x] **13.4 Persistência de Nós Ativos & Suporte a Múltiplos Pods (HPA)**
+  - Sustentação contínua de iluminação de nós em processamento (`processingNodeIds`) e detecção dinâmica de réplicas de Pods Kubernetes baseada em leases do Redis.
+- [x] **13.5 Resiliência Fail-Open no AI Service**
+  - Flush do Opik desacoplado em worker thread (`asyncio.to_thread` com timeout de 2.0s) em `ai-service/app/api/v1/endpoints/chat.py`, impedindo bloqueios no event loop do Uvicorn ou nas probes `/health`.
+
+---
+
 *Consulte [`docs/planning/STATUS.md`](STATUS.md) para verificar o estado operacional em tempo real.*
