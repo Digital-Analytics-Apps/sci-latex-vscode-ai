@@ -1,8 +1,15 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 15 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **AIOps Copilot com Multi-Agent Hierárquico (SRE Supervisor + 6 Especialistas MCP), Autenticação M2M JWT (ADR-012) e Skills Modulares de Kubernetes & PostgreSQL (ADR-015/018) Concluídos.**
+**Última Atualização:** 16 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **Visualizador de Topologia de Microsserviços e Comunicação em Tempo Real no Admin Center (Nova Aba 6 com React Flow, AutoSizer e Telemetria SSE Ponta a Ponta) Concluído.**
+- **Funcionalidades da Topologia Inter-Serviços (Aba 6):**
+  1. **Visualizador em Tempo Real Ponta a Ponta:** Tráfego entre Frontend SPA, Fastify Gateway, Compiler TeX Live, MinIO S3, PostgreSQL/PgBouncer, Redis, SciAI Engine e Opik LLMOps transmitido via Server-Sent Events (`telemetryBus`).
+  2. **Persistência de Nós em Processamento Ativo:** O nó do compilador (`compiler-worker`) e o da IA (`sciai-engine`) mantêm-se acesos com badge `⚡ Ativo` e pulso suave durante 100% da duração da compilação e do streaming de tokens SSE.
+  3. **Suporte a Múltiplas Réplicas de Pods K8s (HPA):** Suporte nativo à renderização dinâmica de réplicas de pods Fastify baseadas em document ownership leases do Redis (`documentsByPod`), com cenário de simulação de escalabilidade horizontal.
+  4. **Design e UX Refinados:** Removidos cards saltantes e botões desnecessários; arestas com linhas vibrantes roxo/índigo (`#6366f1`) e partículas ciano/magenta disparadas sob demanda.
+  5. **Resiliência Fail-Open no AI Service:** Flush do Opik isolado em thread pool assíncrona (`asyncio.to_thread` com timeout de 2.0s), eliminando qualquer risco de travamento do event loop do Uvicorn ou das probes `/health`.
+- **Métricas Atuais de Testes:** 85/85 testes de backend aprovados, 6/6 testes de frontend aprovados e build de produção concluído com 0 erros.
 - **Evolução Arquitetural Aprovada e Implementada (ADR-018 & ADR-012 & ADR-015):** 
   1. **Separação Estrita de Domínios:** O domínio SRE/AIOps está 100% isolado do domínio científico da plataforma (Belisa e agentes acadêmicos). Código hospedado em `ai-service/app/agents/aiops/` com ferramentas e especialistas dedicados.
   2. **Topologia Hierárquica de Especialistas (Substituição de Regex por Tool Calling):** 
@@ -31,7 +38,23 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Branch Ativa:** `feature/observability-stack-adr-013`
+  * **Branch Ativa:** `feature/admin-service-topology-react-flow`
+  * **Visualizador em Tempo Real da Topologia de Serviços no Admin Center (Nova Aba 6 com React Flow):**
+    * **Diretriz de Não Substituição Atendida:** Todas as 5 abas originais do SCIA Admin Center (ADR-014) permanecem 100% preservadas e intactas.
+    * **Nova Aba Implementada:** `6. Topologia de Serviços` adicionada no [AdminCenterPage.tsx](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/frontend/src/features/admin/AdminCenterPage.tsx) e [ServiceTopologyTab.tsx](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/frontend/src/features/admin/tabs/ServiceTopologyTab.tsx).
+    * **Integração em Tempo Real Ponta a Ponta via Server-Sent Events (SSE):**
+      * `backend/src/infra/telemetry-bus.ts`: Barramento leve `telemetryBus` transmitindo `TrafficTelemetryEvent`.
+      * `backend/src/modules/documents/documents.service.ts`: Disparo automático de eventos de tráfego inter-serviços ao executar `compileDocument()` (Frontend $\rightarrow$ Fastify $\rightarrow$ Compiler:4000 $\rightarrow$ MinIO:9000 $\rightarrow$ Fastify $\rightarrow$ Frontend).
+      * `backend/src/modules/admin/admin.controller.ts`: Transmissão contínua de eventos `TRAFFIC_EVENT` no endpoint SSE `/admin/dashboard/events`.
+      * `frontend/src/features/admin/hooks/useAdminTrafficStream.ts`: Hook reativo capturando eventos do cluster em tempo real com streaming `fetch`.
+    * **Componentes de Grafo com `@xyflow/react`:**
+      * `ServiceTopologyNode.tsx`: Card informativo de serviço puro (sem botões), com ícone, semáforo (`UP`, `DEGRADED`, `DOWN`), métricas-chave em tempo real, sem saltos de posição (`transform: none`) com efeito de piscar suave (`@keyframes topologyNodeBlink`) durante processamento ativo (`isProcessing`). Exibe métrica explícita de `Documentos (Owner)` gerenciados pela autoridade single-writer OT.
+      * `LiveCommunicationEdge.tsx`: Aresta SVG com linhas vibrantes roxo/índigo (`#6366f1`) e animação de partículas (`<animateMotion>`) em ciano brilhante acionadas sob demanda durante requisições reais ou simulação (`isTransmitting`).
+      * `ServiceTopologyFlow.tsx`: Canvas interativo responsivo renderizado via `AutoSizer` (100% viewport), Background de pontos, Controls de zoom e MiniMap.
+      * `topologyConfig.ts`: Mapeamento espacial dos 8 nós com espaçamento amplo, suporte dinâmico a múltiplas réplicas de Pods Kubernetes (`documentsByPod`), cenário de simulação de escalabilidade HPA e métricas discriminando `Processando (Ativos)` vs `Em Fila (Aguardando)`.
+      * `backend/src/modules/ai/ai.routes.ts`: Instrumentação em tempo real via `telemetryBus` para conversas com a **Agente Belisa** e Copiloto SciAI (`Frontend -> Fastify -> SciAI Engine -> Opik`), acendendo a malha e mantendo o nó de IA ativo durante a geração de tokens.
+    * **Especificação Técnica:** Documentada em [`service-topology-visualizer-spec.md`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/specs/service-topology-visualizer-spec.md).
+    * **Testes e Build:** 85/85 testes de backend aprovados, 12/12 testes de frontend aprovados (`npm test`), compilação TypeScript com 0 erros (`tsc -b`) e bundle de produção concluído com sucesso (`npm run build`).
   * **AIOps Copilot com MCP e Diagnóstico de Causa-Raiz (ADR-018 Concluída com Sucesso):**
     * **Decisão Arquitetural Formalizada:** Documentada em [`ADR-018`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md).
     * **Manual Operacional de Perguntas:** Catálogo com mais de 30 perguntas operacionais estruturadas em 6 categorias documentado em [`GUIA_PERGUNTAS_AIOPS_COPILOT.md`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/GUIA_PERGUNTAS_AIOPS_COPILOT.md).

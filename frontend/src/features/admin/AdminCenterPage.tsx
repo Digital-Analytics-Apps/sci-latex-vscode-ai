@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Container, Paper, Stack, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Button, Chip, Stack, Tab, Tabs, Typography } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
@@ -6,20 +6,22 @@ import {
   Cpu,
   Layers,
   LayoutDashboard,
+  Network,
   Radio,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AIOpsChatDrawer } from './components/AIOpsChatDrawer';
 import { ADMIN_CENTER_KEYS } from './hooks/useAdminCenterQueries';
 import { ActivityTab } from './tabs/ActivityTab';
 import { CollaborationTab } from './tabs/CollaborationTab';
 import { InfrastructureTab } from './tabs/InfrastructureTab';
 import { OverviewTab } from './tabs/OverviewTab';
+import { ServiceTopologyTab } from './tabs/ServiceTopologyTab';
 import { WorkflowTab } from './tabs/WorkflowTab';
 
-export const AdminCenterPage = () => {
+export const AdminCenterPage: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<number>(0);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -44,98 +46,147 @@ export const AdminCenterPage = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Top Header */}
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', md: 'center' },
-          }}
-        >
-          <Box>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
-              <ShieldCheck size={28} color="#2563eb" />
-              <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                SCIA Admin Center
-              </Typography>
-              <Chip
-                label="Role.ADMIN"
-                color="primary"
-                size="small"
-                sx={{ fontWeight: 700, fontSize: '0.75rem' }}
-              />
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              Central Integrada de Observabilidade, Operação da Plataforma e Governança Científica
+    <Box
+      sx={{
+        display: 'flex',
+        height: 'calc(100vh - 64px)',
+        width: '100%',
+        overflow: 'hidden',
+        bgcolor: 'background.default',
+      }}
+    >
+      {/* Sidebar Lateral de Navegação (Elimina cards volumosos no topo) */}
+      <Box
+        component="aside"
+        sx={{
+          width: 250,
+          flexShrink: 0,
+          borderRight: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          {/* Header Compacto da Sidebar */}
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
+            <ShieldCheck size={22} color="#2563eb" />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+              SCIA Admin
             </Typography>
-          </Box>
+            <Chip
+              label="ADMIN"
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700, fontSize: '0.65rem', height: 20 }}
+            />
+          </Stack>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          {/* Abas Verticais de Navegação */}
+          <Tabs
+            orientation="vertical"
+            value={currentTab}
+            onChange={(_, newTab) => setCurrentTab(newTab)}
+            sx={{
+              '& .MuiTab-root': {
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                textAlign: 'left',
+                minHeight: 44,
+                py: 1,
+                px: 1.5,
+                borderRadius: 1.5,
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                mb: 0.5,
+                '&.Mui-selected': {
+                  bgcolor: 'action.selected',
+                  color: 'primary.main',
+                  fontWeight: 800,
+                },
+              },
+              '& .MuiTabs-indicator': {
+                left: 0,
+                width: 3.5,
+                borderRadius: '0 4px 4px 0',
+              },
+            }}
+          >
+            <Tab icon={<LayoutDashboard size={17} />} iconPosition="start" label="1. Visão Geral" />
+            <Tab icon={<Layers size={17} />} iconPosition="start" label="2. Fluxo Científico" />
+            <Tab icon={<Cpu size={17} />} iconPosition="start" label="3. Infraestrutura" />
+            <Tab icon={<Radio size={17} />} iconPosition="start" label="4. Colaboração" />
+            <Tab icon={<Activity size={17} />} iconPosition="start" label="5. Auditoria" />
+            <Tab
+              icon={<Network size={17} />}
+              iconPosition="start"
+              label="6. Topologia de Rede"
+              sx={{
+                border: '1px dashed',
+                borderColor: currentTab === 5 ? 'primary.main' : 'divider',
+              }}
+            />
+          </Tabs>
+        </Box>
+
+        {/* Rodapé da Sidebar com Controles de Telemetria e AIOps */}
+        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Stack spacing={1.5}>
             <Button
               variant="contained"
               color="primary"
               size="small"
+              fullWidth
               startIcon={<Bot size={16} />}
               onClick={() => {
                 setAiopsServiceContext(null);
                 setAiopsIncidentId(null);
                 setAiopsOpen(true);
               }}
-              sx={{ fontWeight: 700, textTransform: 'none', px: 2 }}
+              sx={{ fontWeight: 700, textTransform: 'none' }}
             >
               AIOps Copilot
             </Button>
 
-            <Chip
-              label={autoRefresh ? 'Auto-Refresh: 15s' : 'Auto-Refresh: Pausado'}
-              color={autoRefresh ? 'success' : 'default'}
-              variant="outlined"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              sx={{ cursor: 'pointer', fontWeight: 600 }}
-            />
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<RefreshCw size={16} />}
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              sx={{ textTransform: 'none' }}
-            >
-              Atualizar
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <Chip
+                label={autoRefresh ? 'Auto: 15s' : 'Pausado'}
+                color={autoRefresh ? 'success' : 'default'}
+                variant="outlined"
+                size="small"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                sx={{ cursor: 'pointer', fontWeight: 600, flex: 1 }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                sx={{ minWidth: 'auto', px: 1, height: 28 }}
+              >
+                <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : undefined} />
+              </Button>
+            </Stack>
           </Stack>
-        </Stack>
-      </Paper>
-
-      {/* Tabs Navigation */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs
-          value={currentTab}
-          onChange={(_, newTab) => setCurrentTab(newTab)}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          <Tab icon={<LayoutDashboard size={18} />} iconPosition="start" label="1. Visão Geral" />
-          <Tab icon={<Layers size={18} />} iconPosition="start" label="2. Fluxo Científico" />
-          <Tab icon={<Cpu size={18} />} iconPosition="start" label="3. Infraestrutura" />
-          <Tab
-            icon={<Radio size={18} />}
-            iconPosition="start"
-            label="4. Colaboração em Tempo Real"
-          />
-          <Tab
-            icon={<Activity size={18} />}
-            iconPosition="start"
-            label="5. Atividade & Auditoria"
-          />
-        </Tabs>
+        </Box>
       </Box>
 
-      {/* Tab Contents */}
-      <Box sx={{ mt: 2 }}>
+      {/* Área Principal de Conteúdo (100% da tela para o React Flow na Tab 6) */}
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          height: '100%',
+          minWidth: 0,
+          overflow: currentTab === 5 ? 'hidden' : 'auto',
+          p: currentTab === 5 ? 1.5 : 3,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {currentTab === 0 && <OverviewTab autoRefresh={autoRefresh} />}
         {currentTab === 1 && <WorkflowTab autoRefresh={autoRefresh} />}
         {currentTab === 2 && (
@@ -143,6 +194,9 @@ export const AdminCenterPage = () => {
         )}
         {currentTab === 3 && <CollaborationTab autoRefresh={autoRefresh} />}
         {currentTab === 4 && <ActivityTab autoRefresh={autoRefresh} />}
+        {currentTab === 5 && (
+          <ServiceTopologyTab autoRefresh={autoRefresh} onInvestigate={handleOpenAiopsForService} />
+        )}
       </Box>
 
       {/* AIOps Copilot Interactive Drawer */}
@@ -152,6 +206,6 @@ export const AdminCenterPage = () => {
         targetIncidentId={aiopsIncidentId}
         targetServiceContext={aiopsServiceContext}
       />
-    </Container>
+    </Box>
   );
 };

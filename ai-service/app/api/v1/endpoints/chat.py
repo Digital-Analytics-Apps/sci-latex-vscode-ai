@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -15,6 +16,17 @@ from app.core.opik_tracer import get_correlated_opik_tracer
 logger = logging.getLogger(__name__)
 router = APIRouter()
 processor = StreamProcessor()
+
+async def _safe_flush_tracer(tracer: Any) -> None:
+    """
+    Executa o flush síncrono do tracer em worker thread desacoplada com timeout de 2s.
+    Garante resiliência (fail-open) e impede que retentativas de I/O bloqueiem o event loop do Uvicorn.
+    """
+    if tracer and hasattr(tracer, "flush"):
+        try:
+            await asyncio.wait_for(asyncio.to_thread(tracer.flush), timeout=2.0)
+        except Exception as flush_err:
+            logger.warning(f"[Opik] Erro ao descarregar buffer (fail-open): {flush_err}")
 
 # Instância padrão do supervisor com checkpointer em memória (para MVP e experimentação)
 # Preserva o histórico de mensagens e o estado por thread_id (conversation_id)
@@ -77,11 +89,7 @@ async def chat_stream_endpoint(
             logger.exception("Erro no streaming do chat")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
         finally:
-            if tracer and hasattr(tracer, "flush"):
-                try:
-                    tracer.flush()
-                except Exception as flush_err:
-                    logger.warning(f"[Opik] Erro ao descarregar buffer (fail-open): {flush_err}")
+            await _safe_flush_tracer(tracer)
 
     return StreamingResponse(
         event_generator(),
@@ -130,11 +138,7 @@ async def chat_resume_endpoint(
             logger.exception("Erro na retomada do grafo")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
         finally:
-            if tracer and hasattr(tracer, "flush"):
-                try:
-                    tracer.flush()
-                except Exception as flush_err:
-                    logger.warning(f"[Opik] Erro ao descarregar buffer (fail-open): {flush_err}")
+            await _safe_flush_tracer(tracer)
 
     return StreamingResponse(
         resume_generator(),

@@ -1,14 +1,14 @@
 # ADR 014: SCIA Admin Center — Painel Administrativo de Observabilidade, Operação de Plataforma e Governança Científica
 
-- **Status:** APROVADO (Estendido pela ADR-018 com o AIOps Copilot Drawer e Diagnóstico Ativo via MCP)
-- **Data:** 12 de Novembro de 2026
+- **Status:** APROVADO (Estendido pela ADR-018 com o AIOps Copilot Drawer e pela ADR-019 com a Aba 6 de Topologia de Serviços em Tempo Real via React Flow)
+- **Data:** 12 de Novembro de 2026 (Atualizado em 16 de Novembro de 2026 com ADR-019)
 - **Autor(es):** Equipe de Arquitetura, Engenharia e Segurança SCIA
-- **Domínio:** Administração de Sistema, Inteligência Operacional, Saúde de Microsserviços, Monitoramento de Colaboração em Tempo Real e Auditoria
+- **Domínio:** Administração de Sistema, Inteligência Operacional, Saúde de Microsserviços, Monitoramento de Colaboração em Tempo Real, Visualização de Malha Inter-Serviços e Auditoria
 - **Componentes Relacionados:**
-  - `frontend`: `src/features/admin/`, `src/routes/index.tsx`, `src/layouts/RoleLayoutResolver.tsx`
-  - `backend`: `src/modules/admin/`, `src/modules/admin/admin.routes.ts`, `src/middlewares/auth.middleware.ts`
-  - `ai-service`: Exposição interna de telemetria agregada com Opik
-  - `compiler`: Exposição de status da fila e métricas de sandbox
+  - `frontend`: `src/features/admin/`, `src/features/admin/tabs/ServiceTopologyTab.tsx`, `src/features/admin/components/topology/`, `src/routes/index.tsx`, `src/layouts/RoleLayoutResolver.tsx`
+  - `backend`: `src/modules/admin/`, `src/infra/telemetry-bus.ts`, `src/modules/admin/admin.routes.ts`, `src/modules/documents/documents.service.ts`, `src/modules/ai/ai.routes.ts`, `src/middlewares/auth.middleware.ts`
+  - `ai-service`: Exposição interna de telemetria agregada com Opik, resiliência assíncrona fail-open no flush do tracer
+  - `compiler`: Exposição de status da fila, compilação de jobs ativos e métricas de sandbox
   - `infra`: Redis (Leases e presença), PostgreSQL (Artigos, 6 etapas, AuditLog), Prometheus API, GlitchTip
 
 ---
@@ -18,12 +18,13 @@
 ### 1. O que estamos decidindo e estabelecendo:
 1. **Criação do SCIA Admin Center no Frontend:** Implementação de um módulo nativo de administração e inteligência operacional no próprio frontend React do SCIA (`/admin`), exclusivo para usuários com perfil `Role.ADMIN`.
 2. **Não Reproduzir o Grafana Dentro do SCIA:** O painel não visa duplicar gráficos brutos de infraestrutura. Em vez disso, é uma **Central de Inteligência Operacional** com linguagem de negócio e engenharia adaptada à plataforma, integrando saúde de serviços, fluxo editorial científico e estado da colaboração em tempo real.
-3. **Estrutura em 5 Áreas Estratégicas:**
+3. **Estrutura em 6 Áreas Estratégicas:**
    * **1. Visão Geral:** Resumo executivo ao vivo (usuários ativos, sessões, artigos em andamento, WebSockets ativos, erros/hora e gráfico de atividade horária).
    * **2. Fluxo de Produção Científica:** Visão operacional dos artigos nas 6 etapas oficiais, gargalos institucionais, artigos atrasados e travas do NIT (Etapa 5) e Congresso (Etapa 6).
    * **3. Monitoramento da Infraestrutura:** Matriz de saúde dos serviços (Fastify, React, Postgres, Redis, Compiler, SciAI, K8s) com semáforos e links contextuais para o Grafana.
    * **4. Monitoramento da Colaboração em Tempo Real:** Distribuição de documentos por Pod dono, taxa de operações de Transformação Operacional (OT/s), latência de processamento em RAM, checkpoints pendentes e reconexões.
    * **5. Atividade e Auditoria:** Timeline ao vivo de eventos operacionais, editoriais e de segurança (`AuditLog`).
+   * **6. Topologia de Microsserviços e Comunicação em Tempo Real (ADR-019):** Grafo interativo em `@xyflow/react` com AutoSizer e barramento Server-Sent Events (`telemetryBus`), permitindo visualização de partículas animadas em tempo real durante requisições inter-serviços (Compilação TeX Live, Chat SciAI com Belisa, Escalabilidade HPA de Pods do Backend).
 4. **BFF Seguro com REST + Server-Sent Events (SSE):** O frontend nunca acessa portas internas de telemetria (Prometheus, Opik, Redis). O Fastify agrega os dados via endpoints dedicados (`/api/v1/admin/dashboard/*`) e provê atualizações instantâneas via SSE (`/api/v1/admin/dashboard/events`).
 5. **Dimensionamento do Compilador:** O escalonamento de workers TeX opera nesta fase com dimensionamento estático provisionado e monitoramento visual de fila. A adoção do KEDA fica formalmente postergada para uma fase futura, ativada apenas se o volume de concorrência em produção comprovar necessidade.
 
@@ -156,6 +157,14 @@ Linha do tempo ao vivo das ações relevantes ocorridas no sistema:
 * Mudanças de etapa (especialmente avanço para Etapa 5 NIT ou Etapa 6 Congresso).
 * Ocorrências de timeout de compilação ou falhas de sistema.
 * Eventos de segurança (tentativas de autenticação inválidas, violação de token M2M).
+
+### Área 6: Topologia de Microsserviços e Comunicação em Tempo Real (ADR-019)
+Canvas interativo em `@xyflow/react` com AutoSizer e telemetria por Server-Sent Events (SSE):
+* Renderização espacial dos 8 nós da arquitetura SCIA com espaçamento amplo e cards informativos com status, semáforo e métricas-chave em tempo real (sem botões ou cards de notificação saltantes).
+* Arestas de comunicação SVG com partículas animadas disparadas sob demanda em requisições reais (`telemetryBus`).
+* Sustentação contínua de nós em processamento ativo (`compiler-worker` e `sciai-engine`) durante 100% da duração da compilação e do streaming de tokens SSE.
+* Suporte nativo à renderização dinâmica de réplicas de pods do backend e simulação de escalabilidade HPA.
+* Consulte a especificação e fundamentação detalhada na [ADR-019](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md).
 
 ---
 

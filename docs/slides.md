@@ -1,205 +1,252 @@
-# PARTE 1 — A SOLUÇÃO
+# 1. OBJETIVO
 
-## Slide 01 — O cenário atual e os gargalos da produção científica
+## Slide 01 — Objetivo da plataforma e propósito da apresentação
 
-"Antes de apresentar a solução, precisamos entender alguns problemas que fazem parte da rotina de produção científica.
+"O objetivo desta apresentação é introduzir a plataforma SCIA — uma solução desenvolvida para centralizar, proteger e acelerar todo o ciclo de vida da produção científica institucional.
 
-Hoje, muitas equipes trabalham com ferramentas diferentes para escrever, revisar, armazenar arquivos e acompanhar prazos. Isso acaba fragmentando o processo.
+Nosso propósito central é apresentar como o SCIA transforma a rotina de pesquisa acadêmica e aplicada, unificando a edição colaborativa em LaTeX, a governança rigorosa de etapas institucionais, a proteção de propriedade intelectual e o apoio de inteligência artificial especializada sob a infraestrutura e a soberania da própria instituição.
 
-O primeiro ponto é a segurança da informação. Pesquisas em desenvolvimento podem conter dados estratégicos, resultados ainda não publicados e até informações relacionadas a possíveis patentes. Quando esses materiais ficam hospedados em plataformas externas, a instituição perde parte do controle sobre onde e como essas informações são armazenadas.
+Ao longo desta apresentação, demonstraremos o problema crítico enfrentado pelas instituições de pesquisa hoje, a proposta de valor que o SCIA entrega, os alicerces de sua arquitetura técnica e de dados, e os benefícios diretos gerados ao negócio e à gestão acadêmica."
 
-O segundo problema é a colaboração. Quando as revisões acontecem por e-mail, documentos anexados e diferentes versões de arquivos, fica mais difícil saber qual é a versão correta e quais alterações ainda precisam ser feitas.
+---
 
-E o terceiro ponto é a gestão dos prazos. Sem um fluxo centralizado, a coordenação pode ter dificuldade para identificar atrasos, acompanhar o andamento dos artigos e garantir que todas as validações aconteçam antes da submissão.
+# 2. PROBLEMA A SER RESOLVIDO
 
-Portanto, o problema não está apenas na escrita do artigo. Está na falta de integração entre produção científica, colaboração, revisão e governança institucional."
+## Slide 02 — O cenário atual e os gargalos da produção científica
 
-## Slide 02 — A plataforma SCIA: soberania, produtividade e colaboração
+"Antes de detalhar a solução, precisamos examinar os gargalos críticos que hoje comprometem a rotina e a eficiência da produção científica nas instituições.
 
-"É para enfrentar esses desafios que estamos desenvolvendo o SCIA.
+Atualmente, pesquisadores e equipes acadêmicas dependem de um ecossistema fragmentado de ferramentas: escrevem em editores locais ou comerciais isolados, revisam por e-mail, trocam arquivos por pastas em nuvem e tentam acompanhar prazos por planilhas desconectadas. Essa dispersão gera quatro grandes vulnerabilidades:
 
-O SCIA é uma plataforma web que centraliza o ciclo de produção científica em um único ambiente, mantendo a infraestrutura e os dados sob controle da própria instituição.
+O primeiro ponto é o risco à soberania e segurança da informação. Manuscritos em desenvolvimento contêm dados estratégicos, resultados inéditos e potenciais patentes. Quando esses conteúdos residem em servidores públicos ou plataformas proprietárias de terceiros, a instituição perde o controle sobre a guarda, a confidencialidade e a custódia desse patrimônio intelectual.
 
-A proposta é integrar quatro capacidades principais.
+O segundo problema é a colaboração ineficiente e a perda de histórico. Quando as revisões acontecem por trocas desordenadas de mensagens e múltiplas versões de arquivos — como 'artigo_final_v2_revisado.tex' —, perde-se a rastreabilidade: fica difícil saber qual versão é a vigente, quem alterou cada parágrafo e se os apontamentos do orientador foram de fato incorporados.
 
-A primeira é a edição colaborativa em LaTeX diretamente pelo navegador, permitindo que pesquisadores trabalhem no mesmo documento sem depender de instalações locais complexas.
+O terceiro ponto é a ausência de governança e de controle de prazos. Sem um fluxo institucional estruturado, a coordenação de pesquisa não possui visibilidade em tempo real sobre o andamento dos artigos, aumentando o risco de perda de prazos de conferências e editais.
 
-A segunda é a governança por etapas. O trabalho passa por um fluxo definido, com regras e validações institucionais.
+E o quarto gargalo é a falta de rastreabilidade e visibilidade integrada na etapa do NIT. Na nossa instituição, já existe uma diretriz clara e um departamento dedicado — o Núcleo de Inovação Tecnológica (NIT) —, garantindo que nenhum artigo seja publicado sem passar pela devida análise de propriedade intelectual. No entanto, hoje esse processo acontece por canais externos e descentralizados, como e-mails e formulários separados. Isso dificulta o acompanhamento por parte da gestão, que não tem visibilidade centralizada sobre o status de cada parecer, gerando atrito e incerteza no controle dos prazos de submissão.
 
-A terceira é a compilação integrada. O pesquisador consegue escrever e acompanhar o resultado do documento em PDF dentro da própria plataforma.
+Portanto, o problema não está apenas na escrita do artigo. Está na fragmentação operacional e na falta de um ambiente único que integre produção científica, colaboração em tempo real, revisão qualificada e o acompanhamento transparente de todo o fluxo institucional."
 
-E a quarta é a inteligência artificial científica, que poderá apoiar atividades como delimitação de temas, levantamento bibliográfico e organização da estrutura do artigo, sempre mantendo o pesquisador no processo de decisão.
+---
 
-O objetivo não é apenas oferecer um editor de texto. É criar um ambiente integrado para organizar, produzir, revisar e acompanhar a pesquisa científica."
+# 3. PROPOSTA
 
-## Slide 03 — Governança por estados: o ciclo em seis etapas
+## Slide 03 — A plataforma SCIA: soberania, produtividade e governança integrada
 
-"Um dos principais diferenciais do SCIA é que o artigo não é tratado apenas como um arquivo. Ele possui um ciclo de vida institucional.
+"Para enfrentar e superar definitivamente esses desafios, estamos desenvolvendo a plataforma SCIA.
 
-Esse ciclo está organizado em seis etapas sequenciais.
+O SCIA é uma plataforma web institucional que centraliza todo o ciclo da produção científica em um ambiente único e seguro, mantendo a infraestrutura e os dados sob total custódia e soberania da instituição.
 
-Começamos pelo planejamento e pela pesquisa. Em seguida, temos o desenvolvimento experimental e a realização dos benchmarks. Depois, chegamos à escrita do artigo, que pode ser dividida em tarefas específicas.
+Nossa proposta estrutura-se sobre quatro pilares integrados:
 
-Quando essas tarefas estão concluídas e aprovadas, o artigo avança para a revisão técnica e científica geral.
+Primeiro, edição colaborativa em LaTeX diretamente pelo navegador: múltiplos pesquisadores trabalham simultaneamente no mesmo manuscrito em tempo real, sem necessidade de instalações locais complexas ou conflitos de pacotes TeX.
 
-A partir daí entram duas validações institucionais importantes.
+Segundo, governança institucional por etapas: o artigo deixa de ser tratado como um arquivo isolado e passa a cumprir um ciclo formal com regras de aprovação, travas de conformidade e papéis bem delimitados.
 
-A primeira é o NIT, responsável pela análise institucional relacionada à propriedade intelectual. Essa etapa funciona como uma trava: a submissão externa depende da homologação correspondente.
+Terceiro, compilação integrada e resiliente: o pesquisador compila e visualiza o PDF instantaneamente dentro da plataforma, com tratamento de erros amigável e sem sobrecarregar a máquina do usuário.
 
-A segunda é a etapa de submissão ao congresso, na qual ficam registrados o destino da submissão e as informações necessárias para acompanhar seu resultado.
+E quarto, inteligência artificial científica com controle humano: agentes inteligentes auxiliam no levantamento de estado da arte e estruturação inicial, garantindo rigor metodológico e mantendo o pesquisador sempre no comando da tomada de decisão.
 
-Também existe a previsão de um congresso de backup. Assim, se o artigo não for aceito no destino principal, a equipe tem um caminho alternativo planejado.
+O objetivo do SCIA não é apenas oferecer um editor de texto, mas sim construir um ambiente integrado para organizar, produzir, revisar e acompanhar a pesquisa científica institucional."
 
-O ponto central é que o avanço entre etapas segue regras. Isso reduz a possibilidade de uma submissão acontecer sem que as validações previstas tenham sido realizadas."
+## Slide 04 — Governança por estados: o ciclo em seis etapas e proteção de IP
 
-## Slide 04 — Modelo de revisão em dois níveis: micro e macro
+"Um dos principais diferenciais do SCIA é que o artigo não é tratado como um arquivo estático. Ele possui um ciclo de vida governado, composto por seis etapas sequenciais:
 
-"Aqui temos uma distinção importante do processo de revisão do SCIA: trabalhamos com dois níveis complementares.
+1. Planejamento e definição do escopo científico;
+2. Desenvolvimento experimental e benchmarks;
+3. Escrita do artigo, estruturada em seções e tarefas individuais;
+4. Revisão técnica e científica consolidada;
+5. Análise do NIT (Núcleo de Inovação Tecnológica), etapa essencial e obrigatória na instituição para avaliação de propriedade intelectual e patentes, agora integrada ao ambiente do sistema para que a gestão possa acompanhar todo o andamento do parecer;
+6. Submissão formal ao congresso ou periódico, liberada após a homologação correspondente, com registro de prazos, destino principal e um congresso de backup planejado para absorver redirecionamentos rápidos caso necessário.
 
-O primeiro é a micro-revisão, que acontece durante a etapa de escrita. O artigo pode ser dividido em tarefas ou seções, permitindo que cada parte seja revisada de maneira específica.
+O avanço entre as etapas obedece a regras formais e registros centralizados. Com isso, a gestão e a coordenação passam a ter acompanhamento em tempo real de todo o fluxo institucional, garantindo fluidez, transparência e controle sobre cada etapa de validação sem depender de checagens manuais fora da plataforma."
 
-O revisor pode selecionar um trecho do texto e registrar um comentário diretamente naquele ponto. O autor visualiza o apontamento, realiza o ajuste e pode responder ou resolver a discussão.
+## Slide 05 — Modelo de revisão em dois níveis: micro e macro
 
-Isso evita que toda a revisão dependa de documentos separados ou de longas trocas de e-mail.
+"Para conciliar agilidade durante a escrita com rigor acadêmico na entrega final, o SCIA adota um modelo de revisão estruturado em dois níveis complementares:
 
-O segundo nível é a macro-revisão. Nesse momento, o revisor oficial avalia o artigo consolidado, considerando o conjunto do trabalho, sua consistência e sua qualidade científica.
+O primeiro nível é a micro-revisão, realizada diretamente durante a etapa de escrita. As seções e tarefas podem ser inspecionadas pontualmente: orientadores e coautores selecionam trechos de código LaTeX ou texto e inserem comentários contextuais em linha. O autor visualiza, discute, resolve e aplica as correções de forma rastreável, sem depender de reuniões paralelas ou trocas de e-mails.
 
-Se forem necessários ajustes gerais, o artigo retorna para uma nova rodada de correções. Se for aprovado, fica liberado para seguir ao fluxo institucional do NIT.
+O segundo nível é a macro-revisão. Com o texto consolidado, o revisor oficial ou orientador avalia a completude metodológica, a coerência dos resultados e a qualidade acadêmica do manuscrito como um todo.
 
-Essa separação é importante porque permite acompanhar a qualidade de cada parte sem perder a visão geral do artigo."
+Se forem necessários ajustes estruturais, o artigo retorna formalmente para a etapa de correções. Se aprovado, é liberado com parecer favorável para o crivo do NIT. Esse duplo mecanismo assegura a qualidade contínua em cada parágrafo sem perder a visão do conjunto."
 
-## Slide 05 — Papéis do sistema e matriz de permissões
+## Slide 06 — Papéis do sistema, atribuições e matriz de visibilidade
 
-"Para que esse processo funcione, cada participante precisa ter responsabilidades e permissões bem definidas.
+"A governança do SCIA se apoia em uma matriz de papéis com controle de acesso e visibilidade estritamente delimitados por atribuição direta:
 
-No SCIA, o autor ou pesquisador é responsável pela produção do manuscrito, pela condução das atividades e pela resolução dos apontamentos recebidos.
+O sistema é altamente flexível e não impõe amarras hierárquicas rígidas. Quando um autor cria um artigo — ou a qualquer momento posterior nas configurações do projeto —, ele pode selecionar e vincular as personas que participarão daquele trabalho:
+- O Gerente atribuído para gerenciar aquele artigo específico;
+- O Coordenador atribuído para coordenar aquele artigo;
+- O Revisor Oficial encarregado da avaliação técnica e científica;
+- Outros Autores ou coautores para colaboração na escrita;
+- E o Observador, papel flexível que pode ser concedido a qualquer persona ou membro da instituição que precise apenas acompanhar o andamento do trabalho, sem intervir na escrita ou nas aprovações formais.
 
-O revisor oficial ou orientador atua na avaliação metodológica e científica. Ele pode consultar o documento em modo protegido e registrar comentários sem alterar acidentalmente o conteúdo produzido pelo autor.
+Essa atribuição direta define com precisão a visibilidade de cada participante:
+- O Gerente e o Coordenador compartilham o mesmo modelo de acompanhamento operacional, mas visualizam exclusivamente os artigos que lhes foram atribuídos nessa função. Ou seja, um gerente enxerga apenas os artigos em que foi escolhido como gerente, e o coordenador apenas aqueles em que foi escolhido como coordenador — não existe herança hierárquica automática de artigos de outros profissionais;
+- O Revisor Oficial só visualiza os artigos para os quais foi selecionado como revisor — atuando em modo protegido —, além de seus próprios artigos, uma vez que o revisor também pode criar e conduzir projetos como autor;
+- O Observador tem acesso estrito de leitura e acompanhamento ao artigo específico para o qual foi vinculado.
 
-O coordenador de pesquisa acompanha o andamento das etapas, os prazos e as tarefas. Sua visão é voltada à organização operacional e à identificação de gargalos.
+Nenhum desses papéis possui visão global de toda a instituição. Por isso, temos em análise no roadmap uma nova feature para a introdução da persona Diretor — esta sim terá uma visão holística e unificada como um todo da instituição, com indicadores globais e auditoria executiva de forma independente de atribuições manuais.
 
-Já o gestor ou gerente de área possui uma visão mais estratégica, com indicadores institucionais, acompanhamento dos períodos acadêmicos e informações de auditoria.
+Esse modelo confere máxima flexibilidade na composição das equipes, privacidade absoluta dos dados e clareza sobre quem é responsável por cada artigo."
 
-Essa divisão permite que cada pessoa visualize e execute aquilo que corresponde à sua responsabilidade, sem misturar as atividades de produção, revisão, coordenação e gestão."
+## Slide 07 — Inteligência artificial científica: o ecossistema de agentes especializados
 
-# PARTE 2 — A ARQUITETURA
+"Para apoiar de ponta a ponta o ciclo da pesquisa, o SCIA conta com o SciAI — um ecossistema de agentes especializados concebido sob o paradigma estrito de Human-in-the-Loop, onde a IA assessora e o pesquisador sempre decide.
 
-## Slide 06 — Topologia geral de serviços e comunicação
+Em vez de um assistente genérico de chat, estruturamos agentes com papéis dedicados para cada momento da jornada:
 
-"Agora que apresentamos o funcionamento da plataforma do ponto de vista institucional, vamos observar como ela está organizada tecnicamente.
+1. Agente de Criação e Onboarding: Conduz o autor desde a concepção inicial até o projeto pronto. Realiza um diálogo socrático para delimitar hipóteses, pesquisa e resume artigos em bases consagradas (como arXiv, Semantic Scholar e OpenAlex), e inicializa o projeto com o template LaTeX do congresso alvo e o arquivo de referências já estruturados.
 
-O SCIA utiliza uma arquitetura baseada em serviços com responsabilidades separadas.
+2. Agente Copilot de Escrita Diária: Atua no dia a dia dos autores dentro do editor. Auxilia na redação de parágrafos acadêmicos, checagem e formatação precisa de citações e referências no BibTeX, validação de dados e pequenos ajustes de estilo durante a escrita contínua.
 
-No navegador, temos a aplicação React, responsável pela interface, pelo editor CodeMirror e pela visualização dos documentos.
+3. Agente Especialista em Revisão Global: Realiza uma auditoria aprofundada do manuscrito como um todo antes de ser enviado ao revisor oficial ou orientador. Equipado com uma skill especializada em revisão científica, verifica a consistência metodológica, a coerência entre hipótese e conclusões e a integridade de todas as fontes citadas, gerando um diagnóstico prévio para refinamento da equipe.
 
-No backend principal, desenvolvido com Fastify, organizamos a comunicação em protocolos específicos: WebSockets para a sincronização colaborativa da digitação, Server-Sent Events (SSE) para notificações e eventos em tempo real, e APIs REST para as operações convencionais e acompanhamento de prazos.
+4. Agente de Prazos e Riscos para a Gestão: Apoia coordenadores e gerentes na governança do pipeline. Cruza o avanço real das tarefas com a data-limite da conferência, identifica riscos preditivos de atraso e sugere readequações de cronograma para apoiar a tomada de decisão da gestão.
 
-O PostgreSQL é a base persistente da aplicação, armazenando os dados estruturados e os conteúdos dos documentos. O MinIO é utilizado para armazenar arquivos binários, como PDFs e imagens.
+Dessa forma, a inteligência artificial do SCIA apoia a criação inicial, acelera a escrita cotidiana, eleva o rigor da revisão e protege os prazos institucionais, mantendo a autoria e a soberania científica sob total controle humano."
 
-Também temos um serviço dedicado à compilação LaTeX. Essa separação é importante porque compilar documentos pode consumir recursos significativos. Assim, uma compilação não precisa executar dentro do mesmo processo responsável pela comunicação principal da aplicação.
+---
 
-Por fim, temos o serviço SciAI, desenvolvido em Python, responsável pela camada de inteligência artificial.
+# 4. ARQUITETURA E TECNOLOGIA
 
-A ideia dessa arquitetura é separar responsabilidades e evitar que uma atividade mais pesada comprometa o funcionamento das demais."
+## Slide 08 — Topologia geral de serviços e comunicação
 
-## Slide 07 — O motor colaborativo: Single-Writer e controle de versão
+"Do ponto de vista técnico, o SCIA foi concebido sob uma arquitetura de serviços modulares e desacoplados, projetada para alta disponibilidade e baixa latência:
 
-"Este é um dos pontos tecnicamente mais importantes da arquitetura: como vários pesquisadores conseguem editar o mesmo documento de forma colaborativa.
+No frontend, uma Single Page Application em React entrega uma interface moderna e intuitiva, integrando o editor CodeMirror com suporte nativo a LaTeX e visualizador de PDF embutido.
 
-O SCIA utiliza CodeMirror Collab no editor e no backend para gerenciar as atualizações colaborativas.
+No backend principal, implementado em Node.js com o framework Fastify de alta performance, organizamos a comunicação em três protocolos especializados:
+- WebSockets para sincronização colaborativa de edição em tempo real;
+- Server-Sent Events (SSE) para notificações reativas, status de compilação e eventos de governança;
+- APIs RESTful tipadas e auditadas para operações convencionais, gestão de projetos e acompanhamento de prazos.
 
-O princípio apresentado aqui é o de Single-Writer: para cada documento em edição, existe um processo responsável por ordenar e aplicar as atualizações recebidas.
+A camada de persistência utiliza PostgreSQL para integridade referencial dos dados e MinIO para armazenamento S3-compatible de binários, PDFs e figuras.
 
-Quando um pesquisador realiza uma alteração, o cliente envia a operação ao backend responsável pelo documento. O servidor processa a atualização, considera a versão atual e distribui o resultado aos demais participantes.
+Além disso, a compilação TeX Live e a inteligência artificial rodam em serviços isolados dedicados, garantindo que operações computacionalmente intensivas não degradem a experiência colaborativa dos usuários."
 
-O processamento colaborativo acontece em memória, evitando que cada tecla digitada precise gerar imediatamente uma operação de gravação no banco de dados.
+## Slide 09 — Motor colaborativo: Single-Writer e controle de concorrência
 
-A persistência é feita por checkpoints, seguindo critérios como tempo de inatividade, tempo máximo e quantidade de operações.
+"O coração da experiência de edição colaborativa do SCIA é seu motor de sincronização em tempo real, baseado no protocolo CodeMirror Collab e na arquitetura Single-Writer.
 
-O PostgreSQL continua sendo a fonte persistente dos dados. O controle de versão e o mecanismo de fencing ajudam a impedir que um processo antigo grave informações depois de perder a responsabilidade pelo documento.
+Para cada documento ativo, um processo servidor único é eleito como autoridade de escrita, responsável por ordenar e reconciliar as operações concorrentes de digitação enviadas pelos pesquisadores conectados.
 
-O objetivo dessa abordagem é combinar uma experiência de edição responsiva com controle de versão e persistência confiável."
+A concorrência é gerenciada inteiramente em memória com latência inferior a 3 milissegundos, evitando que cada tecla pressionada gere I/O síncrono no banco de dados.
 
-## Slide 08 — Persistência relacional ACID: por que PostgreSQL?
+A persistência definitiva no banco ocorre através de checkpoints inteligentes, acionados por limites de inatividade, janelas de tempo ou volume acumulado de operações.
 
-"Uma decisão importante do projeto foi utilizar o PostgreSQL como banco principal.
+Mecanismos de versionamento estrito e fencing garantem consistência matemática: mesmo em cenários de reconexão de rede ou alternância de processos, elimina-se qualquer possibilidade de sobrescrita acidental ou bifurcação de documentos."
 
-Essa escolha está relacionada à natureza dos dados do SCIA. Não estamos armazenando apenas textos isolados. Temos projetos, participantes, etapas, tarefas, permissões, revisões, versões e registros de auditoria que possuem relações entre si.
+## Slide 10 — Persistência relacional ACID: por que PostgreSQL?
 
-O modelo relacional permite representar essas relações com integridade referencial e regras bem definidas.
+"Uma decisão arquitetural central do SCIA foi adotar o PostgreSQL como banco de dados principal.
 
-Outro ponto importante são as transações ACID. Em operações que envolvem mais de uma informação relacionada, precisamos garantir que as alterações sejam concluídas de forma consistente.
+A produção científica institucional não se resume a textos isolados: ela envolve uma malha complexa de relacionamentos entre projetos, autores, etapas de governança, aprovações do NIT, tarefas de micro-revisão, threads de comentários e trilhas de auditoria.
 
-Por exemplo, ao registrar um checkpoint, podemos precisar atualizar o conteúdo, a versão e os metadados relacionados. A transação permite tratar essas alterações como uma unidade lógica.
+O modelo relacional garante a integridade referencial e o cumprimento estrito de regras de negócio em nível de schema.
 
-Também separamos o armazenamento de arquivos binários, utilizando o MinIO para documentos compilados e imagens.
+Além disso, as garantias ACID (Atomicidade, Consistência, Isolamento e Durabilidade) são vitais para operações críticas: a consolidação de um checkpoint, a aprovação de uma etapa ou o registro de um parecer do orientador devem ser transações indivisíveis.
 
-A decisão não significa que um banco de documentos seja inadequado para qualquer aplicação. Significa que, para as necessidades de integridade, relacionamento e auditoria do SCIA, o PostgreSQL foi escolhido como a base principal."
+Complementando o banco relacional, utilizamos o MinIO para o armazenamento de arquivos binários pesados, como PDFs finais, figuras e pacotes compilados. Essa separação assegura alta performance transacional sem inflar o banco relacional com dados estáticos."
 
-## Slide 09 — Isolamento do compilador TeX Live
+## Slide 11 — Isolamento e resiliência do compilador TeX Live
 
-"Outro cuidado da arquitetura é o processo de compilação dos documentos LaTeX.
+"A compilação de documentos LaTeX é uma operação intensiva em CPU e I/O, além de representar uma fronteira de segurança, uma vez que comandos ou pacotes mal formatados podem gerar laços infinitos ou consumo excessivo de recursos.
 
-A compilação pode consumir bastante CPU e memória. Além disso, um documento pode conter comandos que provoquem erros, processos demorados ou consumo excessivo de recursos.
+Por isso, o SCIA não executa essa atividade diretamente no backend principal. Existe um serviço dedicado à compilação, o sci-latex-compiler:
 
-Por isso, o SCIA não executa essa atividade diretamente no backend principal. Existe um serviço dedicado à compilação, chamado sci-latex-compiler.
+Quando o usuário solicita a compilação, o backend encaminha o conteúdo para o worker especializado, que executa o TeX Live em um ambiente efêmero e isolado;
+Políticas rígidas de timeout e quotas de memória garantem que compilações com problemas sejam interrompidas de forma controlada;
+Em caso de sucesso, o PDF é gerado, persistido no MinIO e exibido no navegador; em caso de falha, o compilador efetua o parse estruturado dos logs e retorna os erros mapeados para as linhas exatas do editor;
+Ao término, os diretórios e arquivos temporários são limpos imediatamente.
 
-Quando o usuário solicita uma compilação, o backend encaminha o conteúdo e os arquivos necessários para esse serviço.
+Essa separação protege os demais componentes e torna o processo de compilação confiável e seguro."
 
-O compilador cria um diretório temporário, executa o processo e aplica um limite de tempo para evitar que uma compilação fique presa indefinidamente.
+## Slide 12 — Camada de IA científica: LangGraph, orquestração multi-agente e LLMOps com Opik
 
-Se a compilação for bem-sucedida, o serviço retorna o PDF. Se houver erro, retorna informações estruturadas para que o pesquisador consiga identificar o problema no editor.
+"A camada de IA científica, desenvolvida com o serviço SciAI em Python, é orquestrada através do LangGraph, adotando uma arquitetura de grafos de estados e multi-agentes especializados:
 
-Ao final, os arquivos temporários são removidos.
+O serviço implementa grafos conversacionais e analíticos desacoplados com checkpoints e pontos de interrupção humana (Human-in-the-Loop via interrupt):
+1. Grafo de Onboarding e Criação: orquestra o idea_refiner_agent para escopo e o search_specialist_agent com fallback resiliente (arXiv, Semantic Scholar e OpenAlex), culminando no acionamento determinístico da tool de criação de projeto;
+2. Grafo Copilot de Escrita: processa contextos locais de seções abertas no CodeMirror, sugerindo ajustes estilísticos e efetuando auditoria de citações BibTeX com streaming em tempo real via SSE;
+3. Grafo de Revisão Global: aciona skills especializadas de análise metodológica e fact-checking sobre o manuscrito consolidado antes do encaminhamento ao revisor humano;
+4. Grafo de Governança de Prazos: cruza as datas das etapas contra o deadline da conferência para diagnósticos preditivos da coordenação.
 
-Essa separação protege os demais componentes e torna o processo de compilação mais controlado."
+Para a governança, auditoria e rastreabilidade dos modelos de linguagem, adotamos uma disciplina rigorosa de LLMOps integrada com a plataforma Opik:
+O Opik rastreia ponta a ponta cada execução dos grafos do LangGraph, monitorando spans de raciocínio, métricas de Time to First Token (TTFT), contagem de tokens, custos de inferência e avaliações contínuas contra alucinações. Isso assegura que toda a assistência de IA seja mensurável, reprodutível e governada sob padrões acadêmicos estritos."
 
-## Slide 10 — Camada de IA científica: LangGraph e participação humana
+## Slide 13 — Capacidade, escalabilidade e dimensionamento de infraestrutura
 
-"Além da colaboração e da governança, o SCIA possui uma camada de inteligência artificial voltada ao contexto da pesquisa científica.
+"Para comprovar a robustez e a viabilidade da solução, realizamos testes rigorosos de capacidade e estresse baseados em cenários reais de uso acadêmico.
 
-Essa camada é construída com Python e LangGraph, utilizando agentes especializados para dividir o trabalho em etapas.
+Os benchmarks demonstraram excelente comportamento em ambiente de alta concorrência:
+- Suporte simultâneo a 1.250 conexões WebSocket ativas, distribuídas em 250 projetos de pesquisa em edição concomitante;
+- Latência de aplicação de alterações colaborativas inferior a 3 milissegundos;
+- Latência RTT P95 de 610 milissegundos sob estresse;
+- Capacidade de processar 50 compilações completas de artigos LaTeX em apenas 17,3 segundos;
+- E, no cenário de pico máximo, um consumo moderado de infraestrutura de aproximadamente 7 vCPUs e 7,2 GB de memória RAM.
 
-O fluxo começa com a ideia apresentada pelo pesquisador. Um agente ajuda a delimitar o tema, organizar o escopo e formular uma hipótese de trabalho.
+Essas métricas comprovam que o SCIA entrega alta densidade de usuários e performance fluida operando em servidores e clusters institucionais com custo computacional reduzido e previsível."
 
-Depois, um agente especializado realiza o levantamento bibliográfico, consultando fontes como OpenAlex e Semantic Scholar.
+## Slide 14 — Evolução da infraestrutura em desenvolvimento: AIOps Copilot, LLMOps com Opik e Topologia Reativa (ADR 18 e ADR 19)
 
-Mas existe uma decisão importante nesse processo: a inteligência artificial não deve escolher sozinha as referências que serão utilizadas.
+"Para além da capacidade atual, a arquitetura e a sustentação de infraestrutura do SCIA estão em constante evolução, com duas inovações de ponta consolidadas nas ADRs 18 e 19 em desenvolvimento:
 
-O fluxo pausa e apresenta os resultados ao pesquisador. Ele pode validar os artigos selecionados ou solicitar ajustes na busca.
+A primeira é o AIOps Copilot no Admin Center (ADR 18):
+Estamos evoluindo o monitoramento de dashboards gráficos passivos para um diagnóstico autônomo e ativo de causa-raiz (Root Cause Analysis - RCA). Utilizando o padrão Model Context Protocol (MCP) com acesso somente-leitura aos pods do Kubernetes, métricas do Prometheus, logs do Loki, PostgreSQL e à camada de LLMOps do Opik, um agente supervisor de SRE orquestra especialistas dedicados — incluindo o Opik LLMOps Specialist, que audita a saúde dos grafos LangGraph, Time to First Token (TTFT) e consumo de tokens. Em vez de o operador investigar múltiplos painéis manualmente, o AIOps identifica com precisão tanto falhas tradicionais de infraestrutura quanto anomalias de IA, mantendo sempre o Human-in-the-Loop mandatório para qualquer remediação.
 
-Somente depois dessa validação o processo continua para a organização do roteiro e a geração de conteúdo estruturado para o artigo.
+A segunda é a Topologia de Microsserviços e Telemetria em Tempo Real (ADR 19):
+Integrada ao Admin Center com React Flow e Server-Sent Events (SSE), transformamos a malha de serviços em um diagrama vivo e dinâmico. Quando um artigo é compilado ou a IA é acionada, partículas animadas percorrem as conexões de rede ilustrando visualmente o tráfego exato entre Frontend, Backend Fastify, Compilador TeX, MinIO, PostgreSQL, SciAI e a observabilidade do Opik. O sistema indica visualmente nós em processamento ativo e detecta dinamicamente a escalabilidade horizontal de novos pods via HPA.
 
-Esse modelo mantém o pesquisador como responsável pelas decisões científicas. A IA funciona como uma ferramenta de apoio à pesquisa, não como substituta da avaliação humana."
+Essas duas frentes posicionam o SCIA no estado da arte da engenharia de confiabilidade (SRE) e de LLMOps, garantindo observabilidade profunda de ponta a ponta, resolução acelerada de incidentes e transparência operacional contínua."
 
-## Slide 11 — Capacidade e dimensionamento da infraestrutura
+---
 
-"Para finalizar a parte técnica, temos os resultados dos testes de capacidade apresentados neste estudo.
+# 5. BENEFÍCIOS AO NEGÓCIO
 
-O objetivo dos benchmarks foi avaliar como a plataforma se comporta com diferentes níveis de concorrência, considerando conexões WebSocket, operações de edição, compilação e consumo de recursos.
+## Slide 15 — Benefícios estratégicos e retorno institucional
 
-Na carga máxima apresentada, foram testadas 1.250 conexões WebSocket simultâneas, distribuídas em 250 projetos ativos.
+"Para além do ganho técnico e operacional, o SCIA entrega valor estratégico tangível para a gestão da instituição e para seus núcleos de pesquisa:
 
-O teste também registra latência de aplicação de edição inferior a 3 milissegundos, latência RTT P95 de 610 milissegundos e 50 compilações de artigos em 17,3 segundos.
+1. Soberania dos Dados e Segurança Patrimonial:
+A instituição mantém total controle e custódia sobre pesquisas de ponta, dados inéditos e ativos estratégicos, sem dependência de plataformas SaaS de terceiros e em conformidade estrita com as normas institucionais de segurança e privacidade.
 
-Em relação ao consumo de infraestrutura, o cenário de pico apresentado registra aproximadamente 7 vCPUs e 7,2 gigabytes de memória.
+2. Rastreabilidade e Gestão Integrada do Fluxo do NIT:
+A etapa do NIT — que já assegura na instituição que nenhum artigo saia sem análise prévia de propriedade intelectual — passa a ser acompanhada de ponta a ponta e em tempo real dentro da plataforma. A gestão ganha visibilidade completa sobre o andamento dos pareceres, eliminando controles manuais paralelos e evitando que prazos de conferências sejam comprometidos por falta de acompanhamento centralizado.
 
-Esses números ajudam a orientar o dimensionamento inicial e mostram o comportamento observado no ambiente de teste.
+3. Eficiência Operacional e Produtividade Acadêmica:
+Elimina o tempo desperdiçado com configuração local de ambientes LaTeX, conflitos de pacotes e revisões fragmentadas por e-mail, acelerando o tempo de ciclo entre a concepção da pesquisa e a submissão final do artigo.
 
-É importante destacar que resultados de benchmark dependem das condições em que foram realizados, como hardware, duração, perfil de carga e configuração do cluster. Por isso, eles devem ser apresentados junto com a metodologia utilizada.
+4. Visibilidade Executiva e Governança dos Laboratórios:
+Coordenadores e gestores passam a ter painéis com dados em tempo real sobre a produtividade científica, o cumprimento de prazos de editais e a identificação precoce de gargalos operacionais antes que prazos sejam perdidos.
 
-A mensagem principal deste slide é que o SCIA foi pensado para suportar colaboração e processamento de documentos em uma infraestrutura institucional controlada, com dimensionamento baseado em testes e não apenas em estimativas."
+5. Racionalização de Custos e Independência Tecnológica:
+Uma solução de código próprio e arquitetura otimizada, capaz de rodar em infraestrutura on-premises ou nuvem privada com baixo consumo de hardware, eliminando custos recorrentes de assinaturas de editores comerciais proprietários por usuário."
 
-# ENCERRAMENTO
+## Slide 16 — Roadmap de inovação: features futuras planejadas
 
-"Com isso, concluímos a apresentação da proposta e da arquitetura do SCIA.
+"Olhando para a evolução contínua da plataforma, temos um roadmap sólido com inovações que ampliam ainda mais a inteligência e a governança do SCIA:
 
-O que estamos construindo é uma plataforma que integra a produção científica, a colaboração entre pesquisadores, a revisão técnica, a governança institucional e o apoio da inteligência artificial.
+1. Literature Intelligence & Mapa Mental com React Flow:
+Planejada na ADR 16, essa feature substitui listas estáticas de bibliografia por um canvas conceitual interativo. A IA audita os artigos científicos levantados, destacando pontos fortes e limitações metodológicas em cards visuais, conectando os trabalhos por arestas semânticas de evolução ou divergência e sinalizando lacunas de pesquisa (research gaps) para o autor justificar a originalidade de sua abordagem. Essa funcionalidade está desenhada para atuar de forma flexível: seja como um preview opcional durante a ideação inicial para ajudar na formulação da hipótese, seja como um centro permanente no workspace para que o autor conecte artigos diretamente às seções do editor LaTeX e cite referências com um clique.
 
-Do ponto de vista institucional, o SCIA busca oferecer mais controle sobre os dados, mais visibilidade sobre o andamento das pesquisas e um processo de produção científica mais organizado.
+2. Persona Diretor com Visão Institucional Unificada:
+Evolução na governança que introduzirá a visão executiva completa da instituição, permitindo à diretoria acompanhar indicadores globais de produtividade científica de todas as áreas e auditoria executiva integrada.
 
-Do ponto de vista técnico, a arquitetura foi estruturada para separar responsabilidades, controlar a persistência, isolar atividades de maior consumo e permitir a evolução dos serviços.
+3. Consolidação de AIOps Copilot e Topologia em Tempo Real:
+Avanço da sustentação operacional com diagnóstico autônomo de causa-raiz via MCP e telemetria interativa da malha de microsserviços.
 
-O próximo passo é demonstrar como essas capacidades funcionam na prática, acompanhando o fluxo de um artigo desde a escrita até as validações institucionais.
+Essas iniciativas reforçam o compromisso do SCIA em ser uma plataforma em constante evolução para atender tanto a bancada de pesquisa quanto a gestão institucional."
 
-Mais do que apresentar uma ferramenta, queremos apresentar uma estrutura para apoiar e organizar todo o ciclo da produção científica."
+## Slide 17 — Conclusão e próximos passos
+
+"Em síntese, o SCIA conecta todos os elos da cadeia de valor da produção científica: pesquisadores, orientadores, comitês de inovação e gestores em um ambiente colaborativo, moderno e seguro.
+
+Unimos o melhor da tecnologia contemporânea — edição colaborativa em tempo real, persistência confiável, isolamento de compiladores, inteligência artificial assistiva e observabilidade de ponta — com a governança e a soberania indispensáveis ao ambiente institucional.
+
+O próximo passo é demonstrar a plataforma em funcionamento prático, acompanhando a jornada de um artigo desde a delimitação do tema e edição em tempo real até a homologação pelo NIT e a submissão final.
+
+Estamos construindo mais do que uma ferramenta: estamos entregando uma infraestrutura soberana para impulsionar a ciência e a inovação institucional."

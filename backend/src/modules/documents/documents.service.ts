@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { telemetryBus } from '../../infra/telemetry-bus';
 import {
   CommentReply,
   DeltaOperation,
@@ -741,6 +742,18 @@ export class DocumentsService {
    * Delega a compilação do documento LaTeX com suporte a múltiplos arquivos e imagens para o micro-serviço TeX Live
    */
   async compileDocument(documentId: string): Promise<Buffer> {
+    // 1. Notifica a telemetria do cluster em tempo real: Frontend -> Fastify
+    telemetryBus.publishTrafficEvent({
+      flowType: 'COMPILATION',
+      edgeId: 'e-frontend-backend',
+      sourceNodeId: 'client-frontend',
+      targetNodeId: 'backend-fastify',
+      direction: 'forward',
+      description: `Autor solicitou compilação LaTeX (Doc: ${documentId.slice(0, 8)}...)`,
+      durationMs: 1200,
+      particleColor: '#38bdf8',
+    });
+
     const doc = await this.getDocument(documentId);
     const compilerUrl = process.env.COMPILER_URL || 'http://compiler:4000';
 
@@ -782,30 +795,114 @@ export class DocumentsService {
       }
     }
 
-    const response = await fetch(`${compilerUrl}/compile`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        documentId,
-        mainEntry: doc.mainEntryPath,
-        files: filesPayload,
-      }),
+    // 2. Notifica a telemetria: Fastify -> Compiler Worker (Compiler inicia processamento)
+    telemetryBus.publishTrafficEvent({
+      flowType: 'COMPILATION',
+      edgeId: 'e-backend-compiler',
+      sourceNodeId: 'backend-fastify',
+      targetNodeId: 'compiler-worker',
+      direction: 'forward',
+      description: 'Fastify despachando manifesto tipado para Compiler TeX Live',
+      durationMs: 1400,
+      particleColor: '#f97316',
+      processingNodeIds: ['compiler-worker'],
     });
 
-    if (!response.ok) {
-      const errorJson = (await response.json().catch(() => ({ error: 'Falha na compilação' }))) as {
-        error?: string;
-        details?: string;
-      };
-      throw new Error(
-        errorJson.details || errorJson.error || `Erro de compilação (${response.status})`
-      );
+    const hasMinioImages = filesPayload.some((f) => f.type === 'binary_url');
+    if (hasMinioImages) {
+      telemetryBus.publishTrafficEvent({
+        flowType: 'COMPILATION',
+        edgeId: 'e-compiler-minio',
+        sourceNodeId: 'compiler-worker',
+        targetNodeId: 'minio-storage',
+        direction: 'forward',
+        description: 'Compiler baixando figuras e assets do MinIO interno (:9000)',
+        durationMs: 1200,
+        particleColor: '#10b981',
+        processingNodeIds: ['compiler-worker'],
+      });
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    try {
+      const response = await fetch(`${compilerUrl}/compile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId,
+          mainEntry: doc.mainEntryPath,
+          files: filesPayload,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorJson = (await response.json().catch(() => ({ error: 'Falha na compilação' }))) as {
+          error?: string;
+          details?: string;
+        };
+
+        telemetryBus.publishTrafficEvent({
+          flowType: 'COMPILATION',
+          edgeId: 'e-backend-compiler',
+          sourceNodeId: 'compiler-worker',
+          targetNodeId: 'backend-fastify',
+          direction: 'backward',
+          description: `Falha na compilação TeX (${response.status})`,
+          durationMs: 1500,
+          particleColor: '#ef4444',
+          processingNodeIds: [],
+        });
+
+        throw new Error(
+          errorJson.details || errorJson.error || `Erro de compilação (${response.status})`
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+
+      // 3. Notifica a telemetria: Compiler -> Fastify -> Frontend (PDF Concluído)
+      telemetryBus.publishTrafficEvent({
+        flowType: 'COMPILATION',
+        edgeId: 'e-backend-compiler',
+        sourceNodeId: 'compiler-worker',
+        targetNodeId: 'backend-fastify',
+        direction: 'backward',
+        description: 'Compiler concluiu PDF com sucesso no sandbox TeX Live',
+        durationMs: 1300,
+        particleColor: '#22c55e',
+        processingNodeIds: ['compiler-worker'],
+      });
+
+      setTimeout(() => {
+        telemetryBus.publishTrafficEvent({
+          flowType: 'COMPILATION',
+          edgeId: 'e-frontend-backend',
+          sourceNodeId: 'backend-fastify',
+          targetNodeId: 'client-frontend',
+          direction: 'backward',
+          description: 'Fastify entregando PDF gerado para o navegador do autor',
+          durationMs: 1200,
+          particleColor: '#38bdf8',
+          processingNodeIds: [],
+        });
+      }, 700);
+
+      return Buffer.from(arrayBuffer);
+    } catch (err) {
+      telemetryBus.publishTrafficEvent({
+        flowType: 'COMPILATION',
+        edgeId: 'e-backend-compiler',
+        sourceNodeId: 'compiler-worker',
+        targetNodeId: 'backend-fastify',
+        direction: 'backward',
+        description: 'Exceção ou timeout no compilador TeX',
+        durationMs: 1500,
+        particleColor: '#ef4444',
+        processingNodeIds: [],
+      });
+      throw err;
+    }
   }
 
   /**

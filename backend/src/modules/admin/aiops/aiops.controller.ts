@@ -54,7 +54,7 @@ export class AiopsController {
           userId,
           email: userEmail,
         },
-      },
+      } as any,
       { expiresIn: '15m' }
     );
 
@@ -93,7 +93,7 @@ export class AiopsController {
           userId,
           email: userEmail,
         },
-      },
+      } as any,
       { expiresIn: '15m' }
     );
 
