@@ -12,12 +12,12 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Fallback hierárquico: se DATABASE_URL ou AIOPS_DATABASE_URL estiver presente, faz parse para defaults
-_db_url = os.environ.get("DATABASE_URL") or os.environ.get("AIOPS_DATABASE_URL") or settings.AIOPS_DATABASE_URL
-_def_host = "localhost"
-_def_port = 5432
-_def_user = "postgres"
-_def_pass = "postgres"
-_def_db = "sci_latex_db"
+_db_url = os.environ.get("DATABASE_URL") or getattr(settings, "DATABASE_URL", None) or os.environ.get("AIOPS_DATABASE_URL") or settings.AIOPS_DATABASE_URL
+_def_host = getattr(settings, "POSTGRES_HOST", "localhost")
+_def_port = getattr(settings, "POSTGRES_PORT", 5432)
+_def_user = getattr(settings, "POSTGRES_USER", "postgres")
+_def_pass = getattr(settings, "POSTGRES_PASSWORD", "postgres")
+_def_db = getattr(settings, "POSTGRES_DB", "sci_latex_db")
 
 if _db_url:
     try:
@@ -36,8 +36,10 @@ POSTGRES_USER = os.environ.get("POSTGRES_USER", _def_user)
 POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", _def_pass)
 POSTGRES_DB = os.environ.get("POSTGRES_DB", _def_db)
 
-PGBOUNCER_HOST = os.environ.get("PGBOUNCER_HOST", POSTGRES_HOST)
-PGBOUNCER_PORT = int(os.environ.get("PGBOUNCER_PORT", 6543))
+_def_pgbouncer_host = getattr(settings, "PGBOUNCER_HOST", POSTGRES_HOST)
+_def_pgbouncer_port = getattr(settings, "PGBOUNCER_PORT", 6543)
+PGBOUNCER_HOST = os.environ.get("PGBOUNCER_HOST", _def_pgbouncer_host)
+PGBOUNCER_PORT = int(os.environ.get("PGBOUNCER_PORT", _def_pgbouncer_port))
 
 async def _get_pg_connection(database: str = POSTGRES_DB) -> asyncpg.Connection:
     return await asyncpg.connect(

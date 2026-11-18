@@ -83,6 +83,14 @@ class Settings(BaseSettings):
     LOKI_URL: str = "http://localhost:3100"
     GLITCHTIP_URL: str = "http://localhost:8005"
     AIOPS_DATABASE_URL: str | None = None
+    DATABASE_URL: str | None = None
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "sci_latex_db"
+    PGBOUNCER_HOST: str = "localhost"
+    PGBOUNCER_PORT: int = 6543
 
     @model_validator(mode="after")
     def validate_strict_configuration(self) -> "Settings":

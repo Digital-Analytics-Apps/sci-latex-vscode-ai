@@ -95,7 +95,18 @@ services:
       REDIS_URL: redis://redis:6379
       INTERNAL_SERVICE_KEY: scia-internal-secret-change-in-production
       JWT_SECRET: super-secret-jwt-key-change-in-production
-      OPIK_URL_OVERRIDE: http://host.docker.internal:5174/api
+      OPIK_URL_OVERRIDE: ${OPIK_URL_OVERRIDE:-http://host.docker.internal:5174/api}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://host.docker.internal:9090}
+      LOKI_URL: ${LOKI_URL:-http://host.docker.internal:3100}
+      GLITCHTIP_URL: ${GLITCHTIP_URL:-http://host.docker.internal:8005}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/sci_latex_db?schema=public}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-sci_latex_db}
+      PGBOUNCER_HOST: ${PGBOUNCER_HOST:-pgbouncer}
+      PGBOUNCER_PORT: ${PGBOUNCER_PORT:-6543}
     volumes:
       - ./ai-service:/app
       - /app/.venv
@@ -133,10 +144,10 @@ services:
       MINIO_BUCKET: collab-assets
       COMPILER_URL: http://compiler:4000
       AI_SERVICE_URL: http://ai-service:8000
-      PROMETHEUS_URL: http://host.docker.internal:9090
-      LOKI_URL: http://host.docker.internal:3100
-      OPIK_URL: http://host.docker.internal:8081
-      GLITCHTIP_URL: http://host.docker.internal:8005
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://host.docker.internal:9090}
+      LOKI_URL: ${LOKI_URL:-http://host.docker.internal:3100}
+      OPIK_URL: ${OPIK_URL:-http://host.docker.internal:8081}
+      GLITCHTIP_URL: ${GLITCHTIP_URL:-http://host.docker.internal:8005}
       INTERNAL_SERVICE_KEY: scia-internal-secret-change-in-production
       PORT: 3333
       HOST: "::"
