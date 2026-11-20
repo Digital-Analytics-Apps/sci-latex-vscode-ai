@@ -147,7 +147,7 @@ export function IdeNavbar({
             >
               <path
                 d="M10 50C10 27.9086 27.9086 10 50 10C72.0914 10 90 27.9086 90 50C90 72.0914 72.0914 90 50 90C27.9086 90 10 72.0914 10 50Z"
-                fill="var(--primary-main, #098842)"
+                fill="var(--mui-palette-primary-main)"
               />
               <path
                 d="M32 68C32 68 44 65 52 53C60 41 68 28 68 28C68 28 54 36 44 46C34 56 32 68 32 68Z"
@@ -398,7 +398,7 @@ export function IdeNavbar({
             )}
             {saveStatus === 'synced' && (
               <>
-                <Check size={12} style={{ color: 'var(--primary-main, #098842)' }} />
+                <Check size={12} style={{ color: 'var(--mui-palette-primary-main)' }} />
                 <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
                   Salvo
                 </Typography>

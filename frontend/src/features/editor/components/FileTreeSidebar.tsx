@@ -171,7 +171,7 @@ export function FileTreeSidebar({
   const getFileIcon = (file: ProjectFile) => {
     switch (file.type) {
       case 'tex':
-        return <FileCode size={15} style={{ color: 'var(--primary-main, #098842)' }} />;
+        return <FileCode size={15} style={{ color: 'var(--mui-palette-primary-main)' }} />;
       case 'bib':
         return <BookMarked size={15} style={{ color: '#f59e0b' }} />;
       case 'image':
@@ -179,7 +179,7 @@ export function FileTreeSidebar({
       case 'folder':
         return <Folder size={15} style={{ color: '#eab308' }} />;
       default:
-        return <FileText size={15} style={{ color: 'var(--text-secondary)' }} />;
+        return <FileText size={15} style={{ color: 'var(--mui-palette-text-secondary)' }} />;
     }
   };
 
@@ -404,7 +404,7 @@ export function FileTreeSidebar({
             backgroundColor: 'background.paper',
           }}
         >
-          <ListTree size={14} style={{ color: 'var(--text-secondary)' }} />
+          <ListTree size={14} style={{ color: 'var(--mui-palette-text-secondary)' }} />
           <Typography
             variant="caption"
             sx={{

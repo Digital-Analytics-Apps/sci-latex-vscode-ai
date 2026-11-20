@@ -23,26 +23,25 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
         width: '100%',
       },
       'code, pre, kbd, samp': {
-        fontFamily: 'var(--font-mono)',
+        fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
       },
     },
   },
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: '10px',
-        padding: '8px 18px',
-        boxShadow: 'none',
-        textTransform: 'none',
-        fontWeight: 600,
-        transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': {
-          boxShadow: '0px 4px 12px rgba(37, 99, 235, 0.18)',
-        },
+        borderRadius: 4,
+        padding: '6px 16px',
+        textTransform: 'uppercase',
+        fontWeight: 500,
+        letterSpacing: '0.02857em',
+        transition: 'background-color 250ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1), border-color 250ms cubic-bezier(0.4, 0, 0.2, 1)',
       },
       contained: {
-        fontWeight: 600,
-        boxShadow: '0px 4px 10px rgba(37, 99, 235, 0.15)',
+        boxShadow: '0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12)',
+        '&:hover': {
+          boxShadow: '0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12)',
+        },
       },
     },
   },
@@ -50,46 +49,24 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: {
         backgroundImage: 'none',
-        borderRadius: '16px',
-        boxShadow: '0px 10px 20px -3px rgba(0, 0, 0, 0.04), 0px 4px 6px -2px rgba(0, 0, 0, 0.02)',
-        border: '1px solid var(--border-color)',
-      },
-      outlined: {
-        borderColor: 'var(--border-color)',
+        borderRadius: 4,
       },
     },
   },
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: '16px',
-        boxShadow: '0px 10px 20px -3px rgba(0, 0, 0, 0.04), 0px 4px 6px -2px rgba(0, 0, 0, 0.02)',
-        border: '1px solid var(--border-color)',
-        overflow: 'hidden',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        // O efeito de elevação no hover aplica-se SOMENTE a cartões interativos/clicáveis
-        "&.MuiCard-interactive, &:has(.MuiCardActionArea-root), &[role='button']": {
-          cursor: 'pointer',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0px 20px 27px 0px rgba(0, 0, 0, 0.08)',
-          },
-        },
+        borderRadius: 4,
+        border: '1px solid var(--mui-palette-divider, rgba(0, 0, 0, 0.12))',
+        backgroundImage: 'none',
       },
     },
   },
   MuiChip: {
     styleOverrides: {
       root: {
-        fontWeight: 600,
-        borderRadius: '9999px',
-        height: '24px',
-        fontSize: '0.75rem',
-        padding: '0 4px',
-      },
-      sizeSmall: {
-        height: '20px',
-        fontSize: '0.68rem',
+        fontWeight: 500,
+        borderRadius: 16,
       },
     },
   },
@@ -102,12 +79,7 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
   MuiOutlinedInput: {
     styleOverrides: {
       root: {
-        borderRadius: '10px',
-        fontSize: '0.8125rem',
-        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-        '&.Mui-focused': {
-          boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.15)',
-        },
+        borderRadius: 4,
       },
     },
   },
@@ -115,22 +87,13 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: {
         padding: '12px 16px',
-        fontSize: '0.8125rem',
-        borderBottom: '1px solid var(--border-color)',
+        borderBottom: '1px solid var(--mui-palette-divider, rgba(0, 0, 0, 0.12))',
       },
       head: {
         fontWeight: 600,
         textTransform: 'uppercase',
-        fontSize: '0.7rem',
+        fontSize: '0.75rem',
         letterSpacing: '0.05em',
-        color: 'var(--text-secondary)',
-      },
-    },
-  },
-  MuiDrawer: {
-    styleOverrides: {
-      paper: {
-        borderRight: '1px solid var(--border-color)',
       },
     },
   },
@@ -138,7 +101,7 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: {
         boxShadow: 'none',
-        borderBottom: '1px solid var(--border-color)',
+        borderBottom: '1px solid var(--mui-palette-divider, rgba(0, 0, 0, 0.12))',
       },
     },
   },

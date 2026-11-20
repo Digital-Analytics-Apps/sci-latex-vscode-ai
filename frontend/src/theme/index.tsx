@@ -1,62 +1,67 @@
 import { createTheme, CssBaseline, ThemeProvider } from '@mui/material';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { componentsOverrides } from './components';
-import { getPalette } from './palette';
-import { getSciLatexTokens, tailwindFonts, type ThemePreset } from './tokens';
+import { darkPalette, lightPalette } from './palette';
 import { typography } from './typography';
 
-// Re-export Tokens, Cores e Tipos do SCI-LaTeX
+// Re-export Tokens e Cores oficiais do Material UI
 export * from './tokens';
 
-// Importação das fontes 100% locais (Self-Hosted, sem chamadas externas CDN)
+// Fontes locais instaladas
+import '@fontsource/inter/300.css';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
-import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
-import '@fontsource/jetbrains-mono/600.css';
-import '@fontsource/jetbrains-mono/700.css';
-import '@fontsource/plus-jakarta-sans/400.css';
-import '@fontsource/plus-jakarta-sans/500.css';
-import '@fontsource/plus-jakarta-sans/600.css';
-import '@fontsource/plus-jakarta-sans/700.css';
 
-type ColorMode = 'dark' | 'light';
+export type ColorMode = 'dark' | 'light';
 
 // ============================================================================
-// CONFIGURAÇÃO DO TEMA ATIVO DO PROJETO (Azul Cobalto Único)
+// CRIAÇÃO DO TEMA OFICIAL MUI (Material UI v6 / v5 Canonical Architecture)
+// https://mui.com/material-ui/customization/theming/
+// https://mui.com/material-ui/customization/css-theme-variables/usage/
 // ============================================================================
-export const ACTIVE_THEME_PRESET: ThemePreset = 'blue';
+export const muiTheme = createTheme({
+  cssVariables: {
+    colorSchemeSelector: 'data-mui-color-scheme',
+  },
+  colorSchemes: {
+    light: {
+      palette: lightPalette,
+    },
+    dark: {
+      palette: darkPalette,
+    },
+  },
+  typography,
+  shape: {
+    borderRadius: 4,
+  },
+  components: componentsOverrides,
+});
 
 interface ThemeContextType {
   mode: ColorMode;
-  preset: ThemePreset;
   toggleColorMode: () => void;
   setMode: (mode: ColorMode) => void;
-  setPreset: (preset: ThemePreset) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   mode: 'dark',
-  preset: 'blue',
   toggleColorMode: () => {},
   setMode: () => {},
-  setPreset: () => {},
 });
 
 export const useColorMode = () => useContext(ThemeContext);
 
 export const ThemeContextProvider: React.FC<{
   children: React.ReactNode;
-  defaultPreset?: ThemePreset;
-}> = ({ children, defaultPreset = 'blue' }) => {
+}> = ({ children }) => {
   const [mode, setModeState] = useState<ColorMode>(() => {
     const saved = localStorage.getItem('theme_mode');
     return saved === 'light' || saved === 'dark' ? saved : 'dark';
   });
-
-  const [preset, setPresetState] = useState<ThemePreset>(defaultPreset);
 
   const toggleColorMode = () => {
     setModeState((prev) => {
@@ -71,46 +76,15 @@ export const ThemeContextProvider: React.FC<{
     localStorage.setItem('theme_mode', newMode);
   };
 
-  const setPreset = (newPreset: ThemePreset) => {
-    setPresetState(newPreset);
-    localStorage.setItem('theme_preset', newPreset);
-  };
-
   useEffect(() => {
     const root = document.documentElement;
-    const tokens = getSciLatexTokens(mode, preset);
-
     root.setAttribute('data-theme', mode);
-    root.setAttribute('data-theme-preset', preset);
-    root.style.setProperty('--font-sans', tailwindFonts.sans);
-    root.style.setProperty('--font-mono', tailwindFonts.mono);
-
-    root.style.setProperty('--bg-default', tokens.background.default);
-    root.style.setProperty('--bg-paper', tokens.background.paper);
-    root.style.setProperty('--text-primary', tokens.text.primary);
-    root.style.setProperty('--text-secondary', tokens.text.secondary);
-    root.style.setProperty('--border-color', tokens.border.default);
-    root.style.setProperty('--primary-main', tokens.primary.main);
-    root.style.setProperty('--code-bg', tokens.code.background);
-    root.style.setProperty('--code-fg', tokens.code.foreground);
-  }, [mode, preset]);
-
-  const theme = useMemo(() => {
-    const palette = getPalette(mode, preset);
-    return createTheme({
-      cssVariables: true,
-      palette,
-      typography,
-      shape: {
-        borderRadius: 8,
-      },
-      components: componentsOverrides,
-    });
-  }, [mode, preset]);
+    root.setAttribute('data-mui-color-scheme', mode);
+  }, [mode]);
 
   return (
-    <ThemeContext.Provider value={{ mode, preset, toggleColorMode, setMode, setPreset }}>
-      <ThemeProvider theme={theme}>
+    <ThemeContext.Provider value={{ mode, toggleColorMode, setMode }}>
+      <ThemeProvider theme={muiTheme} defaultMode={mode}>
         <CssBaseline />
         {children}
       </ThemeProvider>

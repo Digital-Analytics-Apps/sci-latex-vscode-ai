@@ -76,7 +76,7 @@ export function HistorySidebar({
         }}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <History size={18} style={{ color: 'var(--primary-main, #098842)' }} />
+          <History size={18} style={{ color: 'var(--mui-palette-primary-main)' }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.88rem' }}>
             Histórico de Versões
           </Typography>

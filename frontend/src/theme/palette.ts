@@ -1,128 +1,147 @@
 import type { PaletteOptions } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
-import { colors, getSciLatexTokens, type ThemePreset } from './tokens';
+import { colors } from './tokens';
 
-export const getPalette = (
-  mode: 'light' | 'dark',
-  preset: ThemePreset = 'blue'
-): PaletteOptions => {
-  const tokens = getSciLatexTokens(mode, preset);
-
-  if (mode === 'dark') {
-    return {
-      mode: 'dark',
-      primary: {
-        main: tokens.primary.main,
-        light: tokens.primary.hover,
-        dark: tokens.primary.active,
-        contrastText: tokens.primary.contrast,
-      },
-      secondary: {
-        main: tokens.secondary.main,
-        light: colors.indigo[300],
-        dark: colors.indigo[600],
-        contrastText: colors.white,
-      },
-      error: {
-        main: tokens.error.main,
-        light: colors.red[300],
-        dark: colors.red[600],
-        contrastText: colors.white,
-      },
-      warning: {
-        main: tokens.warning.main,
-        light: colors.amber[300],
-        dark: colors.amber[600],
-        contrastText: colors.gray[950],
-      },
-      info: {
-        main: tokens.primary.main,
-        light: colors.sky[300],
-        dark: colors.sky[600],
-        contrastText: colors.white,
-      },
-      success: {
-        main: tokens.success.main,
-        light: colors.emerald[300],
-        dark: colors.emerald[600],
-        contrastText: colors.white,
-      },
-      grey: colors.slate,
-      background: {
-        default: tokens.background.default,
-        paper: tokens.background.paper,
-      },
-      text: {
-        primary: tokens.text.primary,
-        secondary: tokens.text.secondary,
-        disabled: tokens.text.disabled,
-      },
-      divider: tokens.border.default,
-      action: {
-        active: tokens.primary.main,
-        hover: alpha(tokens.primary.main, 0.08),
-        selected: alpha(tokens.primary.main, 0.16),
-      },
-    };
-  }
-
-  // Light Mode
-  return {
-    mode: 'light',
-    primary: {
-      main: tokens.primary.main,
-      light: tokens.primary.hover,
-      dark: tokens.primary.active,
-      contrastText: tokens.primary.contrast,
-    },
-    secondary: {
-      main: tokens.secondary.main,
-      light: colors.indigo[500],
-      dark: colors.indigo[700],
-      contrastText: colors.white,
-    },
-    error: {
-      main: tokens.error.main,
-      light: colors.red[500],
-      dark: colors.red[700],
-      contrastText: colors.white,
-    },
-    warning: {
-      main: tokens.warning.main,
-      light: colors.amber[500],
-      dark: colors.amber[700],
-      contrastText: colors.white,
-    },
-    info: {
-      main: tokens.primary.main,
-      light: colors.sky[500],
-      dark: colors.sky[700],
-      contrastText: colors.white,
-    },
-    success: {
-      main: tokens.success.main,
-      light: colors.emerald[500],
-      dark: colors.emerald[700],
-      contrastText: colors.white,
-    },
-    grey: colors.slate,
-    background: {
-      default: tokens.background.default,
-      paper: tokens.background.paper,
-    },
-    text: {
-      primary: tokens.text.primary,
-      secondary: tokens.text.secondary,
-      disabled: tokens.text.disabled,
-    },
-    divider: tokens.border.default,
-    action: {
-      active: tokens.primary.main,
-      hover: alpha(tokens.primary.main, 0.08),
-      selected: alpha(tokens.primary.main, 0.14),
-    },
-  };
+export const lightPalette: PaletteOptions = {
+  mode: 'light',
+  common: {
+    black: colors.black,
+    white: colors.white,
+  },
+  primary: {
+    main: colors.blue[700],
+    light: colors.blue[400],
+    dark: colors.blue[800],
+    contrastText: colors.white,
+  },
+  secondary: {
+    main: colors.purple[500],
+    light: colors.purple[300],
+    dark: colors.purple[700],
+    contrastText: colors.white,
+  },
+  error: {
+    main: colors.red[700],
+    light: colors.red[400],
+    dark: colors.red[800],
+    contrastText: colors.white,
+  },
+  warning: {
+    main: colors.orange[800],
+    light: colors.orange[500],
+    dark: colors.orange[900],
+    contrastText: colors.white,
+  },
+  info: {
+    main: colors.sky[700],
+    light: colors.sky[500],
+    dark: colors.sky[900],
+    contrastText: colors.white,
+  },
+  success: {
+    main: colors.green[800],
+    light: colors.green[500],
+    dark: colors.green[900],
+    contrastText: colors.white,
+  },
+  grey: colors.grey,
+  contrastThreshold: 3,
+  tonalOffset: 0.2,
+  text: {
+    primary: alpha(colors.black, 0.87),
+    secondary: alpha(colors.black, 0.6),
+    disabled: alpha(colors.black, 0.38),
+  },
+  divider: alpha(colors.black, 0.12),
+  background: {
+    paper: colors.background.light,
+    default: colors.background.light,
+  },
+  action: {
+    active: alpha(colors.black, 0.54),
+    hover: alpha(colors.black, 0.04),
+    hoverOpacity: 0.04,
+    selected: alpha(colors.black, 0.08),
+    selectedOpacity: 0.08,
+    disabled: alpha(colors.black, 0.26),
+    disabledBackground: alpha(colors.black, 0.12),
+    disabledOpacity: 0.38,
+    focus: alpha(colors.black, 0.12),
+    focusOpacity: 0.12,
+    activatedOpacity: 0.12,
+  },
 };
 
-export const darkPalette = getPalette('dark', 'blue');
-export const lightPalette = getPalette('light', 'blue');
+export const darkPalette: PaletteOptions = {
+  mode: 'dark',
+  common: {
+    black: colors.black,
+    white: colors.white,
+  },
+  primary: {
+    main: colors.blue[200],
+    light: colors.blue[50],
+    dark: colors.blue[400],
+    contrastText: alpha(colors.black, 0.87),
+  },
+  secondary: {
+    main: colors.purple[200],
+    light: colors.purple[50],
+    dark: colors.purple[400],
+    contrastText: alpha(colors.black, 0.87),
+  },
+  error: {
+    main: colors.red[500],
+    light: colors.red[300],
+    dark: colors.red[700],
+    contrastText: colors.white,
+  },
+  warning: {
+    main: colors.orange[400],
+    light: colors.orange[300],
+    dark: colors.orange[700],
+    contrastText: alpha(colors.black, 0.87),
+  },
+  info: {
+    main: colors.sky[400],
+    light: colors.sky[300],
+    dark: colors.sky[700],
+    contrastText: alpha(colors.black, 0.87),
+  },
+  success: {
+    main: colors.green[400],
+    light: colors.green[300],
+    dark: colors.green[700],
+    contrastText: alpha(colors.black, 0.87),
+  },
+  grey: colors.grey,
+  contrastThreshold: 3,
+  tonalOffset: 0.2,
+  text: {
+    primary: colors.white,
+    secondary: alpha(colors.white, 0.7),
+    disabled: alpha(colors.white, 0.5),
+  },
+  divider: alpha(colors.white, 0.12),
+  background: {
+    paper: colors.background.dark,
+    default: colors.background.dark,
+  },
+  action: {
+    active: colors.white,
+    hover: alpha(colors.white, 0.08),
+    hoverOpacity: 0.08,
+    selected: alpha(colors.white, 0.16),
+    selectedOpacity: 0.16,
+    disabled: alpha(colors.white, 0.3),
+    disabledBackground: alpha(colors.white, 0.12),
+    disabledOpacity: 0.38,
+    focus: alpha(colors.white, 0.12),
+    focusOpacity: 0.12,
+    activatedOpacity: 0.24,
+  },
+};
+
+export const getPalette = (mode: 'light' | 'dark', _preset?: string): PaletteOptions => {
+  return mode === 'dark' ? darkPalette : lightPalette;
+};

@@ -157,7 +157,7 @@ export function ReviewSidebar({
         }}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <MessageSquare size={16} style={{ color: 'var(--primary-main, #098842)' }} />
+          <MessageSquare size={16} style={{ color: 'var(--mui-palette-primary-main)' }} />
           <Typography sx={{ fontSize: '0.86rem', fontWeight: 700, color: 'text.primary' }}>
             Review & Comentários
           </Typography>

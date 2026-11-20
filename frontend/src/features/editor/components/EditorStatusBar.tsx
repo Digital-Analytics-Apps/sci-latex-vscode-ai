@@ -36,7 +36,7 @@ export function EditorStatusBar({ saveStatus, lastSavedAt, activeEditor }: Edito
             fontSize: '0.78rem',
           }}
         >
-          <Code2 size={15} style={{ color: 'var(--primary-main, #098842)' }} />
+          <Code2 size={15} style={{ color: 'var(--mui-palette-primary-main)' }} />
           <Typography component="span" sx={{ fontSize: '0.78rem', fontWeight: 600 }}>
             LaTeX (sTeX)
           </Typography>

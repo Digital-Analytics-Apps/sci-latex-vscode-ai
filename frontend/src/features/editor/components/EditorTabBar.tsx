@@ -32,11 +32,11 @@ export function EditorTabBar({
   const getTabIcon = (type: string) => {
     switch (type) {
       case 'tex':
-        return <FileCode size={14} style={{ color: 'var(--primary-main)' }} />;
+        return <FileCode size={14} style={{ color: 'var(--mui-palette-primary-main)' }} />;
       case 'bib':
         return <BookMarked size={14} style={{ color: '#f59e0b' }} />;
       default:
-        return <FileText size={14} style={{ color: 'var(--text-secondary)' }} />;
+        return <FileText size={14} style={{ color: 'var(--mui-palette-text-secondary)' }} />;
     }
   };
 
@@ -171,7 +171,7 @@ export function EditorTabBar({
           </>
         ) : (
           <>
-            <CheckCircle2 size={12} style={{ color: 'var(--primary-main, #098842)' }} />
+            <CheckCircle2 size={12} style={{ color: 'var(--mui-palette-primary-main)' }} />
             <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
               {lastSavedAt ? `Salvo às ${lastSavedAt}` : 'Sincronizado'}
             </Typography>

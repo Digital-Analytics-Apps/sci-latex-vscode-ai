@@ -37,7 +37,7 @@ export const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({
     >
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-          <Typography variant="h2" component="h1" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             {displayTitle}
           </Typography>
           {chipLabel && (

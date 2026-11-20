@@ -137,7 +137,7 @@ export function EditorDiffViewer({
         }}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <GitCompare size={20} style={{ color: 'var(--primary-main, #098842)' }} />
+          <GitCompare size={20} style={{ color: 'var(--mui-palette-primary-main)' }} />
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.92rem' }}>
