@@ -1,6 +1,6 @@
 # 📊 Stack de Observabilidade On-Premise Licença Zero (ADR-013)
 
-Esta pasta contém toda a infraestrutura necessária para monitoramento, métricas, logs, traces distribuídos, LLMOps e monitoramento de erros da **Plataforma SCIA**, em estrita conformidade com a **ADR-013** e a especificação técnica [`observability-spec.md`](../../docs/planning/specs/observability-spec.md).
+Esta pasta contém toda a infraestrutura necessária para monitoramento, métricas, logs, traces distribuídos, LLMOps e monitoramento de erros da **Plataforma SCIA**, em estrita conformidade com a **ADR-013** e a especificação técnica [`observability-spec.md`](../../docs/specs/observability-spec.md).
 
 ---
 

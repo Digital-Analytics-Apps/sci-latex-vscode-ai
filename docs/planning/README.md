@@ -1,6 +1,7 @@
-# 📚 Central de Planejamento & Documentação (`docs/planning`)
+# 📚 Central de Planejamento & Gestão (`docs/planning`)
 
-Bem-vindo à Central de Documentação e Planejamento do **SCIA — Scientific Collaboration and Intelligent Assistance**. Este diretório é a fonte única de verdade sobre arquitetura, requisitos de produto, status atual de desenvolvimento, regras de trabalho e histórico do projeto.
+Bem-vindo à Central de Gestão e Planejamento do **SCIA — Scientific Collaboration and Intelligent Assistance**.  
+Este diretório é a fonte única de verdade sobre status de desenvolvimento, checkpoints de sessão, roadmap, regras de trabalho e histórico do projeto.
 
 ---
 
@@ -10,51 +11,40 @@ Se você está procurando entender o projeto ou retomar uma tarefa, utilize os a
 
 | Pergunta / Necessidade | Documento Principal | Descrição |
 | :--- | :--- | :--- |
-| **"Onde parei e como retomar o trabalho?"** | 📌 [`STATUS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/STATUS.md) | **Ponto de Retomada.** Exibe o estado atual da aplicação, última task feita e próximos passos imediatos. |
-| **"Qual é o nosso PRD e visão de produto?"** | 📄 [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/PRD.md) | Visão geral do produto, personas, a régua das 6 etapas fixas e decisões de alto nível. |
-| **"Quais os requisitos técnicos e de engenharia?"** | ⚙️ [`TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md) | **Documento de Requisitos Técnicos.** CodeMirror 6, OT, PostgreSQL, MinIO, SciAI, APIs e SLOs. |
-| **"Quais são todos os fluxos e jornadas do app?"** | 🔄 [`APP_FLOWS.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/APP_FLOWS.md) | **Documento de Fluxos da Aplicação.** Jornadas, telas, estados, modais e gatekeepers. |
-| **"O que já foi feito e quais as próximas tarefas?"** | 🗺️ [`ROADMAP.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/ROADMAP.md) | Checklist mestre de entregas consolidadas e frentes ativas. |
-| **"Qual é a especificação do nosso Banco de Dados?"** | 🗄️ [`DATABASE.md`](../DATABASE.md) | **Especificação Técnica do Banco de Dados.** ERD, Dicionário de Dados, enums, cascading, Prisma e Redis. |
-| **"Como defender o Banco de Dados para Especialistas?"** | 🛡️ [`FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md`](../FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md) | **Guia de Defesa & FAQ para DBAs.** Capacidade, PgBouncer, HA, Read Replicas e Fencing Tokens. |
-| **"Quais são os padrões do nosso Design System?"** | 🎨 [`DESIGN_SYSTEM.md`](../DESIGN_SYSTEM.md) | **SCIA Design System.** Tokens, cores (Light/Dark), tipografia, componentes e regras de UX. |
-| **"Como os serviços comunicam-se e qual a segurança?"** | 🔒 [`RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md`](../RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md) | **Relatório & Planejamento de Comunicação Inter-Serviços.** Diagnóstico M2M, Compiler, MinIO e plano de hardening. |
-| **"Qual é o nosso Plano de Implementação Técnico?"** | 📋 [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) | **Plano Mestre de Implementação.** Frentes de trabalho, marcos (M1 a M6), riscos, dependências e DoD. |
+| **"Onde parei e como retomar o trabalho?"** | 📌 [`STATUS.md`](STATUS.md) | **Ponto de Retomada.** Exibe o estado atual da aplicação, última task feita e próximos passos imediatos. |
+| **"Qual é o nosso PRD e visão de produto?"** | 📄 [`PRD.md`](../product/PRD.md) | Visão geral do produto, personas, a régua das 6 etapas fixas e decisões de alto nível. |
+| **"Quais os requisitos técnicos e de engenharia?"** | ⚙️ [`TRD.md`](../specs/TRD.md) | **Documento de Requisitos Técnicos.** CodeMirror 6, OT, PostgreSQL, MinIO, SciAI, APIs e SLOs. |
+| **"Quais são todos os fluxos e jornadas do app?"** | 🔄 [`APP_FLOWS.md`](../product/APP_FLOWS.md) | **Documento de Fluxos da Aplicação.** Jornadas, telas, estados, modais e gatekeepers. |
+| **"O que já foi feito e quais as próximas tarefas?"** | 🗺️ [`ROADMAP.md`](ROADMAP.md) | Checklist mestre de entregas consolidadas e frentes ativas. |
+| **"Qual é o nosso Plano de Implementação Técnico?"** | 📋 [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | **Plano Mestre de Implementação.** Frentes de trabalho, marcos (M1 a M6), riscos e DoD. |
+| **"Qual é a especificação do nosso Banco de Dados?"** | 🗄️ [`DATABASE.md`](../architecture/database/DATABASE.md) | **Especificação Técnica do Banco de Dados.** ERD, Dicionário de Dados, enums e Prisma. |
+| **"Como defender o Banco de Dados para Especialistas?"** | 🛡️ [`FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md`](../architecture/database/FAQ_BANCO_DE_DADOS_ESPECIALISTAS.md) | **Guia de Defesa & FAQ para DBAs.** Capacidade, PgBouncer, HA e Fencing Tokens. |
+| **"Quais são os padrões do nosso Design System?"** | 🎨 [`DESIGN_SYSTEM.md`](../specs/design-system/DESIGN_SYSTEM.md) | **SCIA Design System.** Tokens, cores (Light/Dark), tipografia e componentes. |
+| **"Como os serviços comunicam-se e qual a segurança?"** | 🔒 [`RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md`](../architecture/topology/RELATORIO_COMUNICACAO_INTER_SERVICOS_E_SEGURANCA.md) | **Relatório de Comunicação Inter-Serviços.** Diagnóstico M2M, Compiler, MinIO e segurança. |
 
 ---
 
-## 🗂️ Estrutura Organizada do Diretório
+## 🗂️ Estrutura do Diretório de Planejamento
 
-```
+```text
 docs/planning/
-├── README.md                   <-- Hub Central de Navegação (Este Arquivo)
-├── STATUS.md                   <-- Estado Atual & Checkpoint de Retomada
-├── PRD.md                      <-- Documento de Requisitos de Produto
-├── TRD.md                      <-- Documento de Requisitos Técnicos
-├── APP_FLOWS.md                <-- Documento de Fluxos da Aplicação & Jornadas
+├── README.md                   <-- Hub de Planejamento e Gestão (Este Arquivo)
+├── STATUS.md                   <-- Estado Atual & Checkpoint de Retomada Obrigatório
 ├── ROADMAP.md                  <-- Roadmap Mestre Consolidado
+├── IMPLEMENTATION_PLAN.md      <-- Plano Mestre de Implementação (Fases I a VI)
+├── PLAN_FRONTEND_EDITORIAL_DESIGN.md <-- Plano de Evolução do Frontend
 │
-├── specs/                      <-- 📐 Especificações Técnicas e de Arquitetura
-│   ├── reviewer-view-spec.md   (Especificação Técnica da Interface do Revisor)
-│   ├── sciai-contracts-spec.md (Contratos de API, Máquina de Estados e Eventos SciAI)
-│   └── sciai-chat-copilot-spec.md (Chat Copilot & Onboarding Multi-Agente)
-│
-├── adrs/                       <-- 🧠 Architecture Decision Records (ADRs)
-│   ├── adr-007-collaborative-editor-architecture-scaling.md (Arquitetura, Persistência e Escalabilidade do Editor)
-│   ├── adr-007.1-document-ownership-fencing-and-routing.md (Roteamento de Posse e Fencing Tokens contra Split-Brain)
-│   ├── adr-008-workflow-6-etapas-revisao-desacoplamento-git.md (Workflow Oficial em 6 Etapas Fixas e Desacoplamento Git)
-│   ├── adr-009-sciai-api-first-experimentation-and-service-enablement.md (Experimentação Headless via API e Habilitação do SciAI)
-│   ├── adr-010-review-comment-persistence-and-db-alignment.md (Persistência Durável de ReviewComment e Alinhamento do Schema)
-│   ├── adr-011-task-evidences-storage-architecture.md (Upload Direto de Evidências ao MinIO com URLs Pré-Assinadas)
-│   ├── adr-012-m2m-security-evolution.md (Evolução da Segurança M2M entre Backend e SciAI Service)
-│   ├── adr-013-observabilidade-on-premise-licenca-zero.md (Arquitetura de Observabilidade On-Premise Licença Zero)
-│   ├── adr-014-painel-admin-saude-e-metricas-aplicacao.md (Painel Administrativo de Saúde e Métricas de Aplicação)
-│   └── adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md (Escalabilidade Relacional, CloudNativePG, PgBouncer e Read Replicas no PostgreSQL)
-
-│
+├── discussions/                <-- 💬 Rascunhos e Debates Preliminares (discursoes.md)
+├── reports/                    <-- 📑 Relatórios de Evolução e Histórico
 └── backlog/                    <-- 💡 Análises Pendentes e Ideias Futuras
     └── ideas/                  (Ideias para evolução de Frontend e UX)
 ```
+
+> [!NOTE]
+> **Onde encontrar os demais documentos estruturantes (sem duplicações):**
+> * O **PRD** e **APP_FLOWS** estão na pasta de produto: [`docs/product/`](../product/).
+> * As **ADRs (001 a 019)** estão na pasta de arquitetura: [`docs/architecture/adrs/`](../architecture/adrs/).
+> * As **especificações técnicas de engenharia** e o **TRD** estão em: [`docs/specs/`](../specs/).
 
 ---
 
@@ -62,5 +52,5 @@ docs/planning/
 
 1. **Ao Concluir ou Alterar Funcionalidades:**
    * Atualize a seção *Onde Parei & Como Retomar* em [`STATUS.md`](STATUS.md).
-   * Atualize os requisitos correspondentes em [`TRD.md`](TRD.md), [`DATABASE.md`](../DATABASE.md) e specs ativas.
+   * Atualize os requisitos correspondentes em [`../specs/TRD.md`](../specs/TRD.md), [`../architecture/database/DATABASE.md`](../architecture/database/DATABASE.md) e specs ativas em [`../specs/`](../specs/).
    * Marque a entrega como concluída `[x]` no [`ROADMAP.md`](ROADMAP.md).

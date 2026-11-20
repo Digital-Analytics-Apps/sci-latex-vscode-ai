@@ -120,7 +120,7 @@ Além do fluxo científico acadêmico, o `ai-service` hospeda o **AIOps Copilot*
 - **SRE Supervisor Agent (`sre_supervisor.py`):** Triagem de incidentes, correlação cross-telemetria e síntese de laudos de RCA padronizados.
 - **Especialistas de Ferramentas (Tool Calling nativo, sem regex):**
   - **K8s & Container Specialist (`specialists/k8s_specialist.py`):** Inspeciona pods, nós, exit codes (OOMKilled 137, CrashLoopBackOff), KinD e Docker Compose fallback.
-  - **PostgreSQL 16 & PgBouncer Specialist (`specialists/postgres_specialist.py`):** Monitora pools na porta 6543 (`cl_waiting == 0`), cache hit ratio (>99%), queries lentas (>2s) e travas (`pg_locks`) conforme a [ADR-015](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/planning/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md).
+  - **PostgreSQL 16 & PgBouncer Specialist (`specialists/postgres_specialist.py`):** Monitora pools na porta 6543 (`cl_waiting == 0`), cache hit ratio (>99%), queries lentas (>2s) e travas (`pg_locks`) conforme a [ADR-015](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md).
 - **Ferramentas MCP Read-Only (`app/agents/aiops/tools/`):**
   - `postgres_inspect_health`, `postgres_check_slow_queries_and_locks`, `pgbouncer_inspect_pools`.
   - `k8s_inspect_environment`, `k8s_get_node_status`.

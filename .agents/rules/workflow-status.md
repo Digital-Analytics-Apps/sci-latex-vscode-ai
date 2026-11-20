@@ -9,9 +9,9 @@ Before writing code or forming a plan:
 
 ## 2. Dynamic Specs Maintenance
 If your implementation introduces or modifies:
-- REST API routes or schemas -> Update [`docs/planning/specs/backend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/backend-specs.md) or [`docs/planning/specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md).
-- Database tables or fields (`schema.prisma`) -> Update [`docs/planning/specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/system-specs.md).
-- Frontend UI components, state management, or services -> Update [`docs/planning/specs/frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/frontend-specs.md).
+- REST API routes or schemas -> Update [`docs/specs/backend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/specs/backend-specs.md) or [`docs/specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/specs/system-specs.md).
+- Database tables or fields (`schema.prisma`) -> Update [`docs/specs/system-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/specs/system-specs.md).
+- Frontend UI components, state management, or services -> Update [`docs/specs/frontend-specs.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/specs/frontend-specs.md).
 
 ## 3. Workspace Ownership, Sequential Locks & Occupation Rules
 - **Single Integrated View (Gantt Timeline):** The Author detail view is unified under [`GanttTimelineView`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttTimelineView.tsx). The sidebar [`GanttTableTree`](file:///home/gilson-russo/development/professional/sci-latex-vscode/frontend/src/features/author/components/gantt/GanttTableTree.tsx) serves as the primary workspace launchpad.

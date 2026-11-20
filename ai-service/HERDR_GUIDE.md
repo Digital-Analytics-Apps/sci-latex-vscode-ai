@@ -1,1 +1,1 @@
-../docs/GUIA_COMPLETO_HERDR.md
+../docs/guides/aiops/GUIA_COMPLETO_HERDR.md

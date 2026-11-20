@@ -99,7 +99,7 @@
 ## 🟡 Fase 7: Painel Unificado de Gestão da Produção Científica (`Role.MANAGER` / `Role.COORDINATOR`)
 
 - [x] **7.1 Diretrizes e Modelo de Governança por Escopo**
-  - Formalizado em [`docs/DIRETRIZES_GESTAO_PRODUCAO_CIENTIFICA_SCIA.md`](../DIRETRIZES_GESTAO_PRODUCAO_CIENTIFICA_SCIA.md) o modelo de visualização única compartilhada para Gerente e Coordenador, com filtro estrito de artigos/subordinados sob responsabilidade, Kanban como visualização pura (Read-Only) e isolamento do Admin técnico.
+  - Formalizado em [`docs/product/guidelines/DIRETRIZES_GESTAO_PRODUCAO_CIENTIFICA_SCIA.md`](../product/guidelines/DIRETRIZES_GESTAO_PRODUCAO_CIENTIFICA_SCIA.md) o modelo de visualização única compartilhada para Gerente e Coordenador, com filtro estrito de artigos/subordinados sob responsabilidade, Kanban como visualização pura (Read-Only) e isolamento do Admin técnico.
 - [ ] **7.2 Portfólio Científico com Semáforos de Risco**
   - Tabela e cards de artigos com indicadores de No Prazo, Em Atenção, Atrasado (>15 dias de estagnação) e Bloqueado no NIT.
 - [ ] **7.3 Visualizador Kanban Read-Only de Tarefas da Etapa 3**
@@ -112,8 +112,8 @@
 ## 🟡 Fase 8: Observabilidade On-Premise Licença Zero & LLMOps (ADR-013)
 
 - [x] **8.1 Arquitetura & Especificação Técnica da Stack On-Premise (ADR-013 & Spec)**
-  - Formalização da stack livre (Prometheus, Loki, Tempo, OpenTelemetry, Opik e GlitchTip) em `docs/planning/adrs/adr-013-observabilidade-on-premise-licenca-zero.md` e `docs/planning/specs/observability-spec.md`.
-  - Elaboração do tutorial prático e didático de operação das 5 camadas em `docs/TUTORIAL_OBSERVABILIDADE_ON_PREMISE.md`.
+  - Formalização da stack livre (Prometheus, Loki, Tempo, OpenTelemetry, Opik e GlitchTip) em `docs/architecture/adrs/adr-013-observabilidade-on-premise-licenca-zero.md` e `docs/planning/specs/observability-spec.md`.
+  - Elaboração do tutorial prático e didático de operação das 5 camadas em [`docs/guides/observability/guia-observabilidade.md`](../guides/observability/guia-observabilidade.md).
 - [ ] **8.2 Infraestrutura On-Premise em Docker & Kubernetes**
   - Configuração do compose `infra/observability/docker-compose.observability.yml` com Grafana, Prometheus, Loki, Tempo, Opik e GlitchTip.
 - [ ] **8.3 Instrumentação de Métricas no Backend e AI Service**
@@ -128,7 +128,7 @@
 ## 🟢 Fase 9: SCIA Admin Center — Observabilidade, Operação e Governança Científica (`Role.ADMIN` - ADR-014)
 
 - [x] **9.1 Decisão Arquitetural e Especificação Técnica (ADR-014 & Spec)**
-  - Formalização do **SCIA Admin Center** com as 5 áreas especializadas (Visão Geral, Fluxo Científico das 6 Etapas, Infraestrutura, Colaboração em Tempo Real e Atividade/Auditoria) em `docs/planning/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md` e `docs/planning/specs/system-admin-health-dashboard-spec.md`.
+  - Formalização do **SCIA Admin Center** com as 5 áreas especializadas (Visão Geral, Fluxo Científico das 6 Etapas, Infraestrutura, Colaboração em Tempo Real e Atividade/Auditoria) em `docs/architecture/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md` e `docs/planning/specs/system-admin-health-dashboard-spec.md`.
 - [x] **9.2 Backend BFF & Rotas REST + Streaming SSE (`/api/v1/admin/dashboard/*`)**
   - Implementação do módulo `backend/src/modules/admin/` com agregação do PostgreSQL, leases do Redis, métricas Prometheus/Opik e canal Server-Sent Events (`/events`).
 - [x] **9.3 Frontend React do SCIA Admin Center (`/admin`)**
@@ -141,7 +141,7 @@
 ## 🟢 Fase 10: SCIA Literature Intelligence — Ficha Científica e Mapa Mental com React Flow (ADR-016)
 
 - [x] **10.1 Decisão Arquitetural e Especificação Técnica (ADR-016 & Spec)**
-  - Formalização da arquitetura em [`docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md) e especificação em [`docs/planning/specs/literature-intelligence-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/literature-intelligence-spec.md).
+  - Formalização da arquitetura em [`docs/architecture/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-016-scia-literature-intelligence-paper-analysis-and-react-flow.md) e especificação em [`docs/planning/specs/literature-intelligence-spec.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/specs/literature-intelligence-spec.md).
   - Homologação corporativa da biblioteca `@xyflow/react` sob licença MIT livre e sem royalties para uso comercial.
 - [x] **10.2 Skill Acadêmica e Subagente `methodology-reviewer` no `ai-service`**
   - Importação da skill `scientific-article-analysis` (6 etapas de auditoria metodológica).
@@ -160,7 +160,7 @@
 ## 🟢 Fase 11: Governança de Templates LaTeX Oficiais, MinIO & Bootstrap Mínimo (ADR-017)
 
 - [x] **11.1 Decisão Arquitetural Aprovada (ADR-017)**
-  - Formalização de governança para templates de conferências e periódicos científicos em [`docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md).
+  - Formalização de governança para templates de conferências e periódicos científicos em [`docs/architecture/adrs/adr-017-latex-templates-governance-and-storage-architecture.md`](adrs/adr-017-latex-templates-governance-and-storage-architecture.md).
   - Regra de ouro: preservação incondicional dos nomes de arquivos originais (`.cls`, `.sty`, `.bst`, `.tex` raiz sem forçar `main.tex`).
   - Padrão semântico de slugs e paths no MinIO: `[ANO]-[CONGRESSO]-[FORMATO]` (ex: `2026-sbc-artigo`, `2027-ieee-conference`).
   - Política de repositório leve: apenas 1 baseline seed essencial em `latex-templates/` para subir a aplicação pronta para uso, deixando a expansão para uploads pós-deploy pelos pesquisadores.
@@ -178,7 +178,7 @@
 ## 🟢 Fase 12: AIOps Copilot, Servidores MCP e Diagnóstico de Causa-Raiz (ADR-018)
 
 - [x] **12.1 Decisão Arquitetural e Especificação Técnica (ADR-018 & Spec)**
-  - Formalização do ecossistema AIOps em [`docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md`](adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md) e especificação técnica em [`docs/planning/specs/aiops-copilot-implementation-plan.md`](specs/aiops-copilot-implementation-plan.md).
+  - Formalização do ecossistema AIOps em [`docs/architecture/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md`](adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md) e especificação técnica em [`docs/planning/specs/aiops-copilot-implementation-plan.md`](specs/aiops-copilot-implementation-plan.md).
 - [x] **12.2 Modelagem de Dados no Prisma e PostgreSQL (`Aiops*`)**
   - Criação das entidades `AiopsIncident`, `AiopsRcaReport`, `AiopsChatMessage` e `AiopsActionAuditLedger` no `backend/prisma/schema.prisma` com migração aplicada no PostgreSQL.
 - [x] **12.3 MCP Gateway Service (`backend/src/infra/mcp/`)**
@@ -196,7 +196,7 @@
 ## 🟢 Fase 13: Topologia de Microsserviços e Comunicação em Tempo Real no Admin Center (ADR-019)
 
 - [x] **13.1 Decisão Arquitetural e Especificação Técnica (ADR-019 & Spec)**
-  - Formalização da arquitetura em [`docs/planning/adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md`](adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md) e especificação técnica em [`docs/planning/specs/service-topology-visualizer-spec.md`](specs/service-topology-visualizer-spec.md).
+  - Formalização da arquitetura em [`docs/architecture/adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md`](adrs/adr-019-service-topology-visualizer-real-time-inter-service-telemetry-react-flow.md) e especificação técnica em [`docs/planning/specs/service-topology-visualizer-spec.md`](specs/service-topology-visualizer-spec.md).
 - [x] **13.2 Barramento de Telemetria Inter-Serviços no Backend (`telemetryBus`)**
   - Implementação de `backend/src/infra/telemetry-bus.ts` com transmissão via SSE em `/api/v1/admin/dashboard/events`.
   - Instrumentação real de compilação TeX Live e chat com Agente Belisa.

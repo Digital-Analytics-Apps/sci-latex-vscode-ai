@@ -31,7 +31,7 @@ sci-latex-vscode/
 | **AI Service** | `8000` | Motor de IA Acadêmica e AIOps Copilot de SRE (FastAPI) |
 | **Compiler Worker** | `4000` | Worker isolado de compilação TeXLive para PDF |
 | **PostgreSQL 16** | `5432` | Banco relacional primário (`sci_latex_db` e `sci_aiops_db`) |
-| **PgBouncer** | `6543` | Pooler de conexões em *Transaction Pooling* ([ADR-015](docs/planning/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md)) |
+| **PgBouncer** | `6543` | Pooler de conexões em *Transaction Pooling* ([ADR-015](docs/architecture/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md)) |
 | **Redis** | `6379` | Leases de documentos, presença de usuários e cache |
 | **MinIO S3** | `9000 / 9001` | Object Storage para PDFs compilados, templates e evidências |
 | **Grafana** | `3001` | Dashboards operacionais pré-configurados |
@@ -102,12 +102,12 @@ Consulte o [Guia de Perguntas Operacionais do AIOps Copilot](docs/GUIA_PERGUNTAS
 ## 📖 Arquitetura e Decisões de Engenharia (ADRs)
 
 Para entender os fundamentos de design e as garantias de conformidade do sistema:
-- [ADR-018: AIOps Copilot no Admin Center com MCP, Agentes Especialistas e Governança HITL](docs/planning/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md)
-- [ADR-015: Persistência Relacional, CloudNativePG, PgBouncer (:6543) e Réplicas no PostgreSQL 16](docs/planning/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md)
-- [ADR-014: SCIA Admin Center — Painel Administrativo de Observabilidade e Governança](docs/planning/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md)
-- [ADR-013: Observabilidade On-Premise Licença Zero (Prometheus, Loki, Tempo, Alloy, Opik, GlitchTip)](docs/planning/adrs/adr-013-observabilidade-on-premise-licenca-zero.md)
-- [ADR-012: Evolução de Segurança M2M com JWT e Menor Privilégio](docs/planning/adrs/adr-012-m2m-security-evolution.md)
-- [ADR-017: Governança de Templates LaTeX Oficiais e Storage Architecture](docs/planning/adrs/adr-017-latex-templates-governance-and-storage-architecture.md)
+- [ADR-018: AIOps Copilot no Admin Center com MCP, Agentes Especialistas e Governança HITL](docs/architecture/adrs/adr-018-aiops-copilot-mcp-root-cause-analysis-admin-center.md)
+- [ADR-015: Persistência Relacional, CloudNativePG, PgBouncer (:6543) e Réplicas no PostgreSQL 16](docs/architecture/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md)
+- [ADR-014: SCIA Admin Center — Painel Administrativo de Observabilidade e Governança](docs/architecture/adrs/adr-014-painel-admin-saude-e-metricas-aplicacao.md)
+- [ADR-013: Observabilidade On-Premise Licença Zero (Prometheus, Loki, Tempo, Alloy, Opik, GlitchTip)](docs/architecture/adrs/adr-013-observabilidade-on-premise-licenca-zero.md)
+- [ADR-012: Evolução de Segurança M2M com JWT e Menor Privilégio](docs/architecture/adrs/adr-012-m2m-security-evolution.md)
+- [ADR-017: Governança de Templates LaTeX Oficiais e Storage Architecture](docs/architecture/adrs/adr-017-latex-templates-governance-and-storage-architecture.md)
 
 ### Documentação de Módulos:
 - [Documentação do AI Service](ai-service/README.md)
