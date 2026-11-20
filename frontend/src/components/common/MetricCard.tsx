@@ -65,32 +65,45 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       sx={{
         height: '100%',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
-        '&:hover': onClick
-          ? {
-              transform: 'translateY(-2px)',
-              boxShadow: 2,
-            }
-          : undefined,
+        borderRadius: 2,
+        transition:
+          'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease',
+        '&:hover': {
+          borderColor: 'primary.main',
+          transform: onClick ? 'translateY(-3px)' : 'translateY(-1px)',
+          boxShadow: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '0 8px 24px rgba(0, 0, 0, 0.35)'
+              : '0 8px 24px rgba(0, 0, 0, 0.06)',
+        },
         ...sx,
       }}
       onClick={onClick}
       {...restCardProps}
     >
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {icon}
-          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             {title}
           </Typography>
+          {icon && <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.85 }}>{icon}</Box>}
         </Box>
 
-        <Typography variant="h3" sx={{ fontWeight: 800, color }}>
+        <Typography
+          variant="h3"
+          sx={{
+            fontWeight: 700,
+            fontFamily: '"JetBrains Mono", monospace',
+            letterSpacing: '-0.02em',
+            color,
+            my: 0.5,
+          }}
+        >
           {isLoading ? <CircularProgress size={28} /> : value}
         </Typography>
 
         {subtitle && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             {subtitle}
           </Typography>
         )}

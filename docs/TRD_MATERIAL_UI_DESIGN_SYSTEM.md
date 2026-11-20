@@ -2,7 +2,7 @@
 ## Material UI (MUI) Design System & Theming Architecture
 
 - **Documento**: TRD-MUI-THEME-001
-- **Status**: Aprovado & Implementado
+- **Status**: Fase 1 Concluída | Fase 2 (Evolução Estética Editorial) em Planejamento
 - **Autor**: Antigravity (com aprovação do Líder Técnico)
 - **Data**: 20 de Novembro de 2026
 - **Alvo**: `frontend/src/theme/` e componentes da aplicação
@@ -180,9 +180,41 @@ export const typography: TypographyVariantsOptions = {
 
 ---
 
-### 6. Resultados e Verificação
+### 6. Resultados e Verificação da Fase 1
 
 - **Eliminação de Bundle Desnecessário**: Removidos mais de 450 linhas de tokens de Tailwind não utilizados e o arquivo órfão `App.css`.
 - **Validação TypeScript**: `tsc -b` executado com **0 erros**.
 - **Testes Unitários**: 12/12 testes do Vitest aprovados com **100% de sucesso**.
 - **Build de Produção**: `vite build` gerando os artefatos com sucesso em tempo recorde.
+
+---
+
+### 7. Fase 2: Evolução Estética Editorial & Workstation Científica (Frontend-Design)
+
+Seguindo as diretrizes de design distintivo da skill `frontend-design`, o design system do SCIA evolui para superar a estética de "dashboard corporativo genérico" (AI Slop) e se consolidar como uma **Workstation Científica de Alta Precisão (Editorial & Academic Workstation)**.
+
+#### 7.1. Vetores de Evolução Estética
+
+| Dimensão | Estado Atual (Fase 1) | Estado Alvo (Fase 2) | Benefício de Experiência |
+| :--- | :--- | :--- | :--- |
+| **Tipografia Principal** | Roboto / Helvetica genérico | **Plus Jakarta Sans** (já presente nas dependências) | Tipografia limpa, geométrica, com alta legibilidade em densidade |
+| **Tipografia Técnica / LaTeX** | Monospace de sistema | **JetBrains Mono** (já instalado via `@fontsource`) | Precisão visual em blocos de código LaTeX, equações e métricas |
+| **Paleta de Identidade** | Azul Material UI padrão (`#1976d2`) | **Scholarly Slate & Deep Emerald** / Indigo de Alta Precisão | Identidade proprietária inconfundível para plataforma de pesquisa |
+| **Dark Mode Depth** | `#121212` neutro e plano | **Obsidian & Deep Slate** (`#0B0F17` / `#0E131F`) com bordas luminescentes sutis | Atmosfera imersiva de bancada de trabalho de pesquisa noturna |
+| **Composição de Espaço** | Cards retangulares uniformes | **Bento Grid Científico** (Artigo em destaque + KPIs assimétricos) | Hierarquia focada: o pesquisador vê imediatamente o que importa |
+| **Movimento e Micro-interações** | Quase estático (`translateY` pontual) | **Staggered reveal** e indicadores de sincronização vivos (`framer-motion`) | Sensação de software vivo, rápido e de alta qualidade |
+
+#### 7.2. Arquitetura de Tipografia Fase 2
+```typescript
+// frontend/src/theme/typography.ts
+export const typography: TypographyVariantsOptions = {
+  fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  // Tokens de código e LaTeX
+  // JetBrains Mono aplicado via classe ou componente especializado
+};
+```
+
+#### 7.3. Superfícies e Profundidade (Layering)
+- Cartões com bordas sutis translúcidas em Dark Mode: `border: '1px solid rgba(255, 255, 255, 0.08)'`.
+- Suave gradiente de luz ambiente nas páginas principais para criar profundidade em vez de fundo chapado.
+- Feedback tátil em elementos clicáveis com `framer-motion` e transições padrão de 150-200ms.

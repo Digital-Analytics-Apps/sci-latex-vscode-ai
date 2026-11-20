@@ -9,15 +9,15 @@ export const lightPalette: PaletteOptions = {
     white: colors.white,
   },
   primary: {
-    main: colors.blue[700],
-    light: colors.blue[400],
-    dark: colors.blue[800],
+    main: colors.indigo[600],
+    light: colors.indigo[400],
+    dark: colors.indigo[800],
     contrastText: colors.white,
   },
   secondary: {
-    main: colors.purple[500],
-    light: colors.purple[300],
-    dark: colors.purple[700],
+    main: colors.cyan[700],
+    light: colors.cyan[500],
+    dark: colors.cyan[900],
     contrastText: colors.white,
   },
   error: {
@@ -52,9 +52,9 @@ export const lightPalette: PaletteOptions = {
     secondary: alpha(colors.black, 0.6),
     disabled: alpha(colors.black, 0.38),
   },
-  divider: alpha(colors.black, 0.12),
+  divider: alpha(colors.black, 0.08),
   background: {
-    paper: colors.background.light,
+    paper: colors.background.paperLight,
     default: colors.background.light,
   },
   action: {
@@ -79,15 +79,15 @@ export const darkPalette: PaletteOptions = {
     white: colors.white,
   },
   primary: {
-    main: colors.blue[200],
-    light: colors.blue[50],
-    dark: colors.blue[400],
+    main: colors.indigo[200],
+    light: colors.indigo[100],
+    dark: colors.indigo[400],
     contrastText: alpha(colors.black, 0.87),
   },
   secondary: {
-    main: colors.purple[200],
-    light: colors.purple[50],
-    dark: colors.purple[400],
+    main: colors.cyan[300],
+    light: colors.cyan[100],
+    dark: colors.cyan[500],
     contrastText: alpha(colors.black, 0.87),
   },
   error: {
@@ -122,9 +122,9 @@ export const darkPalette: PaletteOptions = {
     secondary: alpha(colors.white, 0.7),
     disabled: alpha(colors.white, 0.5),
   },
-  divider: alpha(colors.white, 0.12),
+  divider: alpha(colors.white, 0.08),
   background: {
-    paper: colors.background.dark,
+    paper: colors.background.paperDark,
     default: colors.background.dark,
   },
   action: {

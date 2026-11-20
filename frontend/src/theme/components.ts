@@ -30,17 +30,17 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 4,
+        borderRadius: 6,
         padding: '6px 16px',
-        textTransform: 'uppercase',
-        fontWeight: 500,
-        letterSpacing: '0.02857em',
-        transition: 'background-color 250ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1), border-color 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+        textTransform: 'none',
+        fontWeight: 600,
+        letterSpacing: '0.01em',
+        transition: 'background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 150ms ease',
       },
       contained: {
-        boxShadow: '0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12)',
+        boxShadow: 'none',
         '&:hover': {
-          boxShadow: '0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         },
       },
     },
@@ -49,24 +49,25 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       root: {
         backgroundImage: 'none',
-        borderRadius: 4,
+        borderRadius: 8,
       },
     },
   },
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 4,
-        border: '1px solid var(--mui-palette-divider, rgba(0, 0, 0, 0.12))',
+        borderRadius: 8,
+        border: '1px solid var(--mui-palette-divider, rgba(0, 0, 0, 0.08))',
         backgroundImage: 'none',
+        transition: 'border-color 200ms ease, box-shadow 200ms ease',
       },
     },
   },
   MuiChip: {
     styleOverrides: {
       root: {
-        fontWeight: 500,
-        borderRadius: 16,
+        fontWeight: 600,
+        borderRadius: 6,
       },
     },
   },

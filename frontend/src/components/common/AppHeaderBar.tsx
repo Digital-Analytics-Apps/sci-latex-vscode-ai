@@ -116,6 +116,22 @@ export const AppHeaderBar = ({
               size="small"
               color={isConnected ? 'success' : 'default'}
               variant="outlined"
+              sx={{
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                transition: 'all 200ms ease',
+                ...(isConnected && {
+                  borderColor: 'success.main',
+                  '& .MuiChip-icon': {
+                    animation: 'pulseGlow 2s infinite ease-in-out',
+                  },
+                  '@keyframes pulseGlow': {
+                    '0%': { opacity: 0.5, transform: 'scale(0.92)' },
+                    '50%': { opacity: 1, transform: 'scale(1.08)' },
+                    '100%': { opacity: 0.5, transform: 'scale(0.92)' },
+                  },
+                }),
+              }}
             />
           </Tooltip>
 

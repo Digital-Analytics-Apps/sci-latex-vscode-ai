@@ -38,14 +38,18 @@ export const colors = {
   white: common.white,
   black: common.black,
   background: {
-    dark: '#121212',
-    light: common.white,
+    dark: '#0b0f17',
+    paperDark: '#111827',
+    light: '#f8fafc',
+    paperLight: common.white,
   },
 } as const;
 
 export const muiColors = {
+  indigo,
   blue,
+  cyan,
   grey,
 } as const;
 
-export type ThemePreset = 'blue';
+export type ThemePreset = 'indigo' | 'blue';
