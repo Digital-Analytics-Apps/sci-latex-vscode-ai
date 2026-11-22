@@ -1,15 +1,29 @@
 import { randomUUID } from 'crypto';
 import { FastifyPluginAsync } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { RawData, WebSocket } from 'ws';
+import { z } from 'zod';
 import { POD_ID, redisService } from '../../infra/redis/redis.service';
 import { DeltaOperation, DocumentSnapshot } from './documents.schema';
 import { defaultDocumentsService } from './documents.service';
+
+const WsParamsSchema = z.object({
+  documentId: z.string().min(1),
+});
+
+const WsQuerySchema = z.object({
+  userId: z.string().optional(),
+  userName: z.string().optional(),
+  token: z.string().optional(),
+});
 interface ClientMeta {
   ws: WebSocket;
   userId: string;
   userName: string;
   documentId: string;
   color: string;
+  role?: string;
+  isAuthenticated: boolean;
 }
 
 // Mapa de salas de documentos: documentId => Set de sockets conectados
@@ -67,18 +81,52 @@ export function getLiveWebSocketStats() {
 export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
   const service = defaultDocumentsService;
 
-  fastify.get(
+  fastify.withTypeProvider<ZodTypeProvider>().get(
     '/ws/documents/:documentId',
-    { websocket: true },
+    {
+      websocket: true,
+      schema: {
+        tags: ['Documents Collab'],
+        summary: 'WebSocket real-time connection for collaborative editing',
+        params: WsParamsSchema,
+        querystring: WsQuerySchema,
+      },
+    },
     async (connection: unknown, req) => {
       const hasSocket = connection && typeof connection === 'object' && 'socket' in connection;
-      const rawSocket = hasSocket ? connection.socket : connection;
+      const rawSocket = hasSocket ? (connection as { socket: WebSocket }).socket : connection;
       const socket = rawSocket as WebSocket;
-      const { documentId } = req.params as { documentId: string };
-      const query = req.query as { userId?: string; userName?: string };
+      const { documentId } = req.params;
+      const { userId: queryUserId, userName: queryUserName, token: queryToken } = req.query;
 
-      const userId = query.userId || Math.random().toString(36).substring(2, 9);
-      const userName = query.userName || `Usuário-${userId.substring(0, 4)}`;
+      // Autenticação e extração de credenciais via JWT (Header Authorization, Query Token ou Cookie)
+      let authenticatedUser: { sub: string; name?: string; role?: string } | null = null;
+      try {
+        const rawToken =
+          queryToken ||
+          (req.headers.authorization
+            ? req.headers.authorization.replace(/^Bearer\s+/i, '')
+            : null) ||
+          req.cookies?.accessToken;
+
+        if (rawToken) {
+          const decoded = fastify.jwt.verify<{ sub: string; name: string; role: string }>(rawToken);
+          if (decoded && decoded.sub) {
+            authenticatedUser = decoded;
+          }
+        }
+      } catch (authErr) {
+        console.warn(
+          `[Collab WS Auth] Token inválido ou expirado para doc ${documentId}:`,
+          authErr
+        );
+      }
+
+      const userId = authenticatedUser
+        ? authenticatedUser.sub
+        : queryUserId || Math.random().toString(36).substring(2, 9);
+      const userName =
+        authenticatedUser?.name || queryUserName || `Usuário-${userId.substring(0, 4)}`;
 
       // Evita atribuir a mesma cor caso já existam autores conectados na mesma sala
       const existingRoom = documentRooms.get(documentId);
@@ -92,25 +140,34 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
         userName,
         documentId,
         color,
+        role: authenticatedUser?.role,
+        isAuthenticated: Boolean(authenticatedUser),
       };
 
-      if (!documentRooms.has(documentId)) {
+      const isFirstClientInRoom = !documentRooms.has(documentId);
+      if (isFirstClientInRoom) {
         documentRooms.set(documentId, new Set());
       }
       documentRooms.get(documentId)!.add(client);
 
       // Adquire ou renova o Document Ownership Lease no Redis com Fencing Token
-      try {
-        const lease = await redisService.acquireDocumentLease(documentId, POD_ID, 15);
-        if (lease.acquired) {
-          service.setDocumentOwnerGeneration(documentId, lease.generation);
-        } else {
-          console.warn(
-            `[Collab WS Routing] ⚠️ Documento ${documentId} pertence ao Pod ${lease.ownerId}. Este Pod (${POD_ID}) atende conexão.`
-          );
+      // Apenas reivindica nova geração no PostgreSQL se este Pod estiver abrindo a sala pela 1ª vez!
+      if (isFirstClientInRoom) {
+        try {
+          const lease = await redisService.acquireDocumentLease(documentId, POD_ID, 15);
+          if (lease.acquired) {
+            const pgGeneration = await service.acquireDocumentOwnership(documentId);
+            console.log(
+              `[Collab WS Fencing] 👑 Pod ${POD_ID} assumiu titularidade do documento ${documentId} (Geração PG: ${pgGeneration}, Redis: ${lease.generation})`
+            );
+          } else {
+            console.warn(
+              `[Collab WS Routing] ⚠️ Documento ${documentId} pertence ao Pod ${lease.ownerId}. Este Pod (${POD_ID}) atende conexão.`
+            );
+          }
+        } catch (err) {
+          console.warn(`[Collab WS Lease Error]:`, err);
         }
-      } catch (err) {
-        console.warn(`[Collab WS Lease Error]:`, err);
       }
 
       if (!leaseHeartbeats.has(documentId)) {
@@ -172,19 +229,59 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                     version: snapshot.version,
                     time: new Date().toLocaleTimeString(),
                   });
+                  broadcastToRoom(documentId, {
+                    type: 'PERSISTENCE_ACK',
+                    snapshotId: snapshot.id,
+                    version: snapshot.version,
+                    timestamp: Date.now(),
+                  });
                 }
               );
 
               if (result.rebasedUpdates.length > 0) {
-                // Transmite as atualizações rebaseadas para todos os clientes da sala
-                broadcastToRoom(documentId, {
-                  type: 'PULL_UPDATES_RESPONSE',
-                  file: targetFile,
-                  version: result.newVersion,
-                  updates: result.rebasedUpdates,
-                  author: { userId, userName, color },
-                  status: 'pending_debounce',
-                });
+                // 1. Responde diretamente ao autor que enviou:
+                // Se o cliente estava defasado em relação ao servidor, enviamos a sequência completa
+                // desde a versão dele até a nova versão, garantindo continuidade matemática para o CodeMirror
+                const updatesForSender = service.getUpdatesSince(
+                  documentId,
+                  targetFile,
+                  clientVersion
+                );
+                socket.send(
+                  JSON.stringify({
+                    type: 'PULL_UPDATES_RESPONSE',
+                    file: targetFile,
+                    version: result.newVersion,
+                    updates: updatesForSender,
+                    author: { userId, userName, color },
+                    status: 'pending_debounce',
+                  })
+                );
+
+                // 2. Transmite as novas atualizações rebaseadas para todos os DEMAIS clientes da sala
+                broadcastToRoom(
+                  documentId,
+                  {
+                    type: 'PULL_UPDATES_RESPONSE',
+                    file: targetFile,
+                    version: result.newVersion,
+                    updates: result.rebasedUpdates,
+                    author: { userId, userName, color },
+                    status: 'pending_debounce',
+                  },
+                  socket
+                );
+              } else {
+                socket.send(
+                  JSON.stringify({
+                    type: 'PULL_UPDATES_RESPONSE',
+                    file: targetFile,
+                    version: result.newVersion,
+                    updates: [],
+                    author: { userId, userName, color },
+                    status: 'synced',
+                  })
+                );
               }
               break;
             }
@@ -201,6 +298,22 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                   updates: historyUpdates,
                 })
               );
+              break;
+            }
+
+            // Solicitação de reconciliação canônica (ex: término de drenagem do Local Outbox ou recuperação de rede)
+            case 'REQUEST_RECONCILE': {
+              const targetFile = message.file || activeDoc.mainEntryPath;
+              const { content, version } = await service.getActiveFileContent(
+                documentId,
+                targetFile
+              );
+              broadcastToRoom(documentId, {
+                type: 'RECONCILE_SYNC',
+                file: targetFile,
+                content,
+                version,
+              });
               break;
             }
 
@@ -239,6 +352,12 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
                       snapshot,
                       version: snapshot.version,
                       time: new Date().toLocaleTimeString(),
+                    });
+                    broadcastToRoom(documentId, {
+                      type: 'PERSISTENCE_ACK',
+                      snapshotId: snapshot.id,
+                      version: snapshot.version,
+                      timestamp: Date.now(),
                     });
                   }
                 );
@@ -375,6 +494,60 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
               }
               break;
             }
+
+            // Rollback consistente e integral de Snapshot
+            case 'RESTORE_SNAPSHOT': {
+              const { snapshotId } = message;
+              if (!snapshotId) {
+                socket.send(
+                  JSON.stringify({
+                    type: 'ERROR',
+                    code: 'MISSING_SNAPSHOT_ID',
+                    message: 'O campo "snapshotId" é obrigatório em RESTORE_SNAPSHOT.',
+                  })
+                );
+                break;
+              }
+
+              // Controle de Acesso (RBAC): apenas revisores, autores autenticados ou administradores podem restaurar
+              if (
+                client.role === 'VIEWER' ||
+                (process.env.NODE_ENV === 'production' && !client.isAuthenticated)
+              ) {
+                socket.send(
+                  JSON.stringify({
+                    type: 'ERROR',
+                    code: 'FORBIDDEN',
+                    message: 'Permissão insuficiente para restaurar versão do documento.',
+                  })
+                );
+                break;
+              }
+
+              try {
+                const restored = await service.restoreSnapshot(documentId, snapshotId);
+                const projectFiles = await service.listProjectFiles(documentId);
+                broadcastToRoom(documentId, {
+                  type: 'SNAPSHOT_RESTORED',
+                  snapshot: restored,
+                  version: restored.version,
+                  content: restored.content,
+                  files: projectFiles,
+                  restoredBy: userName,
+                  time: new Date().toLocaleTimeString(),
+                });
+              } catch (err: unknown) {
+                const error = err as Error;
+                socket.send(
+                  JSON.stringify({
+                    type: 'ERROR',
+                    code: 'RESTORE_FAILED',
+                    message: error.message,
+                  })
+                );
+              }
+              break;
+            }
           }
         } catch (err: unknown) {
           const error = err as Error;
@@ -383,17 +556,25 @@ export const documentsWebSocketPlugin: FastifyPluginAsync = async (fastify) => {
       });
 
       // 3. Desconexão
-      socket.on('close', () => {
+      socket.on('close', async () => {
         const room = documentRooms.get(documentId);
         if (room) {
           room.delete(client);
           if (room.size === 0) {
             documentRooms.delete(documentId);
             const hb = leaseHeartbeats.get(documentId);
-            clearInterval(hb);
-            leaseHeartbeats.delete(documentId);
-            service.flushCheckpoint(documentId).catch(console.error);
-            redisService.releaseDocumentLease(documentId).catch(console.error);
+            if (hb) {
+              clearInterval(hb);
+              leaseHeartbeats.delete(documentId);
+            }
+            try {
+              // Garante persistência dos dados pendentes no PostgreSQL ANTES de soltar o lease
+              await service.flushCheckpoint(documentId);
+            } catch (err) {
+              console.error(`[Collab WS] Falha ao persistir checkpoint final na desconexão:`, err);
+            } finally {
+              await redisService.releaseDocumentLease(documentId).catch(console.error);
+            }
           }
         }
         console.log(`[Collab WS] 🚪 ${userName} desconectou do documento ${documentId}`);

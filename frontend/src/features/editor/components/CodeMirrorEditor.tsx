@@ -1,5 +1,4 @@
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
-import { collab, getSyncedVersion, receiveUpdates, sendableUpdates } from '@codemirror/collab';
 import {
   bracketMatching,
   codeFolding,
@@ -12,7 +11,7 @@ import {
 import { stex } from '@codemirror/legacy-modes/mode/stex';
 import { Diagnostic, forceLinting, linter, lintGutter } from '@codemirror/lint';
 import { highlightSelectionMatches, search } from '@codemirror/search';
-import { ChangeSet, EditorState } from '@codemirror/state';
+import { EditorState, Transaction } from '@codemirror/state';
 import {
   crosshairCursor,
   dropCursor,
@@ -24,10 +23,9 @@ import {
   rectangularSelection,
   scrollPastEnd,
 } from '@codemirror/view';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Extensões Modulares e Serviços
-import { collabPushPlugin, collabSyncFacet } from '../extensions/collab/collabExtension';
 import {
   commentsField,
   setActiveCommentEffect,
@@ -77,13 +75,7 @@ import { editorStateCache } from '../services/editorStateCache';
 import Box from '@mui/material/Box';
 import { DEFAULT_SETTINGS, EditorSettings } from '../../../types/settings';
 import { checkGrammarAndSpelling } from '../services/languagetool.service';
-import {
-  CollabUpdateJSON,
-  DeltaOperation,
-  RemoteCursor,
-  ReviewComment,
-  SaveStatus,
-} from '../types/collab.types';
+import { DeltaOperation, RemoteCursor, ReviewComment, SaveStatus } from '../types/collab.types';
 import { EditorCommentDialog, SelectionPopupData } from './EditorCommentDialog';
 import { EditorStatusBar } from './EditorStatusBar';
 
@@ -122,17 +114,15 @@ export interface CodeMirrorEditorProps {
   onCursorMove: (position: number, selectionStart?: number, selectionEnd?: number) => void;
   currentUserId?: string;
   activeFile?: string;
-  collabVersion?: number;
-  onPushCollabUpdates?: (file: string, version: number, updates: CollabUpdateJSON[]) => void;
-  incomingCollabUpdates?: {
-    file: string;
-    version: number;
-    updates: CollabUpdateJSON[];
-    timestamp: number;
-  } | null;
   onDocContentChange?: (content: string) => void;
   onHistoryChange?: (status: HistoryStatus) => void;
   onRegisterActions?: (actions: { undo: () => boolean; redo: () => boolean } | null) => void;
+  onRegisterRemoteDeltaListener?: (
+    listener: ((op: DeltaOperation, file: string) => void) | null
+  ) => void;
+  onRegisterReconcileListener?: (
+    listener: ((file: string, content: string) => void) | null
+  ) => void;
   readOnly?: boolean;
 }
 
@@ -160,17 +150,15 @@ export function CodeMirrorEditor({
   onCursorMove,
   currentUserId,
   activeFile = '',
-  collabVersion = 0,
-  onPushCollabUpdates,
-  incomingCollabUpdates,
   onDocContentChange,
   onHistoryChange,
   onRegisterActions,
+  onRegisterRemoteDeltaListener,
+  onRegisterReconcileListener,
   readOnly = false,
 }: CodeMirrorEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const isRemoteChangeRef = useRef<boolean>(false);
   const bibContentRef = useRef<string>(bibContent);
   bibContentRef.current = bibContent;
   const compileErrorRef = useRef<string | null>(compileError);
@@ -183,8 +171,6 @@ export function CodeMirrorEditor({
   currentUserIdRef.current = currentUserId;
   const activeFileRef = useRef<string>(activeFile);
   activeFileRef.current = activeFile;
-  const onPushCollabUpdatesRef = useRef(onPushCollabUpdates);
-  onPushCollabUpdatesRef.current = onPushCollabUpdates;
   const onDocContentChangeRef = useRef(onDocContentChange);
   onDocContentChangeRef.current = onDocContentChange;
   const onHistoryChangeRef = useRef(onHistoryChange);
@@ -193,33 +179,8 @@ export function CodeMirrorEditor({
   onRegisterActionsRef.current = onRegisterActions;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-
-  const isPushingRef = useRef<boolean>(false);
-  const pushTimeoutRef = useRef<number | null>(null);
-
-  const tryPush = () => {
-    if (!viewRef.current) return;
-    if (isPushingRef.current) return;
-    const updates = sendableUpdates(viewRef.current.state);
-    if (!updates.length) return;
-
-    isPushingRef.current = true;
-    const ver = getSyncedVersion(viewRef.current.state);
-    const jsonUpdates: CollabUpdateJSON[] = updates.map((u) => ({
-      clientID: currentUserIdRef.current || 'anon',
-      changes: u.changes.toJSON(),
-    }));
-
-    onPushCollabUpdatesRef.current?.(activeFileRef.current, ver, jsonUpdates);
-
-    clearTimeout(pushTimeoutRef.current ?? undefined);
-    pushTimeoutRef.current = window.setTimeout(() => {
-      if (isPushingRef.current) {
-        isPushingRef.current = false;
-        tryPush();
-      }
-    }, 3000);
-  };
+  const onApplyLocalDeltaRef = useRef(onApplyLocalDelta);
+  onApplyLocalDeltaRef.current = onApplyLocalDelta;
 
   const [selectionPopup, setSelectionPopup] = useState<SelectionPopupData | null>(null);
   const [isInlineBoxOpen, setIsInlineBoxOpen] = useState<boolean>(false);
@@ -241,10 +202,7 @@ export function CodeMirrorEditor({
     () => createLatexCompletionSource(() => bibContentRef.current),
     []
   );
-  const bibHoverTooltip = useMemo(
-    () => createBibHoverTooltip(() => bibContentRef.current),
-    []
-  );
+  const bibHoverTooltip = useMemo(() => createBibHoverTooltip(() => bibContentRef.current), []);
   const latexLinterSource = useMemo(
     () => createLatexLinterSource(() => compileErrorRef.current),
     []
@@ -410,17 +368,6 @@ export function CodeMirrorEditor({
         getEditorConfigExtension(settings.fontSize, settings.lineHeight, settings.nonBlinkingCursor)
       ),
       readOnlyCompart.of(EditorState.readOnly.of(Boolean(readOnly))),
-      collab({
-        startVersion: collabVersion || 0,
-        clientID: currentUserId || 'anon',
-      }),
-      collabSyncFacet.of({
-        onPush: (file, ver, updates) => onPushCollabUpdatesRef.current?.(file, ver, updates),
-        isRemoteChange: () => isRemoteChangeRef.current,
-        getClientId: () => currentUserIdRef.current || 'anon',
-        getActiveFile: () => activeFileRef.current,
-      }),
-      collabPushPlugin,
       EditorView.domEventHandlers({
         click(event) {
           const target = event.target as HTMLElement | null;
@@ -434,7 +381,9 @@ export function CodeMirrorEditor({
         },
       }),
       EditorView.updateListener.of((update) => {
-        if (update.selectionSet && !isRemoteChangeRef.current) {
+        const isRemote = update.transactions.some((tr) => tr.annotation(Transaction.remote));
+
+        if (update.selectionSet && !isRemote) {
           const main = update.state.selection.main;
           const start = Math.min(main.anchor, main.head);
           const end = Math.max(main.anchor, main.head);
@@ -453,18 +402,18 @@ export function CodeMirrorEditor({
           onHistoryChangeRef.current?.(getHistoryStatus(update.state));
         }
 
-        if (update.docChanged && !isRemoteChangeRef.current) {
+        if (update.docChanged) {
           updateLinePositions(update.view);
           onDocContentChangeRef.current?.(update.state.doc.toString());
-          if (onPushCollabUpdatesRef.current) {
-            tryPush();
-          } else {
+
+          // Padrão Overleaf: se a transação veio de outro autor via WebSocket (remote), não envia de volta
+          if (!isRemote) {
             update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
               const insertedText = inserted.toString();
               const deletedLength = toA - fromA;
 
               if (deletedLength > 0) {
-                onApplyLocalDelta({
+                onApplyLocalDeltaRef.current?.({
                   type: 'delete',
                   position: fromA,
                   length: deletedLength,
@@ -472,7 +421,7 @@ export function CodeMirrorEditor({
               }
 
               if (insertedText.length > 0) {
-                onApplyLocalDelta({
+                onApplyLocalDeltaRef.current?.({
                   type: 'insert',
                   position: fromA,
                   text: insertedText,
@@ -701,27 +650,99 @@ export function CodeMirrorEditor({
     }
   }, [activeCommentId]);
 
-  // Injeção de atualizações colaborativas remotas via OT oficial do CodeMirror
-  useEffect(() => {
-    if (!incomingCollabUpdates || !viewRef.current) return;
-    if (incomingCollabUpdates.file !== activeFile) return;
+  // Reconciliação canônica com algoritmo diff de prefixo/sufixo comum (preserva cursor e ergonomia)
+  const reconcileContent = useCallback(
+    (targetFile: string, newContent: string) => {
+      if (targetFile !== activeFile || !viewRef.current) return;
+      const currentDoc = viewRef.current.state.doc.toString();
+      if (currentDoc === newContent) return;
 
-    try {
-      isRemoteChangeRef.current = true;
-      const parsedUpdates = incomingCollabUpdates.updates.map((u) => ({
-        changes: ChangeSet.fromJSON(u.changes),
-        clientID: u.clientID,
-      }));
+      let start = 0;
+      while (
+        start < currentDoc.length &&
+        start < newContent.length &&
+        currentDoc[start] === newContent[start]
+      ) {
+        start++;
+      }
 
-      viewRef.current.dispatch(receiveUpdates(viewRef.current.state, parsedUpdates));
+      let oldEnd = currentDoc.length;
+      let newEnd = newContent.length;
+      while (
+        oldEnd > start &&
+        newEnd > start &&
+        currentDoc[oldEnd - 1] === newContent[newEnd - 1]
+      ) {
+        oldEnd--;
+        newEnd--;
+      }
+
+      const replacement = newContent.slice(start, newEnd);
+      const sel = viewRef.current.state.selection.main;
+
+      viewRef.current.dispatch({
+        changes: { from: start, to: oldEnd, insert: replacement },
+        annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+      });
+
+      try {
+        const mappedAnchor = Math.max(0, Math.min(sel.anchor, viewRef.current.state.doc.length));
+        const mappedHead = Math.max(0, Math.min(sel.head, viewRef.current.state.doc.length));
+        viewRef.current.dispatch({
+          selection: { anchor: mappedAnchor, head: mappedHead },
+        });
+      } catch {
+        // Seleção mantida graciosamente
+      }
       updateLinePositions(viewRef.current);
-    } catch {
-      // Ignora erro transitório de rebase
-    } finally {
-      isRemoteChangeRef.current = false;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incomingCollabUpdates?.timestamp]);
+    },
+    [activeFile]
+  );
+
+  // Aplicação direta e síncrona de deltas remotos de outros autores (Padrão Overleaf com Transaction.remote)
+  const applyRemoteDelta = useCallback(
+    (op: DeltaOperation, targetFile: string) => {
+      if (targetFile !== activeFile || !viewRef.current) return;
+
+      try {
+        const doc = viewRef.current.state.doc;
+        const pos = Math.max(0, Math.min(op.position, doc.length));
+
+        if (op.type === 'insert' && op.text) {
+          viewRef.current.dispatch({
+            changes: { from: pos, insert: op.text },
+            annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+          });
+          updateLinePositions(viewRef.current);
+        } else if (op.type === 'delete' && op.length) {
+          const to = Math.min(pos + op.length, doc.length);
+          viewRef.current.dispatch({
+            changes: { from: pos, to },
+            annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+          });
+          updateLinePositions(viewRef.current);
+        }
+      } catch (err) {
+        console.warn('[Collab Remote Delta] Falha ao aplicar delta remoto no editor:', err);
+      }
+    },
+    [activeFile]
+  );
+
+  // Registra os listeners diretos no contexto pai (elimina perdas de delta por batching de estado do React)
+  useEffect(() => {
+    onRegisterRemoteDeltaListener?.(applyRemoteDelta);
+    return () => {
+      onRegisterRemoteDeltaListener?.(null);
+    };
+  }, [applyRemoteDelta, onRegisterRemoteDeltaListener]);
+
+  useEffect(() => {
+    onRegisterReconcileListener?.(reconcileContent);
+    return () => {
+      onRegisterReconcileListener?.(null);
+    };
+  }, [reconcileContent, onRegisterReconcileListener]);
 
   // Sincronização externa de scroll
   useEffect(() => {

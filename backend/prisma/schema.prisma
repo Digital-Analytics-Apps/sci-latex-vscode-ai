@@ -270,17 +270,18 @@ model NitProcess {
 }
 
 model ProjectFile {
-  id         String   @id @default(uuid())
-  projectId  String
-  path       String
-  fileType   String // "text" | "binary"
-  mimeType   String
-  sizeBytes  BigInt
-  content    String?  @db.Text
-  storageKey String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  projectId   String
+  path        String
+  fileType    String // "text" | "binary"
+  mimeType    String
+  sizeBytes   BigInt
+  content     String?  @db.Text
+  storageKey  String?
+  contentHash String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, path])
 }
@@ -304,6 +305,7 @@ model DocumentSnapshot {
   projectId String
   version   Int
   content   String   @db.Text
+  manifest  Json?
   savedBy   String
   reason    String
   createdAt DateTime @default(now())

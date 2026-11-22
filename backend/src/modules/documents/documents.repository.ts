@@ -1,5 +1,6 @@
+import { createHash } from 'crypto';
 import { prisma } from '../../db/prisma';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   CommentReplySchema,
   Document,
@@ -7,6 +8,7 @@ import {
   DocumentSnapshot,
   ProjectFile,
   ReviewComment,
+  SnapshotManifest,
 } from './documents.schema';
 export interface CheckpointFlushData {
   documentId: string;
@@ -25,6 +27,8 @@ export interface IDocumentsRepository {
   create(doc: Document): Promise<Document>;
   updateContent(id: string, content: string, version: number): Promise<Document>;
   saveCheckpoint(data: CheckpointFlushData): Promise<void>;
+  acquireOwnership(projectId: string): Promise<number>;
+  restoreSnapshot(projectId: string, snapshotId: string): Promise<DocumentSnapshot>;
   appendOperation(op: DocumentOperation): Promise<DocumentOperation>;
   getOperations(documentId: string): Promise<DocumentOperation[]>;
   createSnapshot(snapshot: DocumentSnapshot): Promise<DocumentSnapshot>;
@@ -185,59 +189,95 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
     };
   }
 
+  async acquireOwnership(projectId: string): Promise<number> {
+    const updated = await prisma.$queryRaw<Array<{ ownerGeneration: number }>>`
+      UPDATE "Project"
+      SET "ownerGeneration" = "ownerGeneration" + 1, "updatedAt" = NOW()
+      WHERE "id" = ${projectId}
+      RETURNING "ownerGeneration";
+    `;
+
+    if (!updated || updated.length === 0) {
+      throw new Error(
+        `[OwnershipError] Projeto "${projectId}" não encontrado ao tentar adquirir titularidade.`
+      );
+    }
+
+    return updated[0].ownerGeneration;
+  }
+
   async saveCheckpoint(data: CheckpointFlushData): Promise<void> {
     const {
       documentId,
       version,
       expectedOldVersion,
+      ownerGeneration,
       mainContent,
       secondaryFiles = [],
       snapshot,
     } = data;
 
-    await prisma.$transaction(async (tx) => {
-      // Concorrência Otimista & Fencing Token (ownerGeneration)
-      const currentProject = await tx.project.findUnique({
-        where: { id: documentId },
-        select: { currentVersion: true, ownerGeneration: true },
-      });
+    if (!data.mainEntryPath) {
+      throw new Error(
+        `[CheckpointIntegrityError] Falha no checkpoint do documento "${documentId}": 'mainEntryPath' não foi fornecido.`
+      );
+    }
 
-      if (currentProject) {
-        // Validação de Fencing Token (Martin Kleppmann Fencing)
-        if (typeof data.ownerGeneration === 'number' && data.ownerGeneration > 0) {
-          if (currentProject.ownerGeneration > data.ownerGeneration) {
+    const mainHash = createHash('sha256').update(mainContent, 'utf-8').digest('hex');
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Validação e Persistência Atômica do Fencing Token & Versão de Projeto
+      if (
+        typeof ownerGeneration === 'number' &&
+        ownerGeneration > 0 &&
+        typeof expectedOldVersion === 'number' &&
+        expectedOldVersion > 0
+      ) {
+        const rowsAffected = await tx.$executeRaw`
+          UPDATE "Project"
+          SET "currentVersion" = ${version}, "updatedAt" = NOW()
+          WHERE "id" = ${documentId}
+            AND "ownerGeneration" = ${ownerGeneration}
+            AND "currentVersion" = ${expectedOldVersion};
+        `;
+
+        if (rowsAffected === 0) {
+          const currentProject = await tx.project.findUnique({
+            where: { id: documentId },
+            select: { currentVersion: true, ownerGeneration: true },
+          });
+
+          if (!currentProject) {
+            throw new Error(`[DocumentIntegrityError] Projeto "${documentId}" não encontrado.`);
+          }
+
+          if (currentProject.ownerGeneration > ownerGeneration) {
             throw new Error(
-              `[Fencing Token Conflict] Pod foi destronado: geração no banco (${currentProject.ownerGeneration}) é superior à geração do processo (${data.ownerGeneration}).`
+              `[Fencing Token Conflict] Pod foi destronado: geração no banco (${currentProject.ownerGeneration}) é superior à geração do processo (${ownerGeneration}).`
             );
           }
-        }
 
-        // Validação de Versão de Delta
-        if (typeof expectedOldVersion === 'number' && expectedOldVersion > 0) {
           if (currentProject.currentVersion > expectedOldVersion) {
             throw new Error(
               `[Conflict] Concorrência otimista falhou: versão atual do banco (${currentProject.currentVersion}) é mais recente que a esperada (${expectedOldVersion}).`
             );
           }
+
+          throw new Error(
+            `[CheckpointConflict] Concorrência rejeitada no documento "${documentId}" (versão esperada ${expectedOldVersion}, atual ${currentProject.currentVersion}; geração ${ownerGeneration}, banco ${currentProject.ownerGeneration}).`
+          );
         }
+      } else {
+        await tx.project.update({
+          where: { id: documentId },
+          data: {
+            currentVersion: version,
+            ...(typeof ownerGeneration === 'number' ? { ownerGeneration } : {}),
+          },
+        });
       }
 
-      // 1. Atualiza versão e geração do projeto
-      await tx.project.update({
-        where: { id: documentId },
-        data: {
-          currentVersion: version,
-          ...(typeof data.ownerGeneration === 'number'
-            ? { ownerGeneration: data.ownerGeneration }
-            : {}),
-        },
-      });
-      // 2. Atualiza arquivo principal usando mainEntryPath explícito (sem fallback)
-      if (!data.mainEntryPath) {
-        throw new Error(
-          `[CheckpointIntegrityError] Falha no checkpoint do documento "${documentId}": 'mainEntryPath' não foi fornecido.`
-        );
-      }
+      // 2. Atualiza arquivo principal com cálculo de hash SHA-256
       await tx.projectFile.upsert({
         where: { projectId_path: { projectId: documentId, path: data.mainEntryPath } },
         create: {
@@ -247,15 +287,18 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
           mimeType: 'text/x-tex',
           sizeBytes: BigInt(Buffer.byteLength(mainContent, 'utf-8')),
           content: mainContent,
+          contentHash: mainHash,
         },
         update: {
           content: mainContent,
+          contentHash: mainHash,
           sizeBytes: BigInt(Buffer.byteLength(mainContent, 'utf-8')),
         },
       });
 
       // 3. Atualiza arquivos secundários na mesma transação atômica
       for (const file of secondaryFiles) {
+        const fileHash = createHash('sha256').update(file.content, 'utf-8').digest('hex');
         await tx.projectFile.upsert({
           where: { projectId_path: { projectId: documentId, path: file.path } },
           create: {
@@ -265,15 +308,46 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
             mimeType: 'text/plain',
             sizeBytes: BigInt(Buffer.byteLength(file.content, 'utf-8')),
             content: file.content,
+            contentHash: fileHash,
           },
           update: {
             content: file.content,
+            contentHash: fileHash,
             sizeBytes: BigInt(Buffer.byteLength(file.content, 'utf-8')),
           },
         });
       }
 
-      // 4. Cria o snapshot consolidado
+      // 4. Monta o Manifesto Multi-Arquivo JSONB consolidado
+      let manifest: SnapshotManifest;
+      if (snapshot.manifest) {
+        manifest = snapshot.manifest;
+      } else {
+        const allFiles = await tx.projectFile.findMany({
+          where: { projectId: documentId },
+        });
+
+        const manifestFiles = allFiles.map((f) => ({
+          path: f.path,
+          type: (f.content !== null && f.content !== undefined ? 'text' : 'binary') as
+            'text' | 'binary',
+          sha256:
+            f.contentHash ||
+            (f.content ? createHash('sha256').update(f.content).digest('hex') : 'hash_unavailable'),
+          storageKey: f.storageKey || undefined,
+          content: f.content !== null && f.content !== undefined ? f.content : undefined,
+        }));
+
+        manifest = {
+          schemaVersion: 1,
+          projectId: documentId,
+          projectVersion: version,
+          mainEntryPath: data.mainEntryPath,
+          files: manifestFiles,
+        };
+      }
+
+      // 5. Cria o snapshot consolidado com manifesto multi-arquivo
       await tx.documentSnapshot.create({
         data: {
           id: snapshot.id,
@@ -282,8 +356,150 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
           content: snapshot.content,
           savedBy: snapshot.savedBy,
           reason: snapshot.reason,
+          manifest: manifest as unknown as Prisma.InputJsonValue,
         },
       });
+    });
+  }
+
+  async restoreSnapshot(projectId: string, snapshotId: string): Promise<DocumentSnapshot> {
+    const snap = await prisma.documentSnapshot.findUnique({
+      where: { id: snapshotId },
+    });
+
+    if (!snap || snap.projectId !== projectId) {
+      throw new Error(
+        `[SnapshotNotFound] Snapshot "${snapshotId}" não encontrado para o projeto "${projectId}".`
+      );
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { template: true },
+    });
+
+    if (!project) {
+      throw new Error(`[ProjectNotFound] Projeto "${projectId}" não encontrado.`);
+    }
+
+    const newVersion = project.currentVersion + 1;
+    const restoredSnapshotId = `restore-${Date.now()}-${snap.id.substring(0, 8)}`;
+
+    return await prisma.$transaction(async (tx) => {
+      let mainContent = snap.content;
+      let restoredManifest: SnapshotManifest | null = null;
+
+      if (snap.manifest && typeof snap.manifest === 'object' && 'files' in snap.manifest) {
+        const manifest = snap.manifest as unknown as SnapshotManifest;
+        restoredManifest = manifest;
+        const manifestPaths = new Set(manifest.files.map((f) => f.path));
+
+        // 1. Remove em lote arquivos que foram adicionados posteriormente e não existem neste snapshot (evita query N+1)
+        await tx.projectFile.deleteMany({
+          where: {
+            projectId,
+            path: { notIn: Array.from(manifestPaths) },
+          },
+        });
+
+        // 2. Restaura integralmente os arquivos presentes no manifesto
+        for (const entry of manifest.files) {
+          const isText = entry.type === 'text' && entry.content !== undefined;
+          const isMain = entry.path === manifest.mainEntryPath;
+          if (isMain && entry.content) {
+            mainContent = entry.content;
+          }
+
+          await tx.projectFile.upsert({
+            where: { projectId_path: { projectId, path: entry.path } },
+            create: {
+              projectId,
+              path: entry.path,
+              fileType: isText ? 'text' : 'image',
+              mimeType: isText
+                ? isMain
+                  ? 'text/x-tex'
+                  : 'text/plain'
+                : 'application/octet-stream',
+              sizeBytes: isText
+                ? BigInt(Buffer.byteLength(entry.content || '', 'utf-8'))
+                : BigInt(0),
+              content: isText ? entry.content : null,
+              contentHash: entry.sha256,
+              storageKey: entry.storageKey || null,
+            },
+            update: {
+              fileType: isText ? 'text' : 'image',
+              mimeType: isText
+                ? isMain
+                  ? 'text/x-tex'
+                  : 'text/plain'
+                : 'application/octet-stream',
+              sizeBytes: isText
+                ? BigInt(Buffer.byteLength(entry.content || '', 'utf-8'))
+                : BigInt(0),
+              content: isText ? entry.content : null,
+              contentHash: entry.sha256,
+              storageKey: entry.storageKey || null,
+            },
+          });
+        }
+      } else {
+        // Fallback para snapshots legados mono-arquivo
+        const mainPath = project.template?.mainEntryPath || 'main.tex';
+        const hash = createHash('sha256').update(snap.content, 'utf-8').digest('hex');
+        await tx.projectFile.upsert({
+          where: { projectId_path: { projectId, path: mainPath } },
+          create: {
+            projectId,
+            path: mainPath,
+            fileType: 'text',
+            mimeType: 'text/x-tex',
+            sizeBytes: BigInt(Buffer.byteLength(snap.content, 'utf-8')),
+            content: snap.content,
+            contentHash: hash,
+          },
+          update: {
+            content: snap.content,
+            contentHash: hash,
+            sizeBytes: BigInt(Buffer.byteLength(snap.content, 'utf-8')),
+          },
+        });
+      }
+
+      // 3. Atualiza versão do projeto
+      await tx.project.update({
+        where: { id: projectId },
+        data: { currentVersion: newVersion },
+      });
+
+      // 4. Cria snapshot de restauração para auditoria e histórico imutável
+      const restoredSnapshot: DocumentSnapshot = {
+        id: restoredSnapshotId,
+        documentId: projectId,
+        version: newVersion,
+        content: mainContent,
+        savedBy: 'Sistema (Rollback)',
+        reason: `rollback_snapshot_${snap.id}`,
+        manifest: restoredManifest || undefined,
+        createdAt: new Date().toISOString(),
+      };
+
+      await tx.documentSnapshot.create({
+        data: {
+          id: restoredSnapshot.id,
+          projectId: restoredSnapshot.documentId,
+          version: restoredSnapshot.version,
+          content: restoredSnapshot.content,
+          savedBy: restoredSnapshot.savedBy,
+          reason: restoredSnapshot.reason,
+          manifest: restoredManifest
+            ? (restoredManifest as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+        },
+      });
+
+      return restoredSnapshot;
     });
   }
 
@@ -333,6 +549,9 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
         content: snapshot.content,
         savedBy: snapshot.savedBy,
         reason: snapshot.reason,
+        manifest: snapshot.manifest
+          ? (snapshot.manifest as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
       },
     });
     return snapshot;
@@ -352,6 +571,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       content: s.content,
       savedBy: s.savedBy,
       reason: s.reason,
+      manifest: s.manifest ? (s.manifest as unknown as SnapshotManifest) : undefined,
       createdAt: s.createdAt.toISOString(),
     }));
   }
@@ -369,6 +589,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       fileType: f.fileType,
       mimeType: f.mimeType,
       sizeBytes: Number(f.sizeBytes),
+      contentHash: f.contentHash,
       storageKey: f.storageKey,
       content: f.content,
       createdAt: f.createdAt.toISOString(),
@@ -386,6 +607,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       fileType: f.fileType,
       mimeType: f.mimeType,
       sizeBytes: Number(f.sizeBytes),
+      contentHash: f.contentHash,
       storageKey: f.storageKey,
       content: f.content,
       createdAt: f.createdAt.toISOString(),
@@ -393,6 +615,12 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
   }
 
   async saveProjectFile(file: ProjectFile): Promise<ProjectFile> {
+    const calculatedHash =
+      file.contentHash ||
+      (file.content !== null && file.content !== undefined
+        ? createHash('sha256').update(file.content, 'utf-8').digest('hex')
+        : null);
+
     const upserted = await prisma.projectFile.upsert({
       where: { projectId_path: { projectId: file.documentId, path: file.path } },
       create: {
@@ -402,6 +630,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
         fileType: file.fileType,
         mimeType: file.mimeType,
         sizeBytes: BigInt(file.sizeBytes),
+        contentHash: calculatedHash,
         storageKey: file.storageKey,
         content: file.content || null,
       },
@@ -409,6 +638,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
         fileType: file.fileType,
         mimeType: file.mimeType,
         sizeBytes: BigInt(file.sizeBytes),
+        contentHash: calculatedHash,
         storageKey: file.storageKey,
         content: file.content || null,
       },
@@ -421,6 +651,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       fileType: upserted.fileType,
       mimeType: upserted.mimeType,
       sizeBytes: Number(upserted.sizeBytes),
+      contentHash: upserted.contentHash,
       storageKey: upserted.storageKey,
       content: upserted.content,
       createdAt: upserted.createdAt.toISOString(),
@@ -428,10 +659,12 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
   }
 
   async updateProjectFileContent(fileId: string, content: string): Promise<ProjectFile> {
+    const hash = createHash('sha256').update(content, 'utf-8').digest('hex');
     const updated = await prisma.projectFile.update({
       where: { id: fileId },
       data: {
         content,
+        contentHash: hash,
         sizeBytes: BigInt(Buffer.byteLength(content, 'utf-8')),
       },
     });
@@ -443,6 +676,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
       fileType: updated.fileType,
       mimeType: updated.mimeType,
       sizeBytes: Number(updated.sizeBytes),
+      contentHash: updated.contentHash,
       storageKey: updated.storageKey,
       content: updated.content,
       createdAt: updated.createdAt.toISOString(),

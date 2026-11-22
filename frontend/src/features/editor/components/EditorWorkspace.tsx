@@ -24,9 +24,6 @@ export function EditorWorkspace() {
     documentData,
     userId,
     userName,
-    collabVersion,
-    incomingCollabUpdates,
-    handlePushCollabUpdates,
     handleDocContentChange,
     collaborators,
     activeFileRemoteCursors,
@@ -34,6 +31,7 @@ export function EditorWorkspace() {
     saveStatus,
     lastSavedAt,
     isConnected,
+    isOnline,
     isSynced,
     snapshots,
     operations,
@@ -72,6 +70,8 @@ export function EditorWorkspace() {
     isFlushing,
     setHistoryStatus,
     registerEditorActions,
+    registerRemoteDeltaListener,
+    registerReconcileListener,
   } = useCollabEditor();
 
   const [activeSidebarPanel, setActiveSidebarPanel] = useState<ActiveSidebarPanel>('files');
@@ -239,14 +239,11 @@ export function EditorWorkspace() {
 
                 <Box sx={{ flex: 1, overflow: 'hidden', height: '100%' }}>
                   <CodeMirrorEditor
-                    key={activeFile}
+                    key={`${activeFile}-${userId}`}
                     content={currentEditorContent}
                     version={documentData.version}
-                    collabVersion={collabVersion}
                     currentUserId={userId}
                     activeFile={activeFile}
-                    onPushCollabUpdates={handlePushCollabUpdates}
-                    incomingCollabUpdates={incomingCollabUpdates}
                     onDocContentChange={handleDocContentChange}
                     saveStatus={isMainFile ? saveStatus : 'synced'}
                     lastSavedAt={lastSavedAt}
@@ -273,7 +270,9 @@ export function EditorWorkspace() {
                     }}
                     onHistoryChange={setHistoryStatus}
                     onRegisterActions={registerEditorActions}
-                    readOnly={isReviewer}
+                    onRegisterRemoteDeltaListener={registerRemoteDeltaListener}
+                    onRegisterReconcileListener={registerReconcileListener}
+                    readOnly={isReviewer || !isOnline}
                   />
                 </Box>
               </Box>
@@ -297,6 +296,7 @@ export function EditorWorkspace() {
                 compileError={compileError}
                 lastCompiledAt={lastCompiledAt}
                 onRecompile={recompile}
+                isOnline={isOnline}
               />
             </Box>
           }

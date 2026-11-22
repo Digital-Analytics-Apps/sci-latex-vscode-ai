@@ -1,4 +1,5 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import path from 'node:path';
 import { telemetryBus } from '../../infra/telemetry-bus';
 import {
   CommentReply,
@@ -8,13 +9,13 @@ import {
   DocumentSnapshot,
   ProjectFile,
   ReviewComment,
+  SnapshotManifest,
 } from './documents.schema';
 import { defaultDocumentsRepository, IDocumentsRepository } from './documents.repository';
 import {
   deleteFromMinio,
   getFromMinio,
   getInternalMinioUrl,
-  StoragePathBuilder,
   uploadToMinio,
 } from '../../infra/minio';
 import { parseLatexZip } from '../../utils/latex-zip-parser';
@@ -49,68 +50,21 @@ export interface ActiveDocState {
   onSnapshotSaved?: (snapshot: DocumentSnapshot) => void;
 }
 export class DocumentsService {
-  private activeDocs: Map<string, ActiveDocState> = new Map();
-  private commentsMap: Map<string, ReviewComment[]> = new Map();
+  private readonly activeDocs: Map<string, ActiveDocState> = new Map();
+  private readonly commentsMap: Map<string, ReviewComment[]> = new Map();
 
   constructor(
-    private repository: IDocumentsRepository = defaultDocumentsRepository,
-    private templatesRepository: ITemplatesRepository = new PrismaTemplatesRepository()
-  ) {
-    // Seed de comentários de revisão para o documento padrão 'doc-1'
-    this.commentsMap.set('doc-1', [
-      {
-        id: 'comm-1',
-        documentId: 'doc-1',
-        file: 'main.tex',
-        from: 350,
-        to: 450,
-        selectedText:
-          'sincronização colaborativa em tempo real com Transformação Operacional (OT) e persistência de duas camadas',
-        userId: 'reviewer-1',
-        userName: 'Prof. Carlos',
-        userColor: '#9333ea',
-        content:
-          'Excelente contextualização. Poderíamos adicionar uma menção explícita ao algoritmo de State Machine Replication e consistência eventual?',
-        status: 'open',
-        createdAt: new Date(Date.now() - 3600000 * 2).toLocaleTimeString(),
-        replies: [
-          {
-            id: 'rep-1',
-            userId: 'author-alice',
-            userName: 'Alice Silva',
-            userColor: '#059669',
-            content:
-              'Concordo professor! Já preparei a citação da bibliografia para incluir na Seção 2.',
-            createdAt: new Date(Date.now() - 3600000 * 1).toLocaleTimeString(),
-          },
-        ],
-      },
-      {
-        id: 'comm-2',
-        documentId: 'doc-1',
-        file: 'main.tex',
-        from: 1050,
-        to: 1100,
-        selectedText: 'architecture.png',
-        userId: 'reviewer-2',
-        userName: 'Revisor Anônimo 2',
-        userColor: '#ea580c',
-        content:
-          'Verificar se o arquivo PNG no bucket MinIO possui resolução mínima de 300 DPI conforme as diretrizes da conferência IEEE/ACM.',
-        status: 'open',
-        createdAt: new Date(Date.now() - 1800000).toLocaleTimeString(),
-        replies: [],
-      },
-    ]);
-  }
+    private readonly documentsRepository: IDocumentsRepository = defaultDocumentsRepository,
+    private readonly templatesRepository: ITemplatesRepository = new PrismaTemplatesRepository()
+  ) {}
 
   async getDocument(id: string): Promise<Document> {
-    const doc = await this.repository.findById(id);
+    const doc = await this.documentsRepository.findById(id);
     if (!doc) {
       throw new Error(`Documento ${id} não encontrado`);
     }
     if (!this.commentsMap.has(id)) {
-      const persistedComments = await this.repository.listComments(id);
+      const persistedComments = await this.documentsRepository.listComments(id);
       this.commentsMap.set(id, persistedComments);
     }
 
@@ -156,6 +110,34 @@ export class DocumentsService {
     return fileCollab ? fileCollab.updates.length : 0;
   }
 
+  async getActiveFileContent(
+    documentId: string,
+    file?: string
+  ): Promise<{ content: string; version: number }> {
+    const doc = await this.getDocument(documentId);
+    const targetFile = file || doc.mainEntryPath;
+    if (targetFile === doc.mainEntryPath) {
+      return {
+        content: doc.content,
+        version: this.getCollabVersion(documentId, targetFile),
+      };
+    }
+    const active = this.activeDocs.get(documentId);
+    const fileCollab = active?.filesCollab.get(targetFile);
+    if (fileCollab) {
+      return {
+        content: fileCollab.doc.toString(),
+        version: fileCollab.updates.length,
+      };
+    }
+    const projectFiles = await this.documentsRepository.listProjectFiles(documentId);
+    const found = projectFiles.find((f) => f.path === targetFile);
+    return {
+      content: found?.content || '',
+      version: 0,
+    };
+  }
+
   getAllCollabVersions(documentId: string): Record<string, number> {
     const active = this.activeDocs.get(documentId);
     if (!active) return {};
@@ -175,8 +157,34 @@ export class DocumentsService {
     }
   }
 
+  async acquireDocumentOwnership(documentId: string): Promise<number> {
+    const generation = await this.documentsRepository.acquireOwnership(documentId);
+    this.setDocumentOwnerGeneration(documentId, generation);
+    return generation;
+  }
+
   getDocumentOwnerGeneration(documentId: string): number {
     return this.activeDocs.get(documentId)?.ownerGeneration ?? 0;
+  }
+
+  async restoreSnapshot(documentId: string, snapshotId: string): Promise<DocumentSnapshot> {
+    const restored = await this.documentsRepository.restoreSnapshot(documentId, snapshotId);
+    const active = this.activeDocs.get(documentId);
+    if (active) {
+      clearTimeout(active.debounceTimer);
+      clearTimeout(active.maxWaitTimer);
+      active.debounceTimer = undefined;
+      active.maxWaitTimer = undefined;
+      active.firstPendingOpTime = undefined;
+      active.pendingOps = 0;
+      active.version = restored.version;
+      active.content = restored.content;
+      active.doc = Text.of(restored.content.split('\n'));
+      active.updates = [];
+      active.filesCollab.clear();
+      active.lastActiveAt = Date.now();
+    }
+    return restored;
   }
 
   getUpdatesSince(
@@ -199,7 +207,7 @@ export class DocumentsService {
   }
 
   async listDocuments(): Promise<Document[]> {
-    return this.repository.findAll();
+    return this.documentsRepository.findAll();
   }
 
   async createDocument(
@@ -228,10 +236,10 @@ export class DocumentsService {
       updatedAt: new Date().toISOString(),
     };
 
-    await this.repository.create(doc);
+    await this.documentsRepository.create(doc);
 
     // Registra a Versão 1 inicial no histórico de snapshots
-    await this.repository.createSnapshot({
+    await this.documentsRepository.createSnapshot({
       id: randomUUID(),
       documentId: id,
       version: 1,
@@ -263,10 +271,10 @@ export class DocumentsService {
       updatedAt: new Date().toISOString(),
     };
 
-    await this.repository.create(doc);
+    await this.documentsRepository.create(doc);
 
     // Registra a Versão 1 inicial no histórico de snapshots
-    await this.repository.createSnapshot({
+    await this.documentsRepository.createSnapshot({
       id: randomUUID(),
       documentId: id,
       version: 1,
@@ -292,8 +300,8 @@ export class DocumentsService {
     snapshots: DocumentSnapshot[];
     operations: DocumentOperation[];
   }> {
-    const snapshots = await this.repository.getSnapshots(documentId);
-    const operations = await this.repository.getOperations(documentId);
+    const snapshots = await this.documentsRepository.getSnapshots(documentId);
+    const operations = await this.documentsRepository.getOperations(documentId);
     return { snapshots, operations };
   }
 
@@ -362,13 +370,46 @@ export class DocumentsService {
     // Rebase se o cliente estiver defasado em relação à versão canônica do servidor
     if (clientVersion < targetUpdates.length) {
       const historicalUpdates = targetUpdates.slice(clientVersion);
-      received = [...rebaseUpdates(received, historicalUpdates)];
+      try {
+        received = [...rebaseUpdates(received, historicalUpdates)];
+      } catch (err: unknown) {
+        console.warn(
+          `[Collab Rebase Warning] Incompatibilidade no rebase do arquivo ${file} (clientVer: ${clientVersion}, serverVer: ${targetUpdates.length}):`,
+          (err as Error).message
+        );
+        throw new Error(
+          `[CollabRebaseConflict] Desalinhamento de versão: recarregue o documento.`,
+          {
+            cause: err,
+          }
+        );
+      }
+    }
+
+    if (received.length === 0) {
+      return {
+        rebasedUpdates: [],
+        newVersion: targetUpdates.length,
+        docContent: targetDoc.toString(),
+      };
     }
 
     const comments = this.commentsMap.get(documentId);
     for (const update of received) {
       targetUpdates.push(update);
-      targetDoc = update.changes.apply(targetDoc);
+      try {
+        targetDoc = update.changes.apply(targetDoc);
+      } catch (err: unknown) {
+        targetUpdates.pop();
+        console.warn(
+          `[Collab Apply Warning] Falha ao aplicar ChangeSet no arquivo ${file}:`,
+          (err as Error).message
+        );
+        throw new Error(
+          `[CollabApplyConflict] Incompatibilidade de tamanho ao aplicar alterações no documento.`,
+          { cause: err }
+        );
+      }
       active.pendingOps++;
       active.lastAuthor = userName;
 
@@ -411,16 +452,14 @@ export class DocumentsService {
       }, 3000);
 
       // Gatilho 3: Teto máximo temporal (maxWait de 15 segundos ininterruptos sob digitação contínua)
-      if (!active.maxWaitTimer) {
-        active.maxWaitTimer = setTimeout(async () => {
-          try {
-            await this.flushCheckpoint(documentId);
-          } catch (err: unknown) {
-            const error = err as Error;
-            console.warn(`[Checkpoint Warning] MaxWait do doc ${documentId}:`, error.message);
-          }
-        }, 15000);
-      }
+      active.maxWaitTimer ??= setTimeout(async () => {
+        try {
+          await this.flushCheckpoint(documentId);
+        } catch (err: unknown) {
+          const error = err as Error;
+          console.warn(`[Checkpoint Warning] MaxWait do doc ${documentId}:`, error.message);
+        }
+      }, 15000);
     }
 
     return {
@@ -518,6 +557,27 @@ export class DocumentsService {
         });
       }
     }
+
+    const allProjectFiles = await this.listProjectFiles(documentId);
+    const manifestFiles = allProjectFiles.map((f) => ({
+      path: f.path,
+      type: (f.content !== null && f.content !== undefined ? 'text' : 'binary') as
+        'text' | 'binary',
+      sha256:
+        f.contentHash ||
+        (f.content ? createHash('sha256').update(f.content).digest('hex') : 'hash_unavailable'),
+      storageKey: f.storageKey || undefined,
+      content: f.content ?? undefined,
+    }));
+
+    const manifest: SnapshotManifest = {
+      schemaVersion: 1,
+      projectId: documentId,
+      projectVersion: active.version,
+      mainEntryPath: active.mainEntryPath,
+      files: manifestFiles,
+    };
+
     const snapshot: DocumentSnapshot = {
       id: randomUUID(),
       documentId,
@@ -525,12 +585,13 @@ export class DocumentsService {
       content,
       savedBy: active.lastAuthor,
       reason: `checkpoint_${active.pendingOps}_operacoes`,
+      manifest,
       createdAt: new Date().toISOString(),
     };
 
     try {
-      if (this.repository.saveCheckpoint) {
-        await this.repository.saveCheckpoint({
+      if (this.documentsRepository.saveCheckpoint) {
+        await this.documentsRepository.saveCheckpoint({
           documentId,
           version: active.version,
           expectedOldVersion: oldVersion,
@@ -541,8 +602,8 @@ export class DocumentsService {
           snapshot,
         });
       } else {
-        await this.repository.updateContent(documentId, content, active.version);
-        await this.repository.createSnapshot(snapshot);
+        await this.documentsRepository.updateContent(documentId, content, active.version);
+        await this.documentsRepository.createSnapshot(snapshot);
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -563,7 +624,7 @@ export class DocumentsService {
     const comments = this.commentsMap.get(documentId);
     if (comments && comments.length > 0) {
       for (const comment of comments) {
-        this.repository.saveComment(comment).catch((err: unknown) => {
+        this.documentsRepository.saveComment(comment).catch((err: unknown) => {
           const error = err as Error;
           console.warn(
             `[Comments Checkpoint Warning] Falha ao persistir comentário ${comment.id}:`,
@@ -583,7 +644,7 @@ export class DocumentsService {
    * Lista todos os arquivos do projeto (árvore de diretórios virtual)
    */
   async listProjectFiles(documentId: string): Promise<ProjectFile[]> {
-    const dbFiles = await this.repository.listProjectFiles(documentId);
+    const dbFiles = await this.documentsRepository.listProjectFiles(documentId);
     const active = this.activeDocs.get(documentId);
     if (!active) return dbFiles;
 
@@ -618,8 +679,12 @@ export class DocumentsService {
     buffer: Buffer,
     mimeType: string
   ): Promise<ProjectFile> {
-    // Normaliza o caminho (ex: "images/grafico.png")
-    const cleanPath = virtualPath.replace(/^\/+/, '');
+    // Normaliza o caminho com segurança e rejeita tentativas de path traversal
+    const normalized = path.posix.normalize(virtualPath).replace(/^\/+/, '');
+    if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+      throw new Error(`[SecurityError] Caminho de arquivo inválido: "${virtualPath}"`);
+    }
+    const cleanPath = normalized;
     const ext = cleanPath.split('.').pop()?.toLowerCase() || '';
 
     let fileType: string = 'other';
@@ -634,12 +699,11 @@ export class DocumentsService {
     }
 
     const fileId = randomUUID();
-    const storageKey = StoragePathBuilder.projectFile(
-      documentId,
-      fileId,
-      cleanPath.split('/').pop() || 'file'
-    );
-    // 1. Salva o blob no bucket MinIO
+    const sha256 = createHash('sha256').update(buffer).digest('hex');
+    const filename = cleanPath.split('/').pop() || 'file';
+    const storageKey = `projects/${documentId}/assets/${sha256}-${filename}`;
+
+    // 1. Salva o blob no bucket MinIO com chave imutável content-addressed
     await uploadToMinio(storageKey, buffer, mimeType);
 
     // 2. Persiste metadados na tabela project_files
@@ -650,11 +714,12 @@ export class DocumentsService {
       fileType,
       mimeType,
       sizeBytes: buffer.length,
+      contentHash: sha256,
       storageKey,
       createdAt: new Date().toISOString(),
     };
 
-    return this.repository.saveProjectFile(projectFile);
+    return this.documentsRepository.saveProjectFile(projectFile);
   }
 
   /**
@@ -663,8 +728,8 @@ export class DocumentsService {
   async getProjectFileRaw(
     fileId: string
   ): Promise<{ buffer: Buffer; mimeType: string; path: string }> {
-    const file = await this.repository.findProjectFileById(fileId);
-    if (!file || !file.storageKey) {
+    const file = await this.documentsRepository.findProjectFileById(fileId);
+    if (!file?.storageKey) {
       throw new Error(`Arquivo ${fileId} não encontrado`);
     }
 
@@ -684,7 +749,11 @@ export class DocumentsService {
     virtualPath: string,
     content: string = ''
   ): Promise<ProjectFile> {
-    const cleanPath = virtualPath.replace(/^\/+/, '');
+    const normalized = path.posix.normalize(virtualPath).replace(/^\/+/, '');
+    if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+      throw new Error(`[SecurityError] Caminho de arquivo inválido: "${virtualPath}"`);
+    }
+    const cleanPath = normalized;
     const ext = cleanPath.split('.').pop()?.toLowerCase() || '';
 
     let fileType: string = 'other';
@@ -697,6 +766,7 @@ export class DocumentsService {
     }
 
     const fileId = randomUUID();
+    const sha256 = createHash('sha256').update(content, 'utf-8').digest('hex');
     const projectFile: ProjectFile = {
       id: fileId,
       documentId,
@@ -705,26 +775,27 @@ export class DocumentsService {
       mimeType:
         fileType === 'tex' ? 'text/x-tex' : fileType === 'bib' ? 'text/plain' : 'text/plain',
       sizeBytes: Buffer.byteLength(content, 'utf-8'),
+      contentHash: sha256,
       storageKey: null,
       content,
       createdAt: new Date().toISOString(),
     };
 
-    return this.repository.saveProjectFile(projectFile);
+    return this.documentsRepository.saveProjectFile(projectFile);
   }
 
   /**
    * Atualiza o conteúdo textual de um arquivo existente
    */
   async updateProjectFileContent(fileId: string, content: string): Promise<ProjectFile> {
-    return this.repository.updateProjectFileContent(fileId, content);
+    return this.documentsRepository.updateProjectFileContent(fileId, content);
   }
 
   /**
    * Remove arquivo do MinIO e do banco de dados
    */
   async deleteProjectFile(fileId: string): Promise<void> {
-    const file = await this.repository.findProjectFileById(fileId);
+    const file = await this.documentsRepository.findProjectFileById(fileId);
     if (!file) return;
 
     if (file.storageKey) {
@@ -735,7 +806,7 @@ export class DocumentsService {
       }
     }
 
-    await this.repository.deleteProjectFile(fileId);
+    await this.documentsRepository.deleteProjectFile(fileId);
   }
 
   /**
@@ -758,7 +829,7 @@ export class DocumentsService {
     const compilerUrl = process.env.COMPILER_URL || 'http://compiler:4000';
 
     // Busca todos os arquivos associados ao projeto no PostgreSQL
-    const projectFiles = await this.repository.listProjectFiles(documentId);
+    const projectFiles = await this.documentsRepository.listProjectFiles(documentId);
 
     // Constrói o manifesto de arquivos para o sandbox do compilador
     const filesPayload: Array<{
@@ -921,7 +992,7 @@ export class DocumentsService {
     const list = this.commentsMap.get(documentId) || [];
     list.unshift(comment);
     this.commentsMap.set(documentId, list);
-    this.repository.saveComment(comment).catch((err: unknown) => {
+    this.documentsRepository.saveComment(comment).catch((err: unknown) => {
       const error = err as Error;
       console.warn(`[Comments Warning] Falha ao salvar comentário ${comment.id}:`, error.message);
     });
@@ -936,7 +1007,7 @@ export class DocumentsService {
     const comm = list.find((c) => c.id === commentId);
     if (!comm) return null;
     comm.replies.push(reply);
-    this.repository.updateComment(comm).catch((err: unknown) => {
+    this.documentsRepository.updateComment(comm).catch((err: unknown) => {
       const error = err as Error;
       console.warn(
         `[Comments Warning] Falha ao atualizar reply no comentário ${commentId}:`,
@@ -958,7 +1029,7 @@ export class DocumentsService {
     const comm = list.find((c) => c.id === commentId);
     if (!comm) return null;
     comm.status = status;
-    this.repository.updateComment(comm).catch((err: unknown) => {
+    this.documentsRepository.updateComment(comm).catch((err: unknown) => {
       const error = err as Error;
       console.warn(`[Comments Warning] Falha ao resolver comentário ${commentId}:`, error.message);
     });
@@ -972,7 +1043,7 @@ export class DocumentsService {
     const list = this.commentsMap.get(documentId) || [];
     const filtered = list.filter((c) => c.id !== commentId);
     this.commentsMap.set(documentId, filtered);
-    this.repository.deleteComment(commentId).catch((err: unknown) => {
+    this.documentsRepository.deleteComment(commentId).catch((err: unknown) => {
       const error = err as Error;
       console.warn(`[Comments Warning] Falha ao excluir comentário ${commentId}:`, error.message);
     });

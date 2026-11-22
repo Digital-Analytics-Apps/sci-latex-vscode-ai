@@ -53,11 +53,32 @@ export const PushUpdatesSchema = z.object({
 
 export type PushUpdates = z.infer<typeof PushUpdatesSchema>;
 
+export const SnapshotFileEntrySchema = z.object({
+  path: z.string(),
+  type: z.string(),
+  sha256: z.string(),
+  storageKey: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
+});
+
+export type SnapshotFileEntry = z.infer<typeof SnapshotFileEntrySchema>;
+
+export const SnapshotManifestSchema = z.object({
+  schemaVersion: z.number().int().default(1),
+  projectId: z.string(),
+  projectVersion: z.number().int(),
+  mainEntryPath: z.string(),
+  files: z.array(SnapshotFileEntrySchema),
+});
+
+export type SnapshotManifest = z.infer<typeof SnapshotManifestSchema>;
+
 export const DocumentSnapshotSchema = z.object({
   id: z.string(),
   documentId: z.string(),
   version: z.number(),
   content: z.string(),
+  manifest: SnapshotManifestSchema.nullable().optional(),
   savedBy: z.string(),
   reason: z.string().default('checkpoint_debounce'),
   createdAt: z.string(),
@@ -89,6 +110,7 @@ export const ProjectFileSchema = z.object({
   sizeBytes: z.number(),
   storageKey: z.string().nullable(),
   content: z.string().nullable().optional(),
+  contentHash: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 

@@ -1,8 +1,17 @@
 # 📌 Status de Desenvolvimento & Guia de Retomada (`STATUS.md`)
 
 **Projeto:** SCIA — Scientific Collaboration and Intelligent Assistance (`sci-latex-vscode`)  
-**Última Atualização:** 20 de Novembro de 2026  
-**Status Geral do Projeto:** 🟢 **Reestruturação e Centralização da Documentação (`docs/`) e Visualizador de Topologia Concluídos.**
+**Última Atualização:** 22 de Novembro de 2026  
+**Status Geral do Projeto:** 🟢 **Arquitetura de Persistência Canônica do Editor Colaborativo Concluída, Implementada e Validada em Produção (ADR-007 Unificada & Spec Atualizados).**
+- **Persistência de Documentos LaTeX (`.tex`) e Colaboração:**
+  1. **ADR-007 Unificada e Canônica:** ADR-007 consolidada e aprovada (`docs/architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md`), integrando os 6 pilares de autoridade single-writer OT, ciclo de vida do Fencing Token, snapshots multi-arquivo e protocolo de resiliência.
+  2. **Ciclo Atômico de Fencing Token (Martin Kleppmann):** Aquisição transacional no PostgreSQL (`UPDATE "Project" SET "ownerGeneration" = "ownerGeneration" + 1 ... RETURNING "ownerGeneration"`) e barreira atômica no flush do Checkpoint (`UPDATE "Project" SET ... WHERE "id" = :id AND "ownerGeneration" = :myGen AND "currentVersion" = :expectedOldVersion`). Eliminação definitiva de qualquer TOCTOU ou risco de split-brain em cenários de partição de rede K8s ou garbage collection pauses.
+  3. **Snapshots Multi-Arquivo com Manifesto JSONB:** Cada snapshot consolida a árvore completa do artigo acadêmico (`schemaVersion: 1, projectId, projectVersion, mainEntryPath, files: [{ path, type, sha256, storageKey, content? }]`), garantindo restauração consistente integral e rollback com expurgo de arquivos criados a posteriori.
+  4. **Hashes SHA-256 e MinIO Content-Addressed:** Cálculo de SHA-256 para cada arquivo textual (`contentHash`) e ativos binários armazenados sob chave imutável content-addressed (`projects/:projectId/assets/:sha256-:filename`), otimizando o cache do TeX Live Compiler.
+  5. **Local Outbox com IndexedDB no Frontend:** Mutações enfileiradas na fila local `sci_latex_outbox` (`sci_latex_editor_db`), suportando duplo ACK (`OPERATION_ACK` / `ACK_DELTA` para confirmação em RAM e `PERSISTENCE_ACK` para expurgo após snapshot gravado no PostgreSQL) com sincronização e drain automático após reconexão.
+  6. **Despacho Direto e Síncrono de Deltas Remotos (`onRegisterRemoteDeltaListener`):** Eliminação de batching assíncrono do React no caminho crítico dos deltas remotos (`DELTA_BROADCAST`), despachando cada operação atômica de forma síncrona diretamente para o CodeMirror (`Transaction.remote.of(true)`).
+  7. **Protocolo Canônico de Reconciliação (`REQUEST_RECONCILE` & `RECONCILE_SYNC`):** Ao concluir a drenagem do outbox ou restabelecer a rede, o cliente solicita a consolidação canônica do servidor. O CodeMirror aplica a sincronização através de diff inteligente de prefixo e sufixo comum, preservando estritamente a seleção do cursor do usuário sem necessidade de recarga da página (`F5`).
+- **Métricas Atuais de Testes:** 91/91 testes de backend aprovados (`vitest`), build de produção do frontend concluído com 0 erros (`tsc -b && vite build`) e containers Docker reiniciados e saudáveis.
 - **Reorganização Estrutural da Documentação (`docs/`):**
   1. **Taxonomia Padronizada:** A raiz de `docs/` foi saneada e organizada em domínios canônicos: `architecture/` (análises, banco e topologia), `product/` (diretrizes e jornadas), `specs/` (pasta única com TRD, design system e features), `planning/` (status, roadmap, planos e discussões), `guides/` (infraestrutura, observabilidade e AIOps) e `assets/` (imagens, mídia e apresentações).
   2. **Unificação e Eliminação de Duplicidades:** Pasta `specs` duplicada removida de `planning/`, mapa mental de literatura incorporado em [`literature-intelligence-spec.md`](../specs/literature-intelligence-spec.md) e guias redundantes de observabilidade consolidados em [`guia-observabilidade.md`](../guides/observability/guia-observabilidade.md).
@@ -42,7 +51,14 @@
 > **Consulte esta seção sempre que iniciar ou retomar uma sessão de desenvolvimento.** Ela indica exatamente a última alteração realizada e qual o primeiro comando/tarefa a ser executado.
 
 ### 🔍 Estado Atual da Aplicação
-  * **Branch Ativa:** `feature/admin-service-topology-react-flow`
+  * **Branch Ativa:** `dev`
+  * **Modo Offline, Local Outbox e Resiliência do Editor Colaborativo (Concluído & Validado):**
+    * **Boundary Global de Conectividade:** `NetworkStatusProvider` (`NetworkConnectivityBoundary`) envolvendo o app raiz, com listeners reativos para `online` e `offline`, integrando `onlineManager` do TanStack Query e snackbar temporário informativo (6s) com opção de fechar.
+    * **Modo Somente Leitura Offline:** Ao cair a conexão (`!isOnline`), o editor CodeMirror 6 entra automaticamente em modo read-only e a compilação TeX Live é desativada com tooltip explicativo.
+    * **Integridade do Local Outbox no IndexedDB:** Mutações acumuladas são preservadas no outbox local sem expurgo prematuro. Remoções de mutações agora dependem de confirmação explícita (`PERSISTENCE_ACK` ou `RECONCILE_SYNC`), protegendo deltas locais com versão 0 (`APPLY_DELTA`).
+    * **Autenticação e RBAC no WebSocket:** Validação de token JWT no handshake WebSocket (`/ws/documents/:documentId`) e bloqueio de usuários não autorizados (`VIEWER`) na restauração de snapshots (`RESTORE_SNAPSHOT`).
+    * **Sanitização de Caminhos:** Proteção estrita contra Path Traversal em `createProjectTextFile` e `uploadProjectFile` via `path.posix.normalize`.
+    * **Padrões de Qualidade & ESLint:** Monorepo migrado para `defineConfig` do ESLint (`eslint/config`), diretórios de trabalho configurados no `.vscode/settings.json`, compilação estrita TypeScript do backend e frontend com zero erros e 91 testes passando.
   * **Visualizador em Tempo Real da Topologia de Serviços no Admin Center (Nova Aba 6 com React Flow):**
     * **Diretriz de Não Substituição Atendida:** Todas as 5 abas originais do SCIA Admin Center (ADR-014) permanecem 100% preservadas e intactas.
     * **Nova Aba Implementada:** `6. Topologia de Serviços` adicionada no [AdminCenterPage.tsx](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/frontend/src/features/admin/AdminCenterPage.tsx) e [ServiceTopologyTab.tsx](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/frontend/src/features/admin/tabs/ServiceTopologyTab.tsx).

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WS_BASE } from '../../../constants/api.constants';
+import { outboxDbService } from '../services/outboxDb.service';
+import { useNetworkStatus } from '../../../context/NetworkStatusContext';
 import {
   Collaborator,
   CollabUpdateJSON,
@@ -8,6 +10,7 @@ import {
   DocumentSnapshot,
   RemoteCursor,
   ReviewComment,
+  SnapshotRestoredPayload,
 } from '../types/collab.types';
 
 export interface UseCollabWebSocketProps {
@@ -25,6 +28,8 @@ export interface UseCollabWebSocketProps {
     fileVersions?: Record<string, number>
   ) => void;
   onSnapshotSaved: (snapshot: DocumentSnapshot, time: string) => void;
+  onSnapshotRestored?: (payload: SnapshotRestoredPayload) => void;
+  onReconcileSync?: (file: string, content: string, version: number) => void;
   onCommentAdded?: (comment: ReviewComment) => void;
   onCommentRepliedOrResolved?: (comment: ReviewComment) => void;
   onCommentDeleted?: (commentId: string) => void;
@@ -39,10 +44,18 @@ export function useCollabWebSocket({
   onRemoteCollabUpdates,
   onSyncInit,
   onSnapshotSaved,
+  onSnapshotRestored,
+  onReconcileSync,
   onCommentAdded,
   onCommentRepliedOrResolved,
   onCommentDeleted,
 }: UseCollabWebSocketProps) {
+  const { isOnline } = useNetworkStatus();
+  const isOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
+
   const [isConnected, setIsConnected] = useState(false);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Map<string, RemoteCursor>>(new Map());
@@ -54,6 +67,7 @@ export function useCollabWebSocket({
   const activeEditorTimeoutRef = useRef<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const messageQueueRef = useRef<string[]>([]);
+  const connectRef = useRef<(() => void) | null>(null);
 
   const activeFileRef = useRef(activeFile);
   useEffect(() => {
@@ -65,6 +79,8 @@ export function useCollabWebSocket({
     onRemoteCollabUpdates,
     onSyncInit,
     onSnapshotSaved,
+    onSnapshotRestored,
+    onReconcileSync,
     onCommentAdded,
     onCommentRepliedOrResolved,
     onCommentDeleted,
@@ -75,6 +91,8 @@ export function useCollabWebSocket({
       onRemoteCollabUpdates,
       onSyncInit,
       onSnapshotSaved,
+      onSnapshotRestored,
+      onReconcileSync,
       onCommentAdded,
       onCommentRepliedOrResolved,
       onCommentDeleted,
@@ -85,9 +103,52 @@ export function useCollabWebSocket({
     let isDisposed = false;
     let reconnectTimer: number | undefined;
 
+    const drainOutbox = async (ws: WebSocket) => {
+      try {
+        const pending = await outboxDbService.getPendingMutations(documentId);
+        for (const mutation of pending) {
+          if (ws.readyState === WebSocket.OPEN) {
+            if (mutation.type === 'APPLY_DELTA') {
+              ws.send(
+                JSON.stringify({
+                  type: 'APPLY_DELTA',
+                  file: mutation.file,
+                  delta: mutation.payload,
+                })
+              );
+            } else {
+              ws.send(
+                JSON.stringify({
+                  type: mutation.type,
+                  file: mutation.file,
+                  version: mutation.version,
+                  updates: mutation.payload,
+                  idempotencyKey: mutation.idempotencyKey,
+                })
+              );
+            }
+          }
+        }
+
+        // Reconciliação canônica automática após a drenagem do outbox ou reconexão
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: 'REQUEST_RECONCILE',
+              file: activeFileRef.current,
+            })
+          );
+        }
+      } catch (err) {
+        console.warn('[Collab WS Outbox Drain] Falha ao drenar outbox:', err);
+      }
+    };
+
     const connect = () => {
-      if (isDisposed) return;
-      const wsUrl = `${WS_BASE}/ws/documents/${documentId}?userId=${userId}&userName=${encodeURIComponent(userName)}`;
+      if (isDisposed || !isOnlineRef.current) return;
+      const token = localStorage.getItem('token') || '';
+      const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+      const wsUrl = `${WS_BASE}/ws/documents/${documentId}?userId=${userId}&userName=${encodeURIComponent(userName)}${tokenParam}`;
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
@@ -97,6 +158,10 @@ export function useCollabWebSocket({
           return;
         }
         setIsConnected(true);
+
+        // Drena primeiro as mutações pendentes salvas no IndexedDB Local Outbox
+        drainOutbox(ws).catch(console.warn);
+
         while (messageQueueRef.current.length > 0) {
           const queued = messageQueueRef.current.shift();
           if (queued && ws.readyState === WebSocket.OPEN) {
@@ -122,6 +187,11 @@ export function useCollabWebSocket({
             case 'PULL_UPDATES_RESPONSE': {
               const targetFile: string = msg.file || activeFileRef.current;
               const updates: CollabUpdateJSON[] = msg.updates || [];
+              if (typeof msg.version === 'number') {
+                outboxDbService
+                  .purgeConfirmedBeforeVersion(documentId, msg.version)
+                  .catch(console.warn);
+              }
               callbacksRef.current.onRemoteCollabUpdates?.(targetFile, msg.version, updates);
               if (
                 msg.author &&
@@ -212,6 +282,32 @@ export function useCollabWebSocket({
               callbacksRef.current.onSnapshotSaved(msg.snapshot, msg.time);
               break;
 
+            case 'RECONCILE_SYNC': {
+              const targetFile = msg.file || activeFileRef.current;
+              callbacksRef.current.onReconcileSync?.(targetFile, msg.content, msg.version);
+              // Quando o documento é reconciliado com o backend, as mutações até essa versão foram consolidadas
+              if (typeof msg.version === 'number') {
+                outboxDbService
+                  .purgeConfirmedBeforeVersion(documentId, msg.version)
+                  .catch(console.warn);
+              }
+              outboxDbService.purgeReconciledDeltas(documentId, targetFile).catch(console.warn);
+              break;
+            }
+
+            case 'PERSISTENCE_ACK':
+              // Limpa com segurança as mutações do Local Outbox confirmadas no PostgreSQL
+              if (typeof msg.version === 'number') {
+                outboxDbService
+                  .purgeConfirmedBeforeVersion(documentId, msg.version)
+                  .catch(console.warn);
+              }
+              break;
+
+            case 'SNAPSHOT_RESTORED':
+              callbacksRef.current.onSnapshotRestored?.(msg);
+              break;
+
             case 'COMMENT_ADDED':
               callbacksRef.current.onCommentAdded?.(msg.comment);
               break;
@@ -232,10 +328,10 @@ export function useCollabWebSocket({
 
       ws.onclose = () => {
         setIsConnected(false);
-        if (!isDisposed) {
+        if (!isDisposed && isOnlineRef.current) {
           clearTimeout(reconnectTimer);
           reconnectTimer = setTimeout(() => {
-            connect();
+            if (isOnlineRef.current) connect();
           }, 2000);
         }
       };
@@ -245,10 +341,14 @@ export function useCollabWebSocket({
       };
     };
 
-    connect();
+    connectRef.current = connect;
+    if (isOnlineRef.current) {
+      connect();
+    }
 
     return () => {
       isDisposed = true;
+      connectRef.current = null;
       clearTimeout(reconnectTimer);
       if (socketRef.current) {
         socketRef.current.close();
@@ -256,31 +356,107 @@ export function useCollabWebSocket({
     };
   }, [documentId, userId, userName]);
 
-  const safeSend = useCallback((payload: unknown) => {
-    const raw = JSON.stringify(payload);
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(raw);
+  // Reage imediatamente a mudanças de conectividade de rede (online/offline)
+  useEffect(() => {
+    if (!isOnline) {
+      setIsConnected(false);
+      if (socketRef.current) {
+        try {
+          socketRef.current.close();
+        } catch {
+          // Socket fechado
+        }
+      }
     } else {
-      messageQueueRef.current.push(raw);
+      if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
+        connectRef.current?.();
+      }
     }
-  }, []);
+  }, [isOnline]);
+
+  const safeSend = useCallback(
+    (payload: unknown) => {
+      const raw = JSON.stringify(payload);
+      if (isOnline && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(raw);
+      } else {
+        messageQueueRef.current.push(raw);
+      }
+    },
+    [isOnline]
+  );
+
   const sendDelta = useCallback(
     (file: string, delta: Omit<DeltaOperation, 'userId' | 'userName' | 'timestamp'>) => {
-      safeSend({
-        type: 'APPLY_DELTA',
-        file,
-        delta,
-      });
+      if (isOnline && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: 'APPLY_DELTA',
+            file,
+            delta,
+          })
+        );
+      } else {
+        const idempotencyKey = crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        outboxDbService
+          .enqueueMutation({
+            idempotencyKey,
+            documentId,
+            file,
+            type: 'APPLY_DELTA',
+            payload: delta,
+            version: 0,
+            status: 'pending',
+            timestamp: Date.now(),
+          })
+          .catch(console.warn);
+      }
     },
-    [safeSend]
+    [documentId, isOnline]
   );
   const sendCollabUpdates = useCallback(
     (file: string, version: number, updates: CollabUpdateJSON[]) => {
+      const idempotencyKey = crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      // 1. Enfileira de forma assíncrona no Local Outbox (IndexedDB)
+      outboxDbService
+        .enqueueMutation({
+          idempotencyKey,
+          documentId,
+          file,
+          type: 'PUSH_UPDATES',
+          payload: updates,
+          version,
+          status: 'pending',
+          timestamp: Date.now(),
+        })
+        .catch(console.warn);
+
+      // 2. Despacha via WebSocket se aberto e online; se offline, a mutação já está garantida no outboxDbService
+      if (isOnline && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: 'PUSH_UPDATES',
+            file,
+            version,
+            updates,
+            idempotencyKey,
+          })
+        );
+      }
+    },
+    [documentId, isOnline]
+  );
+
+  const restoreSnapshot = useCallback(
+    (snapshotId: string) => {
       safeSend({
-        type: 'PUSH_UPDATES',
-        file,
-        version,
-        updates,
+        type: 'RESTORE_SNAPSHOT',
+        snapshotId,
       });
     },
     [safeSend]
@@ -305,14 +481,27 @@ export function useCollabWebSocket({
     },
     [safeSend]
   );
+  const requestReconcile = useCallback(
+    (file?: string) => {
+      safeSend({
+        type: 'REQUEST_RECONCILE',
+        file: file || activeFileRef.current,
+      });
+    },
+    [safeSend]
+  );
+
   return {
-    isConnected,
+    isConnected: isConnected && isOnline,
+    isOnline,
     collaborators,
     remoteCursors,
     activeEditor,
     sendDelta,
     sendCollabUpdates,
+    restoreSnapshot,
     sendCursorMove,
     sendRawMessage,
+    requestReconcile,
   };
 }

@@ -10,7 +10,6 @@ export function EditorHeader() {
   const navigate = useNavigate();
   const {
     documentData,
-    userName,
     userId,
     collaborators,
     remoteCursors,
@@ -23,11 +22,11 @@ export function EditorHeader() {
     showReview,
     comments,
     isConnected,
+    isOnline,
     isReviewer,
     setLayoutMode,
     setShowHistory,
     setShowReview,
-    setUserName,
     handleManualFlush,
     recompile,
     historyStatus,
@@ -57,7 +56,6 @@ export function EditorHeader() {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <IdeNavbar
           projectTitle={documentData?.title || 'Artigo Científico LaTeX'}
-          userName={userName}
           userId={userId}
           collaborators={collaborators}
           remoteCursors={remoteCursors}
@@ -71,10 +69,10 @@ export function EditorHeader() {
           onToggleReview={() => setShowReview((prev) => !prev)}
           commentsCount={comments.filter((c) => c.status === 'open').length}
           isConnected={isConnected}
+          isOnline={isOnline}
           isReviewer={isReviewer}
           onLayoutChange={setLayoutMode}
           onToggleHistory={() => setShowHistory((prev) => !prev)}
-          onUserNameChange={setUserName}
           onManualFlush={handleManualFlush}
           onRecompile={recompile}
           canUndo={historyStatus.canUndo}

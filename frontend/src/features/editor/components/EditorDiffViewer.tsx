@@ -205,30 +205,50 @@ export function EditorDiffViewer({
             borderColor: 'divider',
             backgroundColor: 'action.hover',
             px: 2,
-            py: 0.6,
+            py: 0.8,
             fontSize: '0.75rem',
             fontWeight: 600,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'text.secondary',
-            }}
-          >
-            📜 Versão {snapshot.version} (Histórico Congelado)
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'primary.main',
-              pl: 1,
-            }}
-          >
-            ✏️ Versão Atual de Trabalho
-          </Typography>
+          <Box>
+            <Typography
+              sx={{
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'text.secondary',
+              }}
+            >
+              📜 Versão {snapshot.version} (Histórico Gravado)
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '0.7rem',
+                color: 'text.secondary',
+              }}
+            >
+              Autor: {snapshot.savedBy || 'Sistema'} •{' '}
+              {new Date(snapshot.createdAt).toLocaleTimeString()}
+            </Typography>
+          </Box>
+          <Box sx={{ pl: 1, borderLeft: 1, borderColor: 'divider' }}>
+            <Typography
+              sx={{
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'primary.main',
+              }}
+            >
+              ✏️ Editor Atual (Contém todas as alterações até este instante)
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '0.7rem',
+                color: 'text.secondary',
+              }}
+            >
+              Exibe o estado ao vivo do documento comparado com a versão à esquerda
+            </Typography>
+          </Box>
         </Box>
       )}
 

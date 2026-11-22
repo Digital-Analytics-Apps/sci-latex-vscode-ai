@@ -1,16 +1,26 @@
 import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'references-ai-chat/**'] },
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default defineConfig([
+  { ignores: ['dist', 'node_modules', 'public/**', 'references-ai-chat/**'] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+      },
     },
     plugins: {
       'react-hooks': reactHooks,
@@ -33,5 +43,5 @@ export default tseslint.config(
         },
       ],
     },
-  }
-);
+  },
+]);

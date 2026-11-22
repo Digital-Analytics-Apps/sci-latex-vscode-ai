@@ -122,70 +122,129 @@ A comunicação cliente-servidor opera sobre `/ws/documents/:projectId` com prot
 ### 3.1 Definição de Tipos dos Payloads
 
 ```typescript
-// Envelope base das mensagens WebSocket
+// Envelope base das mensagens WebSocket cliente -> servidor
 export type CollabClientMessage =
   | { type: 'SYNC_INIT' }
-  | { type: 'PULL_UPDATES'; file: string; sinceVersion: number }
-  | { type: 'PUSH_UPDATES'; file: string; clientVersion: number; clientID: string; updates: SerializedChangeSet[] }
-  | { type: 'AWARENESS_CURSOR'; file: string; from: number; to: number };
+  | { type: 'PULL_UPDATES'; file?: string; version?: number }
+  | { type: 'PUSH_UPDATES'; file: string; version: number; updates: CollabUpdateJSON[]; idempotencyKey?: string }
+  | { type: 'APPLY_DELTA'; file: string; delta: DeltaOperation }
+  | { type: 'REQUEST_RECONCILE'; file: string }
+  | { type: 'CURSOR_MOVE'; file: string; position: number; selectionStart?: number; selectionEnd?: number }
+  | { type: 'RESTORE_SNAPSHOT'; snapshotId: string };
 
+// Envelope base das mensagens WebSocket servidor -> cliente
 export type CollabServerMessage =
   | { 
-      type: 'SYNC_RESPONSE'; 
+      type: 'SYNC_INIT'; 
+      document: DocumentData;
       version: number; 
-      ownerGeneration: number; 
-      files: Array<{ path: string; version: number }>; 
-      members: Array<{ userId: string; userName: string; color: string }> 
+      fileVersions: Record<string, number>; 
+      comments: ReviewComment[];
+      collaborators: Array<{ userId: string; userName: string; color: string }>;
     }
   | { 
-      type: 'OPERATION_ACK'; 
+      type: 'PULL_UPDATES_RESPONSE'; 
       file: string; 
-      newVersion: number; 
-      rebasedUpdates: SerializedChangeSet[] 
+      version: number; 
+      updates: CollabUpdateJSON[];
+      author?: { userId: string; userName: string; color: string };
+      status: 'synced' | 'pending_debounce';
+    }
+  | {
+      type: 'DELTA_BROADCAST';
+      file: string;
+      operation: DeltaOperation;
+      version: number;
+      author: { userId: string; userName: string; color: string };
+      status: 'pending_debounce';
+    }
+  | {
+      type: 'ACK_DELTA';
+      file: string;
+      operationId: string;
+      version: number;
+      status: 'pending_debounce';
+    }
+  | {
+      type: 'RECONCILE_SYNC';
+      file: string;
+      content: string;
+      version: number;
+    }
+  | { 
+      type: 'SNAPSHOT_SAVED'; 
+      snapshot: DocumentSnapshot;
+      version: number; 
+      time: string;
     }
   | { 
       type: 'PERSISTENCE_ACK'; 
       snapshotId: string; 
       version: number; 
-      timestamp: string 
+      timestamp: number;
+    }
+  | {
+      type: 'SNAPSHOT_RESTORED';
+      snapshot: DocumentSnapshot;
+      version: number;
+      content: string;
+      files: ProjectFile[];
+      restoredBy: string;
+      time: string;
     }
   | { 
-      type: 'VERSION_MISMATCH'; 
-      file: string; 
-      serverVersion: number; 
-      reason: string 
+      type: 'ERROR'; 
+      code?: string;
+      message: string;
     };
 
-export interface SerializedChangeSet {
-  clientID: string;
-  changes: unknown; // Representação serializada de ChangeSet.toJSON()
+export interface DeltaOperation {
+  id?: string;
+  type: 'insert' | 'delete';
+  position: number;
+  text?: string;
+  length?: number;
+  userId: string;
+  userName: string;
+  timestamp: number;
 }
 ```
 
-### 3.2 Diagrama Sequencial de Duplo ACK
+### 3.2 Diagrama Sequencial de Duplo ACK e Reconciliação Offline
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Cli as Autor (CodeMirror 6 + idb)
+    participant Cli as Autor Offline (CodeMirror 6 + IndexedDB)
+    participant Peer as Autor Online
     participant Pod as Pod Dono (Fastify RAM)
     participant PG as PostgreSQL 16
 
-    Cli->>Cli: Digita (aplica otimista no editor e grava no IndexedDB)
-    Cli->>Pod: PUSH_UPDATES (ver: 10, updates: [Δ1], clientID: "c1")
-    
-    Note over Pod: rebaseUpdates([Δ1], hist) em RAM
-    Pod->>Pod: targetDoc.apply(Δ1) -> versão 11
-    
-    Pod-->>Cli: OPERATION_ACK (ver: 11, updates: [Δ1_rebaseado])
-    Note over Cli: CodeMirror avança versão. Outbox MANTÉM delta (não é durável ainda!)
+    Note over Cli: Queda de Rede / Modo Offline
+    Cli->>Cli: Digita offline (aplica no CodeMirror local e salva no IndexedDB Outbox)
+    Peer->>Pod: Digita online (APPLY_DELTA / PUSH_UPDATES)
+    Pod->>Peer: ACK_DELTA (confirmação em RAM)
+
+    Note over Cli: Rede Restaurada (ws.onopen)
+    Cli->>Pod: drainOutbox() envia APPLY_DELTA enfileirados
+    Pod->>Pod: applyDelta() / pushUpdates() rebaseia contra versão do servidor
+    Pod-->>Peer: DELTA_BROADCAST (despacho direto e síncrono no CodeMirror)
+    Pod-->>Cli: ACK_DELTA (confirmação de cada operação)
+
+    Note over Cli: Fim da drenagem do Outbox
+    Cli->>Pod: REQUEST_RECONCILE (file: "main.tex")
+    Pod->>Pod: getActiveFileContent() obtém texto consolidado
+    Pod-->>Cli: RECONCILE_SYNC (content: "Texto Mesclado", version: 53)
+    Pod-->>Peer: RECONCILE_SYNC (garantia de paridade byte a byte)
+
+    Note over Cli: CodeMirror roda Diff Prefixo/Sufixo: atualiza tela sem F5 e preserva cursor!
 
     Note over Pod: Debounce Híbrido atinge 3s inativo / 15s teto / 50 ops
-    Pod->>PG: saveCheckpoint() em Transação Atômica ACID
-    PG-->>Pod: Checkpoint Confirmado (Snapshot gravado)
-    
-    Pod-->>Cli: PERSISTENCE_ACK (snapshotId: "snap-42", ver: 11)
-    Note over Cli: Agora sim! IndexedDB Outbox expurga o delta com segurança total.
+    Pod->>PG: saveCheckpointAtomic() no PostgreSQL com Fencing Token
+    PG-->>Pod: Checkpoint confirmado (Snapshot v53 gravado)
+    Pod-->>Cli: PERSISTENCE_ACK (snapshotId, version: 53)
+    Pod-->>Peer: PERSISTENCE_ACK (snapshotId, version: 53)
+    Note over Cli: IndexedDB purga deltas confirmados com segurança total.
 ```
 
 ---
@@ -336,43 +395,151 @@ export class PrismaDocumentsRepository {
 
 ## 6. Resiliência Frontend: Local Outbox, Web Locks & Circuit Breaker
 
-### 6.1 Schema do IndexedDB (`idb`)
+### 6.1 Schema do Local Outbox no IndexedDB (`outboxDb.service.ts`)
 
-O cliente utiliza uma base isolada `cm6-collab-db`:
+O cliente utiliza o IndexedDB nativo do navegador sob a base `sci_latex_editor_db` com dois object stores:
+
+1. `sci_latex_outbox`: Fila FIFO de mutações com chave de idempotência (`idempotencyKey`), arquivo, payload, versão e status (`pending` / `confirmed`).
+2. `sci_latex_doc_cache`: Cache completo de documentos para carregamento instantâneo offline (`documentId`, `file`, `content`, `version`).
 
 ```typescript
-import { openDB, DBSchema } from 'idb';
-
-export interface CollabDBSchema extends DBSchema {
-  documents: {
-    key: string; // projectId
-    value: {
-      projectId: string;
-      clientID: string;
-      baseText: string;
-      baseVersion: number;
-      pendingUpdates: Array<{
-        clientID: string;
-        changes: unknown; // ChangeSet serializado
-        localTimestamp: number;
-      }>;
-      offlineSince: number | null;
-      lastSyncedAt: number;
-    };
-  };
+export interface OutboxMutation {
+  id?: number;
+  idempotencyKey: string;
+  documentId: string;
+  file: string;
+  type: 'APPLY_DELTA' | 'PUSH_UPDATES';
+  payload: unknown;
+  version: number;
+  status: 'pending' | 'confirmed';
+  timestamp: number;
 }
 
-export const getCollabDB = () =>
-  openDB<CollabDBSchema>('cm6-collab-db', 1, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('documents')) {
-        db.createObjectStore('documents', { keyPath: 'projectId' });
-      }
-    },
-  });
+export interface CachedDoc {
+  documentId: string;
+  file: string;
+  content: string;
+  version: number;
+  timestamp: number;
+}
 ```
 
-### 6.2 Coordenação de Múltiplas Abas com Web Locks Cooperativos
+* **Drenagem FIFO Segura (`drainOutbox`):**
+  Ao estabelecer conexão (`ws.onopen`), o `useCollabWebSocket` recupera todas as mutações pendentes ordenadas por timestamp e despacha via WebSocket. Mutações são removidas localmente conforme transmitidas e confirmadas duravelmente no banco pelo evento `PERSISTENCE_ACK`.
+
+### 6.2 Despacho Direto e Síncrono de Deltas Remotos (Eliminação de Batching React)
+
+**Problema Arquitetural Identificado em Produção:**
+Quando múltiplos autores digitam concorrentemente ou quando um autor reconecta e drena dezenas de deltas acumulados no outbox, o WebSocket emite uma rajada contínua de mensagens `DELTA_BROADCAST`. Caso esses deltas sejam encaminhados através do estado do React (`useState`), o reconciliador do React aplica *event batching* assíncrono, descartando mutações intermediárias e aplicando apenas o último estado. Isso corrompia o texto visual antes do `F5`.
+
+**Solução Canônica Implementada:**
+O CodeMirror registra um ouvinte de despacho direto (`onRegisterRemoteDeltaListener`) no `CollabEditorContext`. A cada mensagem `DELTA_BROADCAST`, a mutação é despachada **imediatamente e de forma síncrona** para a instância do `EditorView`:
+
+```typescript
+// Registro direto no CodeMirrorEditor.tsx
+const applyRemoteDelta = useCallback(
+  (op: DeltaOperation, targetFile: string) => {
+    if (targetFile !== activeFile || !viewRef.current) return;
+    try {
+      const doc = viewRef.current.state.doc;
+      const pos = Math.max(0, Math.min(op.position, doc.length));
+
+      if (op.type === 'insert' && op.text) {
+        viewRef.current.dispatch({
+          changes: { from: pos, insert: op.text },
+          annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+        });
+        updateLinePositions(viewRef.current);
+      } else if (op.type === 'delete' && op.length) {
+        const to = Math.min(pos + op.length, doc.length);
+        viewRef.current.dispatch({
+          changes: { from: pos, to },
+          annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+        });
+        updateLinePositions(viewRef.current);
+      }
+    } catch (err) {
+      console.warn('[Collab Remote Delta] Falha ao aplicar delta remoto no editor:', err);
+    }
+  },
+  [activeFile]
+);
+
+useEffect(() => {
+  onRegisterRemoteDeltaListener?.(applyRemoteDelta);
+  return () => {
+    onRegisterRemoteDeltaListener?.(null);
+  };
+}, [applyRemoteDelta, onRegisterRemoteDeltaListener]);
+```
+
+### 6.3 Protocolo de Reconciliação Canônica (`REQUEST_RECONCILE` & `RECONCILE_SYNC`)
+
+Após a conclusão da drenagem do Local Outbox (ou em caso de reconexão de rede com edições remotas não recebidas enquanto offline), o cliente solicita ao backend o estado canônico consolidado:
+
+1. O cliente emite `{ type: 'REQUEST_RECONCILE', file: activeFile }`.
+2. O backend consulta o documento mais quente em memória (`getActiveFileContent`) e transmite `{ type: 'RECONCILE_SYNC', file, content, version }` para a sala.
+3. Ambos os clientes (autor que reconectou e pares ativos) recebem a confirmação de sincronismo.
+
+### 6.4 Algoritmo de Diff por Prefixo/Sufixo Comum no CodeMirror 6
+
+Para aplicar o texto canônico sem substituir o documento inteiro (o que causaria perda de seleção, salto de scroll e flicker), o CodeMirror executa um diff linear O(N) buscando o prefixo e sufixo idênticos:
+
+```typescript
+const reconcileContent = useCallback(
+  (targetFile: string, newContent: string) => {
+    if (targetFile !== activeFile || !viewRef.current) return;
+    const currentDoc = viewRef.current.state.doc.toString();
+    if (currentDoc === newContent) return; // Nenhuma modificação necessária
+
+    // 1. Encontra o comprimento do prefixo comum
+    let start = 0;
+    while (
+      start < currentDoc.length &&
+      start < newContent.length &&
+      currentDoc[start] === newContent[start]
+    ) {
+      start++;
+    }
+
+    // 2. Encontra o comprimento do sufixo comum
+    let oldEnd = currentDoc.length;
+    let newEnd = newContent.length;
+    while (
+      oldEnd > start &&
+      newEnd > start &&
+      currentDoc[oldEnd - 1] === newContent[newEnd - 1]
+    ) {
+      oldEnd--;
+      newEnd--;
+    }
+
+    // 3. Aplica a substituição apenas na fatia divergente
+    const replacement = newContent.slice(start, newEnd);
+    const sel = viewRef.current.state.selection.main;
+
+    viewRef.current.dispatch({
+      changes: { from: start, to: oldEnd, insert: replacement },
+      annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+    });
+
+    // 4. Mapeia e restaura a seleção do cursor do usuário sem saltos
+    try {
+      const mappedAnchor = Math.max(0, Math.min(sel.anchor, viewRef.current.state.doc.length));
+      const mappedHead = Math.max(0, Math.min(sel.head, viewRef.current.state.doc.length));
+      viewRef.current.dispatch({
+        selection: { anchor: mappedAnchor, head: mappedHead },
+      });
+    } catch {
+      // Seleção mantida graciosamente
+    }
+    updateLinePositions(viewRef.current);
+  },
+  [activeFile]
+);
+```
+
+### 6.5 Coordenação de Múltiplas Abas com Web Locks Cooperativos
 
 ```typescript
 export function useDocumentTabLock(projectId: string) {
@@ -432,6 +599,24 @@ export function useDocumentTabLock(projectId: string) {
   return { isLeader, requestTakeover };
 }
 ```
+
+### 6.6 NetworkConnectivityBoundary & Gestão de Conectividade do Navegador
+
+Para garantir que o estado de conectividade reflita instantaneamente a realidade da máquina física ou emulações via DevTools (onde o Chromium bloqueia requisições HTTP mas mantém sockets TCP em estado zumbi até timeout), o frontend implementa o `NetworkStatusProvider` (`NetworkConnectivityBoundary`):
+
+1. **Escuta Reativa de Eventos de Rede**:
+   - `window.addEventListener('online', ...)` e `window.addEventListener('offline', ...)`.
+   - Consulta imediata de `navigator.onLine`.
+   - Propagação instantânea para o `onlineManager` do TanStack Query (`onlineManager.setOnline(isOnline)`).
+2. **Desconexão Proativa e Enfileiramento**:
+   - Ao transicionar para offline (`!isOnline`), o hook `useCollabWebSocket` força o fechamento limpo do WebSocket (`ws.close(1000)`), impede tentativas de reconexão automática enquanto offline e roteia todas as mutações locais imediatamente para a fila IndexedDB `sci_latex_outbox` (`status: 'offline'`).
+3. **Indicadores Visuais de Resiliência Offline**:
+   - **`IdeNavbar`**: O indicador de pulso do logo Overleaf transiciona para vermelho (`#ef4444`) com tooltip explicativo; o status ao lado do título exibe `WifiOff` com o rótulo `"Offline (Salvo no IndexedDB)"`.
+   - **`EditorTabBar`**: O badge de status do arquivo ativo exibe `WifiOff` com `"Offline (Salvo no IndexedDB)"`.
+   - **`EditorStatusBar`**: O rodapé exibe `WifiOff` com `"Modo Offline (Local Outbox Ativo)"` e legenda informativa.
+   - **`AppHeaderBar`**: O chip de status real-time do topo do sistema muda imediatamente para `"Offline"` com visual atenuado.
+4. **Reconexão e Drenagem Automática**:
+   - Ao recuperar o sinal online (`window.ononline`), o `NetworkStatusProvider` emite toast informativo, o `useCollabWebSocket` reabre a conexão WebSocket, drena sequencialmente o IndexedDB e executa o protocolo canônico `REQUEST_RECONCILE` -> `RECONCILE_SYNC`.
 
 ---
 

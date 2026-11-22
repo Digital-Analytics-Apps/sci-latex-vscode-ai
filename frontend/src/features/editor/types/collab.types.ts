@@ -38,6 +38,22 @@ export interface CollabPushPayload {
   updates: CollabUpdateJSON[];
 }
 
+export interface SnapshotFileEntry {
+  path: string;
+  type: 'text' | 'binary';
+  sha256: string;
+  storageKey?: string;
+  content?: string;
+}
+
+export interface SnapshotManifest {
+  schemaVersion: number;
+  projectId: string;
+  projectVersion: number;
+  mainEntryPath: string;
+  files: SnapshotFileEntry[];
+}
+
 export interface DocumentSnapshot {
   id: string;
   documentId: string;
@@ -45,7 +61,37 @@ export interface DocumentSnapshot {
   content: string;
   savedBy: string;
   reason: string;
+  manifest?: SnapshotManifest;
   createdAt: string;
+}
+
+export interface OutboxMutation {
+  id?: number;
+  idempotencyKey: string;
+  documentId: string;
+  file: string;
+  type: 'PUSH_UPDATES' | 'APPLY_DELTA';
+  payload: unknown;
+  version: number;
+  status: 'pending' | 'acked_memory' | 'confirmed_db';
+  timestamp: number;
+}
+
+export interface PersistenceAckPayload {
+  type: 'PERSISTENCE_ACK';
+  snapshotId: string;
+  version: number;
+  timestamp: number;
+}
+
+export interface SnapshotRestoredPayload {
+  type: 'SNAPSHOT_RESTORED';
+  snapshot: DocumentSnapshot;
+  version: number;
+  content: string;
+  files?: Array<{ path: string; content?: string }>;
+  restoredBy?: string;
+  time?: string;
 }
 
 export interface DocumentData {
@@ -57,7 +103,7 @@ export interface DocumentData {
   updatedAt: string;
 }
 
-export type SaveStatus = 'synced' | 'pending_debounce' | 'saving';
+export type SaveStatus = 'synced' | 'pending_debounce' | 'saving' | 'offline';
 
 export interface CommentReply {
   id: string;

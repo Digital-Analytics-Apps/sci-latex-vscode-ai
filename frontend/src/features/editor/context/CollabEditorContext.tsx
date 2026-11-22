@@ -17,6 +17,7 @@ import {
   RemoteCursor,
   ReviewComment,
   SaveStatus,
+  SnapshotRestoredPayload,
 } from '../types/collab.types';
 import { EditorTab } from '../components/EditorTabBar';
 import { ProjectFile } from '../components/FileTreeSidebar';
@@ -27,6 +28,7 @@ import { useDocumentHistoryQuery } from '../hooks/useDocumentHistoryQuery';
 import { useFlushDocumentMutation } from '../hooks/useFlushDocumentMutation';
 import { EditorService } from '../services/editor.service';
 import { editorStateCache } from '../services/editorStateCache';
+import { outboxDbService } from '../services/outboxDb.service';
 import { HistoryStatus } from '../extensions/history/historyExtension';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
@@ -37,7 +39,6 @@ export interface CollabEditorContextValue {
   documentData: DocumentData | null;
   userId: string;
   userName: string;
-  setUserName: (name: string) => void;
   collaborators: Collaborator[];
   remoteCursors: Map<string, RemoteCursor>;
   activeFileRemoteCursors: RemoteCursor[];
@@ -46,6 +47,7 @@ export interface CollabEditorContextValue {
   secondarySaveStatus: Record<string, SaveStatus>;
   lastSavedAt: string | null;
   isConnected: boolean;
+  isOnline: boolean;
   isSynced: boolean;
   isFlushing: boolean;
   snapshots: DocumentSnapshot[];
@@ -85,6 +87,11 @@ export interface CollabEditorContextValue {
     updates: CollabUpdateJSON[];
     timestamp: number;
   } | null;
+  incomingRemoteDelta: {
+    file: string;
+    operation: DeltaOperation;
+    timestamp: number;
+  } | null;
   handlePushCollabUpdates: (file: string, version: number, updates: CollabUpdateJSON[]) => void;
   handleDocContentChange: (content: string) => void;
   // Handlers
@@ -107,6 +114,11 @@ export interface CollabEditorContextValue {
   handleReplyComment: (commentId: string, content: string) => void;
   handleResolveComment: (commentId: string, status: 'open' | 'resolved') => void;
   handleDeleteComment: (commentId: string) => void;
+  registerRemoteDeltaListener: (
+    listener: ((op: DeltaOperation, file: string) => void) | null
+  ) => void;
+  registerReconcileListener: (listener: ((file: string, content: string) => void) | null) => void;
+  requestReconcile: (file?: string) => void;
 }
 
 const CollabEditorContext = createContext<CollabEditorContextValue | null>(null);
@@ -125,25 +137,22 @@ export interface CollabEditorProviderProps {
 }
 
 export function CollabEditorProvider({ documentId, children }: CollabEditorProviderProps) {
-  // Identificação do Usuário
-  const [userName, setUserNameState] = useState<string>(() => {
-    return (
-      localStorage.getItem('collab_username') || `Dev-${Math.floor(Math.random() * 900 + 100)}`
-    );
-  });
-  const [userId] = useState<string>(() => {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+
+  // Identificação canônica do autor autenticado (sem necessidade de apelido manual)
+  const userId = useMemo(() => {
+    if (currentUser?.id) return currentUser.id;
     let id = localStorage.getItem('collab_userid');
     if (!id) {
       id = Math.random().toString(36).substring(2, 9);
       localStorage.setItem('collab_userid', id);
     }
     return id;
-  });
+  }, [currentUser?.id]);
 
-  const setUserName = (newName: string) => {
-    setUserNameState(newName);
-    localStorage.setItem('collab_username', newName);
-  };
+  const userName = useMemo(() => {
+    return currentUser?.name || 'Autor';
+  }, [currentUser?.name]);
 
   const [documentData, setDocumentData] = useState<DocumentData | null>(null);
   const documentDataRef = useRef<DocumentData | null>(null);
@@ -179,7 +188,6 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     },
     []
   );
-  const currentUser = useSelector((state: RootState) => state.auth.user);
   const { data: projectDetails } = useProjectDetails(documentId);
 
   const isReviewer = useMemo(() => {
@@ -213,6 +221,11 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     file: string;
     version: number;
     updates: CollabUpdateJSON[];
+    timestamp: number;
+  } | null>(null);
+  const [incomingRemoteDelta, setIncomingRemoteDelta] = useState<{
+    file: string;
+    operation: DeltaOperation;
     timestamp: number;
   } | null>(null);
 
@@ -266,6 +279,35 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     }
   }, [documentData]);
 
+  // Fallback offline a partir do IndexedDB caso o cliente inicie offline ou o socket demore
+  useEffect(() => {
+    let timer: number | undefined;
+    if (!isSynced) {
+      timer = window.setTimeout(async () => {
+        if (!documentDataRef.current) {
+          const cached = await outboxDbService.getCache(documentId, 'main.tex');
+          if (cached) {
+            const fallbackDoc: DocumentData = {
+              id: documentId,
+              title: 'Documento (Cache Offline)',
+              content: cached.content,
+              mainEntryPath: 'main.tex',
+              version: cached.version || 1,
+              updatedAt: new Date().toISOString(),
+            };
+            documentDataRef.current = fallbackDoc;
+            setDocumentData(fallbackDoc);
+            setCollabVersion(cached.version || 1);
+            setActiveFile('main.tex');
+            setOpenTabs([{ id: 'main.tex', name: 'main.tex', type: 'tex', isMain: true }]);
+            setIsSynced(true);
+          }
+        }
+      }, 2500);
+    }
+    return () => clearTimeout(timer);
+  }, [documentId, isSynced]);
+
   // Sincroniza histórico inicial quando os dados do TanStack Query chegam
   useEffect(() => {
     if (historyData) {
@@ -274,9 +316,35 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     }
   }, [historyData]);
 
+  // Listeners diretos registrados pelo CodeMirror para eliminar batching assíncrono do React
+  const remoteDeltaListenerRef = useRef<((op: DeltaOperation, file: string) => void) | null>(null);
+  const registerRemoteDeltaListener = useCallback(
+    (listener: ((op: DeltaOperation, file: string) => void) | null) => {
+      remoteDeltaListenerRef.current = listener;
+    },
+    []
+  );
+
+  const reconcileListenerRef = useRef<((file: string, content: string) => void) | null>(null);
+  const registerReconcileListener = useCallback(
+    (listener: ((file: string, content: string) => void) | null) => {
+      reconcileListenerRef.current = listener;
+    },
+    []
+  );
+
   // Handlers de WebSocket
   const handleRemoteDelta = useCallback(
     (op: DeltaOperation, targetFile: string, _version: number) => {
+      // 1. Aplicação imediata e síncrona no CodeMirror ativo (zero atraso e zero perda de deltas)
+      remoteDeltaListenerRef.current?.(op, targetFile);
+
+      setIncomingRemoteDelta({
+        file: targetFile,
+        operation: op,
+        timestamp: Date.now(),
+      });
+
       const rootPath = documentDataRef.current?.mainEntryPath || 'main.tex';
       if (targetFile === rootPath) {
         setDocumentData((prev) => {
@@ -317,6 +385,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       initCollabVersion?: number,
       initFileVersions?: Record<string, number>
     ) => {
+      const isReconnecting = Boolean(documentDataRef.current);
       documentDataRef.current = doc;
       setDocumentData(doc);
       if (initialComments) setComments(initialComments);
@@ -336,6 +405,11 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
         return prev.map((tab) => (tab.isMain ? { ...tab, name: rootPath, id: rootPath } : tab));
       });
       setIsSynced(true);
+
+      // Se for reconexão do editor, garante que o CodeMirror sincronize o documento canônico
+      if (isReconnecting) {
+        reconcileListenerRef.current?.(rootPath, doc.content);
+      }
     },
     []
   );
@@ -360,11 +434,43 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     [documentData?.mainEntryPath]
   );
 
+  const handleReconcileSync = useCallback((file: string, content: string, version: number) => {
+    const rootPath = documentDataRef.current?.mainEntryPath || 'main.tex';
+    if (file === rootPath) {
+      setDocumentData((prev) => (prev ? { ...prev, content, version } : prev));
+      setCollabVersion(version);
+    } else {
+      fileContentsRef.current[file] = content;
+      setFileContents((prev) => ({ ...prev, [file]: content }));
+    }
+    setSaveStatus('synced');
+    reconcileListenerRef.current?.(file, content);
+  }, []);
+
   const handleSnapshotSaved = useCallback((snapshot: DocumentSnapshot, time: string) => {
     setSnapshots((prev) => [snapshot, ...prev]);
     setSaveStatus('synced');
     setLastSavedAt(time);
-    setDocumentData((prev) => (prev ? { ...prev, version: snapshot.version } : prev));
+    setDocumentData((prev) =>
+      prev ? { ...prev, content: snapshot.content, version: snapshot.version } : prev
+    );
+    const rootPath = documentDataRef.current?.mainEntryPath || 'main.tex';
+    reconcileListenerRef.current?.(rootPath, snapshot.content);
+  }, []);
+
+  const handleSnapshotRestored = useCallback((payload: SnapshotRestoredPayload) => {
+    const rootPath = documentDataRef.current?.mainEntryPath || 'main.tex';
+    setDocumentData((prev) =>
+      prev
+        ? {
+            ...prev,
+            content: payload.snapshot.content,
+            version: payload.snapshot.version,
+          }
+        : prev
+    );
+    setSaveStatus('synced');
+    reconcileListenerRef.current?.(rootPath, payload.snapshot.content);
   }, []);
 
   const handleCommentAdded = useCallback((comment: ReviewComment) => {
@@ -384,6 +490,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
 
   const {
     isConnected,
+    isOnline,
     collaborators,
     remoteCursors,
     activeEditor,
@@ -391,6 +498,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     sendCollabUpdates,
     sendCursorMove,
     sendRawMessage,
+    requestReconcile,
   } = useCollabWebSocket({
     documentId,
     userId,
@@ -400,6 +508,8 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     onRemoteCollabUpdates: handleRemoteCollabUpdates,
     onSyncInit: handleSyncInit,
     onSnapshotSaved: handleSnapshotSaved,
+    onSnapshotRestored: handleSnapshotRestored,
+    onReconcileSync: handleReconcileSync,
     onCommentAdded: handleCommentAdded,
     onCommentRepliedOrResolved: handleCommentRepliedOrResolved,
     onCommentDeleted: handleCommentDeleted,
@@ -413,13 +523,22 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
   // Referência para garantir que a compilação inicial ocorra apenas uma vez por documento (evitando loop infinito de erros)
   const initialCompileAttemptedRef = useRef<string | null>(null);
 
+  // Compilação automática protegida por rede
+  const handleRecompileSafe = useCallback(async () => {
+    if (!isOnline) {
+      console.warn('[Compiler] Compilação cancelada: cliente em modo offline');
+      return;
+    }
+    return recompile();
+  }, [isOnline, recompile]);
+
   // Compilação inicial automática do documento ao carregar
   useEffect(() => {
-    if (documentData?.id && initialCompileAttemptedRef.current !== documentData.id) {
+    if (documentData?.id && initialCompileAttemptedRef.current !== documentData.id && isOnline) {
       initialCompileAttemptedRef.current = documentData.id;
-      recompile();
+      handleRecompileSafe();
     }
-  }, [documentData?.id, recompile]);
+  }, [documentData?.id, handleRecompileSafe, isOnline]);
 
   // Delta local no main.tex
   const handleApplyLocalDelta = useCallback(
@@ -516,14 +635,19 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
   const handleDocContentChange = useCallback(
     (newContent: string) => {
       const rootPath = documentData?.mainEntryPath || 'main.tex';
-      if (activeFile === rootPath) {
+      const targetPath = activeFile || rootPath;
+      if (activeFile === rootPath || !activeFile) {
         setDocumentData((prev) => (prev ? { ...prev, content: newContent } : prev));
       } else {
         fileContentsRef.current[activeFile] = newContent;
         setFileContents((prev) => ({ ...prev, [activeFile]: newContent }));
       }
+      // Salva no cache local do IndexedDB imediatamente (Offline-first)
+      outboxDbService
+        .saveCache(documentId, targetPath, newContent, collabVersion)
+        .catch(console.warn);
     },
-    [activeFile, documentData?.mainEntryPath]
+    [activeFile, documentData?.mainEntryPath, documentId, collabVersion]
   );
 
   const handleCursorMove = useCallback(
@@ -679,20 +803,22 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     return Array.from(remoteCursors.values()).filter((c) => (c.file || 'main.tex') === activeFile);
   }, [remoteCursors, activeFile]);
 
+  const effectiveSaveStatus: SaveStatus = !isConnected || !isOnline ? 'offline' : saveStatus;
+
   const value: CollabEditorContextValue = {
     documentId,
     documentData,
     userId,
     userName,
-    setUserName,
     collaborators,
     remoteCursors,
     activeFileRemoteCursors,
     activeEditor,
-    saveStatus,
+    saveStatus: effectiveSaveStatus,
     secondarySaveStatus,
     lastSavedAt,
-    isConnected,
+    isConnected: isConnected && isOnline,
+    isOnline,
     isFlushing,
     snapshots,
     operations,
@@ -716,12 +842,13 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     isCompiling,
     compileError,
     lastCompiledAt,
-    recompile,
+    recompile: handleRecompileSafe,
     isSynced,
     collabVersion:
       fileCollabVersions[activeFile] ??
       (activeFile === (documentData?.mainEntryPath || 'main.tex') ? collabVersion : 0),
     incomingCollabUpdates,
+    incomingRemoteDelta,
     handlePushCollabUpdates,
     handleDocContentChange,
     handleApplyLocalDelta,
@@ -740,6 +867,9 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     handleUndo,
     handleRedo,
     registerEditorActions,
+    registerRemoteDeltaListener,
+    registerReconcileListener,
+    requestReconcile,
   };
 
   return <CollabEditorContext.Provider value={value}>{children}</CollabEditorContext.Provider>;

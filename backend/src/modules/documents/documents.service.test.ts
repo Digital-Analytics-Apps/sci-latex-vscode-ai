@@ -1,4 +1,5 @@
 import { assert, beforeEach, describe, it as test, vi } from 'vitest';
+import { createHash } from 'crypto';
 import type * as MinioInfra from '../../infra/minio';
 
 vi.mock('../../infra/minio', async (importOriginal) => {
@@ -48,26 +49,76 @@ class InMemoryDocumentsRepository implements IDocumentsRepository {
     return { ...doc };
   }
 
+  async acquireOwnership(projectId: string): Promise<number> {
+    const doc = this.docs.get(projectId);
+    if (!doc) throw new Error(`Documento ${projectId} não encontrado`);
+    const newGen = (doc.ownerGeneration || 0) + 1;
+    doc.ownerGeneration = newGen;
+    return newGen;
+  }
+
   async saveCheckpoint(data: CheckpointFlushData): Promise<void> {
     const doc = this.docs.get(data.documentId);
     if (doc) {
+      if (
+        typeof data.ownerGeneration === 'number' &&
+        doc.ownerGeneration &&
+        doc.ownerGeneration > data.ownerGeneration
+      ) {
+        throw new Error(
+          `[Fencing Token Conflict] Pod foi destronado: geração no banco (${doc.ownerGeneration}) é superior à geração do processo (${data.ownerGeneration}).`
+        );
+      }
+      if (typeof data.expectedOldVersion === 'number' && doc.version > data.expectedOldVersion) {
+        throw new Error(
+          `[Conflict] Concorrência otimista falhou: versão atual (${doc.version}) > esperada (${data.expectedOldVersion})`
+        );
+      }
       doc.content = data.mainContent;
       doc.version = data.version;
+      if (typeof data.ownerGeneration === 'number') {
+        doc.ownerGeneration = data.ownerGeneration;
+      }
     }
-    this.snapshots.push(data.snapshot);
+    const manifestFiles = this.files
+      .filter((f) => f.documentId === data.documentId)
+      .map((f) => ({
+        path: f.path,
+        type: (f.content !== null && f.content !== undefined ? 'text' : 'binary') as
+          'text' | 'binary',
+        sha256: f.contentHash || 'mock_hash',
+        storageKey: f.storageKey || undefined,
+        content: f.content !== null && f.content !== undefined ? f.content : undefined,
+      }));
+
+    const snapshotWithManifest: DocumentSnapshot = {
+      ...data.snapshot,
+      manifest: {
+        schemaVersion: 1,
+        projectId: data.documentId,
+        projectVersion: data.version,
+        mainEntryPath: data.mainEntryPath,
+        files: manifestFiles,
+      },
+    };
+
+    this.snapshots.push(snapshotWithManifest);
     if (data.secondaryFiles) {
       for (const sf of data.secondaryFiles) {
+        const hash = createHash('sha256').update(sf.content, 'utf-8').digest('hex');
         const existing = this.files.find(
           (f) => f.documentId === data.documentId && f.path === sf.path
         );
         if (existing) {
           existing.content = sf.content;
+          existing.contentHash = hash;
         } else {
           this.files.push({
             id: sf.path,
             documentId: data.documentId,
             path: sf.path,
             content: sf.content,
+            contentHash: hash,
             sizeBytes: sf.content.length,
             mimeType: 'text/plain',
             fileType: 'text',
@@ -77,6 +128,58 @@ class InMemoryDocumentsRepository implements IDocumentsRepository {
         }
       }
     }
+  }
+
+  async restoreSnapshot(projectId: string, snapshotId: string): Promise<DocumentSnapshot> {
+    const snap = this.snapshots.find((s) => s.id === snapshotId && s.documentId === projectId);
+    if (!snap) throw new Error(`Snapshot ${snapshotId} não encontrado`);
+    const doc = this.docs.get(projectId);
+    if (!doc) throw new Error(`Documento ${projectId} não encontrado`);
+
+    const newVersion = doc.version + 1;
+    doc.version = newVersion;
+    doc.content = snap.content;
+
+    if (snap.manifest && snap.manifest.files) {
+      const manifestPaths = new Set(snap.manifest.files.map((f) => f.path));
+      this.files = this.files.filter(
+        (f) => f.documentId !== projectId || manifestPaths.has(f.path)
+      );
+      for (const mf of snap.manifest.files) {
+        const existing = this.files.find((f) => f.documentId === projectId && f.path === mf.path);
+        if (existing) {
+          existing.content = mf.content || null;
+          existing.contentHash = mf.sha256;
+          existing.storageKey = mf.storageKey || null;
+        } else {
+          this.files.push({
+            id: mf.path,
+            documentId: projectId,
+            path: mf.path,
+            content: mf.content || null,
+            contentHash: mf.sha256,
+            fileType: mf.type === 'text' ? 'text' : 'image',
+            mimeType: mf.type === 'text' ? 'text/plain' : 'application/octet-stream',
+            sizeBytes: mf.content ? mf.content.length : 0,
+            storageKey: mf.storageKey || null,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    const restoredSnapshot: DocumentSnapshot = {
+      id: `restore-${Date.now()}`,
+      documentId: projectId,
+      version: newVersion,
+      content: snap.content,
+      savedBy: 'Sistema (Rollback)',
+      reason: `rollback_snapshot_${snapshotId}`,
+      manifest: snap.manifest,
+      createdAt: new Date().toISOString(),
+    };
+    this.snapshots.push(restoredSnapshot);
+    return restoredSnapshot;
   }
 
   async appendOperation(op: DocumentOperation): Promise<DocumentOperation> {
@@ -337,7 +440,7 @@ describe('DocumentsService - Motor Colaborativo com @codemirror/collab', () => {
     assert.equal(loadedFromDb[0].replies.length, 1);
   });
 
-  test('deve salvar imagem sob a pasta projects/:docId/files/ usando StoragePathBuilder', async () => {
+  test('deve salvar imagem com hash SHA-256 e storageKey imutável content-addressed', async () => {
     const file = await service.uploadProjectFile(
       'doc-test-1',
       'images/grafico.png',
@@ -348,6 +451,96 @@ describe('DocumentsService - Motor Colaborativo com @codemirror/collab', () => {
     assert.equal(file.documentId, 'doc-test-1');
     assert.equal(file.path, 'images/grafico.png');
     assert.equal(file.fileType, 'image');
-    assert.match(file.storageKey!, /^projects\/doc-test-1\/files\/.+-grafico\.png$/);
+    assert.ok(file.contentHash);
+    assert.match(file.storageKey!, /^projects\/doc-test-1\/assets\/[a-f0-9]{64}-grafico\.png$/);
+  });
+
+  test('Fencing Token Atômico: deve rejeitar salvamento de Pod com geração defasada', async () => {
+    // 1. Pod adquire titularidade inicial (Geração 1)
+    const gen1 = await service.acquireDocumentOwnership('doc-test-1');
+    assert.equal(gen1, 1);
+
+    // 2. Simula que outro Pod assumiu o documento no PostgreSQL (Geração 2)
+    await repo.acquireOwnership('doc-test-1');
+
+    // 3. Pod original tenta aplicar delta e flush com Geração 1
+    const change = ChangeSet.of([{ from: 0, insert: 'Novo Texto ' }], initialDocContent.length);
+    await service.pushUpdates(
+      'doc-test-1',
+      'main.tex',
+      0,
+      [{ clientID: 'user-1', changes: change.toJSON() }],
+      'user-1',
+      'User 1'
+    );
+
+    // O flush deve detectar que a geração do banco é superior e abortar, descarregando a memória
+    const snapshot = await service.flushCheckpoint('doc-test-1');
+    assert.equal(snapshot, null);
+    // Documento foi evictado/descarregado da memória ativa
+    assert.equal(service.getMemoryStats().activeDocumentsCount, 0);
+  });
+
+  test('Snapshot Multi-Arquivo: deve consolidar manifesto JSONB com arquivos secundários e SHA-256', async () => {
+    await service.createProjectTextFile('doc-test-1', 'sections/intro.tex', '\\section{Intro}');
+    await service.createProjectTextFile('doc-test-1', 'refs.bib', '@article{test}');
+
+    const change = ChangeSet.of([{ from: 5, insert: ' Beautiful' }], initialDocContent.length);
+    await service.pushUpdates(
+      'doc-test-1',
+      'main.tex',
+      0,
+      [{ clientID: 'user-alice', changes: change.toJSON() }],
+      'user-alice',
+      'Alice'
+    );
+
+    const snapshot = await service.flushCheckpoint('doc-test-1');
+    assert.ok(snapshot);
+    if (!snapshot || !snapshot.manifest) {
+      assert.fail('Snapshot ou manifesto não gerado');
+    }
+    const manifest = snapshot.manifest;
+    assert.equal(manifest.schemaVersion, 1);
+    assert.equal(manifest.files.length >= 2, true);
+
+    const introEntry = manifest.files.find((f) => f.path === 'sections/intro.tex');
+    assert.ok(introEntry);
+    assert.equal(introEntry?.type, 'text');
+    assert.ok(introEntry?.sha256);
+  });
+
+  test('Rollback Multi-Arquivo: deve restaurar estado exato e expurgar arquivos órfãos', async () => {
+    // Cria estado base com intro.tex
+    await service.createProjectTextFile('doc-test-1', 'sections/intro.tex', 'Texto Base da Intro');
+    const change1 = ChangeSet.of([{ from: 0, insert: 'V1 - ' }], initialDocContent.length);
+    await service.pushUpdates(
+      'doc-test-1',
+      'main.tex',
+      0,
+      [{ clientID: 'u1', changes: change1.toJSON() }],
+      'u1',
+      'User 1'
+    );
+    const snap1 = await service.flushCheckpoint('doc-test-1');
+    assert.ok(snap1);
+
+    // Cria arquivo posterior e altera main
+    await service.createProjectTextFile('doc-test-1', 'sections/future_junk.tex', 'Lixo posterior');
+    const filesBeforeRollback = await service.listProjectFiles('doc-test-1');
+    assert.ok(filesBeforeRollback.some((f) => f.path === 'sections/future_junk.tex'));
+
+    // Executa restauração do snapshot snap1
+    const restored = await service.restoreSnapshot('doc-test-1', snap1!.id);
+    assert.ok(restored);
+    assert.equal(restored.reason, `rollback_snapshot_${snap1!.id}`);
+
+    // Valida que o arquivo posterior 'sections/future_junk.tex' foi removido
+    const filesAfterRollback = await service.listProjectFiles('doc-test-1');
+    assert.equal(
+      filesAfterRollback.some((f) => f.path === 'sections/future_junk.tex'),
+      false
+    );
+    assert.ok(filesAfterRollback.some((f) => f.path === 'sections/intro.tex'));
   });
 });

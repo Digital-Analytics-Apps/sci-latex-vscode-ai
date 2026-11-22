@@ -17,6 +17,7 @@ import {
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { useNetworkStatus } from '../../context/NetworkStatusContext';
 import { useSSEEventSource } from '../../hooks/useSSEEventSource';
 import type { RootState } from '../../store';
 import { logout } from '../../store/slices/authSlice';
@@ -47,7 +48,10 @@ export const AppHeaderBar = ({
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const { mode, toggleColorMode } = useColorMode();
-  const { isConnected } = useSSEEventSource();
+  const { isConnected: isSSEConnected } = useSSEEventSource();
+  const { isOnline } = useNetworkStatus();
+
+  const isConnected = isOnline && isSSEConnected;
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 

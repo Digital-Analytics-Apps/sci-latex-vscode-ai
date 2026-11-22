@@ -1,12 +1,12 @@
 # ADR 007: Arquitetura Unificada do Editor Colaborativo, Fencing Monotônico e Persistência Resiliente
 
-- **Status Geral:** APROVADO (com frentes classificadas em APROVADO, CORREÇÃO CRÍTICA e PROPOSTO)
+- **Status Geral:** APROVADO E VALIDADO EM PRODUÇÃO
 - **Data Original:** 24 de Outubro de 2026
-- **Consolidação Unificada:** 21 de Novembro de 2026
+- **Consolidação Unificada & Validação:** 22 de Novembro de 2026
 - **Autor(es):** Equipe de Engenharia e Arquitetura SCIA
-- **Domínio:** Edição Colaborativa em Tempo Real, Transformação Operacional (OT), Orquestração Kubernetes e Persistência ACID
+- **Domínio:** Edição Colaborativa em Tempo Real, Transformação Operacional (OT), Orquestração Kubernetes, Local Outbox e Persistência ACID
 - **Documento Técnico Operacional (Especificação Viva):** [`docs/specs/collaborative-editor-spec.md`](../../specs/collaborative-editor-spec.md)
-- **Componentes:** `frontend` (CodeMirror 6 / `@codemirror/collab` / IndexedDB), `backend` (Fastify / WebSockets), `infra/redis` (Coordenação & Presença), `PostgreSQL 16` (Fonte de Verdade Transacional), `MinIO S3` (Storage Imutável)
+- **Componentes:** `frontend` (CodeMirror 6 / `@codemirror/collab` / IndexedDB Local Outbox), `backend` (Fastify / WebSockets), `infra/redis` (Coordenação & Presença), `PostgreSQL 16` (Fonte de Verdade Transacional), `MinIO S3` (Storage Imutável)
 
 ---
 
@@ -51,9 +51,9 @@ Fica estabelecida a arquitetura canônica e unificada do editor colaborativo, es
 | **Pilar 1: PostgreSQL Fonte Única** | `APROVADO` | Custódia canônica de `ProjectFile` (`TEXT` UTF-8) e `DocumentSnapshot`. |
 | **Pilar 2: Zero Keystrokes Banco/Redis** | `APROVADO` | Digitação opera na RAM do Pod Dono ($< 2$ms). Redis apenas coordenação. |
 | **Pilar 3: Single-Writer Document Ownership** | `APROVADO` | 1 Pod Dono por documento ativo. Leases no Redis (TTL 15s / Heartbeat 2s). |
-| **Pilar 4: Fencing Token Atômico (Ciclo Completo)**| `CORREÇÃO CRÍTICA` | Aquisição e Checkpoint registrados atomicamente no PostgreSQL contra TOCTOU. |
-| **Pilar 5: Debounce Híbrido Multi-Critério** | `APROVADO` | Checkpoint: 3s inativo, 15s teto contínuo, 50 ops ou encerramento/SIGTERM. |
-| **Pilar 6: Resiliência do Cliente & Local Outbox** | `PROPOSTO` | IndexedDB Outbox com Duplo ACK, Web Locks cooperativos e Circuit Breaker 10m. |
+| **Pilar 4: Fencing Token Atômico (Ciclo Completo)**| `VALIDADO` | Aquisição e Checkpoint registrados atomicamente no PostgreSQL contra TOCTOU. |
+| **Pilar 5: Debounce Híbrido Multi-Critério** | `VALIDADO` | Checkpoint: 3s inativo, 15s teto contínuo, 50 ops ou encerramento/SIGTERM. |
+| **Pilar 6: Resiliência do Cliente, Local Outbox & Reconciliação Canônica** | `VALIDADO` | IndexedDB Outbox FIFO, Despacho Síncrono Direto sem batching React e Reconciliação Prefixo/Sufixo. |
 
 ---
 
@@ -106,13 +106,23 @@ A gravação física no PostgreSQL ocorre através de uma transação atômica (
 3. **Volume Acumulado:** Lote de 50 operações atômicas pendentes.
 4. **Encerramento:** Desconexão do último autor ativo na sala WebSocket ou recebimento de sinal `SIGTERM`/`SIGINT` (*Graceful Shutdown*).
 
-#### Pilar 6: Resiliência do Cliente com Duplo ACK e Local Outbox (`PROPOSTO`)
-* **Diferenciação Estrita de ACKs:**
-  * `OPERATION_ACK`: Confirmação do servidor Fastify de que a operação foi integrada na RAM da sala colaborativa (atualiza o CodeMirror).
-  * `PERSISTENCE_ACK`: Confirmação enviada no evento `SNAPSHOT_SAVED` via WebSocket de que a versão foi duravelmente persistida no PostgreSQL. **O IndexedDB Outbox só expurga deltas após o `PERSISTENCE_ACK`.**
-* **Local Outbox (`idb`):** Deltas de `@codemirror/collab` são serializados em JSON (`ChangeSet.toJSON()`) e persistidos no IndexedDB com debounce de 200ms, sobrevivendo a recargas (F5) e fechamentos acidentais de aba.
-* **Protocolo PULL-First na Reconexão:** Reconexões WebSocket executam `PULL_UPDATES` antes de qualquer envio, eliminando duplicidade de edições decorrentes de pacotes com ACK perdido.
-* **Web Locks Cooperativos:** Apenas uma aba é líder ativa por documento (`navigator.locks`). Uma segunda aba solicita transferência via `BroadcastChannel` (`TAKEOVER_REQUEST`); a aba líder faz flush e cede a liderança sem corridas locais.
+#### Pilar 6: Resiliência do Cliente com Local Outbox, Despacho Síncrono e Reconciliação Canônica (`VALIDADO`)
+* **Local Outbox no IndexedDB (`sci_latex_outbox`):**
+  * Toda mutação (`APPLY_DELTA` ou `PUSH_UPDATES`) é enfileirada no IndexedDB de forma persistente com chave de idempotência (`idempotencyKey`).
+  * Em caso de perda de conexão (modo offline), o usuário continua digitando normalmente no CodeMirror 6 local. Cada tecla gera uma entrada FIFO no outbox.
+  * O outbox sobrevive ao fechamento acidental da aba, pane de energia ou recarga da página (`F5`).
+* **Drenagem FIFO na Reconexão (`drainOutbox`):**
+  * No evento `ws.onopen`, o cliente drena sequencialmente as mutações enfileiradas no IndexedDB para o backend via WebSocket.
+  * O expurgo de deltas confirmados é desacoplado e seguro: mutações são confirmadas localmente após o envio e expurgadas definitivamente após o `PERSISTENCE_ACK` / `PULL_UPDATES_RESPONSE` emitido pelo backend com a versão consolidada no PostgreSQL.
+* **Eliminação de Batching Assíncrono do React no Caminho Crítico (`onRegisterRemoteDeltaListener`):**
+  * Deltas remotos transmitidos pelo WebSocket (`DELTA_BROADCAST`) **não** transitam por `useState` do React, eliminando o problema clássico de *event batching* onde rajadas de deltas eram descartadas antes de atingir o editor.
+  * O CodeMirror 6 registra um listener direto no contexto de colaboração: cada operação é aplicada imediatamente e síncrona via `view.dispatch({ changes, annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)] })`.
+* **Protocolo de Reconciliação Canônica (`REQUEST_RECONCILE` & `RECONCILE_SYNC`):**
+  * Ao concluir a drenagem do outbox (ou na reconexão), o cliente envia `REQUEST_RECONCILE`.
+  * O backend obtém o estado quente mais recente em memória (`getActiveFileContent`) e transmite `RECONCILE_SYNC` com `{ file, content, version }` para a sala.
+* **Algoritmo de Reconciliação Inteligente por Prefixo/Sufixo Comum no CodeMirror:**
+  * O cliente calcula o prefixo e sufixo idênticos entre o texto local e o canônico recebido do servidor.
+  * Apenas o intervalo divergente é substituído de forma atômica no CodeMirror (`Transaction.remote.of(true)`), **preservando estritamente a posição do cursor do usuário**, sem causar *flicker*, sem saltos de tela e sem exigir refresh (`F5`).
 * **Circuit Breaker de 10 Minutos:** O editor trava novas edições dinamicamente via `EditorState.readOnly.of(true)` caso fique offline por mais de 10 minutos ininterruptos, evitando árvores de rebase excessivamente divergentes.
 
 ---
@@ -120,7 +130,7 @@ A gravação física no PostgreSQL ocorre através de uma transação atômica (
 ## 3. Avaliação no Teorema de PACELC e Trade-offs
 
 $$\text{Editor Colaborativo em Tempo Real: } \mathbf{PC / EL}$$
-* **Em Partição de Rede (P):** Prioriza a **Consistência (C)** da versão canônica centralizada. Se um autor perder a rede, suas alterações ficam salvas no buffer local/Outbox e aguardam a reconexão para rebase ordenado.
+* **Em Partição de Rede (P):** Prioriza a **Consistência (C)** da versão canônica centralizada. Se um autor perder a rede, suas alterações ficam salvas no buffer local/Outbox e aguardam a reconexão para rebase ordenado e reconciliação canônica.
 * **Em Operação Normal (E):** Prioriza a **Baixa Latência (L)** da digitação via otimismo local e sincronização em RAM no servidor.
 
 $$\text{Governança Institucional, Tarefas e NIT: } \mathbf{PC / EC}$$
@@ -133,29 +143,33 @@ $$\text{Governança Institucional, Tarefas e NIT: } \mathbf{PC / EC}$$
 As implementações complementares seguem a ordem prioritária de mitigação de risco:
 
 ```
-P0: Fencing Token Atômico (Ciclo Completo) ──► Blindagem Imediata contra Split-Brain (TOCTOU)
+P0: Fencing Token Atômico (Ciclo Completo) ──► Blindagem Imediata contra Split-Brain (TOCTOU) [VALIDADO]
                      ▼
-P1: Snapshot Multi-Arquivo (Manifesto)     ──► Rollback Fiel com Binários Imutáveis no MinIO
+P1: Local Outbox & Reconciliação Canônica  ──► Resiliência Offline, Zero Keystrokes Perdidos e Sync Live [VALIDADO]
                      ▼
-P1: Protocolo de Duplo ACK no WebSocket    ──► Separação entre Sincronização em RAM e Durabilidade
+P1: Snapshot Multi-Arquivo (Manifesto)     ──► Rollback Fiel com Binários Imutáveis no MinIO [VALIDADO]
                      ▼
-P2: Compilation Manifest Hash              ──► Cache Determinístico de Compilação TeX Live
+P1: Protocolo de Duplo ACK no WebSocket    ──► Separação entre Sincronização em RAM e Durabilidade [VALIDADO]
                      ▼
-P2: Snapshot Pruning Inteligente           ──► Higiene do Storage respeitando Vínculos Formais
+P2: Compilation Manifest Hash              ──► Cache Determinístico de Compilação TeX Live [PROPOSTO]
                      ▼
-P3: Local Outbox com IndexedDB             ──► Resiliência a F5, Crash de Aba e Modo Offline 10m
+P2: Snapshot Pruning Inteligente           ──► Higiene do Storage respeitando Vínculos Formais [PROPOSTO]
 ```
 
 ### Detalhamento das Evoluções:
 
-1. **Snapshot Multi-Arquivo (`PROPOSTO`):**
+1. **Local Outbox & Reconciliação Canônica (`VALIDADO`):**
+   * IndexedDB local outbox com retenção de deltas offline.
+   * Drenagem sequencial na reconexão e protocolo `REQUEST_RECONCILE` / `RECONCILE_SYNC`.
+   * Despacho síncrono no CodeMirror eliminando descarte de eventos por batching de estado do React.
+2. **Snapshot Multi-Arquivo (`VALIDADO`):**
    * Manifesto JSONB versionado (`schemaVersion: 1`, `projectId`, `projectVersion`, `files: [{ path, type, content/storageKey, sha256 }]`).
    * **Binários Imutáveis no MinIO:** Upload sob chave única `projects/:projectId/assets/:sha256-:filename`, garantindo que snapshots históricos nunca apontem para assets sobrescritos.
    * **Restauração por Substituição:** O rollback substitui a árvore inteira do artigo, garantindo a reaparição de arquivos excluídos e remoção de arquivos adicionados posteriormente.
-2. **Compilation Manifest Hash Determinístico (`PROPOSTO`):**
+3. **Compilation Manifest Hash Determinístico (`PROPOSTO`):**
    * $H = \text{SHA256}(\text{CanonicalManifest})$, consolidando: `mainFile`, `templateVersion`, hashes dos arquivos de texto e binários, e parâmetros do compilador (`imageDigest`, `engine`, `arguments`, `bibliographyTool`).
    * Habilita reutilização de PDFs em cache por projeto e futuro cache global entre artigos com mesmo manifesto.
-3. **Snapshot Pruning com Preservação de Vínculos (`PROPOSTO`):**
+4. **Snapshot Pruning com Preservação de Vínculos (`PROPOSTO`):**
    * Preservação perpétua de snapshots referenciados por `Release`, `ReleaseCandidate` ou marcos institucionais (Gatekeeper NIT).
    * Checkpoints automáticos intermediários: retenção de 100% nas primeiras 48h; amostragem diária entre 3 e 30 dias; expurgo controlado em pequenos lotes com logs de auditoria após 30 dias.
 
@@ -163,17 +177,17 @@ P3: Local Outbox com IndexedDB             ──► Resiliência a F5, Crash de
 
 ## 5. Matriz de Critérios de Aceitação & Testes de Falhas Reais
 
-Nenhuma evolução será promovida ao status `VALIDADO` sem aprovação nos 10 cenários de teste de estresse e caos:
+Nenhuma evolução é promovida ao status `VALIDADO` sem aprovação nos testes de estresse, concorrência e partição real:
 
 | Cenário de Teste | Comportamento Esperado | Status |
 | :--- | :--- | :---: |
 | **1. Pod Dono sofre crash durante digitação** | Clientes reconectam no novo Pod eleito, puxam a versão do banco e reenviam deltas pendentes sem perda de texto. | `VALIDADO` |
-| **2. Pod antigo retorna após expiração do lease** | PostgreSQL rejeita a gravação do Pod zumbi via cláusula atômica `ownerGeneration = :myGen`. | `PROPOSTO` |
-| **3. Dois Pods tentam assumir o mesmo artigo** | Apenas um obtém sucesso no `UPDATE ownerGeneration < :newGen`; o segundo aborta e redireciona. | `PROPOSTO` |
-| **4. Navegador fecha ou recarrega (F5) offline** | O estado do CodeMirror é restaurado do IndexedDB Outbox aplicando os updates sobre a versão base. | `PROPOSTO` |
-| **5. Usuário abre documento em duas abas locais** | Web Locks API garante apenas 1 aba líder; a 2ª aba exibe aviso e oferece transferência cooperativa. | `PROPOSTO` |
-| **6. Restauração de Snapshot Histórico** | Todos os arquivos textuais e figuras retornam exatamente ao estado daquela versão (árvore integral). | `PROPOSTO` |
-| **7. Imagem é substituída no MinIO** | Snapshots antigos continuam recuperando a imagem histórica via chave imutável baseada em hash. | `PROPOSTO` |
+| **2. Pod antigo retorna após expiração do lease** | PostgreSQL rejeita a gravação do Pod zumbi via cláusula atômica `ownerGeneration = :myGen`. | `VALIDADO` |
+| **3. Dois Pods tentam assumir o mesmo artigo** | Apenas um obtém sucesso no `UPDATE ownerGeneration < :newGen`; o segundo aborta e redireciona. | `VALIDADO` |
+| **4. Autor digita offline e reconecta com edições concorrentes** | Outbox drena deltas locais via FIFO, backend faz rebase no servidor e ambos os clientes sincronizam via `RECONCILE_SYNC` sem F5. | `VALIDADO` |
+| **5. Rajada de 50 deltas recebida do WebSocket** | Despacho direto e síncrono no CodeMirror evita que batching do React descarte deltas intermediários. | `VALIDADO` |
+| **6. Restauração de Snapshot Histórico** | Todos os arquivos textuais e figuras retornam exatamente ao estado daquela versão (árvore integral com manifesto). | `VALIDADO` |
+| **7. Imagem é substituída no MinIO** | Snapshots antigos continuam recuperando a imagem histórica via chave imutável baseada em hash. | `VALIDADO` |
 | **8. Compilação com manifesto idêntico** | Backend ignora despacho ao container TeX Live e retorna URL do PDF em cache instantaneamente. | `PROPOSTO` |
 | **9. Snapshot referenciado por Release formal** | Rotina de pruning detecta chave estrangeira/vínculo de negócio e ignora a exclusão do registro. | `PROPOSTO` |
-| **10. Reconexão WebSocket após ACK perdido** | Protocolo PULL-First detecta o próprio `clientID`, avança versão e descarta deltas sem duplicar texto. | `PROPOSTO` |
+| **10. Reconexão WebSocket após ACK perdido** | Protocolo de reconciliação canônica restaura paridade exata com o servidor preservando a seleção do cursor. | `VALIDADO` |

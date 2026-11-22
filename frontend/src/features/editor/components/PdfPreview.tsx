@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 
 export interface PdfPreviewProps {
@@ -13,6 +14,7 @@ export interface PdfPreviewProps {
   themeMode?: 'light' | 'dark';
   invertPdfDark?: boolean;
   onRecompile: () => void;
+  isOnline?: boolean;
 }
 
 export function PdfPreview({
@@ -23,6 +25,7 @@ export function PdfPreview({
   themeMode = 'dark',
   invertPdfDark = true,
   onRecompile,
+  isOnline = true,
 }: PdfPreviewProps) {
   return (
     <Box
@@ -52,25 +55,36 @@ export function PdfPreview({
         }}
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Button
-            variant="contained"
-            size="small"
-            onClick={onRecompile}
-            disabled={isCompiling}
-            startIcon={<RefreshCw size={14} className={isCompiling ? 'spin' : ''} />}
-            sx={{
-              height: 26,
-              fontSize: '0.75rem',
-              textTransform: 'none',
-              px: 1.2,
-              backgroundColor: 'primary.main',
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-              },
-            }}
+          <Tooltip
+            title={
+              !isOnline
+                ? 'Compilação desativada em modo offline'
+                : 'Recompilar código LaTeX (Ctrl+Enter)'
+            }
+            arrow
           >
-            {isCompiling ? 'Compilando...' : 'Recompile'}
-          </Button>
+            <span>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={onRecompile}
+                disabled={isCompiling || !isOnline}
+                startIcon={<RefreshCw size={14} className={isCompiling ? 'spin' : ''} />}
+                sx={{
+                  height: 26,
+                  fontSize: '0.75rem',
+                  textTransform: 'none',
+                  px: 1.2,
+                  backgroundColor: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                  },
+                }}
+              >
+                {isCompiling ? 'Compilando...' : 'Recompile'}
+              </Button>
+            </span>
+          </Tooltip>
 
           {lastCompiledAt && !compileError && (
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', color: '#10b981' }}>

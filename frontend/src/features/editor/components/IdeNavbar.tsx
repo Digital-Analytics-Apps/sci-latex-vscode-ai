@@ -1,4 +1,13 @@
-import { type ChangeEvent, type MouseEvent, useState } from 'react';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import {
   Check,
   ChevronDown,
@@ -8,25 +17,14 @@ import {
   FileOutput,
   History,
   MessageSquare,
-  UserPlus,
+  WifiOff,
 } from 'lucide-react';
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import Divider from '@mui/material/Divider';
-import Tooltip from '@mui/material/Tooltip';
-import Button from '@mui/material/Button';
-import IconButton from '@mui/material/IconButton';
-import InputBase from '@mui/material/InputBase';
-import Chip from '@mui/material/Chip';
+import { type MouseEvent, useState } from 'react';
+import { Collaborator, RemoteCursor, SaveStatus } from '../types/collab.types';
 import { CollaboratorsBar } from './CollaboratorsBar';
 import { EditorHistoryControls } from './EditorHistoryControls';
-import { Collaborator, RemoteCursor, SaveStatus } from '../types/collab.types';
 export interface IdeNavbarProps {
   projectTitle: string;
-  userName: string;
   userId: string;
   collaborators: Collaborator[];
   remoteCursors?: Map<string, RemoteCursor>;
@@ -40,10 +38,10 @@ export interface IdeNavbarProps {
   onToggleReview?: () => void;
   commentsCount?: number;
   isConnected?: boolean;
+  isOnline?: boolean;
   isReviewer?: boolean;
   onLayoutChange: (mode: 'split' | 'editor' | 'pdf') => void;
   onToggleHistory: () => void;
-  onUserNameChange: (name: string) => void;
   onManualFlush: () => void;
   onRecompile?: () => void;
   canUndo?: boolean;
@@ -56,7 +54,6 @@ export interface IdeNavbarProps {
 
 export function IdeNavbar({
   projectTitle,
-  userName,
   userId,
   collaborators,
   remoteCursors,
@@ -70,10 +67,10 @@ export function IdeNavbar({
   onToggleReview,
   commentsCount = 0,
   isConnected = true,
+  isOnline = true,
   isReviewer = false,
   onLayoutChange,
   onToggleHistory,
-  onUserNameChange,
   onManualFlush,
   onRecompile,
   canUndo = false,
@@ -82,7 +79,7 @@ export function IdeNavbar({
   redoCount,
   onUndo,
   onRedo,
-}: IdeNavbarProps) {
+}: Readonly<IdeNavbarProps>) {
   // Estados dos menus dropdown
   const [fileMenuAnchor, setFileMenuAnchor] = useState<null | HTMLElement>(null);
   const [editMenuAnchor, setEditMenuAnchor] = useState<null | HTMLElement>(null);
@@ -125,7 +122,7 @@ export function IdeNavbar({
           title={
             isConnected
               ? 'SCI-LaTeX Studio • Conectado via WebSocket'
-              : 'SCI-LaTeX Studio • Desconectado'
+              : 'SCI-LaTeX Studio • Modo Offline (Alterações salvas localmente no navegador)'
           }
           arrow
         >
@@ -208,9 +205,12 @@ export function IdeNavbar({
             </MenuItem>
             {onRecompile && (
               <MenuItem
+                disabled={!isOnline}
                 onClick={() => {
-                  onRecompile();
-                  handleCloseMenu(setFileMenuAnchor);
+                  if (isOnline) {
+                    onRecompile();
+                    handleCloseMenu(setFileMenuAnchor);
+                  }
                 }}
               >
                 Recompilar PDF (Ctrl+Enter)
@@ -383,12 +383,27 @@ export function IdeNavbar({
         {/* Indicador de Salvamento Real-time */}
         <Tooltip
           title={
-            lastSavedAt ? `Última sincronização: ${lastSavedAt}` : 'Sincronizado via WebSocket'
+            !isConnected || saveStatus === 'offline'
+              ? 'Desconectado da rede. O editor está operando em modo offline e salvando cada tecla no IndexedDB local.'
+              : lastSavedAt
+                ? `Última sincronização com PostgreSQL: ${lastSavedAt}`
+                : 'Sincronizado via WebSocket'
           }
           arrow
         >
           <Stack direction="row" spacing={0.4} sx={{ alignItems: 'center', cursor: 'default' }}>
-            {saveStatus === 'saving' && (
+            {(!isConnected || saveStatus === 'offline') && (
+              <>
+                <WifiOff size={12} style={{ color: '#ef4444' }} />
+                <Typography
+                  component="span"
+                  sx={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}
+                >
+                  Offline
+                </Typography>
+              </>
+            )}
+            {isConnected && saveStatus === 'saving' && (
               <>
                 <Clock size={12} style={{ color: '#f59e0b' }} />
                 <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
@@ -396,11 +411,19 @@ export function IdeNavbar({
                 </Typography>
               </>
             )}
-            {saveStatus === 'synced' && (
+            {isConnected && saveStatus === 'synced' && (
               <>
                 <Check size={12} style={{ color: 'var(--mui-palette-primary-main)' }} />
                 <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
                   Salvo
+                </Typography>
+              </>
+            )}
+            {isConnected && saveStatus === 'pending_debounce' && (
+              <>
+                <Clock size={12} style={{ color: '#f59e0b' }} />
+                <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                  Aguardando debounce...
                 </Typography>
               </>
             )}
@@ -534,34 +557,6 @@ export function IdeNavbar({
           />
         )}
 
-        {/* Input Apelido */}
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          <Typography component="span" sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-            Você:
-          </Typography>
-          <Box
-            sx={{
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 1,
-              px: 0.6,
-              py: 0.1,
-              backgroundColor: 'background.default',
-            }}
-          >
-            <InputBase
-              value={userName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => onUserNameChange(e.target.value)}
-              sx={{
-                fontSize: '0.74rem',
-                width: 80,
-                color: 'text.primary',
-                '& input': { padding: 0 },
-              }}
-            />
-          </Box>
-        </Stack>
-
         {/* Pilha de Avatares dos Colaboradores */}
         <CollaboratorsBar
           collaborators={collaborators}
@@ -569,31 +564,6 @@ export function IdeNavbar({
           remoteCursors={remoteCursors}
           activeFile={activeFile}
         />
-
-        {/* Botão Primário Verde "Share" (Marca do Overleaf) */}
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<UserPlus size={14} />}
-          onClick={() => alert(`Link de compartilhamento para o projeto: ${window.location.href}`)}
-          sx={{
-            height: 28,
-            fontSize: '0.76rem',
-            fontWeight: 600,
-            textTransform: 'none',
-            backgroundColor: 'primary.main',
-            color: '#ffffff',
-            borderRadius: 1,
-            px: 1.5,
-            boxShadow: 'none',
-            '&:hover': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 'none',
-            },
-          }}
-        >
-          Share
-        </Button>
       </Stack>
     </Box>
   );

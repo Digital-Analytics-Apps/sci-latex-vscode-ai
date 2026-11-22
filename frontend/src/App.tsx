@@ -7,6 +7,7 @@ import { AppRoutes } from './routes';
 import { type RootState, store } from './store';
 import { hideNotification } from './store/slices/notificationSlice';
 import { ThemeContextProvider } from './theme';
+import { NetworkStatusProvider } from './context/NetworkStatusContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,10 +41,12 @@ export function App() {
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <ThemeContextProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <GlobalNotificationSnackbar />
-          </BrowserRouter>
+          <NetworkStatusProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <GlobalNotificationSnackbar />
+            </BrowserRouter>
+          </NetworkStatusProvider>
         </ThemeContextProvider>
       </QueryClientProvider>
     </Provider>

@@ -165,7 +165,7 @@ export function EditorTabBar({
         {saveStatus === 'saving' ? (
           <>
             <Clock size={12} style={{ color: '#f59e0b' }} />
-            <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#f59e0b' }}>
               Salvando...
             </Typography>
           </>

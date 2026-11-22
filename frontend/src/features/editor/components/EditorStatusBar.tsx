@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { CheckCircle2, Clock, CloudUpload, Code2, UserCheck } from 'lucide-react';
+import { CheckCircle2, Clock, CloudUpload, Code2, UserCheck, WifiOff } from 'lucide-react';
 import { SaveStatus } from '../types/collab.types';
 
 export interface EditorStatusBarProps {
@@ -45,6 +45,24 @@ export function EditorStatusBar({ saveStatus, lastSavedAt, activeEditor }: Edito
         <Typography component="span" sx={{ color: 'divider' }}>
           •
         </Typography>
+
+        {saveStatus === 'offline' && (
+          <Stack
+            direction="row"
+            spacing={0.4}
+            sx={{
+              alignItems: 'center',
+              color: '#ef4444',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+            }}
+          >
+            <WifiOff size={13} />
+            <Typography component="span" sx={{ fontSize: '0.75rem' }}>
+              Modo Offline (Somente Leitura)
+            </Typography>
+          </Stack>
+        )}
 
         {saveStatus === 'synced' && (
           <Stack
@@ -101,7 +119,11 @@ export function EditorStatusBar({ saveStatus, lastSavedAt, activeEditor }: Edito
         )}
 
         <Typography sx={{ color: 'text.secondary', fontSize: '0.73rem' }}>
-          {lastSavedAt ? `Salvo às ${lastSavedAt}` : 'Sincronizado'}
+          {saveStatus === 'offline'
+            ? 'Edição desativada sem conexão'
+            : lastSavedAt
+              ? `Salvo às ${lastSavedAt}`
+              : 'Sincronizado'}
         </Typography>
 
         {activeEditor && (
