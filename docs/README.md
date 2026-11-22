@@ -76,8 +76,7 @@ docs/
 Reúne o raciocínio formal e técnico que sustenta a engenharia do SCIA:
 
 * **[ADRs Oficiais](architecture/adrs/):**
-  * [`ADR-007`](architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md): Editor Colaborativo CodeMirror 6, OT e Debounce Híbrido.
-  * [`ADR-007.1`](architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md): Fencing Monotônico de Posse de Documentos contra Split-Brain.
+  * [`ADR-007`](architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md): Arquitetura Unificada do Editor Colaborativo, Fencing Monotônico e Persistência Resiliente (Especificação Viva: [`collaborative-editor-spec.md`](specs/collaborative-editor-spec.md)).
   * [`ADR-008`](architecture/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md): Workflow Científico em 6 Etapas Fixas e Desacoplamento Git.
   * [`ADR-012`](architecture/adrs/adr-012-m2m-security-evolution.md): Autenticação M2M Criptográfica via JWT com Menor Privilégio.
   * [`ADR-013`](architecture/adrs/adr-013-observabilidade-on-premise-licenca-zero.md): Arquitetura de Observabilidade Licença Zero (Prometheus, Loki, Tempo, Opik, GlitchTip).

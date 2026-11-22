@@ -1,31 +1,34 @@
-# ADR 007: Arquitetura, Persistência e Escalabilidade do Editor Colaborativo
+# ADR 007: Arquitetura Unificada do Editor Colaborativo, Fencing Monotônico e Persistência Resiliente
 
-- **Status:** APROVADO
-- **Data:** 24 de Outubro de 2026
+- **Status Geral:** APROVADO (com frentes classificadas em APROVADO, CORREÇÃO CRÍTICA e PROPOSTO)
+- **Data Original:** 24 de Outubro de 2026
+- **Consolidação Unificada:** 21 de Novembro de 2026
 - **Autor(es):** Equipe de Engenharia e Arquitetura SCIA
-- **Domínio:** Edição Colaborativa em Tempo Real, Persistência Transacional, Orquestração Kubernetes
-- **Componentes Relacionados:** `frontend` (CodeMirror 6 / `@codemirror/collab`), `backend` (Fastify / `documents.service.ts` / WebSockets), `infra/redis` (Coordenação & Lease), `PostgreSQL` (Fonte de Verdade)
+- **Domínio:** Edição Colaborativa em Tempo Real, Transformação Operacional (OT), Orquestração Kubernetes e Persistência ACID
+- **Documento Técnico Operacional (Especificação Viva):** [`docs/specs/collaborative-editor-spec.md`](../../specs/collaborative-editor-spec.md)
+- **Componentes:** `frontend` (CodeMirror 6 / `@codemirror/collab` / IndexedDB), `backend` (Fastify / WebSockets), `infra/redis` (Coordenação & Presença), `PostgreSQL 16` (Fonte de Verdade Transacional), `MinIO S3` (Storage Imutável)
 
 ---
 
-## 1. Contexto & Desafio
+## 1. Contexto & Desafio de Engenharia
 
-O SCIA adota o **CodeMirror 6** com a extensão **`@codemirror/collab`** para escrita científica colaborativa. A sincronização de texto utiliza Transformação Operacional com Rebase (Single-Leader OT), onde o servidor sequencia atualizações e atribui versões canônicas estritas.
+O SCIA exige um ambiente de escrita colaborativa em LaTeX para múltiplos autores e revisores científicos com sensação de latência zero (60 fps), integridade sintática e persistência garantida sob normas institucionais.
 
-Uma auditoria técnica no código revelou quatro fragilidades arquiteturais críticas que impediam a operação segura em ambiente de produção:
+Durante as fases de projeto, três alternativas foram avaliadas e descartadas:
 
-1. **Vício de Infraestrutura no Redis:** A cada tecla digitada, o backend executava `rpush` em listas transitórias (`collab:doc:${id}:ops`), mas **nenhuma rotina lia ou recuperava essas operações**. O Redis operava como um sumidouro cego de operações de texto, consumindo I/O e RAM sem agregar durabilidade real.
-2. **Debounce Infinito sob Digitação Contínua:** O checkpoint no PostgreSQL dependia exclusivamente de um timer de inatividade de 3 segundos (`setTimeout`). Sob digitação contínua, o timer era reiniciado a cada caractere, impedindo qualquer gravação no banco por minutos ou horas e criando uma grave janela de perda de dados em caso de crash.
-3. **Incompatibilidade com Múltiplas Réplicas (Kubernetes):** O estado `activeDocs` reside na memória do processo Node.js. Sem afinidade de tráfego, dois pods atendendo o mesmo documento causariam *split-brain*, divergência de versões e sobrescrita mútua no banco.
-4. **Instabilidade do WebSocket na Troca de Abas:** O hook do frontend recriava e derrubava a conexão WebSocket a cada clique em arquivos secundários (`activeFile`), gerando reconexões desnecessárias.
+1. **Abordagem Overleaf Legada (MongoDB + BSON Tree):** Agrupar projetos inteiros em documentos BSON únicos sofre com o limite de 16 MB do MongoDB em projetos com histórico longo e carece de integridade referencial ACID nativa (necessária no SCIA para ciclos acadêmicos, tarefas e governança NIT).
+2. **Abordagem Git por Branch por Tarefa:** Criar branches Git e Pull Requests para cada parágrafo ou seção TeX causa atrito cognitivo severo em pesquisadores acadêmicos, além de inviabilizar a co-autoria simultânea no mesmo parágrafo.
+3. **Escrita Síncrona a Cada Tecla no Banco (*Keystroke Flooding*):** Gravar cada caractere digitado diretamente no PostgreSQL causa saturação instantânea de conexões, inchaço descontrolado de WAL e degradação severa de I/O de disco.
 
-Fazia-se imperativo adotar um desenho de arquitetura limpo e comprovado pela indústria (como o padrão operacional do **Overleaf**), eliminando redundâncias e definindo claramente o papel de cada tecnologia.
+Fazia-se necessária uma arquitetura **híbrida e desacoplada**, combinando coordenação em memória de altíssima frequência com durabilidade relacional transacional:
+
+$$\text{A digitação não depende do PostgreSQL para acontecer, mas a durabilidade depende estritamente dele.}$$
 
 ---
 
 ## 2. Decisão Arquitetural Adotada
 
-Fica estabelecido o modelo arquitetural baseado em **cinco pilares fundamentais**:
+Fica estabelecida a arquitetura canônica e unificada do editor colaborativo, estruturada em **seis pilares fundamentais**, com taxonomia explícita de governança:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -33,7 +36,7 @@ Fica estabelecido o modelo arquitetural baseado em **cinco pilares fundamentais*
 ├────────────────────┬────────────────────┬──────────────┬───────────────┤
 │ Frontend           │ Backend Fastify    │ Redis 7      │ PostgreSQL 16 │
 ├────────────────────┼────────────────────┼──────────────┼───────────────┤
-│ - CodeMirror 6     │ - Document Owner   │ - Ownership  │ - Fonte de    │
+│ - CodeMirror 6     │ - Document Owner   │ - Ownership  │ - Fonte da    │
 │ - Zero Latência    │   (Single Writer)  │   Lease TTL  │   Verdade     │
 │ - WS Estável       │ - @cm/collab em RAM│ - Presença   │ - Snapshots   │
 │ - Buffer Local     │ - Rebase Server    │ - Eventos de │ - ProjectFile │
@@ -41,164 +44,136 @@ Fica estabelecido o modelo arquitetural baseado em **cinco pilares fundamentais*
 └────────────────────┴────────────────────┴──────────────┴───────────────┘
 ```
 
-### Pilar 1: PostgreSQL como Única Fonte de Verdade Persistente
-O PostgreSQL com Prisma é a única autoridade durável para o conteúdo dos arquivos (`ProjectFile.content`) e histórico de versões (`DocumentSnapshot`). Nenhuma operação do editor é considerada finalizada até ser confirmada pelo PostgreSQL. O MongoDB foi rejeitado por não atender à governança relacional do SCIA (NIT, ciclos e auditoria).
+### Quadro de Governança de Decisões
 
-### Pilar 2: Remoção do Redis do Caminho de Cada Tecla (*Zero Keystrokes no Redis*)
-O Redis **não** atua como banco de dados de edição, nem como buffer transitório de operações de texto. O `rpush` e o `del` de deltas no Redis são **completamente eliminados**. A digitação transita exclusivamente:
-$$\text{Cliente (CodeMirror)} \xrightarrow{\text{WebSocket}} \text{Memória do Pod Dono} \xrightarrow{\text{Flush Periódico}} \text{PostgreSQL}$$
-
-### Pilar 3: Escala por Documento (*Document Ownership / Single-Writer*)
-Não se escala o editor replicando operações do mesmo documento entre pods via Pub/Sub. **A escala horizontal ocorre por partição de documentos**:
-* Cada documento ativo possui exatamente **um Pod Dono (*Document Owner*)** responsável por sequenciar operações, aplicar `rebaseUpdates` e fazer broadcast na sala.
-* O Redis é utilizado unicamente para coordenar a posse do documento via chave de lease com TTL de 10 segundos:
-  ```
-  SET editor:document:<documentId>:owner "<podId>" EX 10 NX
-  ```
-* O Ingress do Kubernetes (ou proxy reverso inteligente) roteia todos os WebSockets de um mesmo `documentId` para o Pod que detém o lease.
-
-### Pilar 4: Persistência com Debounce Híbrido e Concorrência Otimista
-Para mitigar a perda de dados sem sobrecarregar o banco, o checkpoint no PostgreSQL obedece a regras multi-critério:
-1. **Idle Timer:** 3 segundos sem novas digitações.
-2. **MaxWait Ceiling:** Forçar gravação a cada 15 segundos de digitação contínua.
-3. **Volume Threshold:** Forçar gravação a cada 50 operações atômicas pendentes.
-4. **Fechamento de Sala:** Gravação imediata na desconexão do último autor ativo.
-5. **Concorrência Otimista:** O `UPDATE` no PostgreSQL valida a versão anterior (`WHERE id = :id AND "currentVersion" = :expectedVersion`), barrando gravações de pods zumbis.
-
-### Pilar 5: Estabilidade de Conexão no Frontend
-O WebSocket do editor deve ser resiliente e independente da aba de visualização:
-* A troca de abas (`main.tex` $\to$ `references.bib`) trafega eventos de seleção sobre o mesmo socket aberto, sem desconexões cíclicas.
-* Em instabilidades de rede, as alterações pendentes permanecem no buffer do CodeMirror (`sendableUpdates`) e são descarregadas automaticamente ao reabrir a conexão.
+| Pilar / Componente | Classificação | Responsabilidade / Justificativa |
+| :--- | :---: | :--- |
+| **Pilar 1: PostgreSQL Fonte Única** | `APROVADO` | Custódia canônica de `ProjectFile` (`TEXT` UTF-8) e `DocumentSnapshot`. |
+| **Pilar 2: Zero Keystrokes Banco/Redis** | `APROVADO` | Digitação opera na RAM do Pod Dono ($< 2$ms). Redis apenas coordenação. |
+| **Pilar 3: Single-Writer Document Ownership** | `APROVADO` | 1 Pod Dono por documento ativo. Leases no Redis (TTL 15s / Heartbeat 2s). |
+| **Pilar 4: Fencing Token Atômico (Ciclo Completo)**| `CORREÇÃO CRÍTICA` | Aquisição e Checkpoint registrados atomicamente no PostgreSQL contra TOCTOU. |
+| **Pilar 5: Debounce Híbrido Multi-Critério** | `APROVADO` | Checkpoint: 3s inativo, 15s teto contínuo, 50 ops ou encerramento/SIGTERM. |
+| **Pilar 6: Resiliência do Cliente & Local Outbox** | `PROPOSTO` | IndexedDB Outbox com Duplo ACK, Web Locks cooperativos e Circuit Breaker 10m. |
 
 ---
 
-## 3. Diagrama da Arquitetura Target
+### Detalhamento dos Pilares
 
-```mermaid
-flowchart TD
-    subgraph Clients["Camada de Apresentação (Navegador)"]
-        UserA["Autor A (CodeMirror 6)"]
-        UserB["Autor B (CodeMirror 6)"]
-    end
+#### Pilar 1: PostgreSQL como Única Fonte de Verdade Persistente (`APROVADO`)
+* O PostgreSQL 16 (via Prisma ORM) é a autoridade canônica durável para o conteúdo dos arquivos (`ProjectFile.content`) e histórico de versões (`DocumentSnapshot`).
+* Textos (`.tex`, `.bib`, `.sty`) são persistidos como `TEXT` UTF-8 nativo (com compressão automática TOAST pelo SGBD).
+* Binários pesados (figuras, PDFs e templates zip) são delegados ao **MinIO S3**, mantendo o banco relacional livre de inchaço de I/O.
 
-    subgraph IngressK8s["Roteamento Kubernetes"]
-        IngressRouter["Ingress / Gateway (Afinidade por /ws/documents/:id)"]
-    end
+#### Pilar 2: Zero Keystrokes no Banco e no Redis (`APROVADO`)
+* A digitação opera com latência $< 2$ms na **memória RAM do Pod Dono** do backend Fastify.
+* O Redis não atua como buffer de texto de digitação; atua estritamente para coordenação de estado e presença.
 
-    subgraph PodCluster["Cluster de Pods Fastify Backend"]
-        Pod1["Pod Backend 1 (Owner: DOC-1, DOC-4)"]
-        Pod2["Pod Backend 2 (Owner: DOC-2, DOC-3)"]
-    end
+#### Pilar 3: Escala por Posse de Documento (*Document Ownership / Single-Writer*) (`APROVADO`)
+* A escala horizontal no Kubernetes opera por **particionamento de documentos**: cada artigo ativo possui exatamente **um Pod Dono** responsável por ordenar operações e aplicar o `rebaseUpdates` do `@codemirror/collab`.
+* A posse é negociada via chave no Redis com lease de 15 segundos renovado a cada 2 segundos por heartbeat enquanto houver conexões ativas:
+  ```bash
+  SET editor:document:<documentId>:owner "<podId>" NX EX 15
+  ```
 
-    subgraph RedisCoord["Coordenação Distribuída (Redis 7)"]
-        DocLease["Document Leases (editor:doc:*:owner, TTL 10s)"]
-        PlatformEvents["Eventos de Negócio (Tarefas, NIT)"]
-    end
+#### Pilar 4: Fencing Token com Ciclo Completo no PostgreSQL (`CORREÇÃO CRÍTICA`)
+Para blindar o banco contra pods destronados (ex.: durante pausas longas de *Garbage Collection* ou partições de rede), a validação não pode depender de leitura prévia no Node.js (vulnerável a TOCTOU). O ciclo exige **duas operações SQL atômicas**:
 
-    subgraph StorageTier["Camada de Persistência Confiável"]
-        PG[("PostgreSQL 16 (Fonte de Verdade)")]
-        MinIO[("MinIO S3 (PDFs e Imagens)")]
-    end
+1. **Aquisição da Propriedade (Ao assumir o documento):**
+   ```sql
+   UPDATE "Project"
+   SET "ownerGeneration" = :newGeneration,
+       "updatedAt" = NOW()
+   WHERE "id" = :projectId
+     AND "ownerGeneration" < :newGeneration;
+   ```
+   *Se zero linhas forem afetadas, o Pod falha em assumir o documento.*
 
-    UserA <-->|WebSocket: /ws/documents/DOC-1| IngressRouter
-    UserB <-->|WebSocket: /ws/documents/DOC-1| IngressRouter
-    
-    IngressRouter -->|Encaminha para o Pod Dono| Pod1
-    
-    Pod1 <-->|Heartbeat a cada 3s (Renova Lease)| DocLease
-    Pod1 -->|Flush Híbrido: Idle 3s / Max 15s / 50 ops| PG
-    Pod1 -->|Assets Binários| MinIO
+2. **Persistência do Checkpoint (Igualdade Estrita na Gravação):**
+   ```sql
+   UPDATE "Project"
+   SET "currentVersion" = :newVersion,
+       "updatedAt" = NOW()
+   WHERE "id" = :projectId
+     AND "ownerGeneration" = :myGeneration
+     AND "currentVersion" = :expectedOldVersion;
+   ```
+   *Se zero linhas forem afetadas, o checkpoint aborta com erro de conflito (`[Fencing Token Conflict]`). O pod destronado descarrega o documento da memória sem corromper o banco.*
+
+#### Pilar 5: Persistência por Debounce Híbrido Multi-Critério (`APROVADO`)
+A gravação física no PostgreSQL ocorre através de uma transação atômica (`prisma.$transaction`) disparada por qualquer um dos quatro gatilhos:
+1. **Inatividade:** 3 segundos sem digitação.
+2. **Teto Máximo Contínuo:** 15 segundos de digitação ininterrupta.
+3. **Volume Acumulado:** Lote de 50 operações atômicas pendentes.
+4. **Encerramento:** Desconexão do último autor ativo na sala WebSocket ou recebimento de sinal `SIGTERM`/`SIGINT` (*Graceful Shutdown*).
+
+#### Pilar 6: Resiliência do Cliente com Duplo ACK e Local Outbox (`PROPOSTO`)
+* **Diferenciação Estrita de ACKs:**
+  * `OPERATION_ACK`: Confirmação do servidor Fastify de que a operação foi integrada na RAM da sala colaborativa (atualiza o CodeMirror).
+  * `PERSISTENCE_ACK`: Confirmação enviada no evento `SNAPSHOT_SAVED` via WebSocket de que a versão foi duravelmente persistida no PostgreSQL. **O IndexedDB Outbox só expurga deltas após o `PERSISTENCE_ACK`.**
+* **Local Outbox (`idb`):** Deltas de `@codemirror/collab` são serializados em JSON (`ChangeSet.toJSON()`) e persistidos no IndexedDB com debounce de 200ms, sobrevivendo a recargas (F5) e fechamentos acidentais de aba.
+* **Protocolo PULL-First na Reconexão:** Reconexões WebSocket executam `PULL_UPDATES` antes de qualquer envio, eliminando duplicidade de edições decorrentes de pacotes com ACK perdido.
+* **Web Locks Cooperativos:** Apenas uma aba é líder ativa por documento (`navigator.locks`). Uma segunda aba solicita transferência via `BroadcastChannel` (`TAKEOVER_REQUEST`); a aba líder faz flush e cede a liderança sem corridas locais.
+* **Circuit Breaker de 10 Minutos:** O editor trava novas edições dinamicamente via `EditorState.readOnly.of(true)` caso fique offline por mais de 10 minutos ininterruptos, evitando árvores de rebase excessivamente divergentes.
+
+---
+
+## 3. Avaliação no Teorema de PACELC e Trade-offs
+
+$$\text{Editor Colaborativo em Tempo Real: } \mathbf{PC / EL}$$
+* **Em Partição de Rede (P):** Prioriza a **Consistência (C)** da versão canônica centralizada. Se um autor perder a rede, suas alterações ficam salvas no buffer local/Outbox e aguardam a reconexão para rebase ordenado.
+* **Em Operação Normal (E):** Prioriza a **Baixa Latência (L)** da digitação via otimismo local e sincronização em RAM no servidor.
+
+$$\text{Governança Institucional, Tarefas e NIT: } \mathbf{PC / EC}$$
+* Opera sob consistência transacional estrita ACID em qualquer cenário.
+
+---
+
+## 4. Evoluções Mapeadas na Especificação Técnica (Ordem de Execução)
+
+As implementações complementares seguem a ordem prioritária de mitigação de risco:
+
+```
+P0: Fencing Token Atômico (Ciclo Completo) ──► Blindagem Imediata contra Split-Brain (TOCTOU)
+                     ▼
+P1: Snapshot Multi-Arquivo (Manifesto)     ──► Rollback Fiel com Binários Imutáveis no MinIO
+                     ▼
+P1: Protocolo de Duplo ACK no WebSocket    ──► Separação entre Sincronização em RAM e Durabilidade
+                     ▼
+P2: Compilation Manifest Hash              ──► Cache Determinístico de Compilação TeX Live
+                     ▼
+P2: Snapshot Pruning Inteligente           ──► Higiene do Storage respeitando Vínculos Formais
+                     ▼
+P3: Local Outbox com IndexedDB             ──► Resiliência a F5, Crash de Aba e Modo Offline 10m
 ```
 
----
+### Detalhamento das Evoluções:
 
-## 4. Ciclo de Vida e Recuperação de Falhas (Failover)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Client as Cliente (Browser)
-    participant PodA as Pod A (Owner DOC-1)
-    participant Redis as Redis (Coordenação)
-    participant PodB as Pod B (Standby)
-    participant PG as PostgreSQL 16
-
-    Note over PodA,Redis: Pod A mantém o Lease (TTL 10s) e atende DOC-1
-    PodA->>Redis: Heartbeat: RENOVA editor:doc:DOC-1:owner (EX 10)
-    
-    Note over PodA: Crash Abrupto do Pod A (OOM / Node Eviction)
-    PodA--xClient: Conexão WebSocket Encerrada
-    Client->>Client: Retém alterações locais no buffer sendableUpdates
-    
-    Note over Redis: Passam-se 10 segundos sem heartbeat...
-    Redis->>Redis: Chave editor:doc:DOC-1:owner EXPIRA
-    
-    Client->>PodB: Tentativa de Reconexão WebSocket (/ws/documents/DOC-1)
-    PodB->>Redis: SET editor:doc:DOC-1:owner PodB EX 10 NX (Sucesso!)
-    PodB->>PG: Carrega último checkpoint de DOC-1 (ProjectFile + Snapshots)
-    PodB->>Client: SYNC_INIT (Estado canônico recuperado do PostgreSQL)
-    Client->>PodB: PUSH_UPDATES (Reenvia operações pendentes do buffer)
-    PodB->>PodB: rebaseUpdates() + Aplica no estado ativo
-    PodB-->>Client: PULL_UPDATES_RESPONSE (Sessão normalizada)
-```
+1. **Snapshot Multi-Arquivo (`PROPOSTO`):**
+   * Manifesto JSONB versionado (`schemaVersion: 1`, `projectId`, `projectVersion`, `files: [{ path, type, content/storageKey, sha256 }]`).
+   * **Binários Imutáveis no MinIO:** Upload sob chave única `projects/:projectId/assets/:sha256-:filename`, garantindo que snapshots históricos nunca apontem para assets sobrescritos.
+   * **Restauração por Substituição:** O rollback substitui a árvore inteira do artigo, garantindo a reaparição de arquivos excluídos e remoção de arquivos adicionados posteriormente.
+2. **Compilation Manifest Hash Determinístico (`PROPOSTO`):**
+   * $H = \text{SHA256}(\text{CanonicalManifest})$, consolidando: `mainFile`, `templateVersion`, hashes dos arquivos de texto e binários, e parâmetros do compilador (`imageDigest`, `engine`, `arguments`, `bibliographyTool`).
+   * Habilita reutilização de PDFs em cache por projeto e futuro cache global entre artigos com mesmo manifesto.
+3. **Snapshot Pruning com Preservação de Vínculos (`PROPOSTO`):**
+   * Preservação perpétua de snapshots referenciados por `Release`, `ReleaseCandidate` ou marcos institucionais (Gatekeeper NIT).
+   * Checkpoints automáticos intermediários: retenção de 100% nas primeiras 48h; amostragem diária entre 3 e 30 dias; expurgo controlado em pequenos lotes com logs de auditoria após 30 dias.
 
 ---
 
-## 5. Plano de Implementação Detalhado
+## 5. Matriz de Critérios de Aceitação & Testes de Falhas Reais
 
-O plano de execução está dividido em quatro etapas sequenciais e cirúrgicas:
+Nenhuma evolução será promovida ao status `VALIDADO` sem aprovação nos 10 cenários de teste de estresse e caos:
 
-### Fase 1: Limpeza do Hot Path e Correção do Debounce no Backend
-- [x] **Remover Redis do caminho de escrita:**
-  - Arquivo: `backend/src/modules/documents/documents.service.ts`
-  - Ação: Excluir `redisPubClient.rpush('collab:doc:${documentId}:ops', ...)` e `redisPubClient.del(...)`.
-- [x] **Implementar Flush Híbrido Multi-Critério:**
-  - Arquivo: `backend/src/modules/documents/documents.service.ts`
-  - Ação: Adicionar controle de `maxWaitTimer` (15 segundos ininterruptos) e corte por volume (`active.pendingOps >= 50`).
-- [x] **Graceful Shutdown do Processo:**
-  - Arquivo: `backend/src/server.ts`
-  - Ação: Registrar tratadores de `SIGTERM` e `SIGINT` que executam `flushCheckpoint()` em todos os documentos ativos antes de fechar o pool de conexões do Prisma.
-
-### Fase 2: Estabilização do WebSocket e Gestão Multi-Arquivo no Frontend
-- [x] **Desacoplar o Socket da Alternância de Arquivos:**
-  - Arquivo: `frontend/src/features/editor/hooks/useCollabWebSocket.ts`
-  - Ação: Remover `activeFile` do array de dependências do `useEffect`.
-- [x] **Fila de Reconexão Offline (Retry Queue):**
-  - Arquivo: `frontend/src/features/editor/hooks/useCollabWebSocket.ts`
-  - Ação: Em vez de descartar deltas quando `readyState !== OPEN`, enfileirar em buffer e descarregar no evento `onopen`.
-- [x] **Versionamento Isolado por Arquivo:**
-  - Arquivo: `frontend/src/features/editor/context/CollabEditorContext.tsx`
-  - Ação: Rastrear `fileCollabVersions: Record<string, number>` em vez de uma versão global única vinculada a `main.tex`.
-
-### Fase 3: Concorrência Otimista e Transacionalidade no PostgreSQL
-- [x] **Update Condicional com Bloqueio de Concorrência:**
-  - Arquivo: `backend/src/modules/documents/documents.repository.ts`
-  - Ação: Modificar `updateContent` para verificar `currentVersion` anterior. Abortar e emitir log de alerta caso `count === 0`.
-- [x] **Transação Atômica Global para Checkpoints:**
-  - Arquivo: `backend/src/modules/documents/documents.service.ts` e `documents.repository.ts`
-  - Ação: Unificar a atualização de `ProjectFile` (`main.tex`), arquivos secundários (`filesCollab`) e `DocumentSnapshot` em uma única chamada `prisma.$transaction`.
-
-### Fase 4: Coordenação de Posse (Document Ownership Lease) via Redis
-- [x] **Implementar Serviço de Lease Distribuído:**
-  - Arquivo: `backend/src/infra/redis/redis.service.ts`
-  - Ação: Adicionar métodos `acquireDocumentLease(docId, podId, ttl)` e `renewDocumentLease(docId, podId, ttl)`.
-- [x] **Controle de Liderança no WebSocket:**
-  - Arquivo: `backend/src/modules/documents/documents.websocket.ts`
-  - Ação: Ao receber conexão, validar ou reivindicar a posse do documento. Configurar heartbeat periódico de renovação a cada 3 segundos.
-- [x] **Descarte de Memória Inativa (*Eviction*):**
-  - Arquivo: `backend/src/modules/documents/documents.service.ts`
-  - Ação: Quando uma sala permanecer com zero conexões por mais de 10 minutos, realizar o flush final e remover o documento do Map `activeDocs`.
-
----
-
-## 6. Consequências e Trade-offs
-
-### Consequências Positivas:
-1. **Redução Drástica de I/O Desnecessário:** Elimina centenas de operações inúteis de gravação por segundo no Redis.
-2. **Eliminação do Risco de Perda por Digitação Contínua:** O teto de 15 segundos garante checkpoints periódicos mesmo durante redação intensa e contínua.
-3. **Escalabilidade Horizontal Segura:** O modelo de Single-Writer com Lease no Redis impede split-brain e viabiliza a execução em múltiplos pods no Kubernetes.
-4. **Resiliência do Cliente:** Troca de abas instantânea no editor sem desconexões ou recarregamentos de página.
-
-### Trade-offs Aceitos:
-* **Janela de Perda Limitada ao Intervalo de Checkpoint:** Em caso de morte súbita do pod (`SIGKILL`), as alterações realizadas nos últimos 3 a 15 segundos (desde o último checkpoint) não persistidas no PostgreSQL serão perdidas. Trata-se de um compromisso deliberado e padrão da indústria (idêntico ao Overleaf e Google Docs) para evitar a sobrecarga de I/O de um `fsync` a cada tecla.
-* **Janela de Failover de 10 Segundos:** Se um pod falecer, a sala aguarda até 10 segundos para o lease expirar no Redis antes que outro pod assuma a autoridade do documento. Durante este breve intervalo, os clientes permanecem em estado de reconexão transparente no frontend.
+| Cenário de Teste | Comportamento Esperado | Status |
+| :--- | :--- | :---: |
+| **1. Pod Dono sofre crash durante digitação** | Clientes reconectam no novo Pod eleito, puxam a versão do banco e reenviam deltas pendentes sem perda de texto. | `VALIDADO` |
+| **2. Pod antigo retorna após expiração do lease** | PostgreSQL rejeita a gravação do Pod zumbi via cláusula atômica `ownerGeneration = :myGen`. | `PROPOSTO` |
+| **3. Dois Pods tentam assumir o mesmo artigo** | Apenas um obtém sucesso no `UPDATE ownerGeneration < :newGen`; o segundo aborta e redireciona. | `PROPOSTO` |
+| **4. Navegador fecha ou recarrega (F5) offline** | O estado do CodeMirror é restaurado do IndexedDB Outbox aplicando os updates sobre a versão base. | `PROPOSTO` |
+| **5. Usuário abre documento em duas abas locais** | Web Locks API garante apenas 1 aba líder; a 2ª aba exibe aviso e oferece transferência cooperativa. | `PROPOSTO` |
+| **6. Restauração de Snapshot Histórico** | Todos os arquivos textuais e figuras retornam exatamente ao estado daquela versão (árvore integral). | `PROPOSTO` |
+| **7. Imagem é substituída no MinIO** | Snapshots antigos continuam recuperando a imagem histórica via chave imutável baseada em hash. | `PROPOSTO` |
+| **8. Compilação com manifesto idêntico** | Backend ignora despacho ao container TeX Live e retorna URL do PDF em cache instantaneamente. | `PROPOSTO` |
+| **9. Snapshot referenciado por Release formal** | Rotina de pruning detecta chave estrangeira/vínculo de negócio e ignora a exclusão do registro. | `PROPOSTO` |
+| **10. Reconexão WebSocket após ACK perdido** | Protocolo PULL-First detecta o próprio `clientID`, avança versão e descarta deltas sem duplicar texto. | `PROPOSTO` |

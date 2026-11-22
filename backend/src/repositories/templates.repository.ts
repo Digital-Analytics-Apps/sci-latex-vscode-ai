@@ -5,8 +5,11 @@ export interface CreateTemplateData {
   id?: string;
   name: string;
   description?: string;
+  publisher: string;
+  templateType: string;
   targetConference?: string;
   storageKey: string;
+  originalFileName: string;
   mainEntryPath?: string;
   isSystem?: boolean;
   uploadedById?: string;
@@ -15,9 +18,10 @@ export interface CreateTemplateData {
 export interface ITemplatesRepository {
   create(data: CreateTemplateData): Promise<LatexTemplate>;
   upsert(data: CreateTemplateData & { id: string }): Promise<LatexTemplate>;
-  findAll(userId?: string): Promise<LatexTemplate[]>;
+  findAll(): Promise<LatexTemplate[]>;
   findById(id: string): Promise<LatexTemplate | null>;
   findByName(name: string): Promise<LatexTemplate | null>;
+  countProjects(id: string): Promise<number>;
   delete(id: string): Promise<void>;
 }
 
@@ -29,19 +33,25 @@ export class PrismaTemplatesRepository implements ITemplatesRepository {
         id: data.id,
         name: data.name,
         description: data.description,
+        publisher: data.publisher,
+        templateType: data.templateType,
         targetConference: data.targetConference,
         storageKey: data.storageKey,
+        originalFileName: data.originalFileName,
         mainEntryPath: data.mainEntryPath ?? 'main.tex',
-        isSystem: data.isSystem ?? false,
+        isSystem: data.isSystem ?? true,
         uploadedById: data.uploadedById,
       },
       update: {
         name: data.name,
         description: data.description,
+        publisher: data.publisher,
+        templateType: data.templateType,
         targetConference: data.targetConference,
         storageKey: data.storageKey,
+        originalFileName: data.originalFileName,
         mainEntryPath: data.mainEntryPath ?? 'main.tex',
-        isSystem: data.isSystem ?? false,
+        isSystem: data.isSystem ?? true,
       },
     });
   }
@@ -49,31 +59,32 @@ export class PrismaTemplatesRepository implements ITemplatesRepository {
   async create(data: CreateTemplateData): Promise<LatexTemplate> {
     return prisma.latexTemplate.create({
       data: {
-        id: data.id,
+        id: data.id ?? crypto.randomUUID(),
         name: data.name,
         description: data.description,
+        publisher: data.publisher,
+        templateType: data.templateType,
         targetConference: data.targetConference,
         storageKey: data.storageKey,
+        originalFileName: data.originalFileName,
         mainEntryPath: data.mainEntryPath ?? 'main.tex',
-        isSystem: data.isSystem ?? false,
+        isSystem: data.isSystem ?? true,
         uploadedById: data.uploadedById,
       },
     });
   }
 
-  async findAll(userId?: string): Promise<LatexTemplate[]> {
+  async findAll(): Promise<LatexTemplate[]> {
     return prisma.latexTemplate.findMany({
-      where: userId
-        ? {
-            OR: [{ isSystem: true }, { uploadedById: userId }],
-          }
-        : { isSystem: true },
       include: {
         uploadedBy: {
           select: { id: true, name: true, email: true },
         },
+        _count: {
+          select: { projects: true },
+        },
       },
-      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+      orderBy: [{ publisher: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -84,6 +95,9 @@ export class PrismaTemplatesRepository implements ITemplatesRepository {
         uploadedBy: {
           select: { id: true, name: true, email: true },
         },
+        _count: {
+          select: { projects: true },
+        },
       },
     });
   }
@@ -91,6 +105,12 @@ export class PrismaTemplatesRepository implements ITemplatesRepository {
   async findByName(name: string): Promise<LatexTemplate | null> {
     return prisma.latexTemplate.findFirst({
       where: { name },
+    });
+  }
+
+  async countProjects(id: string): Promise<number> {
+    return prisma.project.count({
+      where: { templateId: id },
     });
   }
 

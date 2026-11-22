@@ -102,7 +102,9 @@ export const EditorService: EditorServiceType = {
       return response.data;
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao carregar histórico do documento'), { cause: error });
+      throw new Error(getErrorMessage(error, 'Falha ao carregar histórico do documento'), {
+        cause: error,
+      });
     }
   },
 
@@ -162,7 +164,9 @@ export const EditorService: EditorServiceType = {
       return response.data.content || '';
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao carregar conteúdo do arquivo'), { cause: error });
+      throw new Error(getErrorMessage(error, 'Falha ao carregar conteúdo do arquivo'), {
+        cause: error,
+      });
     }
   },
 
@@ -204,7 +208,9 @@ export const EditorService: EditorServiceType = {
       }));
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao listar arquivos do projeto'), { cause: error });
+      throw new Error(getErrorMessage(error, 'Falha ao listar arquivos do projeto'), {
+        cause: error,
+      });
     }
   },
 
@@ -228,7 +234,9 @@ export const EditorService: EditorServiceType = {
       };
     } catch (error) {
       if (axios.isCancel(error)) throw error;
-      throw new Error(getErrorMessage(error, 'Falha ao criar arquivo no projeto'), { cause: error });
+      throw new Error(getErrorMessage(error, 'Falha ao criar arquivo no projeto'), {
+        cause: error,
+      });
     }
   },
 

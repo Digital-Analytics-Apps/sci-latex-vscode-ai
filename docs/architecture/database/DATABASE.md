@@ -21,7 +21,7 @@
    - 4.2. [Domínio Organizacional (Ciclos Acadêmicos)](#42-domínio-organizacional-períodos-equipes--metas)
    - 4.3. [Domínio Editorial (Artigos, Membros & 6 Etapas Fixas)](#43-domínio-editorial-projetosartigos-membros--etapas)
    - 4.4. [Domínio de Tarefas de Escrita & Bate e Volta](#44-domínio-de-tarefas-de-escrita--bate-e-volta)
-   - 4.5. [Domínio de Edição Colaborativa TeX & Versionamento](#45-domínio-de-edição-colaborativa-tex--versionamento-adr-007)
+   - 4.5. [Domínio de Edição Colaborativa TeX & Versionamento](#45-domínio-de-edição-colaborativa-tex--versionamento)
    - 4.6. [Domínio de Publicação & Release Candidates](#46-domínio-de-publicação--release-candidates)
    - 4.7. [Domínio de Governança NIT](#47-domínio-de-governança-nit)
 5. [Regras de Integridade, Índices & Cascading](#5-regras-de-integridade-índices--cascading)
@@ -333,7 +333,7 @@ Sub-tarefas atômicas de escrita científica vinculadas às etapas do artigo, co
 
 ---
 
-### 4.5. Domínio de Edição Colaborativa TeX & Versionamento (ADR-007)
+### 4.5. Domínio de Edição Colaborativa TeX & Versionamento (`collaborative-editor-spec.md`)
 
 #### Tabela `"ProjectFile"`
 Armazena a árvore de arquivos de código LaTeX, bibliografia BibTeX, figuras e folhas de estilo do projeto.

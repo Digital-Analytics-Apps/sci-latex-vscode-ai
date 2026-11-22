@@ -3,7 +3,7 @@
 - **Status:** VIGENTE / REVISÃO ARQUITETURAL APROVADA COM DIRETRIZES
 - **Data:** 09 de Novembro de 2026
 - **Autor(es):** Equipe de Arquitetura, Engenharia e Segurança SCIA
-- **Documentos Relacionados:** [`ADR-012 (Identidade M2M e Delegação)`](docs/architecture/adrs/adr-012-m2m-security-evolution.md), [`ADR-007 (Collab Architecture)`](docs/architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md), [`ADR-007.1 (Fencing Tokens e Routing)`](docs/architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md), [`ADR-011 (MinIO Evidences)`](docs/architecture/adrs/adr-011-task-evidences-storage-architecture.md)
+- **Documentos Relacionados:** [`ADR-012 (Identidade M2M e Delegação)`](docs/architecture/adrs/adr-012-m2m-security-evolution.md), [`collaborative-editor-spec.md (Editor Colaborativo & Fencing)`](docs/specs/collaborative-editor-spec.md), [`ADR-011 (MinIO Evidences)`](docs/architecture/adrs/adr-011-task-evidences-storage-architecture.md)
 
 ---
 
@@ -175,7 +175,7 @@ Se o agente de IA for manipulado via Prompt Injection para tentar aprovar um art
 
 ### 4.4. Reconciliação do Redis Lease e Consistência sob Queda (`COR-07`, `COR-08`)
 
-Em conformidade com a [ADR-007](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md) e a [ADR-007.1](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md):
+Em conformidade com a [Especificação do Editor Colaborativo](../../specs/collaborative-editor-spec.md):
 
 1. **Geração Monotônica:**
    * A aquisição da posse de um documento no Redis incrementa atomicamente a chave `editor:document:<docId>:generation` via `INCR`, produzindo um `ownerGeneration` estritamente monotônico.

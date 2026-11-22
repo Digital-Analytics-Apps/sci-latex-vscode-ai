@@ -4,6 +4,7 @@ import {
   Activity,
   Bot,
   Cpu,
+  FileCode,
   Layers,
   LayoutDashboard,
   Network,
@@ -19,6 +20,7 @@ import { CollaborationTab } from './tabs/CollaborationTab';
 import { InfrastructureTab } from './tabs/InfrastructureTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { ServiceTopologyTab } from './tabs/ServiceTopologyTab';
+import { TemplatesTab } from './tabs/TemplatesTab';
 import { WorkflowTab } from './tabs/WorkflowTab';
 
 export const AdminCenterPage: React.FC = () => {
@@ -129,6 +131,7 @@ export const AdminCenterPage: React.FC = () => {
                 borderColor: currentTab === 5 ? 'primary.main' : 'divider',
               }}
             />
+            <Tab icon={<FileCode size={17} />} iconPosition="start" label="7. Templates LaTeX" />
           </Tabs>
         </Box>
 
@@ -151,7 +154,11 @@ export const AdminCenterPage: React.FC = () => {
               AIOps Copilot
             </Button>
 
-            <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <Chip
                 label={autoRefresh ? 'Auto: 15s' : 'Pausado'}
                 color={autoRefresh ? 'success' : 'default'}
@@ -197,6 +204,7 @@ export const AdminCenterPage: React.FC = () => {
         {currentTab === 5 && (
           <ServiceTopologyTab autoRefresh={autoRefresh} onInvestigate={handleOpenAiopsForService} />
         )}
+        {currentTab === 6 && <TemplatesTab />}
       </Box>
 
       {/* AIOps Copilot Interactive Drawer */}

@@ -18,9 +18,7 @@ export interface TrafficTelemetryEvent {
   timestamp: number;
 }
 
-export function useAdminTrafficStream(
-  onTrafficEvent?: (step: TraceStep) => void
-) {
+export function useAdminTrafficStream(onTrafficEvent?: (step: TraceStep) => void) {
   const token = useSelector((state: RootState) => state.auth.token);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [lastLiveEvent, setLastLiveEvent] = useState<TrafficTelemetryEvent | null>(null);

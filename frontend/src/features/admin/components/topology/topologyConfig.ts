@@ -1,9 +1,5 @@
 import type { AdminCollaborationData, AdminInfrastructureData } from '../../api/adminCenterApi';
-import type {
-  CommunicationEdge,
-  RequestSimulationScenario,
-  ServiceNode,
-} from './types';
+import type { CommunicationEdge, RequestSimulationScenario, ServiceNode } from './types';
 
 export const buildTopologyNodesAndEdges = (
   infraData?: AdminInfrastructureData,
@@ -28,20 +24,18 @@ export const buildTopologyNodesAndEdges = (
       return true;
     }
     if (!activeTraceStep) return false;
-    return (
-      activeTraceStep.sourceNodeId === id || activeTraceStep.targetNodeId === id
-    );
+    return activeTraceStep.sourceNodeId === id || activeTraceStep.targetNodeId === id;
   };
 
   // Coordenadas com espaçamento arquitetural amplo (250px de vão horizontal e 130px de vão vertical)
-  const COL_1_X = 80;    // Coluna Esquerda: Compiler & MinIO S3
-  const COL_2_X = 620;   // Coluna Central: Frontend SPA, Gateway Fastify, PostgreSQL, Redis
-  const COL_3_X = 1160;  // Coluna Direita: SciAI Engine & Opik LLMOps
+  const COL_1_X = 80; // Coluna Esquerda: Compiler & MinIO S3
+  const COL_2_X = 620; // Coluna Central: Frontend SPA, Gateway Fastify, PostgreSQL, Redis
+  const COL_3_X = 1160; // Coluna Direita: SciAI Engine & Opik LLMOps
 
-  const ROW_1_Y = 50;    // Nível 1: Client Web
-  const ROW_2_Y = 340;   // Nível 2: API Gateway / Core
-  const ROW_3_Y = 660;   // Nível 3: Microservices & Primary DB
-  const ROW_4_Y = 980;   // Nível 4: Storage & Observability
+  const ROW_1_Y = 50; // Nível 1: Client Web
+  const ROW_2_Y = 340; // Nível 2: API Gateway / Core
+  const ROW_3_Y = 660; // Nível 3: Microservices & Primary DB
+  const ROW_4_Y = 980; // Nível 4: Storage & Observability
 
   const nodes: ServiceNode[] = [
     // 1. Frontend Client
@@ -307,12 +301,12 @@ export const buildTopologyNodesAndEdges = (
     collabData?.documentsByPod && collabData.documentsByPod.length > 1
       ? collabData.documentsByPod
       : activeTraceStep?.edgeId.includes('pod-sci-backend')
-      ? [
-          { podName: 'sci-backend-x1', documentsCount: 2, memoryUsageMb: 78 },
-          { podName: 'sci-backend-x2', documentsCount: 1, memoryUsageMb: 82 },
-          { podName: 'sci-backend-x3', documentsCount: 2, memoryUsageMb: 75 },
-        ]
-      : [];
+        ? [
+            { podName: 'sci-backend-x1', documentsCount: 2, memoryUsageMb: 78 },
+            { podName: 'sci-backend-x2', documentsCount: 1, memoryUsageMb: 82 },
+            { podName: 'sci-backend-x3', documentsCount: 2, memoryUsageMb: 75 },
+          ]
+        : [];
 
   if (effectivePods.length > 0) {
     effectivePods.forEach((pod, index) => {
@@ -365,12 +359,8 @@ export const buildTopologyNodesAndEdges = (
     const isTransmitting = activeTraceStep?.edgeId === edgeId;
     return {
       isTransmitting,
-      activeDirection: isTransmitting
-        ? activeTraceStep.direction
-        : ('both' as const),
-      particleColor: isTransmitting
-        ? activeTraceStep.particleColor || '#38bdf8'
-        : undefined,
+      activeDirection: isTransmitting ? activeTraceStep.direction : ('both' as const),
+      particleColor: isTransmitting ? activeTraceStep.particleColor || '#38bdf8' : undefined,
       showParticles: isTransmitting,
     };
   };
@@ -386,16 +376,15 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'HTTP / SSE / WS',
-        description:
-          'REST API, SSE Eventos e WebSockets para Colaboração em Tempo Real',
+        description: 'REST API, SSE Eventos e WebSockets para Colaboração em Tempo Real',
         throughput: `${collabData?.otOperationsPerSecond ?? 0} OT ops/s`,
         latency: `${services?.backendFastify?.latencyP95Ms ?? 0}ms p95`,
         status:
           services?.backendFastify?.status === 'DOWN'
             ? 'error'
             : services?.backendFastify?.status === 'DEGRADED'
-            ? 'warning'
-            : 'healthy',
+              ? 'warning'
+              : 'healthy',
         particleSpeedSeconds: 2.0,
         ...getEdgeTransmission('e-frontend-backend'),
       },
@@ -411,16 +400,15 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'M2M Token',
-        description:
-          'POST /compile com Manifesto Tipado de Assets e Sandbox TeX (COR-02)',
+        description: 'POST /compile com Manifesto Tipado de Assets e Sandbox TeX (COR-02)',
         throughput: `Fila: ${services?.compiler?.queueLength ?? 0}`,
         latency: `${((services?.compiler?.avgDurationMs ?? 0) / 1000).toFixed(1)}s`,
         status:
           services?.compiler?.status === 'DOWN'
             ? 'error'
             : services?.compiler?.status === 'DEGRADED'
-            ? 'warning'
-            : 'healthy',
+              ? 'warning'
+              : 'healthy',
         particleSpeedSeconds: 2.2,
         ...getEdgeTransmission('e-backend-compiler'),
       },
@@ -436,8 +424,7 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'Pool :6543 (ACID)',
-        description:
-          'PgBouncer Transaction Pooling e Isolamento sci_latex_db (ADR-015)',
+        description: 'PgBouncer Transaction Pooling e Isolamento sci_latex_db (ADR-015)',
         throughput: `${services?.postgres?.activeConnections ?? 0} conns`,
         latency:
           (services?.postgres?.slowQueriesCount ?? 0) > 0
@@ -459,16 +446,15 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'M2M JWT Assinado',
-        description:
-          'Autenticação Criptográfica com Delegação de Usuário (ADR-012)',
+        description: 'Autenticação Criptográfica com Delegação de Usuário (ADR-012)',
         throughput: `${services?.aiService?.activeSseStreams ?? 0} Streams`,
         latency: `${services?.aiService?.avgTtftMs ?? 0}ms TTFT`,
         status:
           services?.aiService?.status === 'DOWN'
             ? 'error'
             : services?.aiService?.status === 'DEGRADED'
-            ? 'warning'
-            : 'healthy',
+              ? 'warning'
+              : 'healthy',
         particleSpeedSeconds: 1.8,
         ...getEdgeTransmission('e-backend-sciai'),
       },
@@ -484,8 +470,7 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'Fencing Monotônico',
-        description:
-          'Coordenação Distribuída de Document Ownership Lease (ADR-007.1)',
+        description: 'Coordenação Distribuída de Document Ownership Lease (ADR-007.1)',
         throughput: `${services?.redis?.activeLeasesCount ?? 0} Leases`,
         latency: `${services?.redis?.usedMemoryMb ?? 0} MB`,
         status: services?.redis?.status === 'DOWN' ? 'error' : 'healthy',
@@ -504,8 +489,7 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'minio:9000 (COR-01)',
-        description:
-          'Download estrito de assets científicos com Anti-SSRF em rede interna',
+        description: 'Download estrito de assets científicos com Anti-SSRF em rede interna',
         latency: 'Local S3',
         status: 'healthy',
         particleSpeedSeconds: 2.2,
@@ -523,8 +507,7 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'S3 Presigned',
-        description:
-          'Geração de URLs pré-assinadas para uploads e evidências de tarefas (ADR-011)',
+        description: 'Geração de URLs pré-assinadas para uploads e evidências de tarefas (ADR-011)',
         status: 'healthy',
         particleSpeedSeconds: 2.5,
         ...getEdgeTransmission('e-backend-minio'),
@@ -541,8 +524,7 @@ export const buildTopologyNodesAndEdges = (
       type: 'communicationEdge',
       data: {
         protocol: 'Opik Spans / OTel',
-        description:
-          'Rastreamento ponta a ponta com W3C Trace Context (COR-10)',
+        description: 'Rastreamento ponta a ponta com W3C Trace Context (COR-10)',
         throughput: `$${(services?.aiService?.monthlyEstimatedCostUsd ?? 0).toFixed(2)}`,
         status: 'healthy',
         particleSpeedSeconds: 1.8,

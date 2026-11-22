@@ -837,7 +837,9 @@ export class DocumentsService {
       });
 
       if (!response.ok) {
-        const errorJson = (await response.json().catch(() => ({ error: 'Falha na compilação' }))) as {
+        const errorJson = (await response
+          .json()
+          .catch(() => ({ error: 'Falha na compilação' }))) as {
           error?: string;
           details?: string;
         };

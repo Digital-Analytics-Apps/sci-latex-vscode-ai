@@ -83,7 +83,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     >
       <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}
+          >
             {title}
           </Typography>
           {icon && <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.85 }}>{icon}</Box>}

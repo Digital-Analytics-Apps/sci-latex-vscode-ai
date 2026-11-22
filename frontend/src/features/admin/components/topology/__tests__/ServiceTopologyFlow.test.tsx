@@ -109,9 +109,7 @@ vi.mock('../../../api/adminCenterApi', async () => {
         avgMemoryProcessingMs: 1.2,
         pendingCheckpointsCount: 0,
         reconnectsLastHourCount: 1,
-        documentsByPod: [
-          { podName: 'backend-pod-1', documentsCount: 3, memoryUsageMb: 85 },
-        ],
+        documentsByPod: [{ podName: 'backend-pod-1', documentsCount: 3, memoryUsageMb: 85 }],
       }),
     },
   };
@@ -331,11 +329,7 @@ describe('Service Topology Flow & Components', () => {
       },
     };
 
-    const { nodes } = buildTopologyNodesAndEdges(
-      mockInfra,
-      undefined,
-      null
-    );
+    const { nodes } = buildTopologyNodesAndEdges(mockInfra, undefined, null);
 
     const compilerNode = nodes.find((n) => n.id === 'compiler-worker');
     expect(compilerNode).toBeDefined();
@@ -343,9 +337,7 @@ describe('Service Topology Flow & Components', () => {
     const processingMetric = compilerNode?.data.metrics.find((m) =>
       m.label.includes('Processando')
     );
-    const queueMetric = compilerNode?.data.metrics.find((m) =>
-      m.label.includes('Fila')
-    );
+    const queueMetric = compilerNode?.data.metrics.find((m) => m.label.includes('Fila'));
 
     expect(processingMetric).toBeDefined();
     expect(processingMetric?.value).toContain('2 job(s)');

@@ -43,7 +43,11 @@ export class ClassificationService {
         label = 'Resultados & Experimentos';
       } else if (fileName.includes('conclus') || fileName.includes('04')) {
         label = 'Conclusão';
-      } else if (fileName === 'main.tex' || fileName.includes('bare_') || fileName.includes('template')) {
+      } else if (
+        fileName === 'main.tex' ||
+        fileName.includes('bare_') ||
+        fileName.includes('template')
+      ) {
         label = `Estrutura Principal (${fileName})`;
       } else {
         label = `Seção (${fileName})`;

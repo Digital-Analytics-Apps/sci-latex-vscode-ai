@@ -6,7 +6,7 @@
 **Documentos Relacionados:**  
 * 📄 [`PRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/product/PRD.md) — Documento de Requisitos de Produto (Visão, Personas & 6 Etapas Fixas)  
 * ⚙️ [`TRD.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/planning/TRD.md) — Documento de Requisitos Técnicos (Arquitetura, K8s & APIs)  
-* 🏛️ [`ADR-007`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md) — Arquitetura do Editor Colaborativo CodeMirror 6  
+* 🏛️ [`collaborative-editor-spec.md`](../specs/collaborative-editor-spec.md) — Especificação Canônica do Editor Colaborativo CodeMirror 6 e Fencing Monotônico  
 * 🏛️ [`ADR-008`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) — Workflow em 6 Etapas Fixas e Modelo de Revisão em 2 Níveis  
 * 🔍 [`specs/reviewer-view-spec.md`](../specs/reviewer-view-spec.md) — Especificação da Visão e Persona do Revisor  
 

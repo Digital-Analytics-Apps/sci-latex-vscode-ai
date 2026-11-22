@@ -365,11 +365,14 @@ model TaskEvidence {
 }
 
 model LatexTemplate {
-  id               String    @id @default(uuid())
+  id               String    @id
   name             String
   description      String?
+  publisher        String    @default("OUTRO")
+  templateType     String    @default("artigo")
   targetConference String?
   storageKey       String
+  originalFileName String    @default("template.zip")
   mainEntryPath    String    @default("main.tex")
   isSystem         Boolean   @default(false)
   uploadedById     String?
@@ -381,6 +384,8 @@ model LatexTemplate {
 
   @@index([uploadedById])
   @@index([isSystem])
+  @@index([publisher])
+  @@index([templateType])
 }
 
 // -------------------------------------------------------------

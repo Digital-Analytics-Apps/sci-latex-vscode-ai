@@ -59,8 +59,7 @@ O **SCIA (Scientific Collaboration + AI)** é uma plataforma integrada, 100% sel
 | Fase | Escopo Técnico | Status | Referência Principal |
 | :--- | :--- | :---: | :--- |
 | **Fase I** | Modelagem Relacional Prisma 7, Autenticação JWT e RBAC | 🟢 Concluído | [`docs/architecture/database/DATABASE.md`](../architecture/database/DATABASE.md) |
-| **Fase II** | Editor Colaborativo CodeMirror 6, OT e Debounce Híbrido | 🟢 Concluído | [`ADR-007`](architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md) |
-| **Fase III** | Fencing Monotônico de Posse e Resiliência Multi-Pod | 🟢 Concluído | [`ADR-007.1`](architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md) |
+| **Fase II & III** | Editor Colaborativo CodeMirror 6, OT, Debounce Híbrido e Fencing Monotônico | 🟢 Concluído | [`ADR-007`](../architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md) / [`collaborative-editor-spec.md`](../specs/collaborative-editor-spec.md) |
 | **Fase IV** | Workflow em 6 Etapas Fixas, Modelo de Revisão e Versionamento Relacional | 🟢 Concluído | [`ADR-008`](architecture/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) |
 | **Fase V** | Persistência Relacional de Apontamentos (`ReviewComment`) | 🟢 Concluído | [`ADR-010`](architecture/adrs/adr-010-review-comment-persistence-and-db-alignment.md) |
 | **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](architecture/adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |

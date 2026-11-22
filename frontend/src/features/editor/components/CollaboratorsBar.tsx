@@ -53,7 +53,7 @@ export function CollaboratorsBar({
         {collaborators.map((c, idx) => {
           const isMe = c.userId === currentUserId;
           const remoteCursor = remoteCursors?.get(c.userId);
-          const currentFile = isMe ? activeFile : (remoteCursor?.file || activeFile);
+          const currentFile = isMe ? activeFile : remoteCursor?.file || activeFile;
           return (
             <Tooltip
               key={c.userId}

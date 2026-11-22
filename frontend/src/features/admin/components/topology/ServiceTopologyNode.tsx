@@ -1,24 +1,6 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  Divider,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Box, Card, CardContent, Chip, Divider, Stack, Typography } from '@mui/material';
 import { Handle, type NodeProps, Position } from '@xyflow/react';
-import {
-  Bot,
-  Cpu,
-  Database,
-  Globe,
-  HardDrive,
-  Radio,
-  Server,
-  Sparkles,
-  Zap,
-} from 'lucide-react';
+import { Bot, Cpu, Database, Globe, HardDrive, Radio, Server, Sparkles, Zap } from 'lucide-react';
 import React from 'react';
 import type { ServiceNode } from './types';
 
@@ -27,7 +9,8 @@ const getServiceIcon = (id: string, category: string) => {
   if (id.includes('backend') || id.includes('pod')) return <Server size={18} color="#2563eb" />;
   if (id.includes('sciai') || id.includes('ai')) return <Bot size={18} color="#8b5cf6" />;
   if (id.includes('compiler')) return <Cpu size={18} color="#ea580c" />;
-  if (id.includes('postgres') || category === 'storage') return <Database size={18} color="#0d9488" />;
+  if (id.includes('postgres') || category === 'storage')
+    return <Database size={18} color="#0d9488" />;
   if (id.includes('redis')) return <Zap size={18} color="#dc2626" />;
   if (id.includes('minio')) return <HardDrive size={18} color="#059669" />;
   if (id.includes('opik')) return <Sparkles size={18} color="#d946ef" />;
@@ -68,11 +51,7 @@ const ServiceTopologyNodeComponent: React.FC<NodeProps<ServiceNode>> = ({ data, 
         borderRadius: 2.5,
         border: '2px solid',
         borderColor: isProcessing ? '#0284c7' : selected ? 'primary.main' : statusInfo.borderColor,
-        boxShadow: isProcessing
-          ? '0 0 16px 4px rgba(2, 132, 199, 0.45)'
-          : selected
-          ? 6
-          : 2,
+        boxShadow: isProcessing ? '0 0 16px 4px rgba(2, 132, 199, 0.45)' : selected ? 6 : 2,
         backgroundColor: 'background.paper',
         overflow: 'visible',
         position: 'relative',
@@ -168,7 +147,10 @@ const ServiceTopologyNodeComponent: React.FC<NodeProps<ServiceNode>> = ({ data, 
 
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
         {/* Node Header */}
-        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}
+        >
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <Box
               sx={{
@@ -231,14 +213,11 @@ const ServiceTopologyNodeComponent: React.FC<NodeProps<ServiceNode>> = ({ data, 
 };
 
 // Otimização estrita de re-renderização do React
-export const ServiceTopologyNode = React.memo(
-  ServiceTopologyNodeComponent,
-  (prev, next) => {
-    return (
-      prev.selected === next.selected &&
-      prev.data.status === next.data.status &&
-      prev.data.isProcessing === next.data.isProcessing &&
-      JSON.stringify(prev.data.metrics) === JSON.stringify(next.data.metrics)
-    );
-  }
-);
+export const ServiceTopologyNode = React.memo(ServiceTopologyNodeComponent, (prev, next) => {
+  return (
+    prev.selected === next.selected &&
+    prev.data.status === next.data.status &&
+    prev.data.isProcessing === next.data.isProcessing &&
+    JSON.stringify(prev.data.metrics) === JSON.stringify(next.data.metrics)
+  );
+});

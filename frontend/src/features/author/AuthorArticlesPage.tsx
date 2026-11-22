@@ -73,9 +73,7 @@ export const AuthorArticlesPage = () => {
   );
 
   const activeArticle = useMemo(() => {
-    return (
-      articlesWithRoles.find((a) => (a.progress || 0) < 100) || articlesWithRoles[0]
-    );
+    return articlesWithRoles.find((a) => (a.progress || 0) < 100) || articlesWithRoles[0];
   }, [articlesWithRoles]);
 
   const filteredArticles = useMemo(() => {

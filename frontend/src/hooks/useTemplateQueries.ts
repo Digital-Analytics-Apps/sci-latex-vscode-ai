@@ -21,3 +21,14 @@ export function useUploadTemplateMutation() {
     },
   });
 }
+
+export function useDeleteTemplateMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => templatesService.deleteTemplate(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: templateKeys.all });
+    },
+  });
+}

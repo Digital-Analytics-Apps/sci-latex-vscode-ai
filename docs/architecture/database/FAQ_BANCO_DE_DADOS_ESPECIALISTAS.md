@@ -7,7 +7,7 @@
   - [`ADR-015: Escalabilidade, HA, PgBouncer e Read Replicas`](../../architecture/adrs/adr-015-postgresql-scalability-ha-pgbouncer-and-read-replicas.md)
   - [`DATABASE.md: Especificação Técnica do Banco, ERD e Dicionário de Dados`](DATABASE.md)
   - [`ANALISE_ESCALABILIDADE_RECUPERACAO_POSTGRES.md: Análise de HA e Failover`](../analysis/ANALISE_ESCALABILIDADE_RECUPERACAO_POSTGRES.md)
-  - [`ADR-007.1: Fencing Tokens contra Split-Brain`](../../architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md)
+  - [`collaborative-editor-spec.md: Especificação Canônica do Editor Colaborativo`](../../specs/collaborative-editor-spec.md)
 
 ---
 
@@ -99,7 +99,7 @@
 > *"Em um ambiente multi-pod, o que impede um pod antigo (que sofreu partição de rede) de gravar no banco e corromper o documento com dados defasados?"*
 
 **Sua Resposta:**
-* Implementamos **Fencing Tokens monotônicos** integrados ao PostgreSQL ([ADR-007.1](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md)):
+* Implementamos **Fencing Tokens monotônicos** integrados ao PostgreSQL ([`collaborative-editor-spec.md`](../../specs/collaborative-editor-spec.md)):
   * A tabela `Project` mantém a coluna relacional `ownerGeneration Int @default(0)`.
   * Ao assumir o documento, o Pod adquire um número de geração estritamente monotônico no Redis.
   * Na persistência atômica do checkpoint no PostgreSQL, a gravação valida atomicamente:

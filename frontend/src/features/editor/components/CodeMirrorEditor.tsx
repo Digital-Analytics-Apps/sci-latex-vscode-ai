@@ -1,6 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChangeSet, EditorState } from '@codemirror/state';
+import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { collab, getSyncedVersion, receiveUpdates, sendableUpdates } from '@codemirror/collab';
+import {
+  bracketMatching,
+  codeFolding,
+  defaultHighlightStyle,
+  foldGutter,
+  indentOnInput,
+  StreamLanguage,
+  syntaxHighlighting,
+} from '@codemirror/language';
+import { stex } from '@codemirror/legacy-modes/mode/stex';
+import { Diagnostic, forceLinting, linter, lintGutter } from '@codemirror/lint';
+import { highlightSelectionMatches, search } from '@codemirror/search';
+import { ChangeSet, EditorState } from '@codemirror/state';
 import {
   crosshairCursor,
   dropCursor,
@@ -12,30 +24,15 @@ import {
   rectangularSelection,
   scrollPastEnd,
 } from '@codemirror/view';
-import {
-  bracketMatching,
-  codeFolding,
-  defaultHighlightStyle,
-  foldGutter,
-  indentOnInput,
-  StreamLanguage,
-  syntaxHighlighting,
-} from '@codemirror/language';
-import { stex } from '@codemirror/legacy-modes/mode/stex';
-import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
-import { highlightSelectionMatches, search } from '@codemirror/search';
-import { Diagnostic, forceLinting, linter, lintGutter } from '@codemirror/lint';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Extensões Modulares e Serviços
+import { collabPushPlugin, collabSyncFacet } from '../extensions/collab/collabExtension';
 import {
-  createHistoryExtension,
-  getHistoryStatus,
-  historyField,
-  type HistoryStatus,
-  triggerRedo,
-  triggerUndo,
-} from '../extensions/history/historyExtension';
-import { editorStateCache } from '../services/editorStateCache';
+  commentsField,
+  setActiveCommentEffect,
+  setCommentsEffect,
+} from '../extensions/comments/commentsExtension';
 import {
   autoCloseBracketsCompart,
   autocompleteCompart,
@@ -49,43 +46,37 @@ import {
   themeCompart,
   wordWrapCompart,
 } from '../extensions/config/editorCompartments';
-import { codeMirrorDarkTheme, codeMirrorLightTheme } from '../extensions/theme/editorThemes';
-import { latexFoldService } from '../extensions/latex/latexFolding';
-import {
-  createBibHoverTooltip,
-  createLatexCompletionSource,
-} from '../extensions/latex/latexAutocomplete';
-import {
-  createLatexLinterSource,
-  parseLatexCompilerError,
-  validateLatexStructure,
-} from '../extensions/latex/latexLinter';
-import {
-  buildCursorDecorations,
-  CursorWidget,
-  remoteCursorsField,
-  setRemoteCursorsEffect,
-} from '../extensions/cursors/remoteCursorsExtension';
-import {
-  commentsField,
-  onRequestAddCommentCallbackRef,
-  selectionCommentTooltipField,
-  setActiveCommentEffect,
-  setCommentsEffect,
-} from '../extensions/comments/commentsExtension';
-import { collabPushPlugin, collabSyncFacet } from '../extensions/collab/collabExtension';
-import { editorPortuguesePhrasesExtension } from '../extensions/config/editorPhrases';
 import {
   highPriorityKeymap,
   lowPriorityKeymap,
   standardKeymap,
 } from '../extensions/config/editorKeymaps';
+import { editorPortuguesePhrasesExtension } from '../extensions/config/editorPhrases';
+import {
+  remoteCursorsField,
+  setRemoteCursorsEffect,
+} from '../extensions/cursors/remoteCursorsExtension';
+import {
+  createHistoryExtension,
+  getHistoryStatus,
+  historyField,
+  type HistoryStatus,
+  triggerRedo,
+  triggerUndo,
+} from '../extensions/history/historyExtension';
+import {
+  createBibHoverTooltip,
+  createLatexCompletionSource,
+} from '../extensions/latex/latexAutocomplete';
+import { latexFoldService } from '../extensions/latex/latexFolding';
+import { createLatexLinterSource } from '../extensions/latex/latexLinter';
+import { codeMirrorDarkTheme, codeMirrorLightTheme } from '../extensions/theme/editorThemes';
+import { editorStateCache } from '../services/editorStateCache';
 
 // Utilitários e Componentes Menores Reutilizáveis
-import { extractBibKeys, parseBibEntries } from '../utils/bibtexParser';
+import Box from '@mui/material/Box';
+import { DEFAULT_SETTINGS, EditorSettings } from '../../../types/settings';
 import { checkGrammarAndSpelling } from '../services/languagetool.service';
-import { EditorStatusBar } from './EditorStatusBar';
-import { EditorCommentDialog, SelectionPopupData } from './EditorCommentDialog';
 import {
   CollabUpdateJSON,
   DeltaOperation,
@@ -93,38 +84,8 @@ import {
   ReviewComment,
   SaveStatus,
 } from '../types/collab.types';
-import { DEFAULT_SETTINGS, EditorSettings } from '../../../types/settings';
-import Box from '@mui/material/Box';
-
-// Re-exportações para retrocompatibilidade com testes e outros módulos
-export {
-  themeCompart,
-  spellcheckCompart,
-  editorConfigCompart,
-  wordWrapCompart,
-  autoCloseBracketsCompart,
-  autocompleteCompart,
-  linterCompart,
-  grammarLinterCompart,
-  getSpellcheckExtension,
-  getEditorConfigExtension,
-  parseBibEntries,
-  extractBibKeys,
-  parseLatexCompilerError,
-  validateLatexStructure,
-  CursorWidget,
-  remoteCursorsField,
-  setRemoteCursorsEffect,
-  buildCursorDecorations,
-  commentsField,
-  setCommentsEffect,
-  setActiveCommentEffect,
-  selectionCommentTooltipField,
-  onRequestAddCommentCallbackRef,
-  codeMirrorDarkTheme,
-  codeMirrorLightTheme,
-  collabSyncFacet,
-};
+import { EditorCommentDialog, SelectionPopupData } from './EditorCommentDialog';
+import { EditorStatusBar } from './EditorStatusBar';
 
 export interface EditorLineLayoutInfo {
   commentLineTops: Record<string, { lineNumber: number; top: number }>;
@@ -276,9 +237,18 @@ export function CodeMirrorEditor({
     topsKey: '',
   });
 
-  const latexCompletionSource = createLatexCompletionSource(() => bibContentRef.current);
-  const bibHoverTooltip = createBibHoverTooltip(() => bibContentRef.current);
-  const latexLinterSource = createLatexLinterSource(() => compileErrorRef.current);
+  const latexCompletionSource = useMemo(
+    () => createLatexCompletionSource(() => bibContentRef.current),
+    []
+  );
+  const bibHoverTooltip = useMemo(
+    () => createBibHoverTooltip(() => bibContentRef.current),
+    []
+  );
+  const latexLinterSource = useMemo(
+    () => createLatexLinterSource(() => compileErrorRef.current),
+    []
+  );
 
   const grammarLinterSource = async (view: EditorView): Promise<Diagnostic[]> => {
     const currentSettings = settingsRef.current;
@@ -604,6 +574,9 @@ export function CodeMirrorEditor({
       view.destroy();
       viewRef.current = null;
     };
+    // Inicialização do EditorView intencionalmente restrita à montagem do componente.
+    // Reconfigurações dinâmicas de tema, configurações e permissões são tratadas em efeitos dedicados.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reconfigura o tema do CodeMirror dinamicamente quando a prop `theme` mudar
@@ -655,6 +628,7 @@ export function CodeMirrorEditor({
         ],
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     settings?.wordWrap,
     settings?.autoCloseBrackets,
@@ -746,6 +720,7 @@ export function CodeMirrorEditor({
     } finally {
       isRemoteChangeRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingCollabUpdates?.timestamp]);
 
   // Sincronização externa de scroll

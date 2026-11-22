@@ -1,19 +1,25 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { LatexTemplate } from '@prisma/client';
-import { getFromMinio, StoragePathBuilder, uploadToMinio } from '../../infra/minio';
+import {
+  deleteFromMinio,
+  generatePresignedGetUrl,
+  getFromMinio,
+  StoragePathBuilder,
+  uploadToMinio,
+} from '../../infra/minio';
 import {
   ITemplatesRepository,
   PrismaTemplatesRepository,
 } from '../../repositories/templates.repository';
 import { parseLatexZip } from '../../utils/latex-zip-parser';
 
-export interface CreateCustomTemplateDTO {
-  name?: string;
+export interface CreateTemplateDTO {
+  name: string;
   description?: string;
-  targetConference?: string;
-  year?: string;
-  templateType?: string;
+  publisher: string;
+  templateType: string;
+  originalFileName: string;
   zipBuffer: Buffer;
 }
 
@@ -23,37 +29,11 @@ export class TemplatesService {
   ) {}
 
   /**
-   * Constrói o slug canônico [ANO]-[CONGRESSO]-[FORMATO] conforme a governança do ADR-017.
+   * Constrói o slug canônico [EDITORA]-[TIPO] conforme a governança do ADR-017.
    * Elimina caracteres especiais, acentos e espaços para compatibilidade total com S3 e TeXLive.
+   * Exemplo: "ieee-artigo", "sbc-resumo", "acm-artigo"
    */
-  private generateSemanticSlug(data: {
-    name?: string;
-    targetConference?: string;
-    year?: string;
-    templateType?: string;
-  }): string {
-    const yearMatch = (data.year || data.name || data.targetConference || '').match(
-      /\b(20\d{2})\b/
-    );
-    const year = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
-
-    let conf = data.targetConference?.trim() || '';
-    if (!conf && data.name) {
-      conf = data.name.replace(/\b20\d{2}\b/g, '').trim();
-    }
-    if (!conf) conf = 'conference';
-
-    let format = data.templateType?.trim() || '';
-    if (!format && data.name) {
-      const lower = data.name.toLowerCase();
-      if (lower.includes('resumo')) format = 'resumo';
-      else if (lower.includes('conference')) format = 'conference';
-      else if (lower.includes('transactions')) format = 'transactions';
-      else if (lower.includes('periodico') || lower.includes('journal')) format = 'journal';
-      else format = 'artigo';
-    }
-    if (!format) format = 'artigo';
-
+  public generateSlug(publisher: string, templateType: string): string {
     const sanitize = (s: string) =>
       s
         .normalize('NFD')
@@ -62,55 +42,97 @@ export class TemplatesService {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    const cleanConf = sanitize(conf);
-    const cleanFormat = sanitize(format);
+    const cleanPublisher = sanitize(publisher) || 'template';
+    const cleanType = sanitize(templateType) || 'artigo';
 
-    const slug = `${year}-${cleanConf}-${cleanFormat}`.replace(/-+/g, '-');
-    return slug;
+    return `${cleanPublisher}-${cleanType}`.replace(/-+/g, '-');
   }
 
-  async listTemplates(userId?: string): Promise<LatexTemplate[]> {
-    return this.templatesRepository.findAll(userId);
+  async listTemplates(): Promise<LatexTemplate[]> {
+    return this.templatesRepository.findAll();
   }
 
   async getTemplateById(id: string): Promise<LatexTemplate | null> {
     return this.templatesRepository.findById(id);
   }
 
-  async uploadCustomTemplate(
-    userId: string,
-    data: CreateCustomTemplateDTO
-  ): Promise<LatexTemplate> {
+  /**
+   * Upload e cadastro de template exclusivo para ADMIN.
+   * Aplica política de sobrescrita mandatória: se o slug já existir, substitui o zip no MinIO e atualiza o banco.
+   */
+  async uploadTemplate(userId: string, data: CreateTemplateDTO): Promise<LatexTemplate> {
     const parsed = parseLatexZip(data.zipBuffer);
 
-    // Gera slug semântico padronizado [ANO]-[CONGRESSO]-[FORMATO] (ADR-017)
-    const baseSlug = this.generateSemanticSlug(data);
-    let templateId = baseSlug;
-    let counter = 1;
-    while (await this.templatesRepository.findById(templateId)) {
-      counter++;
-      templateId = `${baseSlug}-v${counter}`;
-    }
+    // Slug semântico canônico [EDITORA]-[TIPO] (ADR-017)
+    const slug = this.generateSlug(data.publisher, data.templateType);
 
-    const storageKey = StoragePathBuilder.templateBundle(templateId, 'bundle.zip');
+    // Sanitiza o nome original do arquivo zip enviado (sem chumbar bundle.zip)
+    const originalFileName = data.originalFileName || `${slug}.zip`;
+    const cleanFileName = originalFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageKey = StoragePathBuilder.templateBundle(slug, cleanFileName);
 
-    // Salva o bundle ZIP diretamente e intacto no MinIO no catálogo global
+    // Salva o binário ZIP diretamente no MinIO sob o caminho dinâmico (sobrescrevendo se existir)
     await uploadToMinio(storageKey, data.zipBuffer, 'application/zip');
 
-    const templateName =
-      data.name?.trim() || parsed.detectedTitle || `${data.targetConference || 'Oficial'} Template`;
+    const publisherUpper = data.publisher.trim().toUpperCase();
+    const templateTypeLower = data.templateType.trim().toLowerCase();
+    const templateName = data.name.trim();
+
+    if (!templateName) {
+      throw new Error('O nome de exibição do template é obrigatório.');
+    }
+
     const mainEntryPath = parsed.rootDoc.path;
 
-    return this.templatesRepository.create({
-      id: templateId,
+    return this.templatesRepository.upsert({
+      id: slug,
       name: templateName,
       description: data.description,
-      targetConference: data.targetConference,
+      publisher: publisherUpper,
+      templateType: templateTypeLower,
+      targetConference: publisherUpper,
       storageKey,
+      originalFileName: cleanFileName,
       mainEntryPath,
-      isSystem: false,
+      isSystem: true,
       uploadedById: userId,
     });
+  }
+
+  /**
+   * Remove template do MinIO e do banco de dados (exclusivo ADMIN).
+   * Projetos existentes têm seu templateId desvinculado via onDelete: SetNull,
+   * preservando todos os seus arquivos TeX extraídos de forma autônoma.
+   */
+  async deleteTemplate(id: string): Promise<void> {
+    const template = await this.getTemplateById(id);
+    if (!template) {
+      throw new Error(`Template "${id}" não encontrado.`);
+    }
+
+    try {
+      await deleteFromMinio(template.storageKey);
+    } catch (err) {
+      console.warn(`[TemplatesService] Aviso ao remover do MinIO: ${(err as Error).message}`);
+    }
+
+    await this.templatesRepository.delete(id);
+  }
+
+  /**
+   * Gera URL pré-assinada para download temporário do arquivo .zip original pelo Admin.
+   */
+  async getTemplateDownloadUrl(id: string): Promise<{ downloadUrl: string; fileName: string }> {
+    const template = await this.getTemplateById(id);
+    if (!template) {
+      throw new Error(`Template "${id}" não encontrado.`);
+    }
+
+    const downloadUrl = await generatePresignedGetUrl(template.storageKey, 3600);
+    return {
+      downloadUrl,
+      fileName: template.originalFileName || `${template.id}.zip`,
+    };
   }
 
   async getTemplateBundle(
@@ -126,11 +148,10 @@ export class TemplatesService {
   }
 
   /**
-   * Sincroniza a semente mínima (baseline) de templates oficiais reais a partir da pasta 'latex-templates/'.
+   * Sincroniza a semente mínima (baseline) de templates oficiais reais a partir da pasta 'latex-templates/'
    * e garante a persistência no MinIO e PostgreSQL.
    */
   async seedBaselineTemplates(customTemplatesDir?: string): Promise<LatexTemplate[]> {
-    // 1. Localiza a pasta oficial de templates baseline
     const possibleDirs = [
       customTemplatesDir,
       path.resolve(process.cwd(), './src/modules/templates/seed-templates/'),
@@ -171,34 +192,45 @@ export class TemplatesService {
 
     const seededTemplates: LatexTemplate[] = [];
 
-    // 2. Processa e sobe cada template oficial real
     for (const zipFileName of zipFiles) {
       const fullPath = path.join(targetDir, zipFileName);
       const zipBuffer = await fs.readFile(fullPath);
       const parsed = parseLatexZip(zipBuffer);
 
-      // Slug semântico canônico [ANO]-[CONGRESSO]-[TIPO] a partir do nome do arquivo
-      const slug = zipFileName
-        .replace(/\.zip$/i, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, '-');
-      const storageKey = StoragePathBuilder.templateBundle(slug, 'bundle.zip');
+      // Infere editora e tipo a partir do nome do arquivo baseline
+      const lower = zipFileName.toLowerCase();
+      let publisher = 'OFICIAL';
+      if (lower.includes('ieee')) publisher = 'IEEE';
+      else if (lower.includes('sbc')) publisher = 'SBC';
+      else if (lower.includes('acm')) publisher = 'ACM';
+      else if (lower.includes('springer')) publisher = 'SPRINGER';
+      else if (lower.includes('napopen')) publisher = 'NAPOPEN';
+
+      let templateType = 'artigo';
+      if (lower.includes('resumo')) templateType = 'resumo';
+      else if (lower.includes('periodico') || lower.includes('journal')) templateType = 'periodico';
+      else if (lower.includes('poster')) templateType = 'poster';
+
+      const slug = this.generateSlug(publisher, templateType);
+      const cleanFileName = zipFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageKey = StoragePathBuilder.templateBundle(slug, cleanFileName);
 
       // Faz upload do binário oficial integral para o MinIO
       await uploadToMinio(storageKey, zipBuffer, 'application/zip');
 
+      const cleanTypeLabel =
+        templateType.charAt(0).toUpperCase() + templateType.slice(1).toLowerCase();
+      const templateName = `${publisher} - ${cleanTypeLabel}`;
+
       const template = await this.templatesRepository.upsert({
         id: slug,
-        name: parsed.detectedTitle || `Template Oficial ${slug.toUpperCase()}`,
+        name: templateName,
         description: `Template oficial homologado para submissões acadêmicas (${slug}).`,
-        targetConference: slug.includes('ieee')
-          ? 'IEEE'
-          : slug.includes('sbc')
-            ? 'SBC'
-            : slug.includes('acm')
-              ? 'ACM'
-              : 'OFICIAL',
+        publisher,
+        templateType,
+        targetConference: publisher,
         storageKey,
+        originalFileName: cleanFileName,
         mainEntryPath: parsed.rootDoc.path,
         isSystem: true,
       });

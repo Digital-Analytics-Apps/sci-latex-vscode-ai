@@ -32,11 +32,7 @@ import {
   useAiopsDiagnosisMutation,
   useAiopsIncidentDetails,
 } from '../hooks/useAIOps';
-import {
-  AiopsChatMessage,
-  AiopsRcaSuggestedAction,
-  RcaClassification,
-} from '../types/aiops.types';
+import { AiopsChatMessage, AiopsRcaSuggestedAction, RcaClassification } from '../types/aiops.types';
 import { AIOpsActionCard } from './AIOpsActionCard';
 
 export interface AIOpsChatDrawerProps {
@@ -258,7 +254,8 @@ export const AIOpsChatDrawer = ({
           id: m.id,
           role: m.role,
           content: m.content,
-          suggestedActions: (m.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)?.actions,
+          suggestedActions: (m.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)
+            ?.actions,
         }))
       );
     } else {
@@ -267,7 +264,9 @@ export const AIOpsChatDrawer = ({
           id: selectedMsg.id,
           role: selectedMsg.role,
           content: selectedMsg.content,
-          suggestedActions: (selectedMsg.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null)?.actions,
+          suggestedActions: (
+            selectedMsg.toolCalls as { actions?: AiopsRcaSuggestedAction[] } | null
+          )?.actions,
         },
       ]);
     }

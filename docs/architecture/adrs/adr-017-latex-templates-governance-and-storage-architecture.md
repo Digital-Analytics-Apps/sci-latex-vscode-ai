@@ -51,11 +51,15 @@ Durante a auditoria da esteira de templates e compilação, foram identificadas 
 └──────────────────────────────┴─────────────────────────────┴─────────────────────────────────────┘
 ```
 
-### 2.1. Regra 1: Gestão Estrita e Centralizada pelo Administrador (RBAC)
-- **Bloqueio ao Autor:** O modal de criação de projeto (`CreateProjectModal.tsx`) do autor não permite mais upload de templates customizados. Exibe unicamente um `<Select>` com os templates homologados ativos.
+### 2.1. Regra 1: Gestão Estrita e Centralizada pelo Administrador (RBAC) e Templates Sempre Ativos
+- **Bloqueio ao Autor:** O modal de criação de projeto (`CreateProjectModal.tsx`) do autor não permite mais upload de templates customizados. Exibe unicamente um `<Select>` com os templates homologados no sistema.
+- **Templates Sempre Ativos:** Todos os templates salvos no catálogo são permanentemente ativos e elegíveis para criação de novos artigos. Não existe o conceito de desativação (`isActive`) ou status inativo; caso uma conferência sofra alterações ou correções, o administrador simplesmente sobrescreve o template existente.
 - **Painel Administrativo (`AdminCenterPage`):** Criação de uma aba dedicada **"Templates LaTeX"** (`TemplatesTab.tsx`) para administradores:
-  - Tabela com lista completa de templates (MUI GenericDataGrid), contendo Slug, Nome, Editora, Tipo, Arquivo Raiz, Data de Envio e Ações (Download do ZIP, Desativação/Ativação, Exclusão).
-  - Modal de cadastro para upload de novo template com drag-and-drop, solicitando: Editora (ex: IEEE, SBC, ACM), Tipo (ex: artigo, resumo, periodico) e o arquivo `.zip`.
+  - Tabela com lista completa de templates (MUI GenericDataGrid), contendo Slug, Nome, Editora, Tipo, Arquivo Raiz, Data de Envio e Ações (Download do ZIP, Exclusão).
+  - Modal de cadastro para upload de novo template com drag-and-drop, solicitando obrigatoriamente: Editora (campo aberto de texto livre para qualquer editora ou evento, ex: IEEE, SBC, ACM, Elsevier, Springer), Tipo (ex: artigo, resumo, periodico), Nome de Exibição amigável (`name`) e o arquivo `.zip`.
+- **Nome de Exibição Obrigatório e Fim do Fallback de Título do TeX:**
+  - O campo `name` é estritamente obrigatório no cadastro.
+  - Fica completamente removido qualquer fallback automático que tente extrair `\title{...}` do código TeX para nomear o template, pois arquivos de exemplo costumam conter placeholders complexos e textos indesejados (ex: *"Conference Paper Title\* \*Note: Sub-titles are not captured..."*), poluindo a listagem na interface com nomes estranhos.
 
 ### 2.2. Regra 2: Padrão Semântico de Slugs Estrito `[editora]-[tipo]`
 Para eliminar a proliferação de anos desnecessários e manter a identificação direta e concisa:
@@ -185,7 +189,6 @@ model LatexTemplate {
   originalFileName String    // Nome original do arquivo recebido: "conference-template.zip"
   mainEntryPath    String    @default("main.tex") // Detectado: "bare_conf.tex", "sbc-template.tex"
   isSystem         Boolean   @default(true)
-  isActive         Boolean   @default(true) // Desativação lógica (soft delete) para preservar integridade
   uploadedById     String?
   uploadedBy       User?     @relation("UserUploadedTemplates", fields: [uploadedById], references: [id], onDelete: SetNull)
   createdAt        DateTime  @default(now())
@@ -195,7 +198,6 @@ model LatexTemplate {
 
   @@index([publisher])
   @@index([templateType])
-  @@index([isActive])
 }
 ```
 
@@ -214,4 +216,4 @@ model LatexTemplate {
 
 ### Riscos Mitigados:
 - **Corrupção de Classes e Macros TeX:** A manutenção dos nomes de arquivo originais e do arquivo de entrada detectado (`mainEntryPath`) garante compilação idêntica à especificação da sociedade científica.
-- **Quebra de Chaves Estrangeiras:** O suporte a `isActive: false` (soft delete) garante que a descontinuação de um template nunca quebre artigos já publicados no sistema.
+- **Simplicidade Operacional:** Eliminação de flags de estado/desativação; templates no catálogo estão sempre ativos e prontos para uso.

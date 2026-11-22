@@ -20,5 +20,8 @@
     "db:migrate": "npm --prefix backend run db:migrate",
     "db:generate": "npm --prefix backend run db:generate",
     "seed": "npm --prefix backend run db:seed"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.10.1"
   }
 }

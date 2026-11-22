@@ -35,7 +35,8 @@ export const componentsOverrides: Components<Omit<Theme, 'components'>> = {
         textTransform: 'none',
         fontWeight: 600,
         letterSpacing: '0.01em',
-        transition: 'background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 150ms ease',
+        transition:
+          'background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 150ms ease',
       },
       contained: {
         boxShadow: 'none',

@@ -1,29 +1,11 @@
-import {
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material';
-import {
-  Bot,
-  Cpu,
-  Network,
-  Radio,
-  Square,
-  Zap,
-} from 'lucide-react';
+import { Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import { Bot, Cpu, Network, Radio, Square, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import { ServiceTopologyFlow } from '../components/topology/ServiceTopologyFlow';
 import { SIMULATION_SCENARIOS } from '../components/topology/topologyConfig';
 import type { RequestSimulationScenario, TraceStep } from '../components/topology/types';
-import {
-  useAdminCollaboration,
-  useAdminInfrastructure,
-} from '../hooks/useAdminCenterQueries';
+import { useAdminCollaboration, useAdminInfrastructure } from '../hooks/useAdminCenterQueries';
 import { useAdminTrafficStream } from '../hooks/useAdminTrafficStream';
 
 export interface ServiceTopologyTabProps {
@@ -31,19 +13,14 @@ export interface ServiceTopologyTabProps {
   onInvestigate?: (serviceName: string) => void;
 }
 
-export const ServiceTopologyTab: React.FC<ServiceTopologyTabProps> = ({
-  autoRefresh,
-}) => {
+export const ServiceTopologyTab: React.FC<ServiceTopologyTabProps> = ({ autoRefresh }) => {
   const {
     data: infraData,
     isLoading: isLoadingInfra,
     isError: isErrorInfra,
   } = useAdminInfrastructure(autoRefresh);
 
-  const {
-    data: collabData,
-    isLoading: isLoadingCollab,
-  } = useAdminCollaboration(autoRefresh);
+  const { data: collabData, isLoading: isLoadingCollab } = useAdminCollaboration(autoRefresh);
 
   // Estados de Rastreamento e Simulação de Tráfego
   const [activeScenario, setActiveScenario] = useState<RequestSimulationScenario | null>(null);
@@ -89,8 +66,7 @@ export const ServiceTopologyTab: React.FC<ServiceTopologyTabProps> = ({
     }
   };
 
-  const { isConnected: isLiveConnected } =
-    useAdminTrafficStream(handleLiveTrafficEvent);
+  const { isConnected: isLiveConnected } = useAdminTrafficStream(handleLiveTrafficEvent);
 
   // Execução passo a passo da simulação
   const runStep = (scenario: RequestSimulationScenario, stepIdx: number) => {

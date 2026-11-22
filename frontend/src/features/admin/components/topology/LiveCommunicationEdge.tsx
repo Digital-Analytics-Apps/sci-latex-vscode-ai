@@ -85,73 +85,51 @@ const LiveCommunicationEdgeComponent: React.FC<EdgeProps<CommunicationEdge>> = (
           filter: isTransmitting
             ? 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.8))'
             : status === 'healthy'
-            ? 'drop-shadow(0 0 2px rgba(99, 102, 241, 0.35))'
-            : undefined,
+              ? 'drop-shadow(0 0 2px rgba(99, 102, 241, 0.35))'
+              : undefined,
           transition: 'stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease',
         }}
       />
 
       {/* Partícula / Ponto Animado de Ida (Forward: Source -> Target) - APENAS durante transmissão */}
-      {isTransmitting &&
-        (activeDirection === 'forward' || activeDirection === 'both') && (
-          <g>
-            <circle r={7} fill={colors.particle} opacity={0.4}>
-              <animateMotion
-                dur={speed}
-                repeatCount="indefinite"
-                path={edgePath}
-                rotate="auto"
-              />
-            </circle>
-            <circle
-              r={4.5}
-              fill="#ffffff"
-              stroke={colors.particle}
-              strokeWidth={2}
-            >
-              <animateMotion
-                dur={speed}
-                repeatCount="indefinite"
-                path={edgePath}
-                rotate="auto"
-              />
-            </circle>
-          </g>
-        )}
+      {isTransmitting && (activeDirection === 'forward' || activeDirection === 'both') && (
+        <g>
+          <circle r={7} fill={colors.particle} opacity={0.4}>
+            <animateMotion dur={speed} repeatCount="indefinite" path={edgePath} rotate="auto" />
+          </circle>
+          <circle r={4.5} fill="#ffffff" stroke={colors.particle} strokeWidth={2}>
+            <animateMotion dur={speed} repeatCount="indefinite" path={edgePath} rotate="auto" />
+          </circle>
+        </g>
+      )}
 
       {/* Partícula / Ponto Animado de Volta (Backward: Target -> Source) - APENAS durante transmissão */}
-      {isTransmitting &&
-        (activeDirection === 'backward' || activeDirection === 'both') && (
-          <g>
-            <circle r={7} fill={colors.particle} opacity={0.4}>
-              <animateMotion
-                dur={speed}
-                repeatCount="indefinite"
-                path={edgePath}
-                keyPoints="1;0"
-                keyTimes="0;1"
-                calcMode="linear"
-                rotate="auto"
-              />
-            </circle>
-            <circle
-              r={4.5}
-              fill="#ffffff"
-              stroke={colors.particle}
-              strokeWidth={2}
-            >
-              <animateMotion
-                dur={speed}
-                repeatCount="indefinite"
-                path={edgePath}
-                keyPoints="1;0"
-                keyTimes="0;1"
-                calcMode="linear"
-                rotate="auto"
-              />
-            </circle>
-          </g>
-        )}
+      {isTransmitting && (activeDirection === 'backward' || activeDirection === 'both') && (
+        <g>
+          <circle r={7} fill={colors.particle} opacity={0.4}>
+            <animateMotion
+              dur={speed}
+              repeatCount="indefinite"
+              path={edgePath}
+              keyPoints="1;0"
+              keyTimes="0;1"
+              calcMode="linear"
+              rotate="auto"
+            />
+          </circle>
+          <circle r={4.5} fill="#ffffff" stroke={colors.particle} strokeWidth={2}>
+            <animateMotion
+              dur={speed}
+              repeatCount="indefinite"
+              path={edgePath}
+              keyPoints="1;0"
+              keyTimes="0;1"
+              calcMode="linear"
+              rotate="auto"
+            />
+          </circle>
+        </g>
+      )}
 
       {/* Badge Flutuante no Meio da Aresta */}
       <EdgeLabelRenderer>
@@ -220,18 +198,15 @@ const LiveCommunicationEdgeComponent: React.FC<EdgeProps<CommunicationEdge>> = (
 };
 
 // Otimização estrita de re-renderização
-export const LiveCommunicationEdge = React.memo(
-  LiveCommunicationEdgeComponent,
-  (prev, next) => {
-    return (
-      prev.sourceX === next.sourceX &&
-      prev.sourceY === next.sourceY &&
-      prev.targetX === next.targetX &&
-      prev.targetY === next.targetY &&
-      prev.data?.isTransmitting === next.data?.isTransmitting &&
-      prev.data?.status === next.data?.status &&
-      prev.data?.throughput === next.data?.throughput &&
-      prev.data?.latency === next.data?.latency
-    );
-  }
-);
+export const LiveCommunicationEdge = React.memo(LiveCommunicationEdgeComponent, (prev, next) => {
+  return (
+    prev.sourceX === next.sourceX &&
+    prev.sourceY === next.sourceY &&
+    prev.targetX === next.targetX &&
+    prev.targetY === next.targetY &&
+    prev.data?.isTransmitting === next.data?.isTransmitting &&
+    prev.data?.status === next.data?.status &&
+    prev.data?.throughput === next.data?.throughput &&
+    prev.data?.latency === next.data?.latency
+  );
+});

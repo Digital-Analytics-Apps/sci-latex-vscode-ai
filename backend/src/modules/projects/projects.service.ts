@@ -506,7 +506,8 @@ export class ProjectsService {
           where: { projectId, path: { endsWith: '.tex' } },
         })
         .catch(() => []);
-      mainFile = texFiles.find((f) => f.content?.includes('\\documentclass')) || texFiles[0] || null;
+      mainFile =
+        texFiles.find((f) => f.content?.includes('\\documentclass')) || texFiles[0] || null;
     }
     const content = mainFile?.content || '';
 

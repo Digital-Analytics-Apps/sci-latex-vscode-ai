@@ -3,7 +3,6 @@ import AddCircleOutlinedIcon from '@mui/icons-material/AddCircleOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import TimelineIcon from '@mui/icons-material/Timeline';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import {
   Alert,
   Box,
@@ -29,7 +28,7 @@ import { useDispatch } from 'react-redux';
 import { StandardModal } from '../../../components/common/StandardModal';
 import { UserSearchAutocomplete } from '../../../components/common/UserSearchAutocomplete';
 import { useCreateProjectMutation } from '../../../hooks/useProjectQueries';
-import { useTemplatesQuery, useUploadTemplateMutation } from '../../../hooks/useTemplateQueries';
+import { useTemplatesQuery } from '../../../hooks/useTemplateQueries';
 import { type CreateProjectFormData, createProjectSchema } from '../../../schemas/project.schema';
 import { type UserMemberItem } from '../../../services/usersService';
 import { showNotification } from '../../../store/slices/notificationSlice';
@@ -82,13 +81,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [reviewerSearchText, setReviewerSearchText] = useState('');
   const [selectedReviewer, setSelectedReviewer] = useState<UserMemberItem | null>(null);
   const { data: templates = [], isLoading: isLoadingTemplates } = useTemplatesQuery();
-  const uploadTemplateMutation = useUploadTemplateMutation();
-  const [showUploadCustom, setShowUploadCustom] = useState(false);
-  const [customFile, setCustomFile] = useState<File | null>(null);
-  const [customName, setCustomName] = useState('');
-  const [customConf, setCustomConf] = useState('');
-  const [customYear, setCustomYear] = useState(String(new Date().getFullYear()));
-  const [customType, setCustomType] = useState('artigo');
 
   const {
     register,
@@ -160,49 +152,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   const handleUpdateStage = (id: string, field: keyof StageFormItem, value: string) => {
     setStages((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
-  };
-  const handleUploadCustomTemplate = async () => {
-    if (!customFile) {
-      dispatch(
-        showNotification({
-          message: 'Por favor, selecione um arquivo .zip contendo os arquivos TeX.',
-          severity: 'warning',
-        })
-      );
-      return;
-    }
-
-    try {
-      const uploaded = await uploadTemplateMutation.mutateAsync({
-        file: customFile,
-        name: customName.trim() || undefined,
-        targetConference: customConf.trim() || undefined,
-        year: customYear.trim() || undefined,
-        templateType: customType.trim() || undefined,
-      });
-
-      setValue('templateId', uploaded.id);
-      dispatch(
-        showNotification({
-          message: `Template oficial "${uploaded.id}" cadastrado no Catálogo Global e selecionado para este artigo!`,
-          severity: 'success',
-        })
-      );
-      setShowUploadCustom(false);
-      setCustomFile(null);
-      setCustomName('');
-      setCustomConf('');
-    } catch (err: any) {
-      dispatch(
-        showNotification({
-          message:
-            err?.response?.data?.message ||
-            err?.message ||
-            'Erro ao fazer upload do template. Certifique-se de que é um .zip válido.',
-          severity: 'error',
-        })
-      );
-    }
   };
 
   const onSubmit = async (data: CreateProjectFormData) => {
@@ -395,16 +344,24 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       gap: 1,
                     }}
                   >
-                    <Typography variant="body2" sx={{ fontWeight: tpl.isSystem ? 600 : 400 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {tpl.name}
                     </Typography>
-                    <Chip
-                      size="small"
-                      label={tpl.isSystem ? 'Oficial' : 'Customizado'}
-                      color={tpl.isSystem ? 'primary' : 'secondary'}
-                      variant="outlined"
-                      sx={{ height: 20, fontSize: '0.68rem' }}
-                    />
+                    <Stack direction="row" spacing={0.5}>
+                      <Chip
+                        size="small"
+                        label={tpl.publisher}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700 }}
+                      />
+                      <Chip
+                        size="small"
+                        label={tpl.templateType}
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.68rem', textTransform: 'capitalize' }}
+                      />
+                    </Stack>
                   </Box>
                 </MenuItem>
               ))}
@@ -427,7 +384,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               }}
             >
               <Typography variant="caption" color="text.secondary">
-                Armazenado no MinIO: <code>{selectedTemplateItem.storageKey}</code>
+                Editora: <strong>{selectedTemplateItem.publisher}</strong> | Tipo:{' '}
+                <strong style={{ textTransform: 'capitalize' }}>
+                  {selectedTemplateItem.templateType}
+                </strong>{' '}
+                | Arquivo raiz: <code>{selectedTemplateItem.mainEntryPath}</code>
               </Typography>
               {selectedTemplateItem.description && (
                 <Typography variant="caption" color="text.secondary">
@@ -435,114 +396,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                 </Typography>
               )}
             </Box>
-          )}
-
-          {/* Botão de Toggle para Subir Template Customizado */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              size="small"
-              variant="text"
-              startIcon={<CloudUploadIcon />}
-              onClick={() => setShowUploadCustom((prev) => !prev)}
-            >
-              {showUploadCustom
-                ? 'Cancelar Envio de Template'
-                : 'Ou subir meu próprio template (.zip)'}
-            </Button>
-          </Box>
-
-          {/* Painel de Upload de Template Customizado */}
-          {showUploadCustom && (
-            <Card
-              variant="outlined"
-              sx={{
-                p: 2,
-                bgcolor: 'background.paper',
-                borderRadius: 1.5,
-                borderColor: 'primary.light',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Cadastrar Novo Template Oficial no Catálogo Global (.zip)
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Envie o pacote oficial (.zip) fornecido pelo congresso ou revista. Ele será
-                catalogado globalmente sob o padrão <code>[ANO]-[CONGRESSO]-[TIPO]</code> e
-                selecionado para o seu novo artigo.
-              </Typography>
-
-              <Stack direction="row" spacing={1.5}>
-                <TextField
-                  size="small"
-                  label="Sigla do Congresso / Revista"
-                  placeholder="Ex: SBC, IEEE, ACM"
-                  value={customConf}
-                  onChange={(e) => setCustomConf(e.target.value)}
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  size="small"
-                  label="Ano"
-                  placeholder="2026"
-                  value={customYear}
-                  onChange={(e) => setCustomYear(e.target.value)}
-                  sx={{ width: 100 }}
-                />
-                <TextField
-                  size="small"
-                  label="Tipo / Formato"
-                  placeholder="artigo, resumo"
-                  value={customType}
-                  onChange={(e) => setCustomType(e.target.value)}
-                  sx={{ width: 140 }}
-                />
-              </Stack>
-
-              <TextField
-                fullWidth
-                size="small"
-                label="Nome Descritivo (Opcional)"
-                placeholder="Ex: SBC 2026 - Artigo Completo"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-              />
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  size="small"
-                  startIcon={<CloudUploadIcon />}
-                >
-                  {customFile ? customFile.name : 'Selecionar Arquivo .ZIP Oficial'}
-                  <input
-                    type="file"
-                    accept=".zip,application/zip,application/x-zip-compressed"
-                    hidden
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setCustomFile(e.target.files[0]);
-                      }
-                    }}
-                  />
-                </Button>
-
-                <Button
-                  variant="contained"
-                  size="small"
-                  color="primary"
-                  disabled={!customFile || uploadTemplateMutation.isPending}
-                  onClick={handleUploadCustomTemplate}
-                >
-                  {uploadTemplateMutation.isPending
-                    ? 'Cadastrando...'
-                    : 'Cadastrar no Catálogo Global'}
-                </Button>
-              </Box>
-            </Card>
           )}
         </Box>
       )}

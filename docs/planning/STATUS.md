@@ -73,16 +73,18 @@
     * **Testes e Compilação:**
       * Backend: 83/83 testes aprovados no Vitest (`npm test`).
       * Frontend: 6/6 testes aprovados no Vitest (`npm test`), build de produção concluído com sucesso (`npm run build`).
-  * **Governança de Templates LaTeX Oficiais e Storage Architecture (ADR-017 Concluída):**
-    * **Decisão Arquitetural Aprovada:** Documentada em [`ADR-017`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-017-latex-templates-governance-and-storage-architecture.md) com a convenção semântica de diretórios `[ANO]-[NOME_DO_CONGRESSO]-[TIPO]` (ex: `2026-ieee-conference`) e o princípio inegociável de *Fail-Fast* (zero fallbacks para `main.tex`).
-    * **Expurgo de Templates Fakes e Seed de Baseline Real:**
-      * Removidas ~250 linhas de strings e arquivos simulados em `backend/src/modules/templates/templates.service.ts`.
-      * Mantido apenas o template oficial real em `latex-templates/2026-ieee-conference.zip` (com `IEEEtran.cls`, `IEEE-conference-template-062824.tex` e `fig1.png`).
-      * Método `seedBaselineTemplates()` executado com sucesso: uploads para o bucket MinIO `collab-assets` e upsert na tabela `LatexTemplate` via Prisma.
-    * **Descompactação Overleaf-Style & Detecção de Arquivo Raiz:**
-      * `latex-zip-parser.ts` aprimorado para despir pasta-mãe única de ZIPs oficiais e detectar o arquivo que contém `\documentclass` preservando seu nome de origem intacto.
-    * **Suporte Dinâmico na Colaboração em Tempo Real (Backend & Frontend):**
-      * `backend/src/modules/documents/documents.schema.ts`: `DocumentSchema` exige `mainEntryPath: z.string().min(1)`.
+  * **Governança de Templates LaTeX Oficiais e Storage Architecture (ADR-017 Atualizada e Concluída):**
+    * **Decisão Arquitetural e Especificação Aprovadas:** Documentadas em [`ADR-017`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-017-latex-templates-governance-and-storage-architecture.md) e [`latex-templates-governance-spec.md`](file:///mnt/c0b6217c-c2f3-4c1f-8ba2-c8d177f718a9/development/professional/sci-latex-vscode/docs/specs/latex-templates-governance-spec.md).
+    * **Centralização no Admin (Aba 7 "7. Templates LaTeX"):** Implementada `TemplatesTab.tsx` com `GenericDataGrid`, upload drag-and-drop, download temporário do `.zip` via URL pré-assinada do MinIO e exclusão segura.
+    * **Slugs Estritos `[editora]-[tipo]` & Sobrescrita Mandatória:** Identificadores canônicos determinísticos sem sufixos de anos (ex: `ieee-artigo`, `sbc-resumo`). Sobrescrita imediata no MinIO e banco a cada upload institucional.
+    * **Armazenamento Dinâmico no MinIO:** Eliminação de nomes estáticos (`bundle.zip`), higienizando e preservando o nome original do arquivo compactado enviado pelo administrador (`templates/${slug}/${cleanFileName}`).
+    * **Metadados Obrigatórios Sem Fallback do TeX:**
+      * Editora/Sociedade (`publisher`): Campo aberto de texto livre (não restrito a select).
+      * Nome de Exibição (`name`): Campo obrigatório no cadastro. Removido qualquer fallback automático que extraísse `\title{...}` de arquivos TeX de exemplo.
+    * **Autonomia dos Artigos & Desacoplamento:** Artigos clonam arquivos para `ProjectFile` no ato da criação. Exclusão de templates do catálogo aplica `onDelete: SetNull`, mantendo todos os projetos existentes íntegros e compiláveis.
+  * **Qualidade de Código e Arquitetura Frontend:**
+    * **Remoção de Anti-Pattern no CodeMirrorEditor:** Eliminado bloco artificial de re-exportações para retrocompatibilidade em `CodeMirrorEditor.tsx`; módulos consumidores importam diretamente de seus arquivos modulares de extensão.
+    * **Resolução de Warnings de Hooks:** 0 warnings no ESLint (`npm run lint`), com memoização adequada de sources e efeitos de ciclo de vida devidamente documentados.
       * `backend/src/modules/documents/documents.repository.ts`: Consultas e checkpoints salvam o arquivo apontado por `mainEntryPath`, lançando `DocumentIntegrityError` se faltar no banco.
       * `backend/src/modules/documents/documents.service.ts` & `documents.websocket.ts`: OT, broadcast, versionamento e snapshots atrelados dinamicamente ao `mainEntryPath`.
       * `compiler/src/server.ts`: Compilador TeXLive exige que `mainEntry` conste explicitamente na lista de arquivos recebidos (*fail-fast* 400).
@@ -241,8 +243,7 @@
 | Bloco | Descrição | Status | Referência |
 | :--- | :--- | :---: | :--- |
 | **Fase I** | Modelagem Relacional Prisma 7, Autenticação JWT e RBAC | 🟢 Concluído | [`DATABASE.md`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/DATABASE.md) |
-| **Fase II** | Editor Colaborativo CodeMirror 6, OT e Debounce Híbrido | 🟢 Concluído | [`ADR-007`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md) |
-| **Fase III** | Fencing Monotônico de Posse e Resiliência Multi-Pod | 🟢 Concluído | [`ADR-007.1`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-007.1-document-ownership-fencing-and-routing.md) |
+| **Fase II & III** | Editor Colaborativo CodeMirror 6, OT, Debounce Híbrido e Fencing Monotônico | 🟢 Concluído | [`ADR-007`](../architecture/adrs/adr-007-collaborative-editor-architecture-scaling.md) / [`collaborative-editor-spec.md`](../specs/collaborative-editor-spec.md) |
 | **Fase IV** | Workflow em 6 Etapas Fixas e Modelo de Revisão em 2 Níveis | 🟢 Concluído | [`ADR-008`](file:///home/gilson-russo/development/professional/sci-latex-vscode/docs/architecture/adrs/adr-008-workflow-6-etapas-revisao-desacoplamento-git.md) |
 | **Fase V** | Persistência Relacional de Apontamentos (`ReviewComment`) | 🟢 Concluído | [`ADR-010`](adrs/adr-010-review-comment-persistence-and-db-alignment.md) |
 | **Fase VI** | Camada de IA Científica Multi-Agente (`ai-service` / SciAI) | 🟡 **Em Execução** | [`ADR-009`](adrs/adr-009-sciai-api-first-experimentation-and-service-enablement.md) |

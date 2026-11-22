@@ -35,12 +35,7 @@ const ServiceTopologyFlowComponent: React.FC<ServiceTopologyFlowProps> = ({
 }) => {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () =>
-      buildTopologyNodesAndEdges(
-        infraData,
-        collabData,
-        activeTraceStep,
-        activeProcessingNodeIds
-      ),
+      buildTopologyNodesAndEdges(infraData, collabData, activeTraceStep, activeProcessingNodeIds),
     [infraData, collabData, activeTraceStep, activeProcessingNodeIds]
   );
 
@@ -57,14 +52,7 @@ const ServiceTopologyFlowComponent: React.FC<ServiceTopologyFlowProps> = ({
     );
     setNodes(updated.nodes);
     setEdges(updated.edges);
-  }, [
-    infraData,
-    collabData,
-    activeTraceStep,
-    activeProcessingNodeIds,
-    setNodes,
-    setEdges,
-  ]);
+  }, [infraData, collabData, activeTraceStep, activeProcessingNodeIds, setNodes, setEdges]);
 
   const nodeTypes = useMemo(
     () => ({
