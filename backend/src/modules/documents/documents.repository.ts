@@ -48,24 +48,23 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
-        template: true,
         files: true,
       },
     });
 
     if (!project) return null;
 
-    const mainEntryPath = project.template?.mainEntryPath;
+    const mainEntryPath = project.mainEntryPath;
     if (!mainEntryPath) {
       throw new Error(
-        `[DocumentIntegrityError] Projeto "${id}" não possui template associado ou 'mainEntryPath' não foi definido.`
+        `[DocumentIntegrityError] Projeto "${id}" não possui 'mainEntryPath' definido.`
       );
     }
 
     const mainFile = project.files.find((f) => f.path === mainEntryPath);
     if (!mainFile) {
       throw new Error(
-        `[DocumentIntegrityError] Arquivo principal "${mainEntryPath}" definido no template "${project.template?.id}" não foi encontrado nos arquivos do projeto "${id}".`
+        `[DocumentIntegrityError] Arquivo principal "${mainEntryPath}" não foi encontrado nos arquivos do projeto "${id}".`
       );
     }
 
@@ -84,23 +83,22 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
     const projects = await prisma.project.findMany({
       where: { deletedAt: null },
       include: {
-        template: true,
         files: true,
       },
       orderBy: { updatedAt: 'desc' },
     });
 
     return projects.map((p) => {
-      const mainEntryPath = p.template?.mainEntryPath;
+      const mainEntryPath = p.mainEntryPath;
       if (!mainEntryPath) {
         throw new Error(
-          `[DocumentIntegrityError] Projeto "${p.id}" não possui template associado ou 'mainEntryPath' não foi definido.`
+          `[DocumentIntegrityError] Projeto "${p.id}" não possui 'mainEntryPath' definido.`
         );
       }
       const mainFile = p.files.find((f) => f.path === mainEntryPath);
       if (!mainFile) {
         throw new Error(
-          `[DocumentIntegrityError] Arquivo principal "${mainEntryPath}" definido no template "${p.template?.id}" não foi encontrado nos arquivos do projeto "${p.id}".`
+          `[DocumentIntegrityError] Arquivo principal "${mainEntryPath}" não foi encontrado nos arquivos do projeto "${p.id}".`
         );
       }
       return {
@@ -143,17 +141,16 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
   async updateContent(id: string, content: string, version: number): Promise<Document> {
     const project = await prisma.project.findUnique({
       where: { id },
-      include: { template: true },
     });
 
     if (!project) {
       throw new Error(`[DocumentIntegrityError] Projeto "${id}" não encontrado para atualização.`);
     }
 
-    const mainEntryPath = project.template?.mainEntryPath;
+    const mainEntryPath = project.mainEntryPath;
     if (!mainEntryPath) {
       throw new Error(
-        `[DocumentIntegrityError] Projeto "${id}" não possui template associado ou 'mainEntryPath' não foi definido.`
+        `[DocumentIntegrityError] Projeto "${id}" não possui 'mainEntryPath' definido.`
       );
     }
 
@@ -446,7 +443,7 @@ export class PrismaDocumentsRepository implements IDocumentsRepository {
         }
       } else {
         // Fallback para snapshots legados mono-arquivo
-        const mainPath = project.template?.mainEntryPath || 'main.tex';
+        const mainPath = project.mainEntryPath || 'main.tex';
         const hash = createHash('sha256').update(snap.content, 'utf-8').digest('hex');
         await tx.projectFile.upsert({
           where: { projectId_path: { projectId, path: mainPath } },

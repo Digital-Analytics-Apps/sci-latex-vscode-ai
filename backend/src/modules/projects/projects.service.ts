@@ -80,9 +80,31 @@ export class ProjectsService {
 
     const projectId = crypto.randomUUID();
 
+    let detectedMainEntryPath = 'main.tex';
+    let parsedZip: ReturnType<typeof parseLatexZip> | null = null;
+
+    // 0. Se houver templateId, extrai previamente o pacote para definir o mainEntryPath do projeto
+    if (process.env.NODE_ENV !== 'test') {
+      const targetTemplateId = data.templateId;
+      if (!targetTemplateId) {
+        throw new Error(
+          '[ProjectsService] templateId é obrigatório para provisionar os arquivos do artigo.'
+        );
+      }
+
+      const templatesService = new TemplatesService();
+      const { buffer: zipBuffer, template } = await templatesService.getTemplateBundle(targetTemplateId);
+      parsedZip = parseLatexZip(zipBuffer);
+      if (parsedZip.rootDoc) {
+        detectedMainEntryPath = parsedZip.rootDoc.path;
+      } else if (template?.mainEntryPath) {
+        detectedMainEntryPath = template.mainEntryPath;
+      }
+    }
+
     const coordinatorId = data.coordinatorId || null;
     const managerId = data.managerId || null;
-    // 1. Criar a entidade Project no banco com membros diretos
+    // 1. Criar a entidade Project no banco com membros diretos e mainEntryPath autônomo
     const project = await this.projectsRepository.create({
       id: projectId,
       name: data.name,
@@ -98,22 +120,13 @@ export class ProjectsService {
       additionalAuthorIds,
       reviewerId: data.reviewerId,
       templateId: data.templateId,
+      mainEntryPath: detectedMainEntryPath,
     });
 
     // 1a. Semear arquivos TeX iniciais do artigo no banco de dados (ProjectFile)
-    if (process.env.NODE_ENV !== 'test') {
-      const targetTemplateId = data.templateId;
-      if (!targetTemplateId) {
-        throw new Error(
-          '[ProjectsService] templateId é obrigatório para provisionar os arquivos do artigo.'
-        );
-      }
-
+    if (process.env.NODE_ENV !== 'test' && parsedZip) {
       try {
-        const templatesService = new TemplatesService();
-        const { buffer: zipBuffer } = await templatesService.getTemplateBundle(targetTemplateId);
-
-        const parsed = parseLatexZip(zipBuffer);
+        const parsed = parsedZip;
 
         const projectFilesData: Prisma.ProjectFileCreateManyInput[] = [];
 
@@ -489,7 +502,10 @@ export class ProjectsService {
             })
             .catch(() => null);
 
-    const mainEntryPath = projectWithTemplate?.template?.mainEntryPath || 'main.tex';
+    const mainEntryPath =
+      projectWithTemplate?.mainEntryPath ||
+      projectWithTemplate?.template?.mainEntryPath ||
+      'main.tex';
 
     let mainFile =
       process.env.NODE_ENV === 'test'

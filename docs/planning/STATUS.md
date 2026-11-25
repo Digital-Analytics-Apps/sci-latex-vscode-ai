@@ -97,7 +97,7 @@
     * **Metadados Obrigatórios Sem Fallback do TeX:**
       * Editora/Sociedade (`publisher`): Campo aberto de texto livre (não restrito a select).
       * Nome de Exibição (`name`): Campo obrigatório no cadastro. Removido qualquer fallback automático que extraísse `\title{...}` de arquivos TeX de exemplo.
-    * **Autonomia dos Artigos & Desacoplamento:** Artigos clonam arquivos para `ProjectFile` no ato da criação. Exclusão de templates do catálogo aplica `onDelete: SetNull`, mantendo todos os projetos existentes íntegros e compiláveis.
+    * **Autonomia dos Artigos & Desacoplamento Perene do Template:** O template base é usado estritamente como *seed* inicial para descompactar os arquivos no ato da criação. O ponto de entrada TeX raiz (`rootDoc.path`) é persistido diretamente na coluna `Project.mainEntryPath` no PostgreSQL. Todas as operações subsequentes de colaboração em tempo real (WebSocket), leitura (`findById`), persistência (`updateContent`) e compilação leem exclusivamente `Project.mainEntryPath` e `ProjectFile`. A exclusão ou modificação de templates do catálogo aplica `onDelete: SetNull` sem qualquer impacto em runtime ou perda de conectividade nos artigos existentes.
   * **Qualidade de Código e Arquitetura Frontend:**
     * **Remoção de Anti-Pattern no CodeMirrorEditor:** Eliminado bloco artificial de re-exportações para retrocompatibilidade em `CodeMirrorEditor.tsx`; módulos consumidores importam diretamente de seus arquivos modulares de extensão.
     * **Resolução de Warnings de Hooks:** 0 warnings no ESLint (`npm run lint`), com memoização adequada de sources e efeitos de ciclo de vida devidamente documentados.

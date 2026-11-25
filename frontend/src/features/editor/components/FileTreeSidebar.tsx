@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import {
   BookMarked,
   Check,
@@ -148,9 +148,10 @@ export function FileTreeSidebar({
     }
   };
 
-  // Extrai seções do documento LaTeX para o Outline
+  // Extrai seções do documento LaTeX para o Outline sem bloquear a thread de digitação
+  const deferredContent = useDeferredValue(documentContent);
   const outlineItems = useMemo(() => {
-    const lines = documentContent.split('\n');
+    const lines = deferredContent.split('\n');
     const items: { line: number; title: string; level: number }[] = [];
 
     lines.forEach((line, index) => {
@@ -166,7 +167,7 @@ export function FileTreeSidebar({
     });
 
     return items;
-  }, [documentContent]);
+  }, [deferredContent]);
 
   const getFileIcon = (file: ProjectFile) => {
     switch (file.type) {

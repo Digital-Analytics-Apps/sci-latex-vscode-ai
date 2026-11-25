@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Collaborator, RemoteCursor } from '../types/collab.types';
 import { getContrastColor } from '../../../utils/color';
 import { Users } from 'lucide-react';
@@ -28,9 +29,18 @@ export function CollaboratorsBar({
   remoteCursors,
   activeFile,
 }: CollaboratorsBarProps) {
+  const uniqueCollaborators = useMemo(() => {
+    const seen = new Set<string>();
+    return collaborators.filter((c) => {
+      if (seen.has(c.userId)) return false;
+      seen.add(c.userId);
+      return true;
+    });
+  }, [collaborators]);
+
   return (
     <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
-      <Tooltip title={`${collaborators.length} usuário(s) conectado(s)`} arrow>
+      <Tooltip title={`${uniqueCollaborators.length} usuário(s) conectado(s)`} arrow>
         <Stack
           direction="row"
           spacing={0.5}
@@ -44,19 +54,19 @@ export function CollaboratorsBar({
         >
           <Users size={14} />
           <Typography component="span" sx={{ fontSize: '0.78rem', fontWeight: 600 }}>
-            {collaborators.length}
+            {uniqueCollaborators.length}
           </Typography>
         </Stack>
       </Tooltip>
 
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        {collaborators.map((c, idx) => {
+        {uniqueCollaborators.map((c, idx) => {
           const isMe = c.userId === currentUserId;
           const remoteCursor = remoteCursors?.get(c.userId);
           const currentFile = isMe ? activeFile : remoteCursor?.file || activeFile;
           return (
             <Tooltip
-              key={c.userId}
+              key={`${c.userId}-${idx}`}
               title={`${c.userName}${isMe ? ' (Você)' : ''}${currentFile ? ` • em ${currentFile}` : ''}`}
               arrow
             >

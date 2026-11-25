@@ -65,18 +65,6 @@ export interface DocumentSnapshot {
   createdAt: string;
 }
 
-export interface OutboxMutation {
-  id?: number;
-  idempotencyKey: string;
-  documentId: string;
-  file: string;
-  type: 'PUSH_UPDATES' | 'APPLY_DELTA';
-  payload: unknown;
-  version: number;
-  status: 'pending' | 'acked_memory' | 'confirmed_db';
-  timestamp: number;
-}
-
 export interface PersistenceAckPayload {
   type: 'PERSISTENCE_ACK';
   snapshotId: string;

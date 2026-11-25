@@ -23,6 +23,21 @@ Esta especificação detalha o ciclo de vida, persistência, contratos de API e 
 ## 2. Modelo de Dados PostgreSQL (`schema.prisma`)
 
 ```prisma
+model Project {
+  id               String          @id @default(uuid())
+  name             String
+  description      String?
+  academicPeriodId String?
+  coordinatorId    String?
+  managerId        String?
+  mainEntryPath    String          @default("main.tex") // Caminho TeX raiz autônomo (ex: "bare_conf.tex", "main.tex")
+
+  templateId       String?
+  template         LatexTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  files            ProjectFile[]
+  // ... demais relações operacionais
+}
+
 model LatexTemplate {
   id               String    @id // Slug canônico único: ex. "ieee-artigo", "sbc-artigo"
   name             String    // Nome legível: "IEEE Conference Template"
@@ -111,7 +126,7 @@ Recebe requisição `multipart/form-data` contendo o arquivo `.zip` e os metadad
 ### 3.3 `DELETE /api/v1/templates/:id` (Exclusivo ADMIN)
 Permite a exclusão de um template pelo administrador:
 - Remove o arquivo compactado do MinIO e o registro correspondente no PostgreSQL.
-- **Autonomia Preservada:** Graças à cláusula `onDelete: SetNull` configurada na relação entre `Project` e `LatexTemplate`, qualquer artigo existente que tenha sido criado a partir desse template tem seu atributo `templateId` automaticamente desvinculado (definido como `null`), mantendo todos os arquivos `.tex` e binários já extraídos intactos e funcionais na tabela `ProjectFile`.
+- **Autonomia Preservada e Desacoplamento:** Graças à persistência do `mainEntryPath` diretamente na tabela `Project` e à cláusula `onDelete: SetNull` configurada na relação entre `Project` e `LatexTemplate`, qualquer artigo existente que tenha sido criado a partir desse template tem seu atributo `templateId` automaticamente desvinculado (definido como `null`). Todos os arquivos `.tex` e binários já extraídos em `ProjectFile`, bem como as rotas de carregamento (`findById`, `findAll`), colaboração em tempo real (WebSocket) e compilação TeX Live continuam 100% funcionais e autônomos sem qualquer dependência em runtime com o template excluído.
 
 ---
 
@@ -154,7 +169,9 @@ Localizado em `frontend/src/features/admin/tabs/TemplatesTab.tsx`, registrado co
 1. Ao criar o projeto (`POST /api/v1/projects`), o backend valida se `templateId` foi fornecido.
 2. Faz o download do pacote do MinIO a partir da `template.storageKey`.
 3. Processa em memória com `parseLatexZip`:
+   - Detecta o arquivo raiz do documento (`rootDoc.path`) e salva em `Project.mainEntryPath` no momento da criação.
    - Textos TeX (`.tex`, `.cls`, `.sty`, `.bib`): salvos como `ProjectFile` (tipo `text`).
    - Binários (figuras `.png`, `.jpg`, logos): enviados ao MinIO do projeto (`projects/${projectId}/files/...`) e referenciados como `ProjectFile` (tipo `binary`).
    - Injeta o título do artigo no TeX raiz substituindo `\title{...}` e `\begin{abstract}...`.
 4. Nenhum `.zip` é duplicado dentro da pasta do projeto.
+5. **Autonomia Permanente:** O template base é usado exclusivamente neste momento inicial como semente (seed). Todas as operações subsequentes de escrita, colaboração OT, salvamento e compilação TeX utilizam exclusivamente os dados próprios do `Project` (`mainEntryPath` e registros em `ProjectFile`), eliminando a necessidade de consulta ao template base em tempo de execução.

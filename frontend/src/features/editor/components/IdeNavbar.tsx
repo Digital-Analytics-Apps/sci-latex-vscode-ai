@@ -384,7 +384,7 @@ export function IdeNavbar({
         <Tooltip
           title={
             !isConnected || saveStatus === 'offline'
-              ? 'Desconectado da rede. O editor está operando em modo offline e salvando cada tecla no IndexedDB local.'
+              ? 'Desconectado da rede. O editor está operando em modo somente leitura até a reconexão.'
               : lastSavedAt
                 ? `Última sincronização com PostgreSQL: ${lastSavedAt}`
                 : 'Sincronizado via WebSocket'

@@ -87,11 +87,12 @@ $$\mathbf{[editora]-[tipo]}$$
   ```
 - O caminho relativo exato gerado é persistido na coluna `storageKey` da tabela `LatexTemplate`.
 
-### 2.5. Regra 5: Extração Direta e Autônoma dos Arquivos (Sem Cópia de ZIP)
+### 2.5. Regra 5: Extração Direta, Autonomia Integral e Desacoplamento do Template
 Ao confirmar a criação do artigo (`POST /api/v1/projects`):
 1. O backend busca o pacote do template escolhido no MinIO via `storageKey`.
-2. **Descompactação em Memória (`parseLatexZip`):**
+2. **Descompactação em Memória (`parseLatexZip`) e Persistência do Ponto de Entrada:**
    - O buffer do ZIP é lido em memória sem salvar cópias adicionais do `.zip` na pasta do artigo.
+   - O arquivo raiz do documento (`rootDoc.path`) é identificado e persistido diretamente no registro do artigo: **`Project.mainEntryPath`**.
    - Arquivos de texto e código TeX (`.tex`, `.cls`, `.sty`, `.bib`) são salvos diretamente na tabela `ProjectFile` do PostgreSQL.
    - Arquivos binários (imagens `.png`, `.jpg`, logos, figuras) são persistidos no MinIO sob:
      ```text
@@ -99,6 +100,7 @@ Ao confirmar a criação do artigo (`POST /api/v1/projects`):
      ```
    - No documento raiz, substitui-se `\title{...}` e `\begin{abstract}...` pelos metadados preenchidos pelo autor.
 3. **Nenhum arquivo `.zip` é copiado para a pasta do projeto.**
+4. **Desacoplamento em Tempo de Execução:** O template base (`LatexTemplate`) serve estritamente como *seed* inicial para semear os arquivos no momento da criação. Após essa etapa, o artigo **não depende de nenhum vínculo em tempo de execução com o template base**. Toda a esteira de colaboração em tempo real (WebSocket, `findById`, `findAll`, `updateContent`, snapshots e compilação TeX Live) opera exclusivamente lendo `Project.mainEntryPath` e seus respectivos registros em `ProjectFile`. Mesmo que o template do catálogo seja alterado, atualizado ou excluído via `onDelete: SetNull`, o artigo opera em perfeita autonomia e conectividade contínua.
 
 ### 2.6. Regra 6: Integridade Absoluta dos Arquivos Internos (Zero Renomeação)
 - Fica **proibido** renomear arquivos internos fornecidos no pacote `.zip` da conferência (`.cls`, `.sty`, `.bst`, `.bib`).
@@ -179,6 +181,21 @@ collab-assets/
 ## 5. Estrutura do Modelo de Dados (`schema.prisma`)
 
 ```prisma
+model Project {
+  id               String          @id @default(uuid())
+  name             String
+  description      String?
+  academicPeriodId String?
+  coordinatorId    String?
+  managerId        String?
+  mainEntryPath    String          @default("main.tex") // Caminho TeX raiz autônomo (ex: "bare_conf.tex", "main.tex")
+
+  templateId       String?
+  template         LatexTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  files            ProjectFile[]
+  // ... demais relações operacionais
+}
+
 model LatexTemplate {
   id               String    @id // Slug estrito: ex. "ieee-artigo", "sbc-artigo"
   name             String    // Ex: "IEEE Conference Template"
