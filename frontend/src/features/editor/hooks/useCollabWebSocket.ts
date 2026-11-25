@@ -351,7 +351,17 @@ export function useCollabWebSocket({
       connectRef.current = null;
       clearTimeout(reconnectTimer);
       if (socketRef.current) {
-        socketRef.current.close();
+        const ws = socketRef.current;
+        socketRef.current = null;
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        try {
+          ws.close();
+        } catch {
+          // Fechamento antecipado limpo
+        }
       }
     };
   }, [documentId, userId, userName]);
@@ -361,8 +371,14 @@ export function useCollabWebSocket({
     if (!isOnline) {
       setIsConnected(false);
       if (socketRef.current) {
+        const ws = socketRef.current;
+        socketRef.current = null;
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
         try {
-          socketRef.current.close();
+          ws.close();
         } catch {
           // Socket fechado
         }
@@ -462,15 +478,37 @@ export function useCollabWebSocket({
     [safeSend]
   );
 
+  const cursorThrottleTimerRef = useRef<number | null>(null);
+  const pendingCursorRef = useRef<{
+    position: number;
+    file: string;
+    selectionStart?: number;
+    selectionEnd?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cursorThrottleTimerRef.current !== null) {
+        clearTimeout(cursorThrottleTimerRef.current);
+      }
+    };
+  }, []);
+
   const sendCursorMove = useCallback(
     (position: number, file: string, selectionStart?: number, selectionEnd?: number) => {
-      safeSend({
-        type: 'CURSOR_MOVE',
-        position,
-        selectionStart,
-        selectionEnd,
-        file,
-      });
+      pendingCursorRef.current = { position, file, selectionStart, selectionEnd };
+      if (cursorThrottleTimerRef.current === null) {
+        cursorThrottleTimerRef.current = window.setTimeout(() => {
+          cursorThrottleTimerRef.current = null;
+          if (pendingCursorRef.current) {
+            safeSend({
+              type: 'CURSOR_MOVE',
+              ...pendingCursorRef.current,
+            });
+            pendingCursorRef.current = null;
+          }
+        }, 80);
+      }
     },
     [safeSend]
   );

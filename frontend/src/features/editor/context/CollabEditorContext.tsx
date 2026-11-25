@@ -540,22 +540,35 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     }
   }, [documentData?.id, handleRecompileSafe, isOnline]);
 
+  const operationsBufferRef = useRef<DeltaOperation[]>([]);
+  const operationsDebounceRef = useRef<number | null>(null);
+  const contentDebounceRef = useRef<number | null>(null);
+  const cacheDebounceRef = useRef<number | null>(null);
+  const pendingCacheContentRef = useRef<{ file: string; content: string } | null>(null);
+
+  // Limpeza de timers e flush de cache pendente no unmount
+  useEffect(() => {
+    return () => {
+      if (contentDebounceRef.current !== null) clearTimeout(contentDebounceRef.current);
+      if (operationsDebounceRef.current !== null) clearTimeout(operationsDebounceRef.current);
+      if (cacheDebounceRef.current !== null && pendingCacheContentRef.current) {
+        clearTimeout(cacheDebounceRef.current);
+        outboxDbService
+          .saveCache(
+            documentId,
+            pendingCacheContentRef.current.file,
+            pendingCacheContentRef.current.content,
+            collabVersion
+          )
+          .catch(console.warn);
+      }
+    };
+  }, [documentId, collabVersion]);
+
   // Delta local no main.tex
   const handleApplyLocalDelta = useCallback(
     (delta: Omit<DeltaOperation, 'userId' | 'userName' | 'timestamp'>) => {
-      setDocumentData((prev) => {
-        if (!prev) return prev;
-        let content = prev.content;
-        const pos = Math.max(0, Math.min(delta.position, content.length));
-        if (delta.type === 'insert' && delta.text !== undefined) {
-          content = content.slice(0, pos) + delta.text + content.slice(pos);
-        } else if (delta.type === 'delete' && delta.length !== undefined) {
-          content = content.slice(0, pos) + content.slice(pos + delta.length);
-        }
-        return { ...prev, content };
-      });
-
-      setSaveStatus('pending_debounce');
+      setSaveStatus((prev) => (prev !== 'pending_debounce' ? 'pending_debounce' : prev));
 
       const fullDelta: DeltaOperation = {
         ...delta,
@@ -563,7 +576,15 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
         userName,
         timestamp: Date.now(),
       };
-      setOperations((prev) => [fullDelta, ...prev.slice(0, 49)]);
+
+      // Bufferiza operações com debounce de 500ms para evitar re-render em cascata do React a cada caractere
+      operationsBufferRef.current = [fullDelta, ...operationsBufferRef.current.slice(0, 49)];
+      if (operationsDebounceRef.current !== null) {
+        clearTimeout(operationsDebounceRef.current);
+      }
+      operationsDebounceRef.current = window.setTimeout(() => {
+        setOperations(operationsBufferRef.current);
+      }, 500);
 
       const rootPath =
         documentDataRef.current?.mainEntryPath || documentData?.mainEntryPath || 'main.tex';
@@ -585,11 +606,14 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
       }
 
       fileContentsRef.current[activeFile] = updated;
-      setFileContents((prev) => ({ ...prev, [activeFile]: updated }));
-      setSecondarySaveStatus((prev) => ({
-        ...prev,
-        [activeFile]: 'pending_debounce',
-      }));
+      setSecondarySaveStatus((prev) =>
+        prev[activeFile] !== 'pending_debounce'
+          ? {
+              ...prev,
+              [activeFile]: 'pending_debounce',
+            }
+          : prev
+      );
 
       sendDelta(activeFile, delta);
 
@@ -634,20 +658,44 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
 
   const handleDocContentChange = useCallback(
     (newContent: string) => {
-      const rootPath = documentData?.mainEntryPath || 'main.tex';
+      const rootPath = documentDataRef.current?.mainEntryPath || 'main.tex';
       const targetPath = activeFile || rootPath;
+
+      // Mantém referências síncronas atualizadas instantaneamente na memória
       if (activeFile === rootPath || !activeFile) {
-        setDocumentData((prev) => (prev ? { ...prev, content: newContent } : prev));
+        if (documentDataRef.current) {
+          documentDataRef.current.content = newContent;
+        }
       } else {
         fileContentsRef.current[activeFile] = newContent;
-        setFileContents((prev) => ({ ...prev, [activeFile]: newContent }));
       }
-      // Salva no cache local do IndexedDB imediatamente (Offline-first)
-      outboxDbService
-        .saveCache(documentId, targetPath, newContent, collabVersion)
-        .catch(console.warn);
+      pendingCacheContentRef.current = { file: targetPath, content: newContent };
+
+      // 1. Debounce na propagação para o estado React (300ms)
+      // Mantém o Workspace responsivo a 60-120fps sem forçar re-render do React a cada tecla
+      if (contentDebounceRef.current !== null) {
+        clearTimeout(contentDebounceRef.current);
+      }
+      contentDebounceRef.current = window.setTimeout(() => {
+        if (activeFile === rootPath || !activeFile) {
+          setDocumentData((prev) => (prev ? { ...prev, content: newContent } : prev));
+        } else {
+          setFileContents((prev) => ({ ...prev, [activeFile]: newContent }));
+        }
+      }, 300);
+
+      // 2. Debounce na gravação do IndexedDB (1000ms)
+      // Elimina o gargalo de I/O de disco durante digitação contínua
+      if (cacheDebounceRef.current !== null) {
+        clearTimeout(cacheDebounceRef.current);
+      }
+      cacheDebounceRef.current = window.setTimeout(() => {
+        outboxDbService
+          .saveCache(documentId, targetPath, newContent, collabVersion)
+          .catch(console.warn);
+      }, 1000);
     },
-    [activeFile, documentData?.mainEntryPath, documentId, collabVersion]
+    [activeFile, documentId, collabVersion]
   );
 
   const handleCursorMove = useCallback(
@@ -659,6 +707,18 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
 
   const handleManualFlush = useCallback(async () => {
     try {
+      if (cacheDebounceRef.current !== null && pendingCacheContentRef.current) {
+        clearTimeout(cacheDebounceRef.current);
+        cacheDebounceRef.current = null;
+        await outboxDbService
+          .saveCache(
+            documentId,
+            pendingCacheContentRef.current.file,
+            pendingCacheContentRef.current.content,
+            collabVersion
+          )
+          .catch(console.warn);
+      }
       const snap = await flushMutation.mutateAsync();
       if (snap) {
         setSnapshots((prev) => [snap, ...prev]);
@@ -668,7 +728,7 @@ export function CollabEditorProvider({ documentId, children }: CollabEditorProvi
     } catch (err) {
       console.error('[Editor] Erro no flush manual:', err);
     }
-  }, [flushMutation]);
+  }, [flushMutation, documentId, collabVersion]);
 
   const handleOpenFile = useCallback(
     async (file: ProjectFile) => {

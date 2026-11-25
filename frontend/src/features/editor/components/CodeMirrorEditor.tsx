@@ -247,46 +247,60 @@ export function CodeMirrorEditor({
     }
   };
 
-  const updateLinePositions = (view: EditorView) => {
+  const linePositionsDebounceRef = useRef<number | null>(null);
+
+  const updateLinePositions = (_view?: EditorView) => {
     if (!onLinePositionsChangeRef.current) return;
     const currentComments = commentsRef.current;
     if (!currentComments || currentComments.length === 0) return;
 
-    const tops: Record<string, { lineNumber: number; top: number }> = {};
-    const scroller = view.scrollDOM;
-    const scrollerRect = scroller.getBoundingClientRect();
-    const doc = view.state.doc;
+    if (linePositionsDebounceRef.current !== null) {
+      clearTimeout(linePositionsDebounceRef.current);
+    }
 
-    for (const comment of currentComments) {
-      const clampedPos = Math.max(0, Math.min(comment.from, doc.length));
-      const line = doc.lineAt(clampedPos);
-      const coords = view.coordsAtPos(line.from);
-      if (coords) {
-        const relativeTop = coords.top - scrollerRect.top + scroller.scrollTop;
-        tops[comment.id] = {
-          lineNumber: line.number,
-          top: Math.max(0, relativeTop),
-        };
+    linePositionsDebounceRef.current = window.setTimeout(() => {
+      linePositionsDebounceRef.current = null;
+      if (!viewRef.current) return;
+      const currentView = viewRef.current;
+      const currentCommentsInner = commentsRef.current;
+      if (!currentCommentsInner || currentCommentsInner.length === 0) return;
+
+      const tops: Record<string, { lineNumber: number; top: number }> = {};
+      const scroller = currentView.scrollDOM;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const doc = currentView.state.doc;
+
+      for (const comment of currentCommentsInner) {
+        const clampedPos = Math.max(0, Math.min(comment.from, doc.length));
+        const line = doc.lineAt(clampedPos);
+        const coords = currentView.coordsAtPos(line.from);
+        if (coords) {
+          const relativeTop = coords.top - scrollerRect.top + scroller.scrollTop;
+          tops[comment.id] = {
+            lineNumber: line.number,
+            top: Math.max(0, relativeTop),
+          };
+        }
       }
-    }
 
-    const topsKey = Object.entries(tops)
-      .map(([id, val]) => `${id}:${val.lineNumber}:${Math.round(val.top)}`)
-      .sort()
-      .join('|');
+      const topsKey = Object.entries(tops)
+        .map(([id, val]) => `${id}:${val.lineNumber}:${Math.round(val.top)}`)
+        .sort()
+        .join('|');
 
-    if (
-      Math.abs(scroller.scrollTop - lastSentLayoutRef.current.scrollTop) > 2 ||
-      topsKey !== lastSentLayoutRef.current.topsKey
-    ) {
-      lastSentLayoutRef.current = { scrollTop: scroller.scrollTop, topsKey };
-      onLinePositionsChangeRef.current({
-        commentLineTops: tops,
-        scrollTop: scroller.scrollTop,
-        scrollHeight: scroller.scrollHeight,
-        clientHeight: scroller.clientHeight,
-      });
-    }
+      if (
+        Math.abs(scroller.scrollTop - lastSentLayoutRef.current.scrollTop) > 2 ||
+        topsKey !== lastSentLayoutRef.current.topsKey
+      ) {
+        lastSentLayoutRef.current = { scrollTop: scroller.scrollTop, topsKey };
+        onLinePositionsChangeRef.current?.({
+          commentLineTops: tops,
+          scrollTop: scroller.scrollTop,
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight,
+        });
+      }
+    }, 150);
   };
 
   // Inicializa o CodeMirror 6 na montagem com todas as extensões e superpoderes nativos
@@ -514,6 +528,9 @@ export function CodeMirrorEditor({
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      if (linePositionsDebounceRef.current !== null) {
+        clearTimeout(linePositionsDebounceRef.current);
+      }
       onRegisterActionsRef.current?.(null);
       if (viewRef.current && activeFileRef.current) {
         editorStateCache.saveFileState(activeFileRef.current, viewRef.current.state);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useColorMode } from '../../../theme';
@@ -84,6 +84,19 @@ export function EditorWorkspace() {
   } | null>(null);
   const [diffSnapshot, setDiffSnapshot] = useState<DocumentSnapshot | null>(null);
 
+  const isMainFile = activeFile === (documentData?.mainEntryPath || 'main.tex');
+
+  const handleEditorDelta = useCallback(
+    (delta: Omit<DeltaOperation, 'userId' | 'userName' | 'timestamp'>) => {
+      if (isMainFile) {
+        handleApplyLocalDelta(delta);
+      } else {
+        handleSecondaryDelta(delta);
+      }
+    },
+    [isMainFile, handleApplyLocalDelta, handleSecondaryDelta]
+  );
+
   if (!documentData || !isSynced) {
     return (
       <Box
@@ -101,8 +114,6 @@ export function EditorWorkspace() {
     );
   }
 
-  const rootEntry = documentData.mainEntryPath || 'main.tex';
-  const isMainFile = activeFile === rootEntry;
   const currentEditorContent = isMainFile ? documentData.content : (fileContents[activeFile] ?? '');
   const currentUserColor = collaborators.find((c) => c.userId === userId)?.color;
   const currentSaveStatus: 'synced' | 'saving' | 'offline' = !isConnected
@@ -259,15 +270,7 @@ export function EditorWorkspace() {
                     onRequestAddComment={handleCommentSelectionRequest}
                     onLinePositionsChange={setLineLayoutInfo}
                     onCursorMove={handleCursorMove}
-                    onApplyLocalDelta={(
-                      delta: Omit<DeltaOperation, 'userId' | 'userName' | 'timestamp'>
-                    ) => {
-                      if (isMainFile) {
-                        handleApplyLocalDelta(delta);
-                      } else {
-                        handleSecondaryDelta(delta);
-                      }
-                    }}
+                    onApplyLocalDelta={handleEditorDelta}
                     onHistoryChange={setHistoryStatus}
                     onRegisterActions={registerEditorActions}
                     onRegisterRemoteDeltaListener={registerRemoteDeltaListener}

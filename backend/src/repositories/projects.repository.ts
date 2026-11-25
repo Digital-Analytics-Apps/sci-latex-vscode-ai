@@ -16,6 +16,7 @@ export interface CreateProjectData {
   additionalAuthorIds?: string[];
   reviewerId?: string;
   templateId?: string;
+  mainEntryPath?: string;
 }
 
 export interface UpdateProjectData {
@@ -94,6 +95,7 @@ export class PrismaProjectsRepository implements IProjectsRepository {
         backupConferenceName: data.backupConferenceName,
         backupConferenceDate: data.backupConferenceDate,
         templateId: data.templateId,
+        mainEntryPath: data.mainEntryPath || 'main.tex',
         members: {
           createMany: {
             data: memberCreates,
